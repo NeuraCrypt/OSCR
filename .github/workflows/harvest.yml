@@ -1,0 +1,126 @@
+# DORMANT: the harvester runs on the Mac (a continuous watch and a nightly publication;
+# see docs/GETTING_STARTED.md). This pass therefore never starts by itself: it only runs
+# by hand (Actions tab → "Daily harvest" → Run workflow).
+# To wake it up: uncomment `schedule`, and remove library/ and /mirror/ from .gitignore.
+#
+# The harvester's daily pass on GitHub Actions, at no cost for a public repository.
+#
+#   the SQLite database : kept between two passes as an asset of the "state" release
+#                         (not in the git history, which it would bloat), in its version
+#                         WITHOUT any excerpt of text;
+#   the library         : the JSON records of library/ are committed (the "git scraping"
+#                         pattern: every pass leaves a readable diff);
+#   the scripts         : the TEXT of the scripts whose license allows republishing it is
+#                         copied into mirror/<repository>/, with its license and a
+#                         SOURCE.json (origin, commit), and committed too;
+#   Hugging Face        : if the HF_TOKEN secret and the HF_DATASET variable exist, the
+#                         tables and the scripts also go to a dataset;
+#   the public export   : data/export/ is published on GitHub Pages (Settings → Pages →
+#                         Source: GitHub Actions, to turn on once): the open data files,
+#                         served with CORS, so Datasette Lite can read oscr_public.db. The
+#                         website itself is the Astro site on Cloudflare Pages.
+#
+# The daily commits keep the repository "active": GitHub disables a scheduled workflow
+# after 60 days without activity.
+name: Daily harvest
+
+on:
+  # schedule:
+  #   - cron: "17 4 * * *"      # not a round minute: the top of the hour is delayed
+  workflow_dispatch:
+    inputs:
+      domain:
+        description: "neuro, electrophysiology, or a Europe PMC query"
+        default: "neuro"
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: harvest
+  cancel-in-progress: false
+
+jobs:
+  harvest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    env:
+      HF_TOKEN: ${{ secrets.HF_TOKEN }}
+      DOMAIN: ${{ inputs.domain || 'neuro' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.12"
+
+      - name: Restore the database of the previous pass
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p data
+          gh release download state -p oscr.db -D data --clobber \
+            || echo "First run: a new database."
+
+      - name: Pass
+        env:
+          # The workflow's token opens the GitHub API (1,000 requests an hour): the stars and
+          # the creation date of the repositories, to recognize a public tool.
+          GITHUB_TOKEN: ${{ github.token }}
+          # Optional: a contact address for Crossref's "polite pool".
+          OSCR_CONTACT: ${{ vars.OSCR_CONTACT }}
+        run: uv run oscr --public --mirror mirror run --domain "$DOMAIN"
+
+      # The backlog (614,336 open-access neuroscience papers on 2026-09-26) is taken in
+      # slices: each pass walks back into the past, month by month, for BACKFILL_HOURS
+      # (1.5 h by default), then hands back; the next one resumes where it stopped.
+      # 0 to skip the backfill.
+      - name: Backfill of the backlog
+        if: (vars.BACKFILL_HOURS || '1.5') != '0'
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          OSCR_CONTACT: ${{ vars.OSCR_CONTACT }}
+          HOURS: ${{ vars.BACKFILL_HOURS || '1.5' }}
+        run: uv run oscr --public --mirror mirror backfill --domain "$DOMAIN" --hours "$HOURS"
+
+      # A release of a public repository is PUBLIC: it keeps the copy of the database
+      # WITHOUT the sentences of the papers (data/export/oscr_public.db), never the working
+      # database.
+      - name: Keep the database for the next pass
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view state >/dev/null 2>&1 \
+            || gh release create state --title "Harvester state" --notes "SQLite database of the last pass, without any excerpt of text."
+          cp data/export/oscr_public.db "$RUNNER_TEMP/oscr.db"
+          gh release upload state "$RUNNER_TEMP/oscr.db" --clobber
+
+      - name: Commit the library
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add library mirror
+          git diff --cached --quiet || git commit -m "Pass of $(date -u +%F)"
+          git push
+
+      - name: Publish to Hugging Face
+        if: env.HF_TOKEN != '' && vars.HF_DATASET != ''
+        env:
+          DATASET: ${{ vars.HF_DATASET }}
+        run: uv run oscr --public --mirror mirror publish-hf "$DATASET"
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: data/export
+
+  publish:
+    needs: harvest
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

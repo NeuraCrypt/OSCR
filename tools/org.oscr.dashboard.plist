@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  The DASHBOARD (`oscr dashboard`): the database's table on http://127.0.0.1:8790, for
+  this machine only (nothing listens on the network). A standard-library server, ~30 MB,
+  which does nothing until it is opened.
+
+  KeepAlive/PathState: it runs as long as the Expansion disk is mounted, and restarts by
+  itself when the disk is plugged back.
+  Template: tools/install_mac.sh replaces @ROOT@ and @LOGS@ (the log cannot live on the
+  external disk: launchd refuses to open it).
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>org.oscr.dashboard</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>@ROOT@/.venv/bin/python</string>
+    <string>-m</string>
+    <string>oscr</string>
+    <string>dashboard</string>
+    <string>--port</string>
+    <string>8790</string>
+  </array>
+  <key>WorkingDirectory</key>
+  <string>@ROOT@</string>
+
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <dict>
+    <key>PathState</key>
+    <dict>
+      <key>@ROOT@/.venv/bin/python</key>
+      <true/>
+    </dict>
+  </dict>
+  <key>ThrottleInterval</key>
+  <integer>30</integer>
+
+  <key>ProcessType</key>
+  <string>Background</string>
+  <key>Nice</key>
+  <integer>10</integer>
+
+  <key>StandardOutPath</key>
+  <string>@LOGS@/dashboard.log</string>
+  <key>StandardErrorPath</key>
+  <string>@LOGS@/dashboard.log</string>
+</dict>
+</plist>

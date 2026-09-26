@@ -1,0 +1,5 @@
+# Cloudflare Pages, free plan. Deploy with `npm run deploy`, after
+# `npx wrangler login` (once, in the owner's browser).
+name = "oscr"
+pages_build_output_dir = "./dist"
+compatibility_date = "2026-09-01"

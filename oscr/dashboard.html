@@ -1,0 +1,292 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>OSCR dashboard</title>
+<style>
+:root {
+  --bg: #FAFAFA; --surface: #FFFFFF; --ink: #1A1D23; --muted: #6B7280; --rule: #E5E7EB;
+  --accent: #1F3B4D; --accent-soft: #E8EEF2; --ok: #2F7D4F; --warn: #8F6200; --dead: #B3261E;
+  --request: #44557A; --data: #1D7470; --neutral: #9CA3AF; --code-bg: #F6F7F9;
+  --hl-keyword: #7A3E9D; --hl-string: #2F7D4F; --hl-comment: #7B8494; --hl-number: #9A5B00;
+  --hl-title: #1F5F8B; --hl-builtin: #1D7470;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0E1014; --surface: #15181E; --ink: #E6E8EC; --muted: #9199A6; --rule: #262A33;
+    --accent: #9CC3DC; --accent-soft: #1B2A33; --ok: #6CC58F; --warn: #E3B14F; --dead: #F08A82;
+    --request: #9EB0D6; --data: #62C3BC; --neutral: #6B7280; --code-bg: #0B0D11;
+    --hl-keyword: #C8A6F2; --hl-string: #7FD19B; --hl-comment: #7F8A9C; --hl-number: #E8B75A;
+    --hl-title: #8EC2F0; --hl-builtin: #6FD0C8;
+    color-scheme: dark;
+  }
+}
+* { box-sizing: border-box; }
+/* The hidden attribute must win over the display: grid/flex of the classes. */
+[hidden] { display: none !important; }
+body { margin: 0; background: var(--bg); color: var(--ink);
+  font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; }
+.mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12.5px; }
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.bar { position: sticky; top: 0; z-index: 2; background: var(--bg); border-bottom: 1px solid var(--rule);
+  padding: 12px clamp(12px, 3vw, 28px); display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; }
+.bar h1 { font-size: 15px; font-weight: 600; margin: 0; }
+.counts { color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
+.bar input[type=search] { margin-left: auto; font: inherit; width: min(340px, 100%); padding: 6px 10px;
+  border: 1px solid var(--rule); border-radius: 6px; background: var(--surface); color: var(--ink); }
+.bar label { color: var(--muted); font-size: 13px; display: flex; gap: 6px; align-items: center; }
+main { padding: 0 clamp(12px, 3vw, 28px) 40px; }
+.scroll { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; }
+th { text-align: left; font-weight: 500; color: var(--muted); font-size: 12px; padding: 10px 10px 8px;
+  border-bottom: 1px solid var(--rule); white-space: nowrap; }
+td { padding: 9px 10px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+td.date { white-space: nowrap; color: var(--muted); font-variant-numeric: tabular-nums; }
+td.title { min-width: 240px; max-width: 480px; }
+td.repo { min-width: 230px; }
+td.license span { white-space: nowrap; }
+.journal { color: var(--muted); font-size: 12.5px; }
+.status { white-space: nowrap; font-size: 12.5px; }
+.status::before { content: "●"; margin-right: 5px; }
+.s-code_verified { color: var(--ok); } .s-code_found { color: var(--warn); } .s-code_empty { color: var(--warn); }
+.s-code_dead { color: var(--dead); } .s-on_request { color: var(--request); }
+.s-data_only { color: var(--data); } .s-none, .s-no_fulltext, .s-to_scan { color: var(--neutral); }
+.stack { display: grid; gap: 3px; }
+.stack .mono { white-space: nowrap; max-width: 40ch; overflow: hidden; text-overflow: ellipsis; display: block; }
+.empty { color: var(--muted); }
+button.scripts { font: inherit; font-size: 13px; color: var(--accent); background: var(--accent-soft);
+  border: 0; border-radius: 5px; padding: 3px 9px; cursor: pointer; white-space: nowrap; }
+.pairs { display: block; color: var(--muted); font-size: 12px; margin-top: 3px; }
+.more { display: flex; justify-content: center; padding: 16px; }
+.more button { font: inherit; color: var(--accent); background: none; border: 1px solid var(--rule);
+  border-radius: 6px; padding: 6px 14px; cursor: pointer; }
+.message { padding: 24px 0; color: var(--muted); }
+/* the drawer */
+.veil { position: fixed; inset: 0; background: rgba(0, 0, 0, .35); z-index: 5; }
+.drawer { position: fixed; top: 0; right: 0; bottom: 0; width: min(1120px, 100vw); z-index: 6;
+  background: var(--surface); box-shadow: 0 10px 40px rgba(0, 0, 0, .25);
+  display: grid; grid-template-rows: auto minmax(0, 1fr); }
+.drawer-head { display: flex; gap: 12px; justify-content: space-between; align-items: start;
+  padding: 12px 16px; border-bottom: 1px solid var(--rule); }
+.drawer-head h2 { font-size: 15px; font-weight: 600; margin: 0 0 2px; }
+.close { font: inherit; font-size: 20px; line-height: 1; background: none; border: 1px solid var(--rule);
+  border-radius: 6px; width: 32px; height: 32px; color: var(--muted); cursor: pointer; flex: none; }
+.drawer-body { display: grid; grid-template-columns: minmax(220px, 300px) minmax(0, 1fr); min-height: 0; }
+.files { border-right: 1px solid var(--rule); overflow: auto; padding: 8px; }
+.files h3 { font: 500 12px ui-monospace, Menlo, monospace; margin: 10px 6px 2px; overflow-wrap: anywhere; }
+.files .lic { font-size: 12px; color: var(--muted); margin: 0 6px 6px; }
+.file { display: flex; justify-content: space-between; gap: 8px; width: 100%; text-align: left; font: 12.5px ui-monospace, Menlo, monospace;
+  color: var(--ink); background: none; border: 0; border-radius: 4px; padding: 4px 6px; cursor: pointer; }
+.file span:first-child { overflow-wrap: anywhere; }
+.file span:last-child { color: var(--muted); white-space: nowrap; }
+.file:hover { background: var(--bg); }
+.file[aria-current=true] { background: var(--accent-soft); }
+.file.closed span:first-child { color: var(--muted); }
+.reading { display: grid; grid-template-rows: auto minmax(0, 1fr); min-width: 0; min-height: 0; }
+.reading-head { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; padding: 8px 14px;
+  border-bottom: 1px solid var(--rule); font-size: 12.5px; color: var(--muted); min-height: 40px; }
+.reading-head .mono { color: var(--ink); }
+.reading-head button { font: inherit; color: var(--accent); background: none; border: 1px solid var(--rule);
+  border-radius: 5px; padding: 2px 8px; cursor: pointer; }
+.code { overflow: auto; background: var(--code-bg); }
+.code .notice { padding: 16px; color: var(--muted); margin: 0; max-width: 60ch; }
+.lines { display: flex; min-width: max-content; font: 12.5px/1.6 ui-monospace, SFMono-Regular, Menlo, monospace; }
+.lines pre { margin: 0; padding: 10px 14px; font: inherit; }
+.gutter { color: var(--muted); text-align: right; user-select: none; border-right: 1px solid var(--rule); opacity: .7; }
+.lines code { font: inherit; white-space: pre; }
+.hljs-keyword, .hljs-literal { color: var(--hl-keyword); } .hljs-string, .hljs-regexp { color: var(--hl-string); }
+.hljs-comment, .hljs-quote { color: var(--hl-comment); font-style: italic; } .hljs-number { color: var(--hl-number); }
+.hljs-title, .hljs-section { color: var(--hl-title); } .hljs-built_in, .hljs-type { color: var(--hl-builtin); }
+@media (max-width: 720px) {
+  .drawer-body { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(110px, 34vh) minmax(0, 1fr); }
+  .files { border-right: 0; border-bottom: 1px solid var(--rule); }
+  .bar input[type=search] { margin-left: 0; }
+}
+</style>
+</head>
+<body>
+<div class="bar">
+  <h1>OSCR dashboard</h1>
+  <span class="counts" id="counts"></span>
+  <input type="search" id="q" placeholder="title, DOI, repository, journal…" aria-label="Search">
+  <label for="all"><input type="checkbox" id="all"> all papers</label>
+</div>
+<main>
+  <div class="scroll">
+    <table>
+      <thead><tr><th>Date</th><th>DOI</th><th>Title</th><th>Status</th><th>Repository</th><th>License</th><th>Scripts</th></tr></thead>
+      <tbody id="rows"></tbody>
+    </table>
+  </div>
+  <p class="message" id="message" hidden></p>
+  <div class="more" id="more" hidden><button type="button" id="more-button">Show more</button></div>
+</main>
+
+<div class="veil" id="veil" hidden></div>
+<aside class="drawer" id="drawer" role="dialog" aria-modal="true" aria-labelledby="drawer-title" hidden>
+  <div class="drawer-head">
+    <div><h2 id="drawer-title"></h2><div class="journal" id="drawer-sub"></div></div>
+    <button type="button" class="close" id="close" aria-label="Close">×</button>
+  </div>
+  <div class="drawer-body">
+    <nav class="files" id="files" aria-label="Files"></nav>
+    <section class="reading" aria-label="Reading">
+      <div class="reading-head" id="reading-head"></div>
+      <div class="code" id="code"></div>
+    </section>
+  </div>
+</aside>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/matlab.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/r.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/julia.min.js"></script>
+<script>
+(function () {
+  "use strict";
+  var STATUSES = {code_verified: "verified", code_found: "reported", code_empty: "empty repository", code_dead: "dead link",
+    on_request: "on request", data_only: "data only", none: "no code", no_fulltext: "closed text"};
+  var LANGUAGES = {"Python": "python", "Jupyter": "python", "MATLAB": "matlab", "R": "r", "Julia": "julia", "C": "c",
+    "C++": "cpp", "C/C++": "cpp", "Shell": "bash", "JavaScript": "javascript", "Java": "java", "Text": "markdown"};
+  var PAGE = 100, offset = 0, total = 0, rows = {}, timer, opener;
+  function $(id) { return document.getElementById(id); }
+  function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+    return {"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"}[c]; }); }
+  function nf(n) { return (n || 0).toLocaleString("en-US"); }
+  function api(path) { return fetch(path).then(function (r) { return r.json(); }); }
+
+  function counts() {
+    api("/api/stats").then(function (e) {
+      if (e.error) { $("counts").textContent = e.error; return; }
+      var updated = e.updated ? new Date(e.updated * 1000).toLocaleString("en-GB", {dateStyle: "short", timeStyle: "short"}) : "—";
+      var backfill = Object.keys(e.backfill || {}).map(function (d) {
+        var m = e.backfill[d].split("-");
+        return new Date(+m[0], +m[1] - 1, 1).toLocaleDateString("en-US", {month: "long", year: "numeric"});
+      });
+      $("counts").textContent = nf(e.with_code) + " papers with code out of " + nf(e.articles) + " · " + nf(e.repositories) +
+        " repositories · " + nf(e.scripts) + " scripts · " + nf(e.aligned) + " aligned · last paper read " + updated +
+        (backfill.length ? " · backfill: " + backfill.join(", ") + " in progress" : "");
+    });
+  }
+  function row(a) {
+    rows[a.id] = a;
+    var doi = a.doi ? '<a class="mono" href="https://doi.org/' + esc(a.doi) + '" target="_blank" rel="noopener">' + esc(a.doi) + "</a>" : '<span class="empty">—</span>';
+    var repos = a.code.map(function (c) {
+      return '<a class="mono" href="' + esc(c.url) + '" target="_blank" rel="noopener" title="' + esc(c.repo) + '">' + esc(c.repo) + "</a>";
+    }).join("");
+    var licenses = a.code.map(function (c) { return "<span>" + esc(c.license || (c.state === "alive" ? "no license" : "—")) + "</span>"; }).join("");
+    var n = a.code.reduce(function (t, c) { return t + (c.n || 0); }, 0);
+    return "<tr><td class=\"date\">" + esc(a.published) + "</td><td>" + doi + '</td><td class="title">' + esc(a.title || "—") +
+      '<div class="journal">' + esc(a.journal) + '</div></td><td><span class="status s-' + esc(a.status) + '">' + esc(STATUSES[a.status] || a.status) +
+      '</span></td><td class="repo"><div class="stack">' + (repos || '<span class="empty">—</span>') + '</div></td><td class="license"><div class="stack">' +
+      (licenses || '<span class="empty">—</span>') + "</div></td><td>" +
+      (n ? '<button type="button" class="scripts" data-id="' + esc(a.id) + '">' + nf(n) + " ›</button>" : '<span class="empty">—</span>') +
+      (a.pairs ? '<span class="pairs">' + nf(a.pairs) + " matches</span>" : "") + "</td></tr>";
+  }
+  function load(append) {
+    if (!append) { offset = 0; rows = {}; }
+    var url = "/api/articles?n=" + PAGE + "&offset=" + offset + "&all=" + ($("all").checked ? 1 : 0) +
+      "&q=" + encodeURIComponent($("q").value.trim());
+    api(url).then(function (r) {
+      if (r.error) { $("message").hidden = false; $("message").textContent = r.error; return; }
+      total = r.total;
+      var html = r.rows.map(row).join("");
+      if (append) $("rows").insertAdjacentHTML("beforeend", html); else $("rows").innerHTML = html;
+      offset += r.rows.length;
+      $("message").hidden = total > 0;
+      $("message").textContent = "No paper matches.";
+      $("more").hidden = offset >= total;
+      $("more-button").textContent = "Show more (" + nf(total - offset) + " left)";
+    }).catch(function () {
+      $("message").hidden = false;
+      $("message").textContent = "The server does not answer: run “oscr dashboard”.";
+    });
+  }
+  $("q").addEventListener("input", function () { clearTimeout(timer); timer = setTimeout(function () { load(false); }, 200); });
+  $("all").addEventListener("change", function () { load(false); });
+  $("more-button").addEventListener("click", function () { load(true); });
+
+  // ─── the drawer ───────────────────────────────────────────────────────
+  var repos = [];
+  function open(a) {
+    opener = document.activeElement;
+    $("drawer-title").textContent = a.title || a.doi;
+    $("drawer-sub").textContent = [a.journal, a.published, a.doi].filter(Boolean).join(" · ");
+    $("files").innerHTML = '<p class="empty">Loading…</p>';
+    $("reading-head").innerHTML = "";
+    $("code").innerHTML = "";
+    $("veil").hidden = false; $("drawer").hidden = false;
+    document.body.style.overflow = "hidden";
+    $("close").focus();
+    api("/api/scripts?article=" + encodeURIComponent(a.id)).then(function (r) {
+      repos = r.repositories || [];
+      var html = "", first = null;
+      repos.forEach(function (d, i) {
+        html += "<h3>" + esc(d.repo) + '</h3><div class="lic">' + esc(d.license || "no license") +
+          (d.commit ? " · " + esc(d.commit.slice(0, 10)) : "") + "</div>";
+        d.files.forEach(function (f, j) {
+          if (f.kind === "note") { html += '<p class="empty">' + esc(f.note) + "</p>"; return; }
+          if (!first && f.kind === "script" && f.readable) first = [i, j];
+          html += '<button type="button" class="file' + (f.readable ? "" : " closed") + '" data-i="' + i + '" data-j="' + j + '"><span>' +
+            esc(f.path) + "</span><span>" + (f.lines != null ? nf(f.lines) : "") + "</span></button>";
+        });
+      });
+      $("files").innerHTML = html || '<p class="empty">No file.</p>';
+      if (first) read(first[0], first[1]);
+    });
+  }
+  function close() {
+    $("drawer").hidden = true; $("veil").hidden = true; document.body.style.overflow = "";
+    if (opener && opener.focus) opener.focus();
+  }
+  function read(i, j) {
+    var d = repos[i], f = d.files[j];
+    Array.prototype.forEach.call(document.querySelectorAll(".file"), function (b) {
+      if (+b.dataset.i === i && +b.dataset.j === j) b.setAttribute("aria-current", "true"); else b.removeAttribute("aria-current");
+    });
+    $("reading-head").innerHTML = '<span class="mono">' + esc(f.path) + "</span>" + (f.language ? "<span>" + esc(f.language) + "</span>" : "") +
+      (f.lines != null ? "<span>" + nf(f.lines) + " lines</span>" : "") + (f.readable ? '<button type="button" id="copy">Copy</button>' : "") +
+      (f.source_url ? '<a href="' + esc(f.source_url) + '" target="_blank" rel="noopener">source</a>' : "");
+    if (!f.readable) { $("code").innerHTML = '<p class="notice">' + esc(f.note || "No text for this file.") + "</p>"; return; }
+    $("code").innerHTML = '<p class="notice">Loading…</p>';
+    api("/api/file?repo=" + encodeURIComponent(d.repo) + "&path=" + encodeURIComponent(f.path)).then(function (r) {
+      var text = (r.text || "").replace(/\n$/, ""), n = text.split("\n").length, g = "";
+      for (var k = 1; k <= n; k++) g += k + "\n";
+      $("code").innerHTML = '<div class="lines"><pre class="gutter" aria-hidden="true"></pre><pre><code></code></pre></div>';
+      $("code").querySelector(".gutter").textContent = g;
+      var code = $("code").querySelector("code");
+      code.textContent = text;
+      var alias = LANGUAGES[f.language];
+      if (window.hljs && alias && window.hljs.getLanguage(alias) && text.length < 150000) {
+        code.className = "language-" + alias;
+        try { window.hljs.highlightElement(code); } catch (e) { /* readable without colors */ }
+      }
+      var b = $("copy");
+      if (b) b.onclick = function () {
+        try { navigator.clipboard.writeText(r.text).then(function () { b.textContent = "Copied"; }); } catch (e) { /* no clipboard */ }
+      };
+    });
+  }
+  $("rows").addEventListener("click", function (e) {
+    var b = e.target.closest("button.scripts");
+    if (b && rows[b.dataset.id]) open(rows[b.dataset.id]);
+  });
+  $("files").addEventListener("click", function (e) {
+    var b = e.target.closest(".file");
+    if (b) read(+b.dataset.i, +b.dataset.j);
+  });
+  $("close").addEventListener("click", close);
+  $("veil").addEventListener("click", close);
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape" && !$("drawer").hidden) close(); });
+
+  counts();
+  setInterval(counts, 60000);  // the harvester moves on while you watch
+  load(false);
+})();
+</script>
+</body>
+</html>

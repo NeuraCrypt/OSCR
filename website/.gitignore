@@ -1,0 +1,7 @@
+node_modules/
+dist/
+.astro/
+.wrangler/
+# Copied from the harvester's public export on every build (scripts/data.mjs)
+src/data/
+public/scripts/

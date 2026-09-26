@@ -1,0 +1,23 @@
+{
+  "name": "oscr-website",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "The public website of the code registry (its name is set in src/config.ts): a static Astro site for Cloudflare Pages, built from the harvester's public export.",
+  "scripts": {
+    "data": "node scripts/data.mjs",
+    "dev": "npm run data && astro dev",
+    "build": "npm run data && astro build",
+    "preview": "astro preview",
+    "deploy": "npm run build && wrangler pages deploy dist --project-name oscr --branch main --commit-dirty=true"
+  },
+  "dependencies": {
+    "astro": "^7.3.5"
+  },
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "devDependencies": {
+    "wrangler": "^4.141.0"
+  }
+}

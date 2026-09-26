@@ -1,0 +1,160 @@
+{
+ "generated": "2026-09-26",
+ "database": "oscr.db",
+ "kpis": {
+  "papers_read": 2605,
+  "with_fulltext": 2571,
+  "with_authors_code": 327,
+  "with_verified_code": 307,
+  "code_repositories": 483,
+  "alive_repositories": 468,
+  "scripts_kept_as_text": 16678,
+  "script_text_bytes": 147283873
+ },
+ "hosts": [
+  {
+   "host": "GitHub",
+   "repositories": 334
+  },
+  {
+   "host": "Zenodo",
+   "repositories": 82
+  },
+  {
+   "host": "OSF",
+   "repositories": 29
+  },
+  {
+   "host": "figshare",
+   "repositories": 5
+  },
+  {
+   "host": "GitLab",
+   "repositories": 4
+  },
+  {
+   "host": "Dryad",
+   "repositories": 3
+  },
+  {
+   "host": "G-Node GIN",
+   "repositories": 3
+  },
+  {
+   "host": "Other",
+   "repositories": 23
+  }
+ ],
+ "years": [
+  {
+   "year": 2016,
+   "papers_read": 60,
+   "with_verified_code": 0
+  },
+  {
+   "year": 2025,
+   "papers_read": 97,
+   "with_verified_code": 23
+  },
+  {
+   "year": 2026,
+   "papers_read": 2448,
+   "with_verified_code": 284
+  }
+ ],
+ "undated_papers": 0,
+ "languages": [
+  {
+   "language": "Python",
+   "scripts": 7718
+  },
+  {
+   "language": "MATLAB",
+   "scripts": 3109
+  },
+  {
+   "language": "R",
+   "scripts": 1193
+  },
+  {
+   "language": "Shell",
+   "scripts": 837
+  },
+  {
+   "language": "Jupyter",
+   "scripts": 768
+  },
+  {
+   "language": "JavaScript",
+   "scripts": 672
+  },
+  {
+   "language": "Perl",
+   "scripts": 610
+  },
+  {
+   "language": "Other",
+   "scripts": 1771
+  }
+ ],
+ "licenses": [
+  {
+   "license": "No license",
+   "text_republished": 0,
+   "link_only": 145
+  },
+  {
+   "license": "MIT",
+   "text_republished": 122,
+   "link_only": 0
+  },
+  {
+   "license": "Not determined",
+   "text_republished": 0,
+   "link_only": 66
+  },
+  {
+   "license": "CC-BY-4.0",
+   "text_republished": 62,
+   "link_only": 0
+  },
+  {
+   "license": "AGPL-3.0",
+   "text_republished": 32,
+   "link_only": 0
+  },
+  {
+   "license": "Apache-2.0",
+   "text_republished": 20,
+   "link_only": 0
+  },
+  {
+   "license": "BSD-3-Clause",
+   "text_republished": 9,
+   "link_only": 0
+  },
+  {
+   "license": "Other licenses",
+   "text_republished": 20,
+   "link_only": 7
+  }
+ ],
+ "ladder": [
+  {
+   "level": "found",
+   "repositories": 483
+  },
+  {
+   "level": "alive",
+   "repositories": 468
+  },
+  {
+   "level": "inventoried",
+   "repositories": 445
+  },
+  {
+   "level": "imported",
+   "repositories": 0
+  }
+ ]
+}

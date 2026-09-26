@@ -1,59 +1,59 @@
-"""Les quotas des services tiers (mesurés et documentés le 26/09/2026) : un
-quota épuisé met le service de côté, il ne bloque jamais un passage."""
+"""Third-party service quotas (measured and documented on 2026-09-26): an exhausted
+quota sets the service aside, it never blocks a pass."""
 import time
 
-from scrapper import depots, liens, role
-from scrapper.jats import Occurrence
-from scrapper.reseau import Reponse
+from oscr import links, repos, role
+from oscr.jats import Mention
+from oscr.net import Response
 
 
-class ClientFactice:
-    """Rend des réponses préparées, et compte les appels."""
+class FakeClient:
+    """Returns prepared responses, and counts the calls."""
 
-    def __init__(self, reponses):
-        self.reponses = list(reponses)
-        self.appels = 0
+    def __init__(self, responses):
+        self.responses = list(responses)
+        self.calls = 0
 
     def get(self, url, **kw):
-        self.appels += 1
-        return self.reponses.pop(0) if self.reponses else Reponse(url, 200, "{}")
+        self.calls += 1
+        return self.responses.pop(0) if self.responses else Response(url, 200, "{}")
 
 
-def test_software_heritage_epuise_est_mis_de_cote_jusqu_a_sa_remise_a_zero():
-    depots._EN_PAUSE.clear()
+def test_an_exhausted_software_heritage_is_set_aside_until_its_reset():
+    repos._PAUSED.clear()
     reset = str(int(time.time()) + 1800)
-    c = ClientFactice([Reponse("u", 429, "", entetes={"x-ratelimit-remaining": "0",
-                                                      "x-ratelimit-reset": reset})])
-    assert depots.archive_swh(c, "https://github.com/a/b") is None
-    # Le suivant ne part même pas : le service est en pause.
-    assert depots.archive_swh(c, "https://github.com/c/d") is None
-    assert c.appels == 1
-    depots._EN_PAUSE.clear()
+    c = FakeClient([Response("u", 429, "", headers={"x-ratelimit-remaining": "0",
+                                                    "x-ratelimit-reset": reset})])
+    assert repos.swh_archived(c, "https://github.com/a/b") is None
+    # The next one is not even sent: the service is paused.
+    assert repos.swh_archived(c, "https://github.com/c/d") is None
+    assert c.calls == 1
+    repos._PAUSED.clear()
 
 
-def test_osf_epuise_rend_un_depot_a_revoir_pas_un_depot_mort():
-    depots._EN_PAUSE.clear()
-    c = ClientFactice([Reponse("u", 429, "")])
-    fiche = depots.verifier_osf(c, liens.normaliser("https://osf.io/abcde/"))
-    assert fiche["etat"] == "inaccessible" and "quota" in fiche["erreur"]
-    depots._EN_PAUSE.clear()
+def test_an_exhausted_osf_gives_a_repository_to_check_again_not_a_dead_one():
+    repos._PAUSED.clear()
+    c = FakeClient([Response("u", 429, "")])
+    record = repos.verify_osf(c, links.normalize("https://osf.io/abcde/"))
+    assert record["state"] == "unreachable" and "quota" in record["error"]
+    repos._PAUSED.clear()
 
 
-def test_le_jeton_passe_dans_un_en_tete_jamais_dans_l_adresse(monkeypatch):
-    monkeypatch.setenv("GITHUB_TOKEN", "jeton-secret")
-    args = depots._auth_github()
+def test_the_token_goes_in_a_header_never_in_the_address(monkeypatch):
+    monkeypatch.setenv("GITHUB_TOKEN", "secret-token")
+    args = repos._auth_github()
     assert args[0] == "-c" and args[1].startswith("http.https://github.com/.extraheader=AUTHORIZATION: basic ")
-    assert "jeton-secret" not in args[1]
+    assert "secret-token" not in args[1]
     monkeypatch.delenv("GITHUB_TOKEN")
-    assert depots._auth_github() == []
+    assert repos._auth_github() == []
 
 
-def test_des_codes_d_accession_ne_sont_pas_du_code():
+def test_accession_codes_are_not_code():
     u = "https://www.rcsb.org/structure/9D8G"
-    occ = Occurrence(u, "The structures have been deposited in the Protein Data Bank with accession "
-                        "codes 9D8G and 9D6P.", ("Methods",), "corps")
-    assert role.juger(occ, liens.normaliser(u), ["X"]).role == "donnees"
+    m = Mention(u, "The structures have been deposited in the Protein Data Bank with accession "
+                   "codes 9D8G and 9D6P.", ("Methods",), "body")
+    assert role.judge(m, links.normalize(u), ["X"]).role == "data"
     g = "https://github.com/lab/popcode"
-    occ = Occurrence(g, f"The population code analysis scripts are available at {g}.",
-                     ("Code availability",), "disponibilite")
-    assert role.juger(occ, liens.normaliser(g), ["X"]).role == "code"
+    m = Mention(g, f"The population code analysis scripts are available at {g}.",
+                ("Code availability",), "availability")
+    assert role.judge(m, links.normalize(g), ["X"]).role == "code"

@@ -1,0 +1,53 @@
+{
+  "@context": "https://w3id.org/codemeta/3.0",
+  "@type": "SoftwareSourceCode",
+  "name": "OSCR: Open Scientific Code Registry",
+  "description": "OSCR finds where the authors of open-access neuroscience papers published their code, verifies that code at the source (git, Zenodo, OSF, figshare, Software Heritage), keeps the text of the scripts, and pairs paragraphs of the paper with the lines of code that match them. The catalogue is released under CC0-1.0; tracing maps validated by one of a paper's authors receive a Zenodo DOI.",
+  "author": [
+    {
+      "@type": "Organization",
+      "name": "The OSCR contributors"
+    }
+  ],
+  "codeRepository": "https://github.com/yannbellec/Open-Scientific-Code-Registry-OSCR-",
+  "issueTracker": "https://github.com/yannbellec/Open-Scientific-Code-Registry-OSCR-/issues",
+  "continuousIntegration": "https://github.com/yannbellec/Open-Scientific-Code-Registry-OSCR-/actions/workflows/ci.yml",
+  "readme": "https://github.com/yannbellec/Open-Scientific-Code-Registry-OSCR-/blob/main/README.md",
+  "url": "https://oscr-2lj.pages.dev",
+  "license": "https://spdx.org/licenses/Apache-2.0",
+  "dateCreated": "2026-09-25",
+  "developmentStatus": "https://www.repostatus.org/#active",
+  "isAccessibleForFree": true,
+  "programmingLanguage": [
+    "Python",
+    "TypeScript",
+    "JavaScript"
+  ],
+  "runtimePlatform": [
+    "Python 3.12",
+    "Node.js 22"
+  ],
+  "operatingSystem": [
+    "macOS",
+    "Linux"
+  ],
+  "softwareRequirements": [
+    "httpx>=0.27",
+    "huggingface_hub>=0.25",
+    "git",
+    "astro"
+  ],
+  "applicationCategory": "Research infrastructure",
+  "keywords": [
+    "research software",
+    "reproducibility",
+    "open science",
+    "neuroscience",
+    "code availability",
+    "software citation",
+    "scholarly infrastructure",
+    "Europe PMC",
+    "Zenodo",
+    "Software Heritage"
+  ]
+}

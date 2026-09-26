@@ -2,24 +2,21 @@
 __pycache__/
 *.pyc
 .pytest_cache/
+.ruff_cache/
 
-# donnees/ ne se versionne jamais :
-# - le plein texte des articles (cache, corpus d'essai) ne se publie pas ;
-# - la base de travail garde les phrases qui ont fait juger chaque lien : elle
-#   est PRIVÉE. En ligne, sa copie SANS extraits vit dans la Release « etat »,
-#   et site/bibliotheque_publique.db est publiée par Pages ;
-# - les étalons de mesure et leurs sorties se régénèrent.
-donnees/
+# data/ is never versioned:
+# - papers' full texts (the cache) are never published;
+# - the working database keeps the sentences that made each link's verdict: it is
+#   PRIVATE. Its copy WITHOUT excerpts is published in data/public/oscr_public.db;
+# - benchmarks and their outputs are regenerated.
+data/
 
-# Le tableau est régénéré à chaque passage et publié par GitHub Pages.
-site/
+# Generated outputs are not versioned: the catalogue lives on Hugging Face and on the
+# website. The "git scraping" pattern (committing library/ and the mirror/ of scripts at
+# each pass) only matters for the GitHub Actions harvest, which is dormant
+# (.github/workflows/harvest.yml): the Mac harvests.
+library/
+mirror/
 
-# Les sorties générées ne se versionnent pas : le catalogue vit sur Hugging Face
-# et sur le site. Le motif « git scraping » (commiter bibliotheque/ et le miroir
-# scripts/ à chaque passage) n'est utile qu'au passage sur GitHub Actions, qui
-# est en sommeil (.github/workflows/tourner.yml) : c'est le Mac qui ramasse.
-bibliotheque/
-/scripts/
-
-# La configuration locale de l'app Claude (aperçu du site).
+# The local configuration of the Claude app (website preview).
 .claude/

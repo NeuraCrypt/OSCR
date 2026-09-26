@@ -1,0 +1,298 @@
+"""The OSCR command line.
+
+    oscr run                             the daily pass (incremental)
+    oscr watch                           continuously: new papers, the stock, re-verifications
+    oscr nightly                         the publication: public catalogue, Hugging Face, website
+    oscr align                           the paper ↔ code matches of papers with stored code
+    oscr zenodo card 10.xxx/yyy          the proposed tracing map of a paper
+    oscr zenodo deposit 10.xxx/yyy       its Zenodo DOI, once an author validated it (sandbox)
+    oscr scan --since 2015-01-01 --until 2015-12-31 --max 500
+    oscr doi 10.7554/eLife.100605 10.1038/s41597-025-06397-4
+    oscr folder data/test_corpus         JATS files already on disk
+    oscr reverify                        re-verify stale repositories
+    oscr export                          regenerate the catalogue and its tables
+    oscr dashboard                       the local dashboard (http://127.0.0.1:8790)
+    oscr stats                           the library's figures
+"""
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import signal
+import sys
+import time
+from datetime import date
+from pathlib import Path
+
+from . import catalog, db, harvest
+from .net import Cache, Client
+from .sources import europepmc
+
+SETTINGS = Path.home() / ".config" / "oscr" / "settings"
+
+
+def settings(path: Path = SETTINGS) -> dict[str, str]:
+    """The Mac installation's settings (`KEY=value`, `#` for comments).
+
+    Python reads them itself: launchd cannot start a shell script stored on the external
+    disk (macOS refuses /bin/zsh to open the file, exit code 127), while it lets Python,
+    and what Python starts, read and write there."""
+    out: dict[str, str] = {}
+    try:
+        lines = path.read_text().splitlines()
+    except OSError:
+        return out
+    for line in lines:
+        line = line.strip()
+        if line and not line.startswith("#") and "=" in line:
+            key, value = line.split("=", 1)
+            out[key.strip()] = value.strip().strip("\"'")
+    return out
+
+
+def _options(a: argparse.Namespace) -> harvest.Options:
+    return harvest.Options(db=Path(a.db), cache=Path(a.cache), clones=Path(a.clones), library=Path(a.library),
+                           verify=not a.no_verify, metadata=not a.no_metadata, swh=not a.no_swh,
+                           snapshots=a.snapshots, reverify_after_days=0 if a.reverify_all else 30,
+                           contents=not a.no_contents, records=not a.no_records,
+                           github_search=a.github_search or bool(os.environ.get("GITHUB_TOKEN")))
+
+
+def _article_id(con, doi: str) -> str:
+    row = con.execute("SELECT id FROM article WHERE lower(doi) = lower(?)", (doi,)).fetchone()
+    if row is None:
+        raise SystemExit(f"{doi} is not in the database: run `oscr doi {doi}` first")
+    return row["id"]
+
+
+def _zenodo(con, a: argparse.Namespace) -> None:
+    """Tracing maps and their DOIs (rules: CLAUDE.md, zenodo.py)."""
+    from . import zenodo
+    inv = zenodo.Invenio(a.instance, api_token=zenodo.token(a.instance))
+    try:
+        article_id = None
+        if a.action in ("card", "validate", "deposit"):
+            if not a.doi:
+                raise SystemExit(f"zenodo {a.action}: the paper's DOI is missing")
+            article_id = _article_id(con, a.doi)
+        if a.action == "card":
+            print(json.dumps(zenodo.map_of(con, article_id), ensure_ascii=False, indent=1))
+        elif a.action == "validate":
+            # For DEVELOPMENT: a test validation, which only the sandbox accepts. The
+            # real one will come from the author, signed in with ORCID.
+            card = zenodo.validate(con, article_id, orcid=a.orcid, name=a.name, proof="test")
+            print(f"map validated (test) by {a.name} ({a.orcid}): {len(card['code'])} repository(ies)")
+        elif a.action == "deposit":
+            r = zenodo.deposit_map(con, inv, article_id, platform=a.platform, community=a.community,
+                                   dry_run=a.dry_run)
+            print(json.dumps(r, ensure_ascii=False, indent=1))
+        elif a.action == "community":
+            c = inv.community(a.community)
+            if c is None and a.create:
+                c = inv.create_community(
+                    a.community, a.platform,
+                    "Code tracing maps linking neuroscience papers to their authors' code, validated by "
+                    "the authors. Each map is related to its paper (IsSupplementTo) and references the "
+                    "code repository (References); the code itself is never redeposited.")
+            print(f"{inv.base}/communities/{a.community}" + ("" if c else ": does not exist (--create)"))
+        elif a.action == "linked":
+            for r in inv.linked_to(a.doi or ""):
+                print(r["id"], (r.get("metadata") or {}).get("title", ""), (r.get("links") or {}).get("self_html", ""))
+    except zenodo.InvenioError as e:
+        raise SystemExit(str(e)) from None
+    finally:
+        inv.close()
+
+
+def main(argv: list[str] | None = None) -> int:
+    cfg = settings()
+    p = argparse.ArgumentParser(prog="oscr", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    p.add_argument("--db", default="data/oscr.db")
+    p.add_argument("--cache", default="data/cache")
+    p.add_argument("--clones", default="data/clones")
+    p.add_argument("--library", default="library")
+    p.add_argument("--out", default="data/export", help="where `export` and the passes write the catalogue")
+    p.add_argument("--no-verify", action="store_true", help="do not query the repositories")
+    p.add_argument("--no-metadata", action="store_true", help="neither Crossref nor DataCite")
+    p.add_argument("--no-swh", action="store_true", help="do not query Software Heritage")
+    p.add_argument("--snapshots", action="store_true", help="archive the repositories whose license allows it")
+    p.add_argument("--reverify-all", action="store_true", help="re-verify every repository, even recently verified")
+    p.add_argument("--no-contents", action="store_true", help="do not fetch the scripts' text")
+    p.add_argument("--public", action="store_true",
+                   help="publishable catalogue: only scripts whose license allows it keep their text")
+    p.add_argument("--mirror", default="", help="copy the republishable scripts into this folder (for a public git repository)")
+    p.add_argument("--github-search", action="store_true", help="look for READMEs citing the DOI (10/min without a token)")
+    p.add_argument("--offline", action="store_true", help="the cache only")
+    p.add_argument("--no-records", action="store_true", help="do not write library/<paper>/record.json (the database is the reference)")
+    sp = p.add_subparsers(dest="command", required=True)
+
+    r = sp.add_parser("run", help="incremental pass from the last cursor")
+    r.add_argument("--domain", default="neuro", help="neuro | electrophysiology | a Europe PMC query")
+    r.add_argument("--days", type=int, default=7, help="first pass: that many days back")
+    r.add_argument("--max", type=int, default=None)
+
+    s = sp.add_parser("scan", help="scan a date range")
+    s.add_argument("--domain", default="neuro")
+    s.add_argument("--since", required=True)
+    s.add_argument("--until", default=date.today().isoformat())
+    s.add_argument("--max", type=int, default=None)
+    s.add_argument("--rescan", action="store_true", help="read papers already seen again")
+
+    # By default, what the settings say (~/.config/oscr/settings).
+    w = sp.add_parser("watch", help="run continuously: new papers every hour, the stock in between")
+    w.add_argument("--domain", default=cfg.get("OSCR_DOMAIN", "neuro"))
+    w.add_argument("--news-minutes", type=float, default=cfg.get("OSCR_NEWS_MINUTES", "60"))
+    w.add_argument("--slice-minutes", type=float, default=cfg.get("OSCR_SLICE_MINUTES", "30"))
+    w.add_argument("--idle-minutes", type=float, default=15, help="nap once the stock is done")
+    w.add_argument("--back-to", type=int, default=cfg.get("OSCR_BACK_TO", "2000"))
+    w.add_argument("--max-hours", type=float, default=24,
+                   help="hand back control after that many hours (launchd starts a fresh process)")
+
+    b = sp.add_parser("backfill", help="walk back into the stock, month by month, within a time budget")
+    b.add_argument("--domain", default="neuro")
+    b.add_argument("--hours", type=float, default=1.0, help="time budget of this pass")
+    b.add_argument("--back-to", type=int, default=2000, help="the oldest year to walk back to")
+
+    d = sp.add_parser("doi", help="scan papers known by their DOI")
+    d.add_argument("dois", nargs="*")
+    d.add_argument("--file", help="one DOI per line")
+
+    f = sp.add_parser("folder", help="scan local JATS files")
+    f.add_argument("path")
+
+    v = sp.add_parser("reverify", help="re-verify stale or unreachable repositories")
+    v.add_argument("--max", type=int, default=None)
+
+    al = sp.add_parser("align", help="compute the paper ↔ code matches of papers whose code text is stored")
+    al.add_argument("dois", nargs="*", help="only these papers (default: every paper still without matches)")
+    al.add_argument("--force", action="store_true", help="recompute papers that already have matches")
+    al.add_argument("--hours", type=float, default=None, help="time budget")
+
+    sp.add_parser("export", help="regenerate the catalogue and its tables")
+
+    dash = sp.add_parser("dashboard", help="the local dashboard: the database's table (http://127.0.0.1:8790)")
+    dash.add_argument("--port", type=int, default=8790)
+
+    hf = sp.add_parser("publish-hf", help="publish the catalogue and the scripts to a Hugging Face dataset")
+    hf.add_argument("dataset", help="dataset id, e.g. user/oscr-catalog")
+    hf.add_argument("--dry-run", action="store_true", help="prepare without sending anything")
+    sp.add_parser("stats", help="the library's figures")
+
+    ze = sp.add_parser("zenodo", help="tracing maps: author validation, Zenodo DOI (sandbox by default)")
+    ze.add_argument("action", choices=["card", "validate", "deposit", "community", "linked"])
+    ze.add_argument("doi", nargs="?", help="the paper's DOI")
+    ze.add_argument("--instance", choices=["sandbox", "zenodo"], default=cfg.get("OSCR_ZENODO_INSTANCE", "sandbox"))
+    ze.add_argument("--community", default=cfg.get("OSCR_ZENODO_COMMUNITY", "oscr"))
+    ze.add_argument("--platform", default=cfg.get("OSCR_PLATFORM_NAME", "Open Scientific Code Registry (OSCR)"))
+    ze.add_argument("--orcid", default="", help="validate: the author's ORCID")
+    ze.add_argument("--name", default="", help='validate: "Family, Given"')
+    ze.add_argument("--create", action="store_true", help="community: create it when it does not exist")
+    ze.add_argument("--dry-run", action="store_true", help="deposit: show the record without sending anything")
+
+    n = sp.add_parser("nightly", help="the publication: public catalogue, then Hugging Face and the website")
+    n.add_argument("--out", default="data/public", help="a separate folder, only ever generated in public mode")
+    n.add_argument("--dataset", default=cfg.get("OSCR_HF_DATASET", ""), help="Hugging Face user/dataset (empty: send nothing)")
+    n.add_argument("--cloudflare", default=cfg.get("OSCR_CLOUDFLARE_PROJECT", ""),
+                   help="Cloudflare Pages project to rebuild and put online (empty: none)")
+
+    a = p.parse_args(argv)
+    if a.command == "dashboard":
+        from . import dashboard
+        db.open_db(a.db).close()  # creates or updates the schema, then read-only
+        dashboard.serve(Path(a.db), a.port)
+        return 0
+    opts = _options(a)
+    con = db.open_db(opts.db)
+    client = Client(Cache(opts.cache), offline=a.offline)
+    t0 = time.time()
+    try:
+        if a.command == "run":
+            print(harvest.run_pass(con, client, a.domain, opts, initial_days=a.days, maximum=a.max))
+        elif a.command == "watch":
+            # Without the "reverse" GitHub search (2 s per paper, nothing more than the
+            # text on open-access papers), unless asked.
+            opts.github_search = a.github_search
+            # launchd stops with SIGTERM: turn it into a clean exit, so that temporary
+            # clones are cleaned up and the database closed.
+            signal.signal(signal.SIGTERM, lambda *_: sys.exit(0))
+            print(f"{time.strftime('%Y-%m-%d %H:%M')} watch \"{a.domain}\": new papers every "
+                  f"{a.news_minutes:g} min, the stock in slices of {a.slice_minutes:g} min back to {a.back_to}",
+                  flush=True)
+            harvest.watch(con, client, a.domain, opts, news_s=a.news_minutes * 60, slice_s=a.slice_minutes * 60,
+                          idle_s=a.idle_minutes * 60, back_to=a.back_to, max_duration_s=a.max_hours * 3600,
+                          report=lambda m: print(m, flush=True))
+        elif a.command == "backfill":
+            # The "reverse" GitHub search costs 2 s per paper with a token (30/min) and
+            # found nothing beyond the text on 177 open-access papers: in the stock, only
+            # when asked.
+            opts.github_search = a.github_search
+            t = harvest.backfill(con, client, a.domain, opts, max_duration_s=a.hours * 3600, back_to=a.back_to)
+            print(t, "(budget spent, resuming at the next pass)" if t.interrupted else "")
+        elif a.command == "scan":
+            q = europepmc.query(a.domain, a.since, a.until)
+            _, _, total = europepmc.search(client, q, size=1)
+            print(f"{total} papers for \"{a.domain}\" from {a.since} to {a.until}")
+            t = harvest.scan_query(con, client, q, opts, maximum=a.max, already="rescan" if a.rescan else "skip")
+            db.log_event(con, "scan", domain=a.domain, since=a.since, until=a.until, articles=t.articles, total=total)
+            print(t)
+        elif a.command == "doi":
+            dois = list(a.dois)
+            if a.file:
+                dois += [l.strip() for l in Path(a.file).read_text().splitlines() if l.strip()]
+            for doi in dois:
+                art = europepmc.by_doi(client, doi)
+                if art is None:
+                    art = europepmc.EpmcArticle(id=europepmc.identifier(doi.lower(), ""), doi=doi.lower(), source="doi")
+                print(f"{doi} → {harvest.scan_article(con, client, art, opts)}")
+        elif a.command == "folder":
+            t = harvest.scan_folder(con, client, Path(a.path), opts)
+            db.log_event(con, "folder", path=Path(a.path).name, articles=t.articles)
+            print(t)
+        elif a.command == "align":
+            deadline = time.time() + a.hours * 3600 if a.hours else None
+            if a.dois:
+                for doi in a.dois:
+                    print(f"{doi} → {harvest.align_article(con, client, _article_id(con, doi))} matches")
+                    con.commit()
+            else:
+                print(f"{harvest.align_pending(con, client, force=a.force, deadline=deadline)} papers aligned")
+        elif a.command == "nightly":
+            now = lambda: time.strftime("%Y-%m-%d %H:%M")  # noqa: E731
+            out = Path(a.out)
+            print(f"{now()} public catalogue → {catalog.generate(con, out, public=True)}", flush=True)
+            from . import publish
+            # Each upload is attempted on its own: Hugging Face being down does not keep
+            # the website from updating, and vice versa.
+            errors = []
+            if a.dataset:
+                try:
+                    print(f"{now()} {publish.publish_hf(out, a.dataset)}", flush=True)
+                except (Exception, SystemExit) as e:
+                    errors.append(f"Hugging Face: {e}")
+            if a.cloudflare:
+                try:
+                    print(f"{now()} {publish.deploy_cloudflare(out, a.cloudflare)}", flush=True)
+                except (Exception, SystemExit) as e:
+                    errors.append(f"Cloudflare: {e}")
+            if errors:
+                raise SystemExit("\n".join(errors))
+        elif a.command == "zenodo":
+            _zenodo(con, a)
+        elif a.command == "reverify":
+            print(f"{harvest.reverify(con, client, opts, maximum=a.max)} papers re-verified")
+        if a.command in ("run", "scan", "backfill", "doi", "folder", "reverify", "align", "export"):
+            path = catalog.generate(con, Path(a.out), public=a.public, mirror=Path(a.mirror) if a.mirror else None)
+            print(f"catalogue → {path}")
+        if a.command == "publish-hf":
+            from . import publish
+            print(publish.publish_hf(Path(a.out), a.dataset, dry_run=a.dry_run,
+                                     mirror=Path(a.mirror) if a.mirror else None))
+        if a.command == "stats":
+            print(json.dumps(catalog.figures(con), ensure_ascii=False, indent=1))
+    finally:
+        con.commit()
+        con.close()
+        client.close()
+    print(f"({time.time() - t0:.0f} s, requests: {client.requests})", file=sys.stderr)
+    return 0
