@@ -9,7 +9,7 @@ import httpx
 import pytest
 
 from oscr import catalog, contents, db, harvest, publish
-from oscr.net import Client, Outage, Response
+from oscr.net import Client, Outage, Response, Unavailable
 from oscr.sources import europepmc
 
 
@@ -187,3 +187,23 @@ def test_the_mac_settings_are_read_without_a_shell(tmp_path):
     f.write_text("# comment\nOSCR_DOMAIN=electrophysiology\n# (unused) OSCR_OLD=6\nOSCR_HF_DATASET=\"user/dataset\"\n")
     assert cli.settings(f) == {"OSCR_DOMAIN": "electrophysiology", "OSCR_HF_DATASET": "user/dataset"}
     assert cli.settings(tmp_path / "missing") == {}
+
+
+class OneBrokenDocument:
+    """Europe PMC answers, except for one full text."""
+
+    def get(self, url, **kw):
+        if url.endswith("/PMC9/fullTextXML"):
+            return Response(url, 500, "")
+        return Response(url, 200, "{}" if "/search" in url else "<article/>")
+
+
+def test_one_broken_document_is_not_an_outage(tmp_path):
+    with pytest.raises(Unavailable):
+        europepmc.fulltext(OneBrokenDocument(), "PMC9")
+    con = db.open_db(tmp_path / "b.db")
+    art = europepmc.EpmcArticle(id="pmcid:PMC9", doi="10.1/y", pmcid="PMC9", source="PMC", fulltext_id="PMC9")
+    status = harvest.scan_article(con, OneBrokenDocument(), art,
+                                  harvest.Options(library=tmp_path, verify=False, metadata=False, records=False))
+    assert status == "no_fulltext"
+    assert con.execute("SELECT COUNT(*) FROM log WHERE event = 'fulltext_unavailable'").fetchone()[0] == 1

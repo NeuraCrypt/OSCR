@@ -29,7 +29,7 @@ from pathlib import Path
 from typing import Any
 
 from . import db, find, jats, library, links, methods, repos
-from .net import Client, Outage
+from .net import Client, Outage, Unavailable
 from .sources import europepmc, forges, metadata
 
 
@@ -92,7 +92,11 @@ def scan_article(con: sqlite3.Connection, client: Client, art: europepmc.EpmcArt
                  opts: Options, xml: str | None = None, tally: Tally | None = None) -> str:
     db.save_article(con, art.as_dict())
     if xml is None and art.fulltext_id:
-        xml = europepmc.fulltext(client, art.fulltext_id)
+        try:
+            xml = europepmc.fulltext(client, art.fulltext_id)
+        except Unavailable as e:
+            # Logged, so that `oscr doi` can take the paper up again once the document is fixed.
+            db.log_event(con, "fulltext_unavailable", article=art.id, error=str(e))
     families: list[str] = []
     names: list[str] = []
     if xml:
