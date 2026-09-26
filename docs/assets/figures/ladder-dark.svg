@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="340" viewBox="0 0 400 340" role="img" aria-labelledby="oscr-ladder-dark-t oscr-ladder-dark-d">
+<title id="oscr-ladder-dark-t">The evidence ladder</title>
+<desc id="oscr-ladder-dark-d">Authors' repositories by the highest level of evidence reached. found (cited by the paper): 483; alive (the link answers): 468; inventoried (files listed, commit recorded): 445; imported (snapshot kept, license permitting): 0. Source: OSCR harvester database, 2026-09-26.</desc>
+<style>text{font-family:system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;fill:#ffffff}.title{font-size:15px;font-weight:600}.sub{font-size:12.5px;fill:#c3c2b7}.cat{font-size:12.5px}.muted{fill:#c3c2b7}.val{font-size:12px;font-variant-numeric:tabular-nums;font-feature-settings:'tnum'}.tick{font-size:11.5px;fill:#c3c2b7;font-variant-numeric:tabular-nums;font-feature-settings:'tnum'}.foot{font-size:11px;fill:#9e9d97}.kl{font-size:13px;fill:#c3c2b7}.kv{font-size:34px;font-weight:600;font-variant-numeric:tabular-nums;font-feature-settings:'tnum'}.ks{font-size:12px;fill:#c3c2b7;font-variant-numeric:tabular-nums;font-feature-settings:'tnum'}</style>
+<rect x="0.5" y="0.5" width="399" height="339" rx="10" fill="#0d1117" stroke="#30363d"/>
+<text x="20" y="34" class="title">The evidence ladder</text>
+<text x="20" y="53" class="sub">Authors' repositories by the highest level of evidence reached</text>
+<text x="20" y="85" class="cat"><tspan font-weight="600">Found</tspan><tspan class="muted"> · cited by the paper</tspan></text>
+<path d="M20,93H311.4Q315.4,93 315.4,97V107Q315.4,111 311.4,111H20Z" fill="#184f95"><title>Found: 483 repositories, 100% of those found</title></path>
+<text x="321.4" y="106" class="val">483</text>
+<text x="20" y="142.8" class="cat"><tspan font-weight="600">Alive</tspan><tspan class="muted"> · the link answers</tspan></text>
+<path d="M20,150.8H302.3Q306.3,150.8 306.3,154.8V164.8Q306.3,168.8 302.3,168.8H20Z" fill="#256abf"><title>Alive: 468 repositories, 97% of those found</title></path>
+<text x="312.3" y="163.8" class="val">468 · 97%</text>
+<text x="20" y="200.5" class="cat"><tspan font-weight="600">Inventoried</tspan><tspan class="muted"> · files listed, commit recorded</tspan></text>
+<path d="M20,208.5H288.2Q292.2,208.5 292.2,212.5V222.5Q292.2,226.5 288.2,226.5H20Z" fill="#3987e5"><title>Inventoried: 445 repositories, 92% of those found</title></path>
+<text x="298.2" y="221.5" class="val">445 · 92%</text>
+<text x="20" y="258.2" class="cat"><tspan font-weight="600">Imported</tspan><tspan class="muted"> · snapshot kept, license permitting</tspan></text>
+<text x="26" y="279.2" class="val">0 · 0%</text>
+<path d="M19.5,91L19.5,286.2" stroke="#5b5a55" stroke-width="1" fill="none"/>
+<text x="20" y="326" class="foot">Source: OSCR harvester database, 2026-09-26</text>
+</svg>

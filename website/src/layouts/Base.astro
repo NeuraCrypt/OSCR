@@ -1,0 +1,69 @@
+---
+// The main layout. science.css is the ONLY source of style of the site, and it is
+// imported here only. The name of the platform comes from src/config.ts, and only
+// from there.
+import "../styles/science.css";
+import { SITE_NAME, SITE_TAGLINE } from "../config";
+import { catalog, generatedInWords } from "../lib/catalog";
+
+interface Props {
+  /** The title of the page, without the platform's name (added here). None on the home page. */
+  title?: string;
+  description?: string;
+  /** The breadcrumb after the platform's name; the last item has no link. */
+  breadcrumb?: { text: string; href?: string }[];
+}
+const {
+  title,
+  description = "The code published by the authors of open-access neuroscience papers: found in the paper, verified at the source.",
+  breadcrumb = [],
+} = Astro.props;
+const fullTitle = title ? `${title} — ${SITE_NAME}` : SITE_TAGLINE === SITE_NAME ? SITE_NAME : `${SITE_NAME} — ${SITE_TAGLINE}`;
+---
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{fullTitle}</title>
+    <meta name="description" content={description} />
+    <meta name="application-name" content={SITE_NAME} />
+    <meta property="og:site_name" content={SITE_NAME} />
+    <meta property="og:title" content={title ?? fullTitle} />
+    <meta property="og:description" content={description} />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  </head>
+  <body>
+    <header class="masthead">
+      <div class="inner">
+        <a class="site" href="/" title={SITE_TAGLINE === SITE_NAME ? undefined : SITE_TAGLINE}>{SITE_NAME}</a>
+        <form action="/" method="get" role="search">
+          <input type="search" name="q" placeholder="Search the catalogue" aria-label="Search the catalogue" />
+          <select name="field" aria-label="Where to search">
+            <option value="all">All fields</option>
+            <option value="title">Title</option>
+            <option value="doi">DOI</option>
+            <option value="journal">Journal</option>
+            <option value="repo">Code repository</option>
+          </select>
+          <button type="submit">Search</button>
+        </form>
+      </div>
+    </header>
+    <nav class="breadcrumb" aria-label="Breadcrumb">
+      <a href="/">{SITE_NAME}</a>{breadcrumb.map((b) => (
+        <> › {b.href ? <a href={b.href}>{b.text}</a> : b.text}</>
+      ))}
+    </nav>
+    <main>
+      <slot />
+    </main>
+    <footer>
+      <a href="/">Catalogue</a>
+      <a href="/about/">About</a>
+      <a href="https://github.com/yannbellec/Open-Scientific-Code-Registry-OSCR-">GitHub</a>
+      {SITE_NAME} · Catalogue of {generatedInWords(catalog.generated_at)}. Each script keeps the license of its
+      repository; the source always prevails.
+    </footer>
+  </body>
+</html>

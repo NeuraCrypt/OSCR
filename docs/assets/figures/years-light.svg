@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="820" height="330" viewBox="0 0 820 330" role="img" aria-labelledby="oscr-years-light-t oscr-years-light-d">
+<title id="oscr-years-light-t">Code availability by publication year</title>
+<desc id="oscr-years-light-d">Papers read per publication year; in color, those whose authors' code was verified at the source, with its share above each column. 2016: 60 read, 0 with verified code (0%); 2025: 97 read, 23 with verified code (24%); 2026: 2,448 read, 284 with verified code (12%). Source: OSCR harvester database, 2026-09-26.</desc>
+<style>text{font-family:system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;fill:#0b0b0b}.title{font-size:15px;font-weight:600}.sub{font-size:12.5px;fill:#52514e}.cat{font-size:12.5px}.muted{fill:#52514e}.val{font-size:12px;font-variant-numeric:tabular-nums;font-feature-settings:'tnum'}.tick{font-size:11.5px;fill:#52514e;font-variant-numeric:tabular-nums;font-feature-settings:'tnum'}.foot{font-size:11px;fill:#6e6d68}.kl{font-size:13px;fill:#52514e}.kv{font-size:34px;font-weight:600;font-variant-numeric:tabular-nums;font-feature-settings:'tnum'}.ks{font-size:12px;fill:#52514e;font-variant-numeric:tabular-nums;font-feature-settings:'tnum'}</style>
+<rect x="0.5" y="0.5" width="819" height="329" rx="10" fill="#ffffff" stroke="#d0d7de"/>
+<text x="24" y="34" class="title">Code availability by publication year</text>
+<text x="24" y="53" class="sub">Papers read per publication year; in color, those whose authors' code was verified at the source, with its share above each column</text>
+<rect x="24" y="66" width="10" height="10" rx="2" fill="#2a78d6"/>
+<text x="39" y="75" class="sub">With verified code</text>
+<rect x="160.2" y="66" width="10" height="10" rx="2" fill="#b5b3ab"/>
+<text x="175.2" y="75" class="sub">Other papers read</text>
+<text x="55" y="272" class="tick" text-anchor="end">0</text>
+<path d="M63,212.3L796,212.3" stroke="#e1e0d9" stroke-width="1" fill="none"/>
+<text x="55" y="216.3" class="tick" text-anchor="end">1,000</text>
+<path d="M63,156.7L796,156.7" stroke="#e1e0d9" stroke-width="1" fill="none"/>
+<text x="55" y="160.7" class="tick" text-anchor="end">2,000</text>
+<path d="M63,101L796,101" stroke="#e1e0d9" stroke-width="1" fill="none"/>
+<text x="55" y="105" class="tick" text-anchor="end">3,000</text>
+<text x="96.3" y="286" class="tick" text-anchor="middle">2016</text>
+<path d="M84.3,268V268Q84.3,264.7 87.6,264.7H105Q108.3,264.7 108.3,268V268Z" fill="#b5b3ab"><title>2016: 60 papers read, 0 with verified code (0%)</title></path>
+<text x="96.3" y="257.7" class="val" text-anchor="middle" font-weight="600">0%</text>
+<text x="162.9" y="286" class="tick" text-anchor="middle">2017</text>
+<text x="229.6" y="286" class="tick" text-anchor="middle">2018</text>
+<text x="296.2" y="286" class="tick" text-anchor="middle">2019</text>
+<text x="362.9" y="286" class="tick" text-anchor="middle">2020</text>
+<text x="429.5" y="286" class="tick" text-anchor="middle">2021</text>
+<text x="496.1" y="286" class="tick" text-anchor="middle">2022</text>
+<text x="562.8" y="286" class="tick" text-anchor="middle">2023</text>
+<text x="629.4" y="286" class="tick" text-anchor="middle">2024</text>
+<text x="696" y="286" class="tick" text-anchor="middle">2025</text>
+<path d="M684,266.7H708V268H684Z" fill="#2a78d6"><title>2025: 97 papers read, 23 with verified code (24%)</title></path>
+<path d="M684,264.7V264.7Q684,262.6 686.2,262.6H705.9Q708,262.6 708,264.7V264.7Z" fill="#b5b3ab"><title>2025: 97 papers read, 23 with verified code (24%)</title></path>
+<text x="696" y="255.6" class="val" text-anchor="middle" font-weight="600">24%</text>
+<text x="762.7" y="286" class="tick" text-anchor="middle">2026</text>
+<path d="M750.7,252.2H774.7V268H750.7Z" fill="#2a78d6"><title>2026: 2,448 papers read, 284 with verified code (12%)</title></path>
+<path d="M750.7,250.2V135.7Q750.7,131.7 754.7,131.7H770.7Q774.7,131.7 774.7,135.7V250.2Z" fill="#b5b3ab"><title>2026: 2,448 papers read, 284 with verified code (12%)</title></path>
+<text x="762.7" y="124.7" class="val" text-anchor="middle" font-weight="600">12%</text>
+<text x="396.2" y="258" class="tick" text-anchor="middle">no papers read yet</text>
+<path d="M63,268.5L796,268.5" stroke="#a8a69e" stroke-width="1" fill="none"/>
+<text x="24" y="316" class="foot">Source: OSCR harvester database, 2026-09-26</text>
+</svg>

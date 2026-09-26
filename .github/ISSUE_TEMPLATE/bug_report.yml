@@ -1,0 +1,69 @@
+name: Bug report
+description: Something in OSCR does not work as documented, or a verdict is wrong.
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for taking the time. Two requests:
+        - never paste a token, a password or personal data;
+        - do not paste article text beyond the one sentence needed to show a wrong verdict.
+
+        A security problem goes to a private advisory, not here: see SECURITY.md.
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      options:
+        - Harvester (finding, judging or verifying code)
+        - Tracing map or Zenodo deposit
+        - Code ↔ Paper reader
+        - Website (catalogue, paper pages)
+        - Catalogue data (Hugging Face dataset, exports)
+        - Local dashboard
+        - Nightly publication (Hugging Face, Cloudflare Pages)
+        - macOS installation (launchd agents)
+        - Documentation
+    validations:
+      required: true
+  - type: input
+    id: paper
+    attributes:
+      label: Paper DOI or PMCID, if the bug concerns a paper
+      placeholder: 10.7554/eLife.100605
+  - type: textarea
+    id: happened
+    attributes:
+      label: What happened
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      description: The commands you ran, for example `uv run oscr doi 10.xxxx/yyyy`, and their output.
+      render: shell
+  - type: input
+    id: version
+    attributes:
+      label: Commit
+      placeholder: the output of `git rev-parse --short HEAD`
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      placeholder: macOS 26.4, Python 3.12, uv 0.9
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before sending
+      options:
+        - label: I removed every token, password and piece of personal data from this report.
+          required: true

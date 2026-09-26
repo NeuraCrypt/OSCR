@@ -1,30 +1,30 @@
-from scrapper import liens, role
-from scrapper.jats import Occurrence
-from scrapper.sources import forges
+from oscr import links, role
+from oscr.jats import Mention
+from oscr.sources import forges
 
 
-def test_le_compte_porte_le_nom_d_un_auteur():
-    assert forges.compte_d_auteur("schmidtfa", ["Schmidt", "Weisz"]) == "Schmidt"
-    assert forges.compte_d_auteur("tillhabersetzer", ["Habersetzer", "Meyer"]) == "Habersetzer"
-    # Un nom court n'est pas une preuve : « He » est dans « thelab ».
-    assert forges.compte_d_auteur("thelab", ["He", "Li"]) == ""
+def test_the_account_bears_an_author_name():
+    assert forges.author_account("schmidtfa", ["Schmidt", "Weisz"]) == "Schmidt"
+    assert forges.author_account("tillhabersetzer", ["Habersetzer", "Meyer"]) == "Habersetzer"
+    # A short name is no proof: "He" is in "thelab".
+    assert forges.author_account("thelab", ["He", "Li"]) == ""
 
 
-def test_un_readme_etranger_n_est_pas_du_code_natif():
-    u = "https://github.com/quelquun/reimplementation"
-    occ = Occurrence(u, "Le README de quelquun/reimplementation cite le DOI de l'article",
-                     ("GitHub",), "metadonnees", "github:readme")
-    assert role.juger(occ, liens.normaliser(u), ["Dupont"]).role == "inconnu"
+def test_a_foreign_readme_is_not_native_code():
+    u = "https://github.com/someone/reimplementation"
+    m = Mention(u, "The README of someone/reimplementation cites the paper's DOI",
+                ("GitHub",), "metadata", "github:readme")
+    assert role.judge(m, links.normalize(u), ["Dupont"]).role == "unknown"
 
 
-def test_un_readme_des_auteurs_est_du_code_natif():
+def test_a_readme_of_the_authors_is_native_code():
     u = "https://github.com/schmidtfa/cardiac_1_f"
-    occ = Occurrence(u, "Le README de schmidtfa/cardiac_1_f cite le DOI de l'article ; le compte "
-                        "porte le nom de l'auteur Schmidt", ("GitHub",), "metadonnees",
-                     "github:readme:propre")
-    assert role.juger(occ, liens.normaliser(u), ["Schmidt"]).role == "code"
+    m = Mention(u, "The README of schmidtfa/cardiac_1_f cites the paper's DOI; the account "
+                   "bears the name of author Schmidt", ("GitHub",), "metadata",
+                "github:readme:own")
+    assert role.judge(m, links.normalize(u), ["Schmidt"]).role == "code"
 
 
-def test_arxiv_de():
-    assert forges.arxiv_de("10.48550/arXiv.2509.06917") == "2509.06917"
-    assert forges.arxiv_de("10.1038/s41597-025-06397-4") == ""
+def test_arxiv_id():
+    assert forges.arxiv_id("10.48550/arXiv.2509.06917") == "2509.06917"
+    assert forges.arxiv_id("10.1038/s41597-025-06397-4") == ""

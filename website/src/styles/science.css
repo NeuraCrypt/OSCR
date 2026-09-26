@@ -1,0 +1,164 @@
+/* science.css — the "scientific archive" style of the platform.
+   The single source of style of the site: no Tailwind, no component library,
+   no dark theme by default, no pills, no decorative uppercase. */
+
+:root {
+  --text: #000;
+  --muted: #555;
+  --rule: #ccc;
+  --bg: #fff;
+  --bg-sidebar: #f4f4f4;
+  --link: #0645ad;
+  --link-visited: #5a3696;
+  --masthead: #1f3b4d;        /* identity color: change it here only */
+  --masthead-text: #fff;
+  --ok: #1a6b1a;
+  --warning: #8a5a00;
+  --highlighter: #fff1a8;
+  --font: "Lucida Grande", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-code: Menlo, Consolas, "DejaVu Sans Mono", monospace;
+  --width: 1100px;
+}
+
+html { font-size: 100%; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 15px/1.45 var(--font);
+}
+
+a { color: var(--link); text-decoration: none; }
+a:hover { text-decoration: underline; }
+a:visited { color: var(--link-visited); }
+a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible {
+  outline: 2px solid #e8a200; outline-offset: 1px;
+}
+
+/* Top masthead: site name on the left, search on the right */
+.masthead { background: var(--masthead); color: var(--masthead-text); }
+.masthead .inner {
+  max-width: var(--width); margin: 0 auto; padding: .45em 1em;
+  display: flex; flex-wrap: wrap; gap: .6em 1.5em;
+  align-items: center; justify-content: space-between;
+}
+.masthead .site { font-size: 1.35em; font-weight: bold; color: var(--masthead-text); }
+.masthead .site:visited { color: var(--masthead-text); }
+.masthead form { display: flex; gap: .3em; align-items: center; font-size: .9em; }
+.masthead input[type="search"] {
+  font: inherit; width: 16em; padding: .15em .35em;
+  border: 1px solid #777; border-radius: 0;
+}
+.masthead select, .masthead button { font: inherit; border-radius: 0; }
+
+/* Breadcrumb under the masthead */
+.breadcrumb {
+  max-width: var(--width); margin: 0 auto; padding: .5em 1em;
+  font-size: .9em; color: var(--muted); border-bottom: 1px solid var(--rule);
+}
+
+main { max-width: var(--width); margin: 0 auto; padding: 0 1em 3em; }
+h1 { font-size: 1.5em; margin: .8em 0 .2em; }
+.summary { color: var(--muted); margin: 0 0 1em; }
+
+/* List of papers, on the model of archive listings: dl / dt / dd */
+h2.day {
+  font-size: 1.1em; margin: 1.6em 0 .3em; padding-bottom: .15em;
+  border-bottom: 1px solid var(--rule);
+}
+h2.day small { font-weight: normal; color: var(--muted); }
+dl.listing { margin: 0; }
+dl.listing dt { margin-top: 1.1em; }
+dl.listing dt .num { display: inline-block; min-width: 2.4em; }
+dl.listing dd { margin: .15em 0 0 2.4em; }
+.title { font-size: 1.1em; font-weight: bold; line-height: 1.3; margin: 0 0 .1em; }
+.line { margin: .05em 0; }
+.line .label { font-weight: bold; }
+.ok { color: var(--ok); }
+.warning { color: var(--warning); }
+
+/* Page of a paper: access sidebar on the right */
+.record { display: flex; gap: 2em; align-items: flex-start; }
+.record .body { flex: 1; min-width: 0; }
+.record h1 { font-size: 1.6em; line-height: 1.25; }
+.sidebar {
+  flex: 0 0 15em; background: var(--bg-sidebar);
+  border: 1px solid var(--rule); padding: .6em .8em; font-size: .92em;
+}
+.sidebar h3 { font-size: 1em; margin: 0 0 .3em; }
+.sidebar ul { margin: 0 0 .8em; padding-left: 1.2em; }
+
+/* Code, and the code ↔ paper view */
+code, pre, .code { font-family: var(--font-code); font-size: .9em; }
+pre { overflow-x: auto; background: var(--bg-sidebar); border: 1px solid var(--rule); padding: .6em; }
+mark, .highlight { background: var(--highlighter); color: inherit; }
+
+/* The way into the Code ↔ Paper reader: bold and underlined, never a button */
+a.reader-link {
+  font-weight: bold; white-space: nowrap;
+  text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: .2em;
+}
+
+/* The Code ↔ Paper reader: the paper and its authors' code side by side, over the
+   full height of the window and wider than the text column (code needs the width).
+   Each pane scrolls on its own, under a header that stays in place. */
+.compare {
+  display: flex; gap: 1em;
+  width: min(calc(100vw - 2em), 1600px);
+  margin: .8em 0 0 calc(50% - min(calc(50vw - 1em), 800px));
+  height: calc(100vh - 1.5em);
+  height: calc(100dvh - 1.5em);
+  min-height: 20em;
+}
+.pane {
+  flex: 1 1 0; min-width: 0; min-height: 0;
+  overflow: auto; overscroll-behavior: contain;
+  border: 1px solid var(--rule);
+}
+.pane > header {
+  position: sticky; top: 0; z-index: 1;
+  background: var(--bg-sidebar); border-bottom: 1px solid var(--rule);
+  padding: .35em .8em .45em;
+}
+.pane > header h2 { font-size: 1em; margin: 0; }
+.pane > header p { margin: .15em 0 0; font-size: .9em; color: var(--muted); }
+.pane select { font: inherit; max-width: 100%; border-radius: 0; }
+.pane > div { padding: 0 .8em 1.5em; overflow-wrap: break-word; }
+
+/* Numbered code lines: the list numbers are the line numbers of the file */
+ol.lines {
+  margin: .6em 0 0; padding: 0 0 0 4.6em;
+  font-family: var(--font-code); font-size: .85em; line-height: 1.5;
+}
+ol.lines li {
+  min-height: 1.5em; padding-left: .5em;
+  white-space: pre-wrap; overflow-wrap: anywhere; tab-size: 4;
+}
+ol.lines li::marker { color: var(--muted); }
+ol.lines a { color: inherit; }
+
+/* A match: the paragraph and the code lines of the same pair share one soft color */
+.pair-1 { background: #fff0a3; }
+.pair-2 { background: #d3e6fb; }
+.pair-3 { background: #d6f0cb; }
+.pair-4 { background: #fcdcc8; }
+.pair-5 { background: #e8dcf7; }
+.pair-6 { background: #cdeeea; }
+.pair-1, .pair-2, .pair-3, .pair-4, .pair-5, .pair-6 { cursor: pointer; }
+/* The pair being read */
+.is-active { outline: 2px solid var(--masthead); outline-offset: 1px; }
+ol.lines li.is-active { outline: 0; box-shadow: inset 3px 0 0 var(--masthead); }
+
+footer {
+  max-width: var(--width); margin: 0 auto; padding: 1em;
+  border-top: 1px solid var(--rule); font-size: .85em; color: var(--muted);
+}
+footer a { margin-right: 1em; }
+
+@media (max-width: 640px) {
+  dl.listing dd { margin-left: 0; }
+  .masthead input[type="search"] { width: 10em; }
+  .record { flex-direction: column; }
+  .sidebar { flex-basis: auto; width: 100%; box-sizing: border-box; }
+  .compare { flex-direction: column; }
+}

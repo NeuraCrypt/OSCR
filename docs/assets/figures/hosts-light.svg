@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="340" viewBox="0 0 400 340" role="img" aria-labelledby="oscr-hosts-light-t oscr-hosts-light-d">
+<title id="oscr-hosts-light-t">Where the authors' code lives</title>
+<desc id="oscr-hosts-light-d">483 code repositories found, by host. GitHub: 334; Zenodo: 82; OSF: 29; figshare: 5; GitLab: 4; Dryad: 3; G-Node GIN: 3; Other: 23. Source: OSCR harvester database, 2026-09-26.</desc>
+<style>text{font-family:system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;fill:#0b0b0b}.title{font-size:15px;font-weight:600}.sub{font-size:12.5px;fill:#52514e}.cat{font-size:12.5px}.muted{fill:#52514e}.val{font-size:12px;font-variant-numeric:tabular-nums;font-feature-settings:'tnum'}.tick{font-size:11.5px;fill:#52514e;font-variant-numeric:tabular-nums;font-feature-settings:'tnum'}.foot{font-size:11px;fill:#6e6d68}.kl{font-size:13px;fill:#52514e}.kv{font-size:34px;font-weight:600;font-variant-numeric:tabular-nums;font-feature-settings:'tnum'}.ks{font-size:12px;fill:#52514e;font-variant-numeric:tabular-nums;font-feature-settings:'tnum'}</style>
+<rect x="0.5" y="0.5" width="399" height="339" rx="10" fill="#ffffff" stroke="#d0d7de"/>
+<text x="20" y="34" class="title">Where the authors' code lives</text>
+<text x="20" y="53" class="sub">483 code repositories found, by host</text>
+<text x="87" y="93.6" class="cat" text-anchor="end">GitHub</text>
+<path d="M97,80.3H349.8Q353.8,80.3 353.8,84.3V93.8Q353.8,97.8 349.8,97.8H97Z" fill="#2a78d6"><title>GitHub: 334 repositories</title></path>
+<text x="359.8" y="93.1" class="val">334</text>
+<text x="87" y="121.7" class="cat" text-anchor="end">Zenodo</text>
+<path d="M97,108.5H156.1Q160.1,108.5 160.1,112.5V121.9Q160.1,125.9 156.1,125.9H97Z" fill="#2a78d6"><title>Zenodo: 82 repositories</title></path>
+<text x="166.1" y="121.2" class="val">82</text>
+<text x="87" y="149.8" class="cat" text-anchor="end">OSF</text>
+<path d="M97,136.6H115.3Q119.3,136.6 119.3,140.6V150Q119.3,154 115.3,154H97Z" fill="#2a78d6"><title>OSF: 29 repositories</title></path>
+<text x="125.3" y="149.3" class="val">29</text>
+<text x="87" y="177.9" class="cat" text-anchor="end">figshare</text>
+<path d="M97,164.7H97Q100.8,164.7 100.8,168.6V178.3Q100.8,182.2 97,182.2H97Z" fill="#2a78d6"><title>figshare: 5 repositories</title></path>
+<text x="106.8" y="177.4" class="val">5</text>
+<text x="87" y="206.1" class="cat" text-anchor="end">GitLab</text>
+<path d="M97,192.8H97Q100.1,192.8 100.1,195.9V207.2Q100.1,210.3 97,210.3H97Z" fill="#2a78d6"><title>GitLab: 4 repositories</title></path>
+<text x="106.1" y="205.6" class="val">4</text>
+<text x="87" y="234.2" class="cat" text-anchor="end">Dryad</text>
+<path d="M97,221H97Q99.3,221 99.3,223.3V236.1Q99.3,238.4 97,238.4H97Z" fill="#2a78d6"><title>Dryad: 3 repositories</title></path>
+<text x="105.3" y="233.7" class="val">3</text>
+<text x="87" y="262.3" class="cat" text-anchor="end">G-Node GIN</text>
+<path d="M97,249.1H97Q99.3,249.1 99.3,251.4V264.2Q99.3,266.5 97,266.5H97Z" fill="#2a78d6"><title>G-Node GIN: 3 repositories</title></path>
+<text x="105.3" y="261.8" class="val">3</text>
+<text x="87" y="290.4" class="cat muted" text-anchor="end">Other</text>
+<path d="M97,277.2H110.7Q114.7,277.2 114.7,281.2V290.7Q114.7,294.7 110.7,294.7H97Z" fill="#b5b3ab"><title>Other: 23 repositories</title></path>
+<text x="120.7" y="289.9" class="val">23</text>
+<path d="M96.5,75L96.5,300" stroke="#a8a69e" stroke-width="1" fill="none"/>
+<text x="20" y="326" class="foot">Source: OSCR harvester database, 2026-09-26</text>
+</svg>

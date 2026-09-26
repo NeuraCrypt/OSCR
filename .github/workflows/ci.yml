@@ -1,0 +1,78 @@
+# Continuous integration: lint and test the harvester, and build the website.
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  python:
+    name: Harvester (ruff, pytest)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.12"
+          enable-cache: true
+
+      - name: Install
+        run: uv sync
+
+      - name: Lint
+        run: uv run ruff check oscr tests
+
+      - name: Test
+        run: uv run pytest -q
+
+  # The website is built from a tiny public catalogue kept in the repository, never from
+  # the harvester's data: tests/fixtures/public-catalog/ holds what `oscr nightly` writes
+  # to data/public/ (in public mode), for one or two papers whose code has an open license:
+  #   catalog.json        with "public": true;
+  #   scripts/NN.json     the script lots named by the catalogue's repositories;
+  #   alignments/NN.json  optional, the Code ↔ Paper pairs.
+  # Without it, the job says so and skips the build instead of failing.
+  website:
+    name: Website (Astro build)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      CATALOG_DIR: ${{ github.workspace }}/tests/fixtures/public-catalog
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Look for the website and its fixture catalogue
+        id: fixture
+        run: |
+          if [ -f website/package-lock.json ] && [ -f "$CATALOG_DIR/catalog.json" ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::notice title=Website build skipped::no fixture catalogue at tests/fixtures/public-catalog/catalog.json (described in .github/workflows/ci.yml)"
+          fi
+
+      - uses: actions/setup-node@v4
+        if: steps.fixture.outputs.ready == 'true'
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: website/package-lock.json
+
+      - name: Install
+        if: steps.fixture.outputs.ready == 'true'
+        working-directory: website
+        run: npm ci
+
+      - name: Build from the fixture catalogue
+        if: steps.fixture.outputs.ready == 'true'
+        working-directory: website
+        run: npm run build
