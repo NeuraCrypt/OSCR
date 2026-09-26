@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  The HARVESTER (`oscr watch`): continuously, as a BACKGROUND task.
+  Its settings: ~/.config/oscr/settings, read by Python.
+  Template: tools/install_mac.sh replaces @ROOT@, @LOGS@ and @PROCESS_TYPE@.
+
+  launchd starts PYTHON, not a shell script: macOS refuses /bin/zsh started by launchd
+  to open a file of the external disk (exit code 127), and lets Python, and what it
+  starts (git), read and write there (checked 2026-09-26).
+
+  ProcessType (@PROCESS_TYPE@) follows the OSCR_PRIORITY setting:
+  - "background" gives Background: efficiency cores, throttled disk AND network. The
+    most discreet, and ~3 times slower (measured 2026-09-26: download rate ÷ 3, slower
+    requests);
+  - "normal" gives Standard: the network is not throttled, and Nice 15 keeps the CPU
+    served last.
+  Either way it mostly waits on the network: 1.4% of one core on average, 40-60 MB.
+
+  KeepAlive/PathState: it runs as long as the Expansion disk is mounted, restarts by
+  itself when the disk is plugged back, and after each 24 h cycle.
+  ThrottleInterval: at least 2 minutes between two restarts.
+
+  The log lives in ~/Library/Logs: launchd refuses to open one on the external disk
+  (the task dies before starting, exit code 78, seen 2026-09-26).
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>org.oscr.harvester</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>@ROOT@/.venv/bin/python</string>
+    <string>-m</string>
+    <string>oscr</string>
+    <string>--no-records</string>
+    <string>watch</string>
+  </array>
+  <key>WorkingDirectory</key>
+  <string>@ROOT@</string>
+
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <dict>
+    <key>PathState</key>
+    <dict>
+      <key>@ROOT@/.venv/bin/python</key>
+      <true/>
+    </dict>
+  </dict>
+  <key>ThrottleInterval</key>
+  <integer>120</integer>
+
+  <key>ProcessType</key>
+  <string>@PROCESS_TYPE@</string>
+  <key>LowPriorityIO</key>
+  <true/>
+  <key>LowPriorityBackgroundIO</key>
+  <true/>
+  <key>Nice</key>
+  <integer>15</integer>
+
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>/opt/homebrew/bin:/usr/bin:/bin</string>
+    <key>PYTHONUNBUFFERED</key>
+    <string>1</string>
+  </dict>
+  <key>StandardOutPath</key>
+  <string>@LOGS@/harvester.log</string>
+  <key>StandardErrorPath</key>
+  <string>@LOGS@/harvester.log</string>
+</dict>
+</plist>

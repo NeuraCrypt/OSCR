@@ -1,0 +1,74 @@
+---
+import Base from "../layouts/Base.astro";
+import { SITE_FULL_NAME, SITE_NAME } from "../config";
+---
+<Base title="About" breadcrumb={[{ text: "About" }]}>
+  <h1>About</h1>
+  <p class="summary">
+    {SITE_FULL_NAME}: the code published by the authors of open-access neuroscience papers, found in the paper and
+    verified at the source.
+  </p>
+  <p>
+    For every open-access neuroscience paper, a harvester looks for where its authors published their code: in the
+    text of the paper, in its metadata, on forges and archives. It then verifies that code at the source: does the
+    link answer, what is in it, under which license?
+  </p>
+
+  <h2>The tracing map</h2>
+  <p>
+    Every paper of the catalogue has a tracing map: the links between the paper and the repository of its code
+    (commit, license, files). The harvester proposes it; an author of the paper can validate or correct it by
+    signing in with their ORCID.
+  </p>
+  <ul>
+    <li>Only a map validated by an author receives a DOI, on Zenodo. A map proposed by the machine never receives one.</li>
+    <li>
+      The DOI is on the map (its links and metadata), never on the code: the code stays in its authors' repository,
+      which the map references. {SITE_NAME} never deposits the code again.
+    </li>
+    <li>
+      The map is linked to the paper (<code>IsSupplementTo</code>) and to the repository of the code
+      (<code>References</code>). Its creators are the author who validated it and the platform.
+    </li>
+  </ul>
+
+  <h2>What is published, and what is not</h2>
+  <ul>
+    <li>Neither the text nor the PDF of a paper: a DOI link, nothing else.</li>
+    <li>
+      The text of a script only when the license of its repository allows republishing it. Otherwise, the list of
+      files links each of them to the source, at the verified commit.
+    </li>
+    <li>The source always prevails.</li>
+  </ul>
+
+  <h2>Levels of evidence</h2>
+  <dl>
+    <dt>found</dt><dd>the paper cites the link</dd>
+    <dt>alive</dt><dd>the link answers</dd>
+    <dt>inventoried</dt><dd>the files are listed, the scripts counted, the commit recorded</dd>
+    <dt>imported</dt><dd>a copy is kept, when the license allows it</dd>
+  </dl>
+
+  <h2>How Code ↔ Paper works</h2>
+  <ul>
+    <li>
+      The paper is loaded from Europe PMC (open access) by your browser, when you open the reader. {SITE_NAME} never stores
+      it and never serves it: without Europe PMC, the reader only offers links to the paper.
+    </li>
+    <li>
+      Its paragraphs are numbered in the order of its XML full text. The matches between a paragraph and lines of
+      code are computed by the harvester beforehand, from that same numbering; each shows its evidence (a few
+      short technical terms, never sentences of the paper), its score, and the method that produced it. They are
+      proposals, not statements validated by the authors.
+    </li>
+    <li>
+      The code shown is the text of the repository at the verified commit, when its license allows republishing it;
+      otherwise the reader links to the file, and to the exact lines, at the source.
+    </li>
+    <li>
+      A pair has one color on both sides. Click a highlighted paragraph to see its lines of code, or highlighted lines
+      to see their paragraph; the list of matches above the panes does both.
+    </li>
+  </ul>
+</Base>

@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  The NIGHTLY publication (`oscr nightly`), at 04:17: the public catalogue in
+  data/public, then the Hugging Face dataset of the settings (OSCR_HF_DATASET), then the
+  website on Cloudflare Pages (OSCR_CLOUDFLARE_PROJECT). It harvests nothing (that is the
+  harvester's job) and reads the database while the harvester writes. The Hugging Face
+  token stays at its standard place, ~/.cache/huggingface/token; wrangler keeps its own
+  login.
+  Template: tools/install_mac.sh replaces @ROOT@ and @LOGS@.
+
+  If the Mac sleeps at 04:17, launchd starts it on wake-up.
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>org.oscr.nightly</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>@ROOT@/.venv/bin/python</string>
+    <string>-m</string>
+    <string>oscr</string>
+    <string>nightly</string>
+  </array>
+  <key>WorkingDirectory</key>
+  <string>@ROOT@</string>
+
+  <key>StartCalendarInterval</key>
+  <dict>
+    <key>Hour</key>
+    <integer>4</integer>
+    <key>Minute</key>
+    <integer>17</integer>
+  </dict>
+
+  <key>ProcessType</key>
+  <string>Background</string>
+  <key>LowPriorityIO</key>
+  <true/>
+  <key>LowPriorityBackgroundIO</key>
+  <true/>
+  <key>Nice</key>
+  <integer>15</integer>
+
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>/opt/homebrew/bin:/usr/bin:/bin</string>
+    <key>PYTHONUNBUFFERED</key>
+    <string>1</string>
+  </dict>
+  <key>StandardOutPath</key>
+  <string>@LOGS@/nightly.log</string>
+  <key>StandardErrorPath</key>
+  <string>@LOGS@/nightly.log</string>
+</dict>
+</plist>

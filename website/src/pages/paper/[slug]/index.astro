@@ -1,0 +1,127 @@
+---
+import Base from "../../../layouts/Base.astro";
+import {
+  alignmentOf, dayInWords, europePmcUrl, LEVELS, lotEntry, plural, readerUrl, shortName, STATES, status, withCode,
+  type Article,
+} from "../../../lib/catalog";
+
+export function getStaticPaths() {
+  return withCode.map((a) => ({ params: { slug: a.slug }, props: { a } }));
+}
+
+const { a } = Astro.props as { a: Article };
+const s = status(a.status);
+const validated = a.card && a.card.validated_by?.length ? a.card : null;
+const licenses = [...new Set(a.code.map((r) => r.license || "no license"))];
+const pairs = alignmentOf(a)?.pairs ?? [];
+const matches = (repo: string, path: string) => pairs.filter((p) => p.repo === repo && p.path === path).length;
+const reader = readerUrl(a);
+/** The reader, opened on one file. */
+const readHere = (repo: string, path: string) => `${reader}?${new URLSearchParams({ repo, path })}`;
+---
+<Base
+  title={a.title}
+  description={`The code published by the authors of “${a.title}”.`}
+  breadcrumb={[{ text: "Catalogue", href: "/" }, { text: `doi:${a.doi}` }]}
+>
+  <div class="record">
+    <div class="body">
+      <h1>{a.title}</h1>
+      <div class="line"><span class="label">Journal:</span> {a.journal || "—"}</div>
+      <div class="line"><span class="label">Published:</span> {dayInWords(a.published)}</div>
+      <div class="line"><span class="label">DOI:</span> <a href={`https://doi.org/${a.doi}`}>{a.doi}</a></div>
+      <div class="line">
+        <span class="label">Status:</span> {s.tone ? <span class={s.tone}>{s.label}</span> : s.label}
+      </div>
+      {a.families.length > 0 && (
+        <div class="line"><span class="label">Methods:</span> {a.families.join(", ")}</div>
+      )}
+
+      <h2>Tracing map</h2>
+      {validated ? (
+        <p>
+          Validated by {validated.validated_by.map((v, i) => (
+            <>{i > 0 && ", "}{v.name} (<a href={`https://orcid.org/${v.orcid}`}>ORCID {v.orcid}</a>)</>
+          ))}.{" "}
+          {validated.doi ? (
+            <>DOI of the map: <a href={`https://doi.org/${validated.doi}`}>{validated.doi}</a>.</>
+          ) : (
+            "Its DOI is being registered."
+          )}
+        </p>
+      ) : (
+        <p>
+          Proposed by the machine: these links were found in the paper and verified at the source, without human
+          review. The map will receive a Zenodo DOI once one of the paper's authors has validated it with their ORCID.
+        </p>
+      )}
+
+      <h2 id="code">Authors' code</h2>
+      {a.code.map((r) => {
+        const e = lotEntry(r);
+        const files = e?.files ?? [];
+        const readable = files.filter((f) => f.kind !== "note");
+        const languages = Object.entries(r.languages ?? {}).sort((x, y) => y[1] - x[1]);
+        return (
+          <section>
+            <h3><a class="code" href={r.url}>{shortName(r)}</a></h3>
+            <div class="line"><span class="label">License:</span> {r.license || "none: the authors keep all their rights"}</div>
+            <div class="line">
+              <span class="label">State:</span>{" "}
+              {r.state === "alive" ? <span class="ok">{STATES.alive}</span> : <span class="warning">{STATES[r.state] ?? r.state}</span>}
+            </div>
+            <div class="line"><span class="label">Evidence:</span> {LEVELS[r.level] ?? r.level}</div>
+            {r.commit && <div class="line"><span class="label">Commit:</span> <code>{r.commit}</code></div>}
+            {languages.length > 0 && (
+              <div class="line"><span class="label">Languages:</span> {languages.map(([l, n]) => `${l} (${n})`).join(", ")}</div>
+            )}
+            {r.where && <div class="line"><span class="label">Found in:</span> {r.where}</div>}
+            {readable.length > 0 && (
+              <details>
+                <summary>{plural(readable.length, "file")}{e && !e.published && ", to read at the source"}</summary>
+                {e && !e.published && (
+                  <p class="warning">{readable[0]?.note || "The license of this repository does not allow republishing its files: read them at the source."}</p>
+                )}
+                <ul>
+                  {files.map((f) =>
+                    f.kind === "note" ? (
+                      <li>{f.note}</li>
+                    ) : (
+                      <li>
+                        <a class="code" href={f.source_url || r.url}>{f.path}</a> — {f.language || "text"}
+                        {f.lines ? `, ${plural(f.lines, "line")}` : ""}
+                        {matches(r.repo, f.path) > 0 && `, ${plural(matches(r.repo, f.path), "match", "matches")}`}
+                        {f.text !== null && <> [<a href={readHere(r.repo, f.path)}>read</a>]</>}
+                      </li>
+                    ),
+                  )}
+                </ul>
+              </details>
+            )}
+          </section>
+        );
+      })}
+    </div>
+
+    <aside class="sidebar">
+      <h3><a class="reader-link" href={reader}>Code ↔ Paper</a></h3>
+      <ul>
+        <li>the paper and its authors' code, side by side</li>
+        <li>{pairs.length > 0 ? `${plural(pairs.length, "match", "matches")} between paragraphs and code` : "matches not computed yet"}</li>
+      </ul>
+      <h3>Access</h3>
+      <ul>
+        <li><a href={`https://doi.org/${a.doi}`}>The paper, at the publisher</a></li>
+        <li><a href={europePmcUrl(a)}>The paper on Europe PMC</a></li>
+        {a.code.map((r) => <li><a href={r.url}>{shortName(r)}</a></li>)}
+      </ul>
+      <h3>Tracing map</h3>
+      <ul>
+        <li>{validated ? "validated by an author" : "proposed by the machine"}</li>
+        <li>{validated?.doi ? <a href={`https://doi.org/${validated.doi}`}>its DOI</a> : "no DOI before an author validates it"}</li>
+      </ul>
+      <h3>Licenses</h3>
+      <ul>{licenses.map((l) => <li>{l}</li>)}</ul>
+    </aside>
+  </div>
+</Base>

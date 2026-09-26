@@ -1,0 +1,929 @@
+{
+ "source": "stat_bruteforce sbf/transcrire/gabarits*.py",
+ "methods": [
+  {
+   "method": "band-pass filter",
+   "family": "Spectral & time-frequency",
+   "pattern": "band.?pass|butterworth",
+   "corpus_articles": 188
+  },
+  {
+   "method": "notch filter",
+   "family": "Preprocessing",
+   "pattern": "notch",
+   "corpus_articles": 114
+  },
+  {
+   "method": "resampling",
+   "family": "Connectivity",
+   "pattern": "resampl|downsampl|upsampl",
+   "corpus_articles": 165
+  },
+  {
+   "method": "Welch power spectral density",
+   "family": "Spectral & time-frequency",
+   "pattern": "welch",
+   "corpus_articles": 53
+  },
+  {
+   "method": "t-test",
+   "family": "Statistics",
+   "pattern": "t-?test",
+   "corpus_articles": 253
+  },
+  {
+   "method": "Wilcoxon / Mann-Whitney test",
+   "family": "Statistics",
+   "pattern": "wilcoxon|mann.whitney",
+   "corpus_articles": 136
+  },
+  {
+   "method": "one-way ANOVA",
+   "family": "Statistics",
+   "pattern": "\\bANOVA\\b",
+   "corpus_articles": 93
+  },
+  {
+   "method": "multiple-comparison correction",
+   "family": "Statistics",
+   "pattern": "\\bFDR\\b|false discovery|bonferroni|benjamini",
+   "corpus_articles": 182
+  },
+  {
+   "method": "permutation test",
+   "family": "Statistics",
+   "pattern": "permutation",
+   "corpus_articles": 75
+  },
+  {
+   "method": "principal component analysis",
+   "family": "Smoothing, state filtering, decompositions",
+   "pattern": "principal component|\\bPCA\\b",
+   "corpus_articles": 87
+  },
+  {
+   "method": "UMAP",
+   "family": "Smoothing, state filtering, decompositions",
+   "pattern": "\\bUMAP\\b",
+   "corpus_articles": 3
+  },
+  {
+   "method": "t-SNE",
+   "family": "Smoothing, state filtering, decompositions",
+   "pattern": "t-?SNE",
+   "corpus_articles": 9
+  },
+  {
+   "method": "k-means clustering",
+   "family": "Machine learning",
+   "pattern": "k-?means",
+   "corpus_articles": 21
+  },
+  {
+   "method": "hierarchical clustering",
+   "family": "Machine learning",
+   "pattern": "hierarchical clustering|agglomerative",
+   "corpus_articles": 15
+  },
+  {
+   "method": "independent component analysis",
+   "family": "Smoothing, state filtering, decompositions",
+   "pattern": "independent component analysis|\\bICA\\b",
+   "corpus_articles": 138
+  },
+  {
+   "method": "cross-validated classification",
+   "family": "Machine learning",
+   "pattern": "cross.validat",
+   "corpus_articles": 126
+  },
+  {
+   "method": "support vector machine",
+   "family": "Statistics",
+   "pattern": "support vector|\\bSVM\\b",
+   "corpus_articles": 83
+  },
+  {
+   "method": "random forest",
+   "family": "Machine learning",
+   "pattern": "random forest",
+   "corpus_articles": 46
+  },
+  {
+   "method": "logistic regression",
+   "family": "Machine learning",
+   "pattern": "logistic regression",
+   "corpus_articles": 44
+  },
+  {
+   "method": "linear discriminant analysis",
+   "family": "Machine learning",
+   "pattern": "linear discriminant analysis|\\bLDA\\b",
+   "corpus_articles": 30
+  },
+  {
+   "method": "linear regression",
+   "family": "Statistics",
+   "pattern": "linear regression",
+   "corpus_articles": 91
+  },
+  {
+   "method": "LASSO / ridge regression",
+   "family": "Statistics",
+   "pattern": "\\blasso\\b|ridge regression|elastic net",
+   "corpus_articles": 20
+  },
+  {
+   "method": "Hilbert envelope",
+   "family": "Spectral & time-frequency",
+   "pattern": "hilbert",
+   "corpus_articles": 77
+  },
+  {
+   "method": "phase locking value",
+   "family": "Connectivity",
+   "pattern": "phase.locking|\\bPLV\\b",
+   "corpus_articles": 54
+  },
+  {
+   "method": "spectral coherence",
+   "family": "Connectivity",
+   "pattern": "\\bcoherence\\b",
+   "corpus_articles": 137
+  },
+  {
+   "method": "cross-correlation",
+   "family": "Machine learning",
+   "pattern": "cross.correlation",
+   "corpus_articles": 46
+  },
+  {
+   "method": "partial directed coherence",
+   "family": "Connectivity",
+   "pattern": "partial directed coherence|\\bPDC\\b",
+   "corpus_articles": 15
+  },
+  {
+   "method": "sample entropy",
+   "family": "Complexity",
+   "pattern": "sample entropy|multiscale entropy",
+   "corpus_articles": 18
+  },
+  {
+   "method": "epoching",
+   "family": "Preprocessing",
+   "pattern": "(?:segment\\w*|divid\\w*|split\\w*|cut)\\s+into\\s+(?:\\w+\\s+){0,3}(?:epochs|segments|windows)|epochs?\\s+of\\s+\\d|\\d+(?:\\.\\d+)?[- ]?s(?:ec\\w*)?\\s+(?:non-overlapping\\s+)?epochs",
+   "corpus_articles": 238
+  },
+  {
+   "method": "average reference",
+   "family": "Preprocessing",
+   "pattern": "common average reference|average referenc|re-?referenc|\\bCAR\\b",
+   "corpus_articles": 127
+  },
+  {
+   "method": "bipolar montage",
+   "family": "Preprocessing",
+   "pattern": "bipolar (?:montage|reference|derivation)",
+   "corpus_articles": 85
+  },
+  {
+   "method": "surface Laplacian (Hjorth)",
+   "family": "Preprocessing",
+   "pattern": "surface laplacian|current source density|hjorth",
+   "corpus_articles": 12
+  },
+  {
+   "method": "baseline correction",
+   "family": "Preprocessing",
+   "pattern": "baseline (?:correct|normali|subtract)",
+   "corpus_articles": 32
+  },
+  {
+   "method": "detrending",
+   "family": "Preprocessing",
+   "pattern": "detrend",
+   "corpus_articles": 50
+  },
+  {
+   "method": "z-score normalisation",
+   "family": "Preprocessing",
+   "pattern": "z-?scor",
+   "corpus_articles": 119
+  },
+  {
+   "method": "bad channel interpolation",
+   "family": "Preprocessing",
+   "pattern": "interpolat\\w* (?:bad |noisy )?(?:channels|electrodes)|(?:bad|noisy|faulty) (?:channels|electrodes)[^.]{0,30}interpolat|spherical spline",
+   "corpus_articles": 14
+  },
+  {
+   "method": "amplitude threshold rejection",
+   "family": "Preprocessing",
+   "pattern": "(?:reject|exclud)\\w*[^.]{0,40}(?:exceed|threshold|µV|μV)|peak.to.peak",
+   "corpus_articles": 17
+  },
+  {
+   "method": "artifact subspace reconstruction",
+   "family": "Preprocessing",
+   "pattern": "artifact subspace reconstruction|\\bASR\\b",
+   "corpus_articles": 7
+  },
+  {
+   "method": "FFT spectrum",
+   "family": "Spectral & time-frequency",
+   "pattern": "fast fourier|\\bFFT\\b",
+   "corpus_articles": 70
+  },
+  {
+   "method": "band power",
+   "family": "Spectral & time-frequency",
+   "pattern": "band power|power in the .{0,20} band|relative power|absolute power",
+   "corpus_articles": 123
+  },
+  {
+   "method": "multitaper spectrum",
+   "family": "Spectral & time-frequency",
+   "pattern": "multi-?taper",
+   "corpus_articles": 35
+  },
+  {
+   "method": "Morlet wavelet time-frequency",
+   "family": "Spectral & time-frequency",
+   "pattern": "morlet",
+   "corpus_articles": 52
+  },
+  {
+   "method": "STFT spectrogram",
+   "family": "Spectral & time-frequency",
+   "pattern": "short.time fourier|spectrogram|\\bSTFT\\b",
+   "corpus_articles": 64
+  },
+  {
+   "method": "aperiodic 1/f fit (FOOOF)",
+   "family": "Spectral & time-frequency",
+   "pattern": "fooof|specparam|aperiodic|1/f",
+   "corpus_articles": 74
+  },
+  {
+   "method": "peak frequency",
+   "family": "Spectral & time-frequency",
+   "pattern": "peak (?:alpha )?frequency|individual alpha frequency",
+   "corpus_articles": 43
+  },
+  {
+   "method": "event-related spectral perturbation",
+   "family": "Spectral & time-frequency",
+   "pattern": "\\bERSP\\b|event.related (?:spectral|desynchron|synchron)|\\bERD\\b",
+   "corpus_articles": 24
+  },
+  {
+   "method": "inter-trial phase coherence",
+   "family": "Spectral & time-frequency",
+   "pattern": "inter.trial (?:coherence|phase)|\\bITC\\b|\\bITPC\\b",
+   "corpus_articles": 6
+  },
+  {
+   "method": "ERP averaging",
+   "family": "Evoked potentials",
+   "pattern": "event.related potential|\\bERPs?\\b",
+   "corpus_articles": 71
+  },
+  {
+   "method": "ERP peak amplitude and latency",
+   "family": "Evoked potentials",
+   "pattern": "peak (?:amplitude|latency)",
+   "corpus_articles": 47
+  },
+  {
+   "method": "ERP mean amplitude",
+   "family": "Evoked potentials",
+   "pattern": "mean amplitude\\s+(?:in|over|within|between|during)\\s+(?:the\\s+)?(?:\\d+\\s*(?:-|–|to)\\s*\\d+\\s*ms|[\\w-]*\\s*(?:time\\s+)?window)|(?:ERP|\\b[PN]\\d{2,3})\\s+mean amplitude",
+   "corpus_articles": 31
+  },
+  {
+   "method": "global field power",
+   "family": "Evoked potentials",
+   "pattern": "global field power|\\bGFP\\b",
+   "corpus_articles": 14
+  },
+  {
+   "method": "EEG microstates",
+   "family": "Evoked potentials",
+   "pattern": "microstate",
+   "corpus_articles": 16
+  },
+  {
+   "method": "phase lag index",
+   "family": "Connectivity",
+   "pattern": "phase lag index|\\bw?PLI\\b",
+   "corpus_articles": 28
+  },
+  {
+   "method": "imaginary coherence",
+   "family": "Connectivity",
+   "pattern": "imaginary (?:part of )?coherency|imaginary coherence",
+   "corpus_articles": 12
+  },
+  {
+   "method": "amplitude envelope correlation",
+   "family": "Connectivity",
+   "pattern": "amplitude envelope correlation|\\bAEC\\b",
+   "corpus_articles": 10
+  },
+  {
+   "method": "mutual information",
+   "family": "Connectivity",
+   "pattern": "mutual information",
+   "corpus_articles": 54
+  },
+  {
+   "method": "transfer entropy",
+   "family": "Connectivity",
+   "pattern": "transfer entropy",
+   "corpus_articles": 15
+  },
+  {
+   "method": "Pearson correlation",
+   "family": "Connectivity",
+   "pattern": "pearson",
+   "corpus_articles": 159
+  },
+  {
+   "method": "Spearman correlation",
+   "family": "Connectivity",
+   "pattern": "spearman",
+   "corpus_articles": 84
+  },
+  {
+   "method": "node degree and strength",
+   "family": "Graphs",
+   "pattern": "node degree|nodal strength|degree centrality",
+   "corpus_articles": 29
+  },
+  {
+   "method": "characteristic path length and efficiency",
+   "family": "Graphs",
+   "pattern": "path length|global efficiency|local efficiency",
+   "corpus_articles": 48
+  },
+  {
+   "method": "modularity",
+   "family": "Graphs",
+   "pattern": "modularity",
+   "corpus_articles": 19
+  },
+  {
+   "method": "small-worldness",
+   "family": "Graphs",
+   "pattern": "small.world",
+   "corpus_articles": 22
+  },
+  {
+   "method": "approximate entropy",
+   "family": "Complexity",
+   "pattern": "approximate entropy|\\bApEn\\b",
+   "corpus_articles": 6
+  },
+  {
+   "method": "permutation entropy",
+   "family": "Complexity",
+   "pattern": "permutation entropy",
+   "corpus_articles": 14
+  },
+  {
+   "method": "spectral entropy",
+   "family": "Complexity",
+   "pattern": "spectral entropy",
+   "corpus_articles": 15
+  },
+  {
+   "method": "Lempel-Ziv complexity",
+   "family": "Complexity",
+   "pattern": "lempel.ziv",
+   "corpus_articles": 9
+  },
+  {
+   "method": "Higuchi fractal dimension",
+   "family": "Complexity",
+   "pattern": "higuchi|fractal dimension",
+   "corpus_articles": 15
+  },
+  {
+   "method": "detrended fluctuation analysis",
+   "family": "Complexity",
+   "pattern": "detrended fluctuation|\\bDFA\\b",
+   "corpus_articles": 19
+  },
+  {
+   "method": "Hurst exponent",
+   "family": "Complexity",
+   "pattern": "hurst",
+   "corpus_articles": 9
+  },
+  {
+   "method": "single dipole fit",
+   "family": "Source localization",
+   "pattern": "dipole fit|equivalent current dipole",
+   "corpus_articles": 23
+  },
+  {
+   "method": "DICS beamformer",
+   "family": "Source localization",
+   "pattern": "\\bDICS\\b",
+   "corpus_articles": 7
+  },
+  {
+   "method": "cluster-based permutation test",
+   "family": "Statistics",
+   "pattern": "cluster.based permutation|cluster-level|threshold-free cluster",
+   "corpus_articles": 33
+  },
+  {
+   "method": "linear mixed-effects model",
+   "family": "Statistics",
+   "pattern": "mixed.effects? model|linear mixed|\\bLMM\\b",
+   "corpus_articles": 52
+  },
+  {
+   "method": "chi-square test",
+   "family": "Statistics",
+   "pattern": "chi.square|χ2",
+   "corpus_articles": 65
+  },
+  {
+   "method": "Kruskal-Wallis test",
+   "family": "Statistics",
+   "pattern": "kruskal",
+   "corpus_articles": 32
+  },
+  {
+   "method": "Kolmogorov-Smirnov test",
+   "family": "Statistics",
+   "pattern": "kolmogorov",
+   "corpus_articles": 26
+  },
+  {
+   "method": "bootstrap confidence interval",
+   "family": "Statistics",
+   "pattern": "bootstrap",
+   "corpus_articles": 76
+  },
+  {
+   "method": "ROC curve and AUC",
+   "family": "Statistics",
+   "pattern": "\\bROC\\b|area under the (?:receiver|curve)|\\bAUC\\b",
+   "corpus_articles": 94
+  },
+  {
+   "method": "Cohen's d effect size",
+   "family": "Statistics",
+   "pattern": "cohen'?s d|effect size",
+   "corpus_articles": 100
+  },
+  {
+   "method": "k-nearest neighbours classifier",
+   "family": "Machine learning",
+   "pattern": "nearest neighbou?r|\\bk-?NN\\b",
+   "corpus_articles": 46
+  },
+  {
+   "method": "naive Bayes classifier",
+   "family": "Machine learning",
+   "pattern": "naive bayes",
+   "corpus_articles": 7
+  },
+  {
+   "method": "gradient boosting (sklearn)",
+   "family": "Machine learning",
+   "pattern": "gradient boost|xgboost|lightgbm",
+   "corpus_articles": 17
+  },
+  {
+   "method": "recursive feature elimination",
+   "family": "Machine learning",
+   "pattern": "recursive feature elimination|\\bRFE\\b|mrmr|feature selection",
+   "corpus_articles": 47
+  },
+  {
+   "method": "grid search",
+   "family": "Machine learning",
+   "pattern": "grid search|hyperparameter (?:tuning|optimi)",
+   "corpus_articles": 31
+  },
+  {
+   "method": "leave-one-subject-out validation",
+   "family": "Machine learning",
+   "pattern": "leave.one.(?:subject|participant|patient).out|\\bLOSO\\b",
+   "corpus_articles": 13
+  },
+  {
+   "method": "common spatial patterns",
+   "family": "Machine learning",
+   "pattern": "common spatial pattern|\\bCSP\\b",
+   "corpus_articles": 18
+  },
+  {
+   "method": "Riemannian tangent space (scipy)",
+   "family": "Machine learning",
+   "pattern": "riemann",
+   "corpus_articles": 11
+  },
+  {
+   "method": "xDAWN spatial filtering",
+   "family": "Machine learning",
+   "pattern": "xdawn",
+   "corpus_articles": 5
+  },
+  {
+   "method": "convolutional neural network (EEGNet-like)",
+   "family": "Machine learning",
+   "pattern": "eegnet|convolutional",
+   "corpus_articles": 77
+  },
+  {
+   "method": "LSTM recurrent network",
+   "family": "Machine learning",
+   "pattern": "\\bLSTM\\b|recurrent neural",
+   "corpus_articles": 57
+  },
+  {
+   "method": "non-negative matrix factorisation",
+   "family": "Machine learning",
+   "pattern": "non.?negative matrix factori|\\bNMF\\b",
+   "corpus_articles": 7
+  },
+  {
+   "method": "fMRI general linear model",
+   "family": "fMRI & imaging",
+   "pattern": "general linear model|\\bGLM\\b",
+   "corpus_articles": 38
+  },
+  {
+   "method": "HRF convolution",
+   "family": "fMRI & imaging",
+   "pattern": "haemodynamic response|hemodynamic response|\\bHRF\\b",
+   "corpus_articles": 42
+  },
+  {
+   "method": "spatial smoothing (Gaussian FWHM)",
+   "family": "fMRI & imaging",
+   "pattern": "\\bFWHM\\b|spatial(?:ly)? smooth",
+   "corpus_articles": 62
+  },
+  {
+   "method": "motion parameter regression",
+   "family": "fMRI & imaging",
+   "pattern": "motion (?:parameters|regress|correction)|head motion",
+   "corpus_articles": 68
+  },
+  {
+   "method": "seed-based connectivity",
+   "family": "fMRI & imaging",
+   "pattern": "seed.based|seed region",
+   "corpus_articles": 32
+  },
+  {
+   "method": "ROI time series",
+   "family": "fMRI & imaging",
+   "pattern": "region of interest|\\bROIs?\\b",
+   "corpus_articles": 140
+  },
+  {
+   "method": "spike detection (threshold)",
+   "family": "Single-unit activity, calcium imaging",
+   "pattern": "spike (?:detection|sorting)",
+   "corpus_articles": 18
+  },
+  {
+   "method": "firing rate and PSTH",
+   "family": "Single-unit activity, calcium imaging",
+   "pattern": "firing rate|peri.?stimulus time histogram|\\bPSTH\\b",
+   "corpus_articles": 57
+  },
+  {
+   "method": "inter-spike interval",
+   "family": "Single-unit activity, calcium imaging",
+   "pattern": "inter.?spike interval|\\bISI\\b",
+   "corpus_articles": 20
+  },
+  {
+   "method": "calcium imaging ΔF/F",
+   "family": "Single-unit activity, calcium imaging",
+   "pattern": "ΔF/F|dF/F|delta f over f|calcium imaging",
+   "corpus_articles": 8
+  },
+  {
+   "method": "Savitzky-Golay smoothing",
+   "family": "Smoothing, state filtering, decompositions",
+   "pattern": "savitzky",
+   "corpus_articles": 6
+  },
+  {
+   "method": "moving average",
+   "family": "Smoothing, state filtering, decompositions",
+   "pattern": "moving average",
+   "corpus_articles": 23
+  },
+  {
+   "method": "Kalman filter",
+   "family": "Smoothing, state filtering, decompositions",
+   "pattern": "kalman",
+   "corpus_articles": 13
+  },
+  {
+   "method": "empirical mode decomposition",
+   "family": "Smoothing, state filtering, decompositions",
+   "pattern": "empirical mode decomposition|\\bEMD\\b",
+   "corpus_articles": 13
+  },
+  {
+   "method": "dynamic time warping",
+   "family": "Smoothing, state filtering, decompositions",
+   "pattern": "dynamic time warping",
+   "corpus_articles": 3
+  },
+  {
+   "method": "interictal spike / seizure detection (line length and threshold)",
+   "family": "Physiology & signal measures",
+   "pattern": "seizure detection|spike.and.wave|interictal (?:spikes?|epileptiform)",
+   "corpus_articles": 151
+  },
+  {
+   "method": "autoregressive spectrum",
+   "family": "Spectral & time-frequency",
+   "pattern": "autoregressive model|\\bAR model|\\bburg\\b|yule.walker",
+   "corpus_articles": 122
+  },
+  {
+   "method": "high-frequency oscillation detection",
+   "family": "Spectral & time-frequency",
+   "pattern": "high.frequency oscillation|\\bHFOs?\\b|ripple",
+   "corpus_articles": 116
+  },
+  {
+   "method": "sleep spindle detection",
+   "family": "Spectral & time-frequency",
+   "pattern": "spindle detection|detect\\w* spindles|spindles were detected",
+   "corpus_articles": 11
+  },
+  {
+   "method": "slow oscillation detection",
+   "family": "Spectral & time-frequency",
+   "pattern": "slow oscillation",
+   "corpus_articles": 38
+  },
+  {
+   "method": "ECG R-peak detection",
+   "family": "Evoked potentials",
+   "pattern": "\\bR[- ]peaks?\\b|\\bR[- ]wave|\\bQRS\\b",
+   "corpus_articles": 82
+  },
+  {
+   "method": "heart rate variability",
+   "family": "Physiology & signal measures",
+   "pattern": "heart rate variability|\\bHRV\\b|RMSSD|SDNN",
+   "corpus_articles": 25
+  },
+  {
+   "method": "EMG envelope",
+   "family": "Physiology & signal measures",
+   "pattern": "\\bEMG\\b",
+   "corpus_articles": 97
+  },
+  {
+   "method": "saccade and blink detection",
+   "family": "Physiology & signal measures",
+   "pattern": "saccade|blink|eye.tracking",
+   "corpus_articles": 90
+  },
+  {
+   "method": "pupil preprocessing",
+   "family": "Physiology & signal measures",
+   "pattern": "pupil",
+   "corpus_articles": 18
+  },
+  {
+   "method": "electrodermal activity decomposition",
+   "family": "Smoothing, state filtering, decompositions",
+   "pattern": "skin conductance|electrodermal|\\bEDA\\b|galvanic skin",
+   "corpus_articles": 18
+  },
+  {
+   "method": "respiration rate",
+   "family": "Physiology & signal measures",
+   "pattern": "respirat\\w* (?:signal|rate)|breathing rate",
+   "corpus_articles": 16
+  },
+  {
+   "method": "phase-amplitude coupling (modulation index)",
+   "family": "Connectivity",
+   "pattern": "phase.amplitude coupling|\\bPAC\\b|modulation index|cross.frequency coupling",
+   "corpus_articles": 52
+  },
+  {
+   "method": "band-limited power envelope",
+   "family": "Spectral & time-frequency",
+   "pattern": "band.limited power|amplitude envelope",
+   "corpus_articles": 35
+  },
+  {
+   "method": "sliding-window dynamic connectivity",
+   "family": "Connectivity",
+   "pattern": "sliding.window|dynamic functional connectivity",
+   "corpus_articles": 74
+  },
+  {
+   "method": "wavelet coherence",
+   "family": "Connectivity",
+   "pattern": "wavelet coherence",
+   "corpus_articles": 4
+  },
+  {
+   "method": "bispectrum and bicoherence",
+   "family": "Connectivity",
+   "pattern": "bispectr|bicoherence",
+   "corpus_articles": 10
+  },
+  {
+   "method": "Hjorth parameters",
+   "family": "Spectral & time-frequency",
+   "pattern": "hjorth (?:parameters|mobility|complexity)|hjorth mobility",
+   "corpus_articles": 15
+  },
+  {
+   "method": "kurtosis and skewness",
+   "family": "Physiology & signal measures",
+   "pattern": "kurtosis|skewness",
+   "corpus_articles": 32
+  },
+  {
+   "method": "zero-crossing rate",
+   "family": "Machine learning",
+   "pattern": "zero.crossing",
+   "corpus_articles": 21
+  },
+  {
+   "method": "line length",
+   "family": "Physiology & signal measures",
+   "pattern": "line.length",
+   "corpus_articles": 10
+  },
+  {
+   "method": "Teager-Kaiser energy",
+   "family": "Physiology & signal measures",
+   "pattern": "teager",
+   "corpus_articles": 5
+  },
+  {
+   "method": "template matching (normalised cross-correlation)",
+   "family": "fMRI & imaging",
+   "pattern": "template matching|matched filter",
+   "corpus_articles": 6
+  },
+  {
+   "method": "power-law exponent (1/f slope)",
+   "family": "Spectral & time-frequency",
+   "pattern": "power.law|scale.free|1/f slope",
+   "corpus_articles": 48
+  },
+  {
+   "method": "burst suppression ratio",
+   "family": "Physiology & signal measures",
+   "pattern": "burst.suppression",
+   "corpus_articles": 4
+  },
+  {
+   "method": "Hilbert-Huang transform",
+   "family": "Spectral & time-frequency",
+   "pattern": "hilbert.huang",
+   "corpus_articles": 4
+  },
+  {
+   "method": "repeated-measures ANOVA",
+   "family": "Statistics",
+   "pattern": "repeated.measures (?:ANOVA|analysis of variance)",
+   "corpus_articles": 24
+  },
+  {
+   "method": "intraclass correlation ICC(2,1)",
+   "family": "Statistics",
+   "pattern": "intraclass correlation|\\bICC\\b",
+   "corpus_articles": 20
+  },
+  {
+   "method": "Friedman test",
+   "family": "Statistics",
+   "pattern": "friedman",
+   "corpus_articles": 18
+  },
+  {
+   "method": "Fisher exact test",
+   "family": "Statistics",
+   "pattern": "fisher'?s exact",
+   "corpus_articles": 11
+  },
+  {
+   "method": "McNemar test",
+   "family": "Statistics",
+   "pattern": "mcnemar",
+   "corpus_articles": 4
+  },
+  {
+   "method": "Bland-Altman agreement",
+   "family": "Statistics",
+   "pattern": "bland.altman",
+   "corpus_articles": 7
+  },
+  {
+   "method": "JZS Bayes factor for a t-test",
+   "family": "Statistics",
+   "pattern": "bayes factor",
+   "corpus_articles": 11
+  },
+  {
+   "method": "Kaplan-Meier survival estimate",
+   "family": "Statistics",
+   "pattern": "kaplan.meier|survival analysis|cox (?:proportional|regression)",
+   "corpus_articles": 3
+  },
+  {
+   "method": "time-resolved decoding (MVPA)",
+   "family": "Machine learning",
+   "pattern": "time.resolved\\s+(?:\\w+\\s+){0,2}decoding|multivariate pattern(?: analysis| classification)?|\\bMVPA\\b(?:\\s+decoding)?|decoding",
+   "corpus_articles": 75
+  },
+  {
+   "method": "multilayer perceptron",
+   "family": "Machine learning",
+   "pattern": "multilayer perceptron|\\bMLP\\b",
+   "corpus_articles": 25
+  },
+  {
+   "method": "transformer encoder classifier",
+   "family": "Machine learning",
+   "pattern": "transformer|self-attention",
+   "corpus_articles": 32
+  },
+  {
+   "method": "canonical correlation analysis",
+   "family": "Statistics",
+   "pattern": "canonical correlation",
+   "corpus_articles": 13
+  },
+  {
+   "method": "partial least squares",
+   "family": "Smoothing, state filtering, decompositions",
+   "pattern": "partial least squares|\\bPLS\\b",
+   "corpus_articles": 12
+  },
+  {
+   "method": "Gaussian mixture model",
+   "family": "Smoothing, state filtering, decompositions",
+   "pattern": "gaussian mixture",
+   "corpus_articles": 8
+  },
+  {
+   "method": "spectral clustering",
+   "family": "Machine learning",
+   "pattern": "spectral clustering|graph laplacian",
+   "corpus_articles": 3
+  },
+  {
+   "method": "representational similarity analysis",
+   "family": "Machine learning",
+   "pattern": "representational similarity|\\bRSA\\b",
+   "corpus_articles": 4
+  },
+  {
+   "method": "diffusion tensor metrics (FA, MD)",
+   "family": "fMRI & imaging",
+   "pattern": "tractograph|diffusion tensor|fractional anisotropy",
+   "corpus_articles": 101
+  },
+  {
+   "method": "cortical thickness from paired surfaces",
+   "family": "Preprocessing",
+   "pattern": "cortical thickness|voxel.based morphometry|\\bVBM\\b",
+   "corpus_articles": 45
+  },
+  {
+   "method": "group ICA (temporal concatenation)",
+   "family": "Preprocessing",
+   "pattern": "melodic|group ICA",
+   "corpus_articles": 21
+  },
+  {
+   "method": "dynamic causal model (bilinear neural state equation)",
+   "family": "Machine learning",
+   "pattern": "dynamic causal model|\\bDCM\\b",
+   "corpus_articles": 23
+  },
+  {
+   "method": "matching pursuit (Gabor dictionary)",
+   "family": "Statistics",
+   "pattern": "matching pursuit",
+   "corpus_articles": 7
+  }
+ ]
+}

@@ -1,0 +1,126 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="540" viewBox="0 0 960 540" role="img" aria-labelledby="reader-t reader-d">
+<title id="reader-t">The Code ↔ Paper reader</title>
+<desc id="reader-d">Illustration of the reader, with invented text and code. Under the site's masthead, two panes side by side. Left, the paper, loaded by the browser from Europe PMC: section 2.3 Preprocessing, three highlighted paragraphs numbered 1 to 3 (band-pass filtering and average reference; independent component analysis; epoching and baseline correction). Right, the script preprocess.py at commit 3f2c1a9 under the MIT license, with numbered lines; lines 14 to 15, 17 to 20 and 22 to 23 are highlighted in the same three colors and numbers, and curves join each paragraph to its lines. Pair 1 is selected. Caption: pairs are computed by the harvester (method lexical-v1) and stored as metadata; the site never stores or serves the article's text, which the browser loads from Europe PMC.</desc>
+<style>
+text { font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; fill: #e6edf3; }
+.mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; }
+.canvas { fill: #161b22; stroke: #30363d; }
+.card { fill: #0d1117; stroke: #30363d; }
+.ink2 { fill: #9198a1; }
+.ink3 { fill: #848d97; }
+.bar { fill: #2d333b; }
+.bar2 { fill: #3d444d; }
+.arrow { stroke: #6e7681; fill: none; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+.arrowhead { fill: #6e7681; }
+.p1 { fill: #3987e5; } .p1s { fill: rgba(57,135,229,0.22); } .p1l { stroke: #3987e5; fill: none; }
+.p2 { fill: #d95926; } .p2s { fill: rgba(217,89,38,0.24); } .p2l { stroke: #d95926; fill: none; }
+.p3 { fill: #199e70; } .p3s { fill: rgba(25,158,112,0.24); } .p3l { stroke: #199e70; fill: none; }
+.ok { fill: #3fb950; } .okl { stroke: #3fb950; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.brand { fill: #24485f; }
+.brand-ink { fill: #ffffff; }
+.brand-ink2 { fill: #b6c8d4; }
+.accent { fill: #3987e5; }
+.accent-soft { fill: #15304f; }
+.site { font-size: 15px; font-weight: 700; }
+.crumb { font-size: 12.5px; fill: #9198a1; }
+.ph { font-size: 13px; font-weight: 600; }
+.note { font-size: 11.5px; fill: #848d97; }
+.sec { font-size: 13px; font-weight: 600; }
+.para { font-size: 12.5px; }
+.code { font-size: 11.5px; white-space: pre; }
+.ln { font-size: 11px; fill: #848d97; }
+.k { fill: #d2a8ff; } .s { fill: #a5d6ff; } .n { fill: #ffa657; }
+.badge { font-size: 10.5px; font-weight: 700; fill: #0b0b0b; }
+.cap { font-size: 12.5px; fill: #9198a1; }
+</style>
+<rect class="canvas" x="0.5" y="0.5" width="959" height="539" rx="14"/>
+<path class="brand" d="M1 15 a14 14 0 0 1 14 -14 H945 a14 14 0 0 1 14 14 V46 H1 Z"/>
+<text class="site brand-ink" x="24" y="29">OSCR</text>
+<text class="brand-ink2" x="72" y="29" style="font-size:12.5px">Open Scientific Code Registry</text>
+<text class="crumb" x="24" y="70">Catalogue › A paper › Code ↔ Paper</text>
+<text class="note" x="936" y="70" text-anchor="end">pair 1 selected</text>
+<rect class="card" x="24" y="88" width="420" height="392" rx="10"/>
+<rect class="card" x="516" y="88" width="420" height="392" rx="10"/>
+<text class="ph" x="42" y="114">Paper</text>
+<text class="note" x="426" y="114" text-anchor="end">loaded from Europe PMC by your browser</text>
+<text class="ph mono" x="534" y="114" style="font-size:12.5px">preprocess.py</text>
+<text class="note" x="918" y="114" text-anchor="end">the authors' repository @ 3f2c1a9 · MIT</text>
+<rect class="bar" x="25" y="128" width="418" height="1"/>
+<rect class="bar" x="517" y="128" width="418" height="1"/>
+<text class="sec" x="42" y="154">2.3 Preprocessing</text>
+<rect class="p1s" x="34" y="168" width="400" height="50" rx="5"/>
+<rect class="p1" x="34" y="168" width="4" height="50" rx="1.5"/>
+<text class="para" x="48" y="186">EEG data were band-pass filtered between 1 and</text>
+<text class="para" x="48" y="204">40 Hz and re-referenced to the common average.</text>
+<circle class="p1" cx="422" cy="180" r="8"/>
+<text class="badge" x="422" y="183.5" text-anchor="middle">1</text>
+<rect class="p2s" x="34" y="234" width="400" height="50" rx="5" opacity="0.75"/>
+<rect class="p2" x="34" y="234" width="3" height="50" rx="1.5"/>
+<text class="para" x="48" y="252">Independent component analysis with 20 components</text>
+<text class="para" x="48" y="270">removed ocular and cardiac artifacts.</text>
+<circle class="p2" cx="422" cy="246" r="8"/>
+<text class="badge" x="422" y="249.5" text-anchor="middle">2</text>
+<rect class="p3s" x="34" y="300" width="400" height="50" rx="5" opacity="0.75"/>
+<rect class="p3" x="34" y="300" width="3" height="50" rx="1.5"/>
+<text class="para" x="48" y="318">Epochs from −0.2 to 0.8 s around stimulus onset</text>
+<text class="para" x="48" y="336">were baseline-corrected on the pre-stimulus interval.</text>
+<circle class="p3" cx="422" cy="312" r="8"/>
+<text class="badge" x="422" y="315.5" text-anchor="middle">3</text>
+<rect class="bar" x="48" y="374" width="342" height="6" rx="3"/>
+<rect class="bar" x="48" y="390" width="320" height="6" rx="3"/>
+<rect class="bar" x="48" y="406" width="353" height="6" rx="3"/>
+<rect class="bar" x="48" y="422" width="260" height="6" rx="3"/>
+<rect class="bar" x="48" y="438" width="327" height="6" rx="3"/>
+<rect class="bar" x="48" y="454" width="223" height="6" rx="3"/>
+<rect class="p1s" x="526" y="212" width="400" height="40" rx="5"/>
+<rect class="p1" x="526" y="212" width="4" height="40" rx="1.5"/>
+<circle class="p1" cx="914" cy="223" r="8"/>
+<text class="badge" x="914" y="226.5" text-anchor="middle">1</text>
+<rect class="p2s" x="526" y="269" width="400" height="78" rx="5" opacity="0.75"/>
+<rect class="p2" x="526" y="269" width="3" height="78" rx="1.5"/>
+<circle class="p2" cx="914" cy="280" r="8"/>
+<text class="badge" x="914" y="283.5" text-anchor="middle">2</text>
+<rect class="p3s" x="526" y="364" width="400" height="40" rx="5" opacity="0.75"/>
+<rect class="p3" x="526" y="364" width="3" height="40" rx="1.5"/>
+<circle class="p3" cx="914" cy="375" r="8"/>
+<text class="badge" x="914" y="378.5" text-anchor="middle">3</text>
+<text class="ln mono" x="560" y="150" text-anchor="end">10</text>
+<text class="code mono" x="572" y="150" xml:space="preserve"><tspan class="k">import </tspan>mne</text>
+<text class="ln mono" x="560" y="169" text-anchor="end">11</text>
+<text class="code mono" x="572" y="169" xml:space="preserve"><tspan class="k">from </tspan>mne.preprocessing <tspan class="k">import </tspan>ICA</text>
+<text class="ln mono" x="560" y="188" text-anchor="end">12</text>
+<text class="ln mono" x="560" y="207" text-anchor="end">13</text>
+<text class="code mono" x="572" y="207" xml:space="preserve">raw = mne.io.read_raw_fif(path, preload=<tspan class="k">True</tspan>)</text>
+<text class="ln mono" x="560" y="226" text-anchor="end">14</text>
+<text class="code mono" x="572" y="226" xml:space="preserve">raw.filter(l_freq=<tspan class="n">1.0</tspan>, h_freq=<tspan class="n">40.0</tspan>)</text>
+<text class="ln mono" x="560" y="245" text-anchor="end">15</text>
+<text class="code mono" x="572" y="245" xml:space="preserve">raw.set_eeg_reference(<tspan class="s">&quot;average&quot;</tspan>)</text>
+<text class="ln mono" x="560" y="264" text-anchor="end">16</text>
+<text class="ln mono" x="560" y="283" text-anchor="end">17</text>
+<text class="code mono" x="572" y="283" xml:space="preserve">ica = ICA(n_components=<tspan class="n">20</tspan>, random_state=<tspan class="n">0</tspan>)</text>
+<text class="ln mono" x="560" y="302" text-anchor="end">18</text>
+<text class="code mono" x="572" y="302" xml:space="preserve">ica.fit(raw)</text>
+<text class="ln mono" x="560" y="321" text-anchor="end">19</text>
+<text class="code mono" x="572" y="321" xml:space="preserve">ica.exclude = eog_idx + ecg_idx</text>
+<text class="ln mono" x="560" y="340" text-anchor="end">20</text>
+<text class="code mono" x="572" y="340" xml:space="preserve">ica.apply(raw)</text>
+<text class="ln mono" x="560" y="359" text-anchor="end">21</text>
+<text class="ln mono" x="560" y="378" text-anchor="end">22</text>
+<text class="code mono" x="572" y="378" xml:space="preserve">epochs = mne.Epochs(raw, events, tmin=<tspan class="n">-0.2</tspan>,</text>
+<text class="ln mono" x="560" y="397" text-anchor="end">23</text>
+<text class="code mono" x="572" y="397" xml:space="preserve">                    tmax=<tspan class="n">0.8</tspan>, baseline=(<tspan class="k">None</tspan>, <tspan class="n">0</tspan>))</text>
+<text class="ln mono" x="560" y="416" text-anchor="end">24</text>
+<text class="ln mono" x="560" y="435" text-anchor="end">25</text>
+<text class="code mono" x="572" y="435" xml:space="preserve">epochs.save(out_dir / <tspan class="s">&quot;clean-epo.fif&quot;</tspan>)</text>
+<path class="p1l" stroke-width="2.5" d="M444 193.0 C484 193.0 476 232.0 516 232.0"/>
+<circle class="p1" cx="444" cy="193.0" r="3.5"/>
+<circle class="p1" cx="516" cy="232.0" r="3.5"/>
+<path class="p2l" stroke-width="1.5" opacity="0.8" d="M444 259.0 C484 259.0 476 308.0 516 308.0"/>
+<circle class="p2" cx="444" cy="259.0" r="3.5"/>
+<circle class="p2" cx="516" cy="308.0" r="3.5"/>
+<path class="p3l" stroke-width="1.5" opacity="0.8" d="M444 325.0 C484 325.0 476 384.0 516 384.0"/>
+<circle class="p3" cx="444" cy="325.0" r="3.5"/>
+<circle class="p3" cx="516" cy="384.0" r="3.5"/>
+<text class="cap" x="24" y="506">Pairs computed by the harvester (method lexical-v1) and stored as metadata: paragraph, file, lines, score. The site never stores or serves the article's text:</text>
+<text class="cap" x="24" y="524">your browser loads it from Europe PMC.</text>
+</svg>

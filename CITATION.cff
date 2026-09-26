@@ -1,0 +1,26 @@
+cff-version: 1.2.0
+message: "If you use OSCR or its catalogue, please cite it as below."
+title: "OSCR: Open Scientific Code Registry"
+type: software
+abstract: >-
+  OSCR finds where the authors of open-access neuroscience papers published their
+  code, verifies that code at the source (git, Zenodo, OSF, figshare, Software
+  Heritage), keeps the text of the scripts, and pairs paragraphs of the paper with
+  the lines of code that match them. The catalogue is released under CC0-1.0;
+  tracing maps validated by one of a paper's authors receive a Zenodo DOI.
+authors:
+  - name: "The OSCR contributors"
+repository-code: "https://github.com/yannbellec/Open-Scientific-Code-Registry-OSCR-"
+url: "https://oscr-2lj.pages.dev"
+license: Apache-2.0
+keywords:
+  - research software
+  - reproducibility
+  - open science
+  - neuroscience
+  - code availability
+  - software citation
+  - scholarly infrastructure
+  - Europe PMC
+  - Zenodo
+  - Software Heritage

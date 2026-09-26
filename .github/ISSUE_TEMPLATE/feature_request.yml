@@ -1,0 +1,52 @@
+name: Feature request
+description: Suggest a new source of links, a sharper heuristic, or an improvement.
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        OSCR keeps a few rules that no feature can bend: no article text or PDF is published,
+        code without a license stays a link and a commit, no mass email to authors, and no
+        paid service (a feature that does not fit the free tiers needs a free alternative).
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Sources and finding code
+        - Judging the role of a link
+        - Verification at the source
+        - Catalogue and open data
+        - Tracing maps and DOIs
+        - Code ↔ Paper reader
+        - Website
+        - Operations (Mac, publication, hosting)
+        - Documentation
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What you are trying to do, and what gets in the way.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: The proposal
+      description: What OSCR should do. Numbers help, such as papers affected or recall gained on a sample.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+  - type: checkboxes
+    id: rules
+    attributes:
+      label: The rules
+      options:
+        - label: This proposal publishes no article text, copies no unlicensed code, sends no mass email and needs no paid service.
+          required: true

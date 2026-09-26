@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="820" height="164" viewBox="0 0 820 164" role="img" aria-labelledby="oscr-kpis-light-t oscr-kpis-light-d">
+<title id="oscr-kpis-light-t">OSCR in numbers</title>
+<desc id="oscr-kpis-light-d">Papers read: 2,605 (2,571 with full text); With the authors' code: 327 (13% of papers read; 307 verified at the source); Code repositories: 483 (468 alive at the last check); Scripts kept as text: 16,678 (147 MB of source text). Source: OSCR harvester database, 2026-09-26.</desc>
+<style>text{font-family:system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;fill:#0b0b0b}.title{font-size:15px;font-weight:600}.sub{font-size:12.5px;fill:#52514e}.cat{font-size:12.5px}.muted{fill:#52514e}.val{font-size:12px;font-variant-numeric:tabular-nums;font-feature-settings:'tnum'}.tick{font-size:11.5px;fill:#52514e;font-variant-numeric:tabular-nums;font-feature-settings:'tnum'}.foot{font-size:11px;fill:#6e6d68}.kl{font-size:13px;fill:#52514e}.kv{font-size:34px;font-weight:600;font-variant-numeric:tabular-nums;font-feature-settings:'tnum'}.ks{font-size:12px;fill:#52514e;font-variant-numeric:tabular-nums;font-feature-settings:'tnum'}</style>
+<rect x="0.5" y="0.5" width="819" height="163" rx="10" fill="#ffffff" stroke="#d0d7de"/>
+<text x="24" y="46" class="kl">Papers read</text>
+<text x="24" y="88" class="kv">2,605</text>
+<text x="24" y="110" class="ks">2,571 with full text</text>
+<path d="M205,26L205,126" stroke="#e1e0d9" stroke-width="1" fill="none"/>
+<text x="217" y="46" class="kl">With the authors' code</text>
+<text x="217" y="88" class="kv">327</text>
+<text x="217" y="110" class="ks">13% of papers read; 307</text>
+<text x="217" y="126" class="ks">verified at the source</text>
+<path d="M398,26L398,126" stroke="#e1e0d9" stroke-width="1" fill="none"/>
+<text x="410" y="46" class="kl">Code repositories</text>
+<text x="410" y="88" class="kv">483</text>
+<text x="410" y="110" class="ks">468 alive at the last check</text>
+<path d="M591,26L591,126" stroke="#e1e0d9" stroke-width="1" fill="none"/>
+<text x="603" y="46" class="kl">Scripts kept as text</text>
+<text x="603" y="88" class="kv">16,678</text>
+<text x="603" y="110" class="ks">147 MB of source text</text>
+<text x="24" y="150" class="foot">Source: OSCR harvester database, 2026-09-26</text>
+</svg>
