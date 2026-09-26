@@ -1,0 +1,294 @@
+---
+// The Code ↔ Paper reader. LEFT, the paper: its text is NOT in this page; the
+// reader's browser loads it from Europe PMC (see src/scripts/reader.ts). RIGHT, the
+// authors' code: one file is prerendered here from its lot, the others are fetched
+// on demand from /scripts/NN.json. The pairs come from the harvester's alignments.
+import Base from "../../../layouts/Base.astro";
+import { SITE_NAME } from "../../../config";
+import {
+  alignmentOf, europePmcUrl, lot2, lotEntry, plural, recordUrl, shortName, STATES, withCode,
+  type Article, type LotFile,
+} from "../../../lib/catalog";
+import { decorate, fileInfo, pairClass, sourceLines, splitLines } from "../../../lib/lines";
+
+export function getStaticPaths() {
+  return withCode.map((a) => ({ params: { slug: a.slug }, props: { a } }));
+}
+
+const { a } = Astro.props as { a: Article };
+const alignment = alignmentOf(a);
+const record = recordUrl(a);
+const doiUrl = `https://doi.org/${a.doi}`;
+// The full text the pairs were computed on: the reader must number the same paragraphs.
+const textId = alignment?.fulltext_id || a.fulltext_id || a.pmcid || "";
+const epmcUrl = europePmcUrl({ ...a, fulltext_id: textId });
+
+// The repositories of the paper, with their lot entry when files were read.
+const repos = a.code.map((r) => {
+  const e = lotEntry(r);
+  return { r, e, name: shortName(r), license: r.license || e?.license || "" };
+});
+const multi = repos.length > 1;
+
+// What the code pane can show, one "view" each: a file of a repository whose license
+// allows republishing (its text is here, or rarely only at the source), or a whole
+// repository whose license does not: its files are then listed with links to the source.
+type View = { repo: number; block: boolean; file?: LotFile; files: LotFile[]; pairs: number[] };
+const views: View[] = [];
+repos.forEach(({ e }, repo) => {
+  if (!e) return;
+  const files = e.files.filter((f) => f.kind !== "note");
+  if (!e.published) views.push({ repo, block: true, files, pairs: [] });
+  else for (const file of files) views.push({ repo, block: false, file, files: [file], pairs: [] });
+});
+const viewFor = (repo: string, path: string) => {
+  const i = views.findIndex((v) => !v.block && repos[v.repo].r.repo === repo && v.file!.path === path);
+  return i >= 0 ? i : views.findIndex((v) => v.block && repos[v.repo].r.repo === repo && v.files.some((f) => f.path === path));
+};
+
+// Each pair, tied to the view that shows its lines (-1: the file is not among the
+// harvested files), with a link to the exact lines at the source.
+const pairs = (alignment?.pairs ?? []).map((p) => {
+  const view = viewFor(p.repo, p.path);
+  if (view >= 0) views[view].pairs.push(p.pair);
+  const file = repos.find((x) => x.r.repo === p.repo)?.e?.files.find((f) => f.path === p.path);
+  const source = file?.source_url ? sourceLines(file.source_url, p.start_line, p.end_line) : "";
+  const label = `§ ${p.section || `paragraph ${p.paragraph}`}`;
+  return { ...p, view, source, label };
+});
+
+// The view shown first: the one with the most pairs, else the first script whose text
+// is here, else anything readable. The selector lists the matched views first.
+const first = (v: View) => Math.min(...v.pairs);
+const matched = views
+  .map((_, i) => i)
+  .filter((i) => views[i].pairs.length > 0)
+  .sort((x, y) => views[y].pairs.length - views[x].pairs.length || first(views[x]) - first(views[y]));
+const hasText = (v: View) => !v.block && v.file!.text !== null;
+let initial = matched[0] ?? views.findIndex((v) => hasText(v) && v.file!.kind === "script");
+if (initial < 0) initial = views.findIndex(hasText);
+if (initial < 0 && views.length > 0) initial = 0;
+const rank = (v: View) => (v.block ? 3 : v.file!.text === null ? 2 : v.file!.kind === "script" ? 0 : 1);
+const others = views
+  .map((_, i) => i)
+  .filter((i) => views[i].pairs.length === 0)
+  .sort((x, y) => rank(views[x]) - rank(views[y]) || x - y);
+// The other views, one group per repository (a single group when there is one).
+const groups = repos
+  .map((x, r) => ({ label: multi ? x.name : matched.length ? "Other files" : "", views: others.filter((i) => views[i].repo === r) }))
+  .filter((g) => g.views.length > 0);
+/** The name of view i in the selector; `withRepo` when its group does not say it. */
+const option = (i: number, withRepo: boolean) => {
+  const v = views[i];
+  const repo = repos[v.repo];
+  const what = v.block
+    ? `${withRepo ? `${repo.name}: ` : ""}${v.files.length ? `${plural(v.files.length, "file")}, ` : ""}at the source`
+    : `${withRepo ? `${repo.name}: ` : ""}${v.file!.path}${v.file!.text === null ? " (at the source)" : ""}`;
+  return v.pairs.length ? `${what} — ${plural(v.pairs.length, "match", "matches")}` : what;
+};
+
+// The initial view, prerendered: its lines with the pairs, and the line of information.
+const shown = initial >= 0 ? views[initial] : undefined;
+const text = shown && !shown.block ? shown.file!.text : null;
+const lines = text !== null ? splitLines(text) : [];
+const spans = pairs.filter((p) => p.view === initial).map((p) => ({ pair: p.pair, start: p.start_line, end: p.end_line }));
+const { cover, link } = decorate(lines, spans);
+const infoOf = (v: View) =>
+  fileInfo(
+    {
+      block: v.block,
+      language: v.file?.language,
+      lines: v.file?.lines,
+      truncated: v.file?.truncated,
+      text: v.file ? v.file.text !== null : false,
+      source: v.file?.source_url,
+    },
+    { name: repos[v.repo].name, url: repos[v.repo].r.url, license: repos[v.repo].license },
+  );
+const info = shown ? infoOf(shown) : [];
+
+// The repositories the pane cannot show: nothing read, or only a remark.
+const unread = repos
+  .map((x, i) => ({ ...x, i }))
+  .filter((x) => !views.some((v) => v.repo === x.i))
+  .map((x) => ({ ...x, note: x.e?.files.find((f) => f.kind === "note")?.note ?? "" }));
+
+// What the reader's browser needs: never any text of the paper, only numbers.
+const data = {
+  fulltextId: textId,
+  doiUrl,
+  epmcUrl,
+  repos: repos.map((x) => ({ repo: x.r.repo, name: x.name, url: x.r.url, lot: lot2(x.r.lot), license: x.license })),
+  views: views.map((v) =>
+    v.block
+      ? { repo: v.repo, block: true, pairs: v.pairs }
+      : {
+          repo: v.repo,
+          block: false,
+          path: v.file!.path,
+          language: v.file!.language,
+          lines: v.file!.lines,
+          truncated: v.file!.truncated,
+          text: v.file!.text !== null,
+          source: v.file!.source_url,
+          pairs: v.pairs,
+        },
+  ),
+  pairs: pairs.map((p) => ({
+    pair: p.pair, paragraph: p.paragraph, view: p.view, start: p.start_line, end: p.end_line, source: p.source, label: p.label,
+  })),
+  initial,
+};
+const json = JSON.stringify(data).replace(/</g, "\\u003c");
+---
+<Base
+  title={`Code ↔ Paper: ${a.title}`}
+  description={`The paper “${a.title}” and the code published by its authors, side by side.`}
+  breadcrumb={[{ text: "Catalogue", href: "/" }, { text: `doi:${a.doi}`, href: record }, { text: "Code ↔ Paper" }]}
+>
+  <h1>{a.title}</h1>
+  <p class="summary">
+    Code&nbsp;↔&nbsp;Paper: the paper, loaded from Europe PMC by your browser, beside the code published by its authors.{" "}
+    <a href={record}>The record of this paper</a>.
+  </p>
+  {pairs.length > 0 ? (
+    <details id="legend" open={pairs.length <= 12}>
+      <summary>
+        {plural(pairs.length, "match", "matches")} between paragraphs and code, computed by the harvester
+        (method: {alignment!.method}). Click a highlighted paragraph or line to see its counterpart.
+      </summary>
+      <ul>
+        {pairs.map((p) => (
+          <li>
+            <a class={pairClass(p.pair)} href={`#pair-${p.pair}`} data-pair={p.pair}>
+              [{p.pair}] {p.label} ↔ {p.path} L{p.start_line}–{p.end_line}
+            </a>
+            {p.evidence.length > 0 && <> · evidence: {p.evidence.join(", ")}</>}
+            {typeof p.score === "number" && <> · score {p.score.toFixed(2)}</>}
+            {p.view < 0 && <> · <span class="warning">this file is not among the harvested files</span></>}
+          </li>
+        ))}
+      </ul>
+    </details>
+  ) : (
+    <p class="line">
+      Matches between the paragraphs of the paper and the lines of the code have not been computed for this paper
+      yet: both are shown side by side.
+    </p>
+  )}
+
+  <div class="compare" id="compare">
+    <section class="pane" id="paper-pane" aria-labelledby="paper-title" tabindex="0">
+      <header>
+        <h2 id="paper-title">Paper</h2>
+        <p>
+          Text loaded from Europe PMC (open access) — not stored by {SITE_NAME}. <a href={doiUrl}>doi.org</a> ·{" "}
+          <a href={epmcUrl}>Europe PMC</a>
+        </p>
+      </header>
+      <div id="paper">
+        <p id="paper-status" role="status">Loading the paper from Europe PMC…</p>
+        <noscript>
+          <p class="warning">
+            The paper is loaded by your browser, with JavaScript: read it at <a href={doiUrl}>doi.org</a> or on{" "}
+            <a href={epmcUrl}>Europe PMC</a>.
+          </p>
+        </noscript>
+      </div>
+    </section>
+
+    <section class="pane" id="code-pane" aria-labelledby="code-title" tabindex="0">
+      <header>
+        <h2 id="code-title">Authors' code</h2>
+        {views.length > 0 && (
+          <p>
+            <label for="file-select">File</label>{" "}
+            <select id="file-select">
+              {matched.length > 0 && (
+                <optgroup label="With matches">
+                  {matched.map((i) => <option value={i} selected={i === initial}>{option(i, multi || views[i].block)}</option>)}
+                </optgroup>
+              )}
+              {groups.map((g) =>
+                g.label ? (
+                  <optgroup label={g.label}>
+                    {g.views.map((i) => <option value={i} selected={i === initial}>{option(i, !multi && views[i].block)}</option>)}
+                  </optgroup>
+                ) : (
+                  g.views.map((i) => <option value={i} selected={i === initial}>{option(i, views[i].block)}</option>)
+                ),
+              )}
+            </select>
+          </p>
+        )}
+        <p id="file-info">
+          {views.length > 0
+            ? info.map((part) => (typeof part === "string" ? part : <a href={part.href}>{part.text}</a>))
+            : "No file of the authors' code could be read here."}
+        </p>
+      </header>
+      <div id="code">
+        <ol class="lines" id="lines" hidden={lines.length === 0}>
+          {lines.map((line, n0) => {
+            const ks = cover.get(n0 + 1);
+            const k = link.get(n0 + 1);
+            return (
+              <li class={ks ? pairClass(ks[0]) : undefined} data-pairs={ks ? ks.join(" ") : undefined}>{k ? <a href={`#pair-${k}`} data-pair={k} title={`Match ${k}: show the paragraph`}>{line}</a> : line}</li>
+            );
+          })}
+        </ol>
+        {views.map((v, i) => {
+          if (!v.block) return null;
+          const repo = repos[v.repo];
+          const note = v.files[0]?.note || repo.e?.files.find((f) => f.kind === "note")?.note ||
+            "The license of this repository does not allow republishing its files: read them at the source.";
+          const own = pairs.filter((p) => p.view === i);
+          return (
+            <section data-view={i} hidden={i !== initial}>
+              <h3><a class="code" href={repo.r.url}>{repo.name}</a></h3>
+              <p class="warning">{note}</p>
+              {own.length > 0 && (
+                <>
+                  <p>Matches in this repository, at the source:</p>
+                  <ul>
+                    {own.map((p) => (
+                      <li class={pairClass(p.pair)} data-pairs={p.pair}>
+                        [{p.pair}] <a href={p.source || repo.r.url}>{p.path} L{p.start_line}–{p.end_line}</a> ↔ {p.label}
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              )}
+              {v.files.length > 0 && (
+                <>
+                  <p>{plural(v.files.length, "file")}, at the source{repo.e?.commit ? `, commit ${repo.e.commit.slice(0, 7)}` : ""}:</p>
+                  <ul>
+                    {v.files.map((f) => (
+                      <li>
+                        <a class="code" href={f.source_url || repo.r.url}>{f.path}</a> — {f.language || "text"}
+                        {f.lines ? `, ${plural(f.lines, "line")}` : ""}
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              )}
+            </section>
+          );
+        })}
+        {unread.length > 0 && (
+          <p>
+            {views.length > 0 ? "Also cited as the authors' code, with no file read here: " : "Cited as the authors' code, with no file read here: "}
+            {unread.map((x, i) => (
+              <>{i > 0 && "; "}<a class="code" href={x.r.url}>{x.name}</a> ({STATES[x.r.state] ?? x.r.state}{x.note && `; ${x.note}`})</>
+            ))}.
+          </p>
+        )}
+      </div>
+    </section>
+  </div>
+
+  <script is:inline type="application/json" id="reader-data" set:html={json}></script>
+  <script>
+    import "../../../scripts/reader";
+  </script>
+</Base>

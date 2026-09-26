@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="340" viewBox="0 0 400 340" role="img" aria-labelledby="oscr-licenses-dark-t oscr-licenses-dark-d">
+<title id="oscr-licenses-dark-t">Licenses of the authors' repositories</title>
+<desc id="oscr-licenses-dark-d">55% of 483 repositories let their scripts' text be republished; the others stay a link and a commit. No license: 0 text republished, 145 link only; MIT: 122 text republished, 0 link only; Not determined: 0 text republished, 66 link only; CC-BY-4.0: 62 text republished, 0 link only; AGPL-3.0: 32 text republished, 0 link only; Apache-2.0: 20 text republished, 0 link only; BSD-3-Clause: 9 text republished, 0 link only; Other licenses: 20 text republished, 7 link only. Source: OSCR harvester database, 2026-09-26.</desc>
+<style>text{font-family:system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;fill:#ffffff}.title{font-size:15px;font-weight:600}.sub{font-size:12.5px;fill:#c3c2b7}.cat{font-size:12.5px}.muted{fill:#c3c2b7}.val{font-size:12px;font-variant-numeric:tabular-nums;font-feature-settings:'tnum'}.tick{font-size:11.5px;fill:#c3c2b7;font-variant-numeric:tabular-nums;font-feature-settings:'tnum'}.foot{font-size:11px;fill:#9e9d97}.kl{font-size:13px;fill:#c3c2b7}.kv{font-size:34px;font-weight:600;font-variant-numeric:tabular-nums;font-feature-settings:'tnum'}.ks{font-size:12px;fill:#c3c2b7;font-variant-numeric:tabular-nums;font-feature-settings:'tnum'}</style>
+<rect x="0.5" y="0.5" width="399" height="339" rx="10" fill="#0d1117" stroke="#30363d"/>
+<text x="20" y="34" class="title">Licenses of the authors' repositories</text>
+<text x="20" y="53" class="sub">55% of 483 repositories let their scripts' text be republished;</text>
+<text x="20" y="72" class="sub">the others stay a link and a commit</text>
+<rect x="20" y="85" width="10" height="10" rx="2" fill="#3987e5"/>
+<text x="35" y="94" class="sub">Text republished</text>
+<rect x="148.8" y="85" width="10" height="10" rx="2" fill="#d95926"/>
+<text x="163.8" y="94" class="sub">Link + commit only</text>
+<text x="107" y="122.6" class="cat" text-anchor="end">No license</text>
+<path d="M117,110.6H349.8Q353.8,110.6 353.8,114.6V121.6Q353.8,125.6 349.8,125.6H117Z" fill="#d95926"><title>No license: 145 repositories (0 text republished, 145 link + commit only)</title></path>
+<text x="359.8" y="122.1" class="val">145</text>
+<text x="107" y="146.9" class="cat" text-anchor="end">MIT</text>
+<path d="M117,134.9H312.3Q316.3,134.9 316.3,138.9V145.9Q316.3,149.9 312.3,149.9H117Z" fill="#3987e5"><title>MIT: 122 repositories (122 text republished, 0 link + commit only)</title></path>
+<text x="322.3" y="146.4" class="val">122</text>
+<text x="107" y="171.1" class="cat" text-anchor="end">Not determined</text>
+<path d="M117,159.1H220.8Q224.8,159.1 224.8,163.1V170.1Q224.8,174.1 220.8,174.1H117Z" fill="#d95926"><title>Not determined: 66 repositories (0 text republished, 66 link + commit only)</title></path>
+<text x="230.8" y="170.6" class="val">66</text>
+<text x="107" y="195.4" class="cat" text-anchor="end">CC-BY-4.0</text>
+<path d="M117,183.4H214.3Q218.3,183.4 218.3,187.4V194.4Q218.3,198.4 214.3,198.4H117Z" fill="#3987e5"><title>CC-BY-4.0: 62 repositories (62 text republished, 0 link + commit only)</title></path>
+<text x="224.3" y="194.9" class="val">62</text>
+<text x="107" y="219.6" class="cat" text-anchor="end">AGPL-3.0</text>
+<path d="M117,207.6H165.3Q169.3,207.6 169.3,211.6V218.6Q169.3,222.6 165.3,222.6H117Z" fill="#3987e5"><title>AGPL-3.0: 32 repositories (32 text republished, 0 link + commit only)</title></path>
+<text x="175.3" y="219.1" class="val">32</text>
+<text x="107" y="243.9" class="cat" text-anchor="end">Apache-2.0</text>
+<path d="M117,231.9H145.7Q149.7,231.9 149.7,235.9V242.9Q149.7,246.9 145.7,246.9H117Z" fill="#3987e5"><title>Apache-2.0: 20 repositories (20 text republished, 0 link + commit only)</title></path>
+<text x="155.7" y="243.4" class="val">20</text>
+<text x="107" y="268.1" class="cat" text-anchor="end">BSD-3-Clause</text>
+<path d="M117,256.1H127.7Q131.7,256.1 131.7,260.1V267.1Q131.7,271.1 127.7,271.1H117Z" fill="#3987e5"><title>BSD-3-Clause: 9 repositories (9 text republished, 0 link + commit only)</title></path>
+<text x="137.7" y="267.6" class="val">9</text>
+<text x="107" y="292.4" class="cat" text-anchor="end">Other licenses</text>
+<path d="M117,280.4H147.7V295.4H117Z" fill="#3987e5"><title>Other licenses: 27 repositories (20 text republished, 7 link + commit only)</title></path>
+<path d="M149.7,280.4H157.1Q161.1,280.4 161.1,284.4V291.4Q161.1,295.4 157.1,295.4H149.7Z" fill="#d95926"><title>Other licenses: 27 repositories (20 text republished, 7 link + commit only)</title></path>
+<text x="167.1" y="291.9" class="val">27</text>
+<path d="M116.5,106L116.5,300" stroke="#5b5a55" stroke-width="1" fill="none"/>
+<text x="20" y="326" class="foot">Source: OSCR harvester database, 2026-09-26</text>
+</svg>

@@ -1,73 +1,141 @@
-# L'architecture du projet, à 0 €
+# Architecture, at $0
 
-Les règles qui s'imposent à tout ce qui suit sont dans [CLAUDE.md](../CLAUDE.md) :
-- des DOI Zenodo seulement pour les cartes validées par un auteur ;
-- aucun service payant.
+The rules that govern everything below are in [CLAUDE.md](../CLAUDE.md):
+- Zenodo DOIs only for tracing maps validated by one of the paper's authors;
+- no paid service.
 
-## Les pièces
+## The pieces
 
-| pièce | où elle tourne | ce qu'elle fait | coût |
+| Piece | Where it runs | What it does | Cost |
 |---|---|---|---|
-| **Le ramasseur** (`scrapper veiller`) | le Mac Studio, en continu | lit les articles, trouve et vérifie le code, garde le texte des scripts dans la base privée (SQLite, WAL) | 0 € |
-| **L'interface locale** (`scrapper serveur`) | le Mac, http://127.0.0.1:8790 | le tableau de la base privée, pour toi seul | 0 € |
-| **Le catalogue de sortie** (`scrapper nuit`) | le Mac, à 4 h 17 | `donnees/publication/` en mode public, puis le jeu Hugging Face | 0 € |
-| **La plateforme** (`plateforme/`, Astro) | Cloudflare Pages | le site public, construit depuis le catalogue de sortie | 0 € |
-| **Les DOI des cartes** (`scrapper zenodo`) | Zenodo (CERN) | une carte validée par un auteur reçoit un DOI dans la communauté | 0 € |
+| **The harvester** (`oscr watch`) | the Mac Studio, continuously | reads the papers, finds and verifies the code, keeps the scripts' text in the private database (SQLite, WAL) | $0 |
+| **The alignment** (`oscr align`) | the Mac; the harvester also runs it once a day for the papers still without pairs | pairs the paper's paragraphs with lines of the authors' code (method `lexical-v1`) and stores the pairs in the `alignment` table | $0 |
+| **The local dashboard** (`oscr dashboard`) | the Mac, http://127.0.0.1:8790 | the table of the private database, for the owner only, read-only | $0 |
+| **The public catalogue** (`oscr nightly`) | the Mac, at 04:17 | `data/public/` in public mode, then the Hugging Face dataset, then the website | $0 |
+| **The website** (`website/`, Astro) | Cloudflare Pages | the public site, built from the public catalogue, with the Code ↔ Paper reader | $0 |
+| **The map DOIs** (`oscr zenodo`) | Zenodo (CERN) | a map validated by an author receives a DOI in the community | $0 |
 
 ```mermaid
 flowchart LR
-  EPMC[Europe PMC, Crossref, DataCite, forges] --> V[veille, Mac]
-  V --> B[(base privée SQLite)]
-  B --> I[interface locale :8790]
-  B --> N[nuit : catalogue de sortie]
-  N --> HF[Hugging Face, jeu privé]
-  N --> P[plateforme Astro → Cloudflare Pages]
-  P -. validation ORCID de l'auteur .-> B
-  B --> Z[Zenodo : DOI de la carte validée]
+  EPMC["Europe PMC, Crossref, DataCite, forges"] --> W["watch, on the Mac"]
+  W --> B[("private SQLite database")]
+  B <--> A["align: lexical-v1"]
+  B --> I["local dashboard, port 8790"]
+  B --> N["nightly: public catalogue"]
+  N --> HF["Hugging Face, private dataset"]
+  N --> P["website: Astro on Cloudflare Pages"]
+  P -. "planned: the author's ORCID validation" .-> B
+  B --> Z["Zenodo: DOI of the validated map"]
   Z --> P
 ```
 
-## La carte de traçage
+The database is in WAL mode: the harvester writes while the dashboard and the nightly job
+read, and none of them blocks the others. What leaves the Mac (`oscr_public.db`) is put back
+into a single file, with no excerpt of any paper.
 
-La carte (`carte.json`, voir `scrapper/invenio.py`) dit, pour un article :
-- où est son code : dépôt, commit, licence ;
-- ce qu'on y a trouvé : chemin et empreinte des fichiers ;
-- comment on l'a trouvé.
+## The Code ↔ Paper reader
 
-Elle ne contient ni le texte de l'article ni le code.
+A page of the website puts a paper and its authors' code side by side.
 
-Sa vie :
-1. **Proposée** par le ramasseur. Elle est visible sur la plateforme, sans DOI.
-2. **Validée** par un auteur, connecté avec son ORCID. La carte gardée est celle qu'il a vue ou corrigée.
-3. **Déposée** sur Zenodo, dans la communauté (`scrapper zenodo deposer`). Elle reçoit un DOI.
-   - Relations : `IsSupplementTo` vers l'article, `References` vers le dépôt du code, au commit validé.
-   - Créateurs : l'auteur (ORCID) et la plateforme.
-4. **Corrigée** plus tard : une nouvelle version, sous le même DOI de concept.
+- **Left, the paper.** Its full text is fetched from Europe PMC (open access, CORS allowed)
+  by the reader's browser, never by the site, and shown as plain text. The site never stores
+  or serves the text of a paper.
+- **Right, the code.** One view is prerendered at build time; the others are fetched on
+  demand from the lot of their repository (`/scripts/NN.json`). A script whose license does
+  not allow republication is not copied: the reader lists the file and links to it at the
+  source, at the verified commit.
+- **The pairs** come from `alignments/NN.json`, read at build time. A pair joins paragraph
+  number *i* (the index of a `<p>` among all the `<p>` of the JATS `<body>`, in document
+  order, which the browser computes the same way) and a line range of one file: the same
+  color on both sides. Clicking one side brings the other into view. The build keeps only the
+  known fields of a pair and drops any evidence term longer than 60 characters, so no
+  sentence of a paper can reach the site.
 
-La version 0.1 de la carte ne relie que l'article à ses dépôts. L'alignement passage de
-l'article ↔ fichier ou fonction (GROBID pour le texte, tree-sitter pour le code, un
-modèle local sur le Mac) viendra remplir son champ `alignements`.
+The website's name is not written in its pages: it comes from `SITE_NAME` (default `OSCR`)
+and `SITE_TAGLINE`, set in `website/src/config.ts` or at build time.
 
-## Ce qui reste à construire, dans l'ordre
+## The tracing map
 
-1. ~~Déployer le site~~ : fait le 26/09/2026, https://code-natif.pages.dev, remis à jour chaque nuit.
-2. **La validation par l'auteur.** ORCID permet la connexion gratuite (API publique,
-   portée `/authenticate`). Une Pages Function reçoit la validation et l'écrit dans
-   D1. Le Mac la relève, puis dépose la carte sur Zenodo.
-3. **La recherche** : D1 et son index plein texte (FTS5), interrogés par une Pages Function.
-4. **L'alignement code ↔ article**, calculé sur le Mac.
+The map (`tracing-map.json`, see `oscr/zenodo.py`) says, for a paper:
+- where its code is: repository, commit, license;
+- what was found there: the path and digest of each file;
+- how it was found;
+- which paragraphs match which lines (`alignments`).
 
-## Les limites gratuites qui comptent
+It contains neither the text of the paper nor the code.
 
-Chiffres de 2025, tirés de la documentation de Cloudflare, **à revérifier** avant de s'y fier.
+Its life:
+1. **Proposed** by the harvester. It is visible on the website, without a DOI.
+2. **Validated** by an author, signed in with their ORCID. The map kept is the one the
+   author saw, or corrected.
+3. **Deposited** on Zenodo, in the community (`oscr zenodo deposit`). It receives a DOI.
+   - Relations: `IsSupplementTo` the paper, `References` the code repository, at the
+     validated commit.
+   - Creators: the author (ORCID) and the platform.
+4. **Corrected** later: a new version, under the same concept DOI.
 
-| service | limite | conséquence |
+## What remains to build, in order
+
+1. ~~Deploy the website~~: done on 2026-09-26, https://oscr-2lj.pages.dev, rebuilt every night.
+2. **Author validation.** ORCID offers sign-in for free (public API, `/authenticate`
+   scope). A Pages Function receives the validation and writes it to D1. The Mac picks it
+   up, then deposits the map on Zenodo.
+3. **Search**, designed in the platform plan (below).
+4. ~~A first paper ↔ code alignment~~: `lexical-v1`, computed on the Mac. Next: GROBID for
+   the text, tree-sitter for the code, a local model on the Mac.
+
+## The free limits that matter
+
+Checked on 2026-09-26 in Cloudflare's documentation; the full table, with sources, is in
+[PLATFORM_PLAN.md](PLATFORM_PLAN.md) (§2 and Appendix A).
+
+| Service | Limit | Consequence |
 |---|---|---|
-| Pages | 20 000 fichiers par déploiement ; 25 Mio par fichier ; 500 constructions par mois | une page statique par article tient jusqu'à ~15 000 articles avec code. Au-delà : pages rendues à la demande (Functions + D1), ou regroupées |
-| Pages Functions (Workers) | 100 000 requêtes par jour ; 10 ms de CPU par requête | réservées aux actions : connexion, validation, recherche |
-| D1 | 5 Go ; 5 M lignes lues et 100 000 écrites par jour | le catalogue et les validations, pas le texte des scripts |
-| Zenodo | 50 Go par fiche ; 60 requêtes/min sans jeton | une carte fait quelques Ko |
+| Pages | 20,000 files per deployment; 25 MiB per file; 500 builds per month; static requests free and unlimited | one static page per paper holds up to ~15,000 papers with code. Beyond that: pages grouped, or rendered on demand |
+| Pages Functions (Workers) | 100,000 requests per day for all dynamic routes, cached or not; 10 ms of CPU per request; 64 MiB per Worker | kept for actions: sign-in, validation, search, API |
+| D1 | 500 MB per database, 10 databases; 5 M rows read and 100,000 written per day | the catalogue projection, the script index and the community, pushed as deltas |
+| Hugging Face | public datasets free ("best-effort"); byte ranges with CORS | the open data, and the script blocks |
+| Zenodo | 50 GB per record; 60 requests per minute without a token | a map weighs a few KB |
 
-**Le texte des scripts.** Aujourd'hui, 32 lots dans `public/scripts/`. À grande échelle, un lot
-dépassera 25 Mio : il faudra plus de lots, ou lire les scripts sur le jeu Hugging Face une fois
-celui-ci public.
+**The scripts' text.** Today, 32 lots in `public/scripts/`. Decided on 2026-09-26
+([SCRIPT_STORAGE.md](SCRIPT_STORAGE.md)): deduplicated, zstd, Parquet blocks on a public
+Hugging Face dataset, read by the reader in the browser with range requests (~78 KB per
+script), with an index in D1. Measured: 155 MB of text become 25.6 MB; ~3.3 GB at the full
+neuro stock, of which ~2.3 GB are public.
+
+## Planned platform
+
+The platform extension (a normalized D1 catalogue, accounts, search and a community) is
+specified in [PLATFORM_PLAN.md](PLATFORM_PLAN.md). Nothing in it is built yet: it awaits the
+owner's validation, and each phase will follow the rules of [CLAUDE.md](../CLAUDE.md).
+
+### Search engine
+
+Proposed: **SQLite FTS5 in D1**, not Pagefind. Details and figures are in
+[PLATFORM_PLAN.md](PLATFORM_PLAN.md) §7.
+
+**Why not Pagefind.** Pagefind writes one fragment file per indexed record, plus index
+chunks, filter files and a start-up file that lists every record.
+- A searchable catalogue of 50–90k papers needs ~50–90k files. The limit is 20,000 files per
+  Pages deployment, which Pagefind reaches at ~15k records.
+- Pagefind has no incremental index, so every rebuild re-uploads most chunks over a home
+  uplink (~0.9 MB/s, and ~25 KB/s for a background task).
+- Its maintainer calls ~180k pages "probably around the ceiling".
+- Everything indexed can be downloaded by anyone.
+
+**Why FTS5.**
+- **No files.** Daily updates are small row upserts from the Mac.
+- **Full query syntax:** boolean operators, phrases and column filters, with `bm25()` weights
+  per column.
+- **Indexed sort columns.**
+- **Facets:** counts are precomputed nightly for the unfiltered views and exact on filtered
+  queries.
+
+It lives in a D1 database of its own, because a D1 database that contains FTS5 tables
+cannot be exported.
+
+**The cost to watch.** Every search is a Worker request, even when cached, out of 100,000 a
+day for the whole site, plus D1 rows read (5 M a day; how FTS5 lookups count is not
+documented, so it will be measured). If that budget gets tight, the fallback costs no
+request: a static inverted index published as Parquet blocks on Hugging Face and read by byte
+ranges, like the scripts.

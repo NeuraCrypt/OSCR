@@ -1,0 +1,107 @@
+---
+import Base from "../layouts/Base.astro";
+import { SITE_TAGLINE } from "../config";
+import {
+  byDay, catalog, number, plural, readerUrl, recordUrl, shortName, status, withCode, type Article,
+} from "../lib/catalog";
+
+const f = catalog.figures;
+const days = byDay(withCode);
+const matched = withCode.filter((a) => (a.alignment?.pairs ?? 0) > 0).length;
+let num = 0;
+const readable = (a: Article) => a.code.reduce((n, d) => n + (d.files_read || 0), 0);
+const keys = (a: Article) => ({
+  title: a.title.toLowerCase(),
+  doi: a.doi.toLowerCase(),
+  journal: a.journal.toLowerCase(),
+  repo: a.code.map((d) => `${d.repo} ${d.url}`).join(" ").toLowerCase(),
+});
+---
+<Base breadcrumb={[{ text: "Catalogue" }]}>
+  <h1>{SITE_TAGLINE}</h1>
+  <p class="summary" id="summary">
+    {plural(withCode.length, "paper")} with their authors' code, out of {number(f.articles)} open-access
+    neuroscience papers read; {plural(f.repos_code, "code repository", "code repositories")},{" "}
+    {number(f.repos_code_alive)} of them verified alive.
+    {matched > 0 && ` Code\u00a0↔\u00a0Paper matches computed for ${plural(matched, "paper")}.`}
+  </p>
+
+  {days.map((d) => (
+    <>
+      <h2 class="day">{d.label} <small>({plural(d.articles.length, "paper")})</small></h2>
+      <dl class="listing">
+        {d.articles.map((a) => {
+          num += 1;
+          const s = status(a.status);
+          const n = readable(a);
+          const pairs = a.alignment?.pairs ?? 0;
+          const map = a.card?.doi ? a.card : null;
+          const k = keys(a);
+          return (
+            <>
+              <dt data-title={k.title} data-doi={k.doi} data-journal={k.journal} data-repo={k.repo}>
+                <span class="num">[{num}]</span>{" "}
+                <a class="reader-link" href={readerUrl(a)}>Code ↔ Paper</a>{" "}
+                <a href={recordUrl(a)}>doi:{a.doi}</a>{" "}
+                [<a href={`https://doi.org/${a.doi}`}>paper</a>, <a href={`${recordUrl(a)}#code`}>repository</a>]
+              </dt>
+              <dd>
+                <div class="title">{a.title}</div>
+                <div class="line"><span class="label">Journal:</span> {a.journal || "—"}</div>
+                <div class="line">
+                  <span class="label">Authors' code:</span>{" "}
+                  {a.code.map((r, i) => (
+                    <>{i > 0 && ", "}<a class="code" href={r.url}>{shortName(r)}</a> ({r.license || "no license"})</>
+                  ))}
+                </div>
+                <div class="line">
+                  <span class="label">Status:</span>{" "}
+                  {s.tone ? <span class={s.tone}>{s.label}</span> : s.label}
+                  {n > 0 && <>, {plural(n, "file")} readable</>}
+                  {pairs > 0 && <>, {plural(pairs, "match", "matches")}</>}
+                  {map && <>, map validated by an author (<a href={`https://doi.org/${map.doi}`}>DOI</a>)</>}
+                </div>
+              </dd>
+            </>
+          );
+        })}
+      </dl>
+    </>
+  ))}
+
+  <script>
+    // The masthead search arrives here through the address (?q=…&field=…): the
+    // papers that contain every word are kept, and the days that still have some.
+    const FIELDS = ["all", "title", "doi", "journal", "repo"];
+    const params = new URLSearchParams(location.search);
+    const q = (params.get("q") ?? "").trim();
+    const asked = params.get("field") ?? "all";
+    const field = FIELDS.includes(asked) ? asked : "all";
+    const form = document.querySelector<HTMLFormElement>(".masthead form");
+    if (form) {
+      (form.elements.namedItem("q") as HTMLInputElement).value = q;
+      (form.elements.namedItem("field") as HTMLSelectElement).value = field;
+    }
+    const papers = (n: number) => `${n.toLocaleString("en-GB")} paper${n === 1 ? "" : "s"}`;
+    if (q) {
+      const words = q.toLowerCase().split(/\s+/);
+      let found = 0;
+      for (const dt of document.querySelectorAll<HTMLElement>("dl.listing dt")) {
+        const d = dt.dataset;
+        const text = field === "all" ? `${d.title} ${d.doi} ${d.journal} ${d.repo}` : (d[field] ?? "");
+        const keep = words.every((w) => text.includes(w));
+        dt.hidden = !keep;
+        (dt.nextElementSibling as HTMLElement).hidden = !keep;
+        found += keep ? 1 : 0;
+      }
+      for (const list of document.querySelectorAll<HTMLElement>("dl.listing")) {
+        const left = list.querySelectorAll("dt:not([hidden])").length;
+        const day = list.previousElementSibling as HTMLElement;
+        list.hidden = day.hidden = left === 0;
+        day.querySelector("small")!.textContent = `(${papers(left)})`;
+      }
+      document.getElementById("summary")!.textContent =
+        `${papers(found)} for “${q}”.` + (found ? "" : " Try another word, or all fields.");
+    }
+  </script>
+</Base>

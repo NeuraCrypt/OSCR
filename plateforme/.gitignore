@@ -1,7 +1,0 @@
-node_modules/
-dist/
-.astro/
-.wrangler/
-# Copiés du catalogue de sortie à chaque construction (scripts/donnees.mjs)
-src/data/
-public/scripts/
