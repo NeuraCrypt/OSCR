@@ -1,0 +1,5 @@
+# Cloudflare Pages, offre gratuite. Déploiement : `npm run deployer`, après
+# `npx wrangler login` (une fois, dans le navigateur de l'utilisateur).
+name = "code-natif"
+pages_build_output_dir = "./dist"
+compatibility_date = "2026-09-01"

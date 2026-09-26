@@ -1,0 +1,133 @@
+---
+import Base from "../../layouts/Base.astro";
+import {
+  avecCode, entreeLot, ETATS, jourEnLettres, NIVEAUX, nomCourt, pluriel, slug, statut, type Article,
+} from "../../lib/catalogue";
+
+export function getStaticPaths() {
+  return avecCode.map((a) => ({ params: { slug: slug(a.id) }, props: { a } }));
+}
+
+const { a } = Astro.props as { a: Article };
+const s = statut(a.statut);
+const validee = a.carte?.doi ? a.carte : null;
+const licences = [...new Set(a.code.map((d) => d.licence || "sans licence"))];
+const lot = (n: number) => String(n).padStart(2, "0");
+---
+<Base
+  titre={`${a.titre} — Code natif`}
+  description={`Le code publié par les auteurs de « ${a.titre} ».`}
+  ariane={[{ texte: "Catalogue", href: "/" }, { texte: `doi:${a.doi}` }]}
+>
+  <div class="fiche">
+    <div class="corps">
+      <h1>{a.titre}</h1>
+      <div class="ligne"><span class="etiquette">Revue&nbsp;:</span> {a.revue || "—"}</div>
+      <div class="ligne"><span class="etiquette">Parution&nbsp;:</span> {jourEnLettres(a.date)}</div>
+      <div class="ligne"><span class="etiquette">DOI&nbsp;:</span> <a href={`https://doi.org/${a.doi}`}>{a.doi}</a></div>
+      <div class="ligne">
+        <span class="etiquette">Statut&nbsp;:</span> {s.classe ? <span class={s.classe}>{s.libelle}</span> : s.libelle}
+      </div>
+      {a.familles.length > 0 && (
+        <div class="ligne"><span class="etiquette">Méthodes&nbsp;:</span> {a.familles.join(", ")}</div>
+      )}
+
+      <h2>Carte de traçage</h2>
+      {validee ? (
+        <p>
+          Validée par {validee.validee_par.map((v, i) => (
+            <>{i > 0 && ", "}{v.nom} (<a href={`https://orcid.org/${v.orcid}`}>ORCID {v.orcid}</a>)</>
+          ))}. DOI de la carte : <a href={`https://doi.org/${validee.doi}`}>{validee.doi}</a>.
+        </p>
+      ) : (
+        <p>
+          Proposée automatiquement : ces liens ont été trouvés dans l'article et vérifiés à la source, sans
+          relecture humaine. Elle recevra un DOI Zenodo quand un de ses auteurs l'aura validée avec son ORCID.
+        </p>
+      )}
+
+      <h2 id="code">Code des auteurs</h2>
+      {a.code.map((d) => {
+        const e = entreeLot(d);
+        const fichiers = e?.fichiers ?? [];
+        const lisibles = fichiers.filter((f) => f.g !== "note");
+        const langages = Object.entries(d.langages).sort((x, y) => y[1] - x[1]);
+        return (
+          <section>
+            <h3><a class="code" href={d.url}>{nomCourt(d.norme)}</a></h3>
+            <div class="ligne"><span class="etiquette">Licence&nbsp;:</span> {d.licence || "aucune : les auteurs gardent tous leurs droits"}</div>
+            <div class="ligne"><span class="etiquette">État&nbsp;:</span> {d.etat === "vivant" ? <span class="ok">{ETATS.vivant}</span> : <span class="alerte">{ETATS[d.etat] ?? d.etat}</span>}</div>
+            <div class="ligne"><span class="etiquette">Preuve&nbsp;:</span> {NIVEAUX[d.niveau] ?? d.niveau}</div>
+            {d.commit && <div class="ligne"><span class="etiquette">Commit&nbsp;:</span> <code>{d.commit}</code></div>}
+            {langages.length > 0 && (
+              <div class="ligne"><span class="etiquette">Langages&nbsp;:</span> {langages.map(([l, n]) => `${l} (${n})`).join(", ")}</div>
+            )}
+            <div class="ligne"><span class="etiquette">Trouvé&nbsp;:</span> {d.ou}</div>
+            {lisibles.length > 0 && (
+              <details>
+                <summary>{pluriel(lisibles.length, "fichier")}{e && !e.publie && ", à lire à la source"}</summary>
+                {e && !e.publie && <p class="alerte">{lisibles[0]?.note}</p>}
+                <ul>
+                  {fichiers.map((f) =>
+                    f.g === "note" ? (
+                      <li>{f.note}</li>
+                    ) : (
+                      <li>
+                        <a class="code" href={f.src}>{f.c}</a> — {f.l || "texte"}{f.n ? `, ${pluriel(f.n, "ligne")}` : ""}
+                        {f.t && <> [<a href={f.src} data-lire data-depot={d.norme} data-lot={lot(d.lot)} data-chemin={f.c}>lire ici</a>]</>}
+                      </li>
+                    ),
+                  )}
+                </ul>
+              </details>
+            )}
+            <div class="ligne" data-titre-lecture={d.norme} hidden></div>
+            <pre data-lecture={d.norme} hidden></pre>
+          </section>
+        );
+      })}
+    </div>
+
+    <aside class="encart">
+      <h3>Accès</h3>
+      <ul>
+        <li><a href={`https://doi.org/${a.doi}`}>L'article, chez l'éditeur</a></li>
+        {a.code.map((d) => <li><a href={d.url}>{nomCourt(d.norme)}</a></li>)}
+      </ul>
+      <h3>Carte de traçage</h3>
+      <ul>
+        <li>{validee ? "validée par un auteur" : "proposée automatiquement"}</li>
+        <li>{validee ? <a href={`https://doi.org/${validee.doi}`}>son DOI</a> : "pas de DOI avant la validation d'un auteur"}</li>
+      </ul>
+      <h3>Licences</h3>
+      <ul>{licences.map((l) => <li>{l}</li>)}</ul>
+    </aside>
+  </div>
+</Base>
+
+<script>
+  // « lire ici » : le texte du fichier, pris dans le lot de son dépôt
+  // (public/scripts/NN.json), s'affiche sous la liste. Sans JavaScript, le
+  // lien mène au fichier chez sa source.
+  type Lot = Record<string, { fichiers: { c: string; t: string | null; note?: string }[] }>;
+  const lots = new Map<string, Promise<Lot>>();
+
+  document.addEventListener("click", async (ev) => {
+    const lien = (ev.target as HTMLElement).closest<HTMLAnchorElement>("a[data-lire]");
+    if (!lien) return;
+    ev.preventDefault();
+    const { depot = "", lot = "", chemin = "" } = lien.dataset;
+    if (!lots.has(lot)) lots.set(lot, fetch(`/scripts/${lot}.json`).then((r) => r.json()));
+    const f = (await lots.get(lot)!)[depot]?.fichiers.find((x) => x.c === chemin);
+    const titre = document.querySelector<HTMLElement>(`[data-titre-lecture="${CSS.escape(depot)}"]`)!;
+    const pre = document.querySelector<HTMLElement>(`pre[data-lecture="${CSS.escape(depot)}"]`)!;
+    const etiquette = Object.assign(document.createElement("span"), { className: "etiquette", textContent: "Lecture : " });
+    const code = Object.assign(document.createElement("code"), { textContent: chemin });
+    const source = Object.assign(document.createElement("a"), { href: lien.href, textContent: "à la source" });
+    titre.replaceChildren(etiquette, code, f?.note ? ` (${f.note}) — ` : " — ", source);
+    pre.textContent = f?.t ?? "";
+    titre.hidden = false;
+    pre.hidden = false;
+    titre.scrollIntoView({ block: "start" });
+  });
+</script>

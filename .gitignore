@@ -1,0 +1,25 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# donnees/ ne se versionne jamais :
+# - le plein texte des articles (cache, corpus d'essai) ne se publie pas ;
+# - la base de travail garde les phrases qui ont fait juger chaque lien : elle
+#   est PRIVÉE. En ligne, sa copie SANS extraits vit dans la Release « etat »,
+#   et site/bibliotheque_publique.db est publiée par Pages ;
+# - les étalons de mesure et leurs sorties se régénèrent.
+donnees/
+
+# Le tableau est régénéré à chaque passage et publié par GitHub Pages.
+site/
+
+# Les sorties générées ne se versionnent pas : le catalogue vit sur Hugging Face
+# et sur le site. Le motif « git scraping » (commiter bibliotheque/ et le miroir
+# scripts/ à chaque passage) n'est utile qu'au passage sur GitHub Actions, qui
+# est en sommeil (.github/workflows/tourner.yml) : c'est le Mac qui ramasse.
+bibliotheque/
+/scripts/
+
+# La configuration locale de l'app Claude (aperçu du site).
+.claude/
