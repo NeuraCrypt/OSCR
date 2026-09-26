@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  La PUBLICATION de la nuit (`scrapper nuit`), à 4 h 17 : le tableau
+  publiable dans donnees/publication, puis le catalogue sur le jeu Hugging
+  Face des réglages (SCRAPPER_HF_DATASET). Elle ne ramasse rien (c'est la
+  veille) et lit la base pendant que la veille écrit. Le jeton reste à sa
+  place standard, ~/.cache/huggingface/token.
+  Gabarit : outils/installer_mac.sh remplace @RACINE@ et @JOURNAUX@.
+
+  Si le Mac dort à 4 h 17, launchd la lance au réveil.
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>fr.scrapper.publier</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>@RACINE@/.venv/bin/python</string>
+    <string>-m</string>
+    <string>scrapper</string>
+    <string>nuit</string>
+  </array>
+  <key>WorkingDirectory</key>
+  <string>@RACINE@</string>
+
+  <key>StartCalendarInterval</key>
+  <dict>
+    <key>Hour</key>
+    <integer>4</integer>
+    <key>Minute</key>
+    <integer>17</integer>
+  </dict>
+
+  <key>ProcessType</key>
+  <string>Background</string>
+  <key>LowPriorityIO</key>
+  <true/>
+  <key>LowPriorityBackgroundIO</key>
+  <true/>
+  <key>Nice</key>
+  <integer>15</integer>
+
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>/opt/homebrew/bin:/usr/bin:/bin</string>
+    <key>PYTHONUNBUFFERED</key>
+    <string>1</string>
+  </dict>
+  <key>StandardOutPath</key>
+  <string>@JOURNAUX@/publication.log</string>
+  <key>StandardErrorPath</key>
+  <string>@JOURNAUX@/publication.log</string>
+</dict>
+</plist>

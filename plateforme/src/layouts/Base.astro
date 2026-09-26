@@ -1,0 +1,59 @@
+---
+// Le layout principal. science.css est la SEULE source de style du site, et
+// elle n'est importée qu'ici (voir CLAUDE.md).
+import "../styles/science.css";
+import { catalogue } from "../lib/catalogue";
+
+interface Props {
+  titre: string;
+  description?: string;
+  /** Le fil d'Ariane après « Code natif » ; le dernier élément n'a pas de lien. */
+  ariane?: { texte: string; href?: string }[];
+}
+const {
+  titre,
+  description = "Le code publié par les auteurs d'articles de neurosciences : trouvé dans l'article, vérifié à la source.",
+  ariane = [],
+} = Astro.props;
+---
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{titre}</title>
+    <meta name="description" content={description} />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  </head>
+  <body>
+    <header class="bandeau">
+      <div class="interieur">
+        <a class="site" href="/">Code natif</a>
+        <form action="/" method="get" role="search">
+          <input type="search" name="q" placeholder="Chercher dans le catalogue" aria-label="Chercher dans le catalogue" />
+          <select name="champ" aria-label="Où chercher">
+            <option value="tout">Tous les champs</option>
+            <option value="titre">Titre</option>
+            <option value="doi">DOI</option>
+            <option value="revue">Revue</option>
+            <option value="depot">Dépôt de code</option>
+          </select>
+          <button type="submit">Chercher</button>
+        </form>
+      </div>
+    </header>
+    <nav class="ariane" aria-label="Fil d'Ariane">
+      <a href="/">Code natif</a>{ariane.map((e) => (
+        <> › {e.href ? <a href={e.href}>{e.texte}</a> : e.texte}</>
+      ))}
+    </nav>
+    <main>
+      <slot />
+    </main>
+    <footer>
+      <a href="/">Catalogue</a>
+      <a href="/a-propos/">À propos</a>
+      Catalogue du {catalogue.genere_le}. Chaque script reste sous la licence de son dépôt : la source fait foi.
+    </footer>
+  </body>
+</html>

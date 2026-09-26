@@ -1,0 +1,646 @@
+<title>Bibliothèque du code natif</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+:root {
+  --fond: #F4F6F8; --surface: #FFFFFF; --encre: #18202C; --doux: #5A6475;
+  --filet: #DDE2E9; --filet-fort: #C5CCD6;
+  --accent: #5B3A8C; --accent-doux: #EEE8F7;
+  --ok: #2F7D4F; --ok-fond: #E3F2E8;
+  --signal: #8F6200; --signal-fond: #FBF0D9;
+  --mort: #B3261E; --mort-fond: #FBE4E2;
+  --demande: #44557A; --demande-fond: #E6EAF3;
+  --donnees: #1D7470; --donnees-fond: #DDF1EF;
+  --neutre: #6B7280; --neutre-fond: #ECEEF1;
+  --vide: #8A5A44; --vide-fond: #F4E8E1;
+  --code-fond: #F7F8FA; --voile: rgba(15, 18, 23, .35); --ombre: 0 12px 40px rgba(24, 32, 44, .18);
+  --hl-motcle: #7A3E9D; --hl-chaine: #2F7D4F; --hl-commentaire: #7B8494;
+  --hl-nombre: #9A5B00; --hl-titre: #1F5F8B; --hl-integre: #1D7470;
+  --sans: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
+  --etroit: "IBM Plex Sans Condensed", "Arial Narrow", "IBM Plex Sans", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --fond: #0F1217; --surface: #161B22; --encre: #E5E9F0; --doux: #98A2B3;
+    --filet: #262D38; --filet-fort: #343C49;
+    --accent: #B89BE8; --accent-doux: #2A2140;
+    --ok: #6CC58F; --ok-fond: #15291D;
+    --signal: #E3B14F; --signal-fond: #2E2412;
+    --mort: #F08A82; --mort-fond: #35181A;
+    --demande: #9EB0D6; --demande-fond: #1C2233;
+    --donnees: #62C3BC; --donnees-fond: #12292A;
+    --neutre: #9CA3AF; --neutre-fond: #20252D;
+    --vide: #D39B7F; --vide-fond: #2E2019;
+    --code-fond: #0B0E13; --voile: rgba(0, 0, 0, .55); --ombre: 0 12px 40px rgba(0, 0, 0, .5);
+    --hl-motcle: #C8A6F2; --hl-chaine: #7FD19B; --hl-commentaire: #7F8A9C;
+    --hl-nombre: #E8B75A; --hl-titre: #8EC2F0; --hl-integre: #6FD0C8;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --fond: #0F1217; --surface: #161B22; --encre: #E5E9F0; --doux: #98A2B3;
+  --filet: #262D38; --filet-fort: #343C49;
+  --accent: #B89BE8; --accent-doux: #2A2140;
+  --ok: #6CC58F; --ok-fond: #15291D;
+  --signal: #E3B14F; --signal-fond: #2E2412;
+  --mort: #F08A82; --mort-fond: #35181A;
+  --demande: #9EB0D6; --demande-fond: #1C2233;
+  --donnees: #62C3BC; --donnees-fond: #12292A;
+  --neutre: #9CA3AF; --neutre-fond: #20252D;
+  --vide: #D39B7F; --vide-fond: #2E2019;
+  --code-fond: #0B0E13; --voile: rgba(0, 0, 0, .55); --ombre: 0 12px 40px rgba(0, 0, 0, .5);
+  --hl-motcle: #C8A6F2; --hl-chaine: #7FD19B; --hl-commentaire: #7F8A9C;
+  --hl-nombre: #E8B75A; --hl-titre: #8EC2F0; --hl-integre: #6FD0C8;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--fond); color: var(--encre); font-family: var(--sans);
+  font-size: 15px; line-height: 1.5; margin: 0;
+}
+a { color: var(--accent); text-decoration-thickness: 1px; text-underline-offset: 2px; }
+a:hover { text-decoration-thickness: 2px; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 3px; }
+.page { max-width: 1240px; margin: 0 auto; padding-inline: clamp(16px, 4vw, 40px); padding-block: 28px 56px; display: grid; gap: 28px; }
+header { display: grid; gap: 10px; }
+.sur-titre { font-family: var(--etroit); font-size: 12.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--doux); }
+h1 { font-family: var(--etroit); font-weight: 600; font-size: clamp(28px, 4.2vw, 40px); line-height: 1.1; margin: 0; text-wrap: balance; }
+.chapeau { max-width: 68ch; color: var(--doux); margin: 0; }
+.meta { font-family: var(--mono); font-size: 12.5px; color: var(--doux); display: flex; flex-wrap: wrap; gap: 6px 18px; }
+.chiffres { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 1px; background: var(--filet); border: 1px solid var(--filet); border-radius: 10px; overflow: hidden; }
+.chiffre { background: var(--surface); padding: 16px 18px; display: grid; gap: 4px; align-content: start; }
+.chiffre .etiquette { font-family: var(--etroit); font-size: 13px; letter-spacing: .03em; color: var(--doux); }
+.chiffre .valeur { font-family: var(--etroit); font-weight: 600; font-size: 30px; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.chiffre .detail { font-size: 12.5px; color: var(--doux); font-variant-numeric: tabular-nums; }
+.repartition { display: grid; gap: 10px; }
+.barre { display: flex; height: 14px; border-radius: 4px; overflow: hidden; background: var(--neutre-fond); }
+.barre span { display: block; height: 100%; }
+.legende { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 13px; color: var(--doux); font-variant-numeric: tabular-nums; }
+.legende b { color: var(--encre); font-weight: 600; }
+.pastille-couleur { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
+.onglets { display: flex; gap: 4px; border-bottom: 1px solid var(--filet-fort); flex-wrap: wrap; }
+.onglets button { font-family: var(--etroit); font-size: 15px; font-weight: 500; background: none; border: 0; color: var(--doux); padding: 10px 14px; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; }
+.onglets button[aria-selected="true"] { color: var(--encre); border-bottom-color: var(--accent); }
+.onglets button .n { font-family: var(--mono); font-size: 12px; margin-left: 6px; color: var(--doux); }
+.outils { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; }
+.outils label { display: grid; gap: 4px; font-family: var(--etroit); font-size: 12.5px; letter-spacing: .03em; color: var(--doux); }
+.outils input, .outils select { font: inherit; font-size: 14px; color: var(--encre); background: var(--surface); border: 1px solid var(--filet-fort); border-radius: 6px; padding: 7px 10px; min-width: 0; }
+.outils input[type="search"] { width: min(340px, 100%); }
+.outils select { max-width: 230px; }
+.compte { margin-left: auto; font-size: 13px; color: var(--doux); font-variant-numeric: tabular-nums; }
+.defile { overflow-x: auto; border: 1px solid var(--filet); border-radius: 10px; background: var(--surface); }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th { font-family: var(--etroit); font-weight: 500; font-size: 12.5px; letter-spacing: .05em; text-transform: uppercase; color: var(--doux); text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--filet-fort); white-space: nowrap; background: var(--surface); }
+td { padding: 12px 14px; border-bottom: 1px solid var(--filet); vertical-align: top; }
+tr:last-child td { border-bottom: 0; }
+td.nombre, th.nombre { text-align: right; font-variant-numeric: tabular-nums; }
+.titre-article { font-weight: 500; line-height: 1.35; max-width: 52ch; }
+.sous { font-size: 12.5px; color: var(--doux); margin-top: 4px; display: flex; flex-wrap: wrap; gap: 2px 10px; }
+.mono { font-family: var(--mono); font-size: 12.5px; }
+.statut { display: inline-flex; align-items: center; gap: 6px; font-family: var(--etroit); font-size: 13px; font-weight: 500; padding: 3px 9px; border-radius: 999px; white-space: nowrap; }
+.statut::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.s-code_verifie { color: var(--ok); background: var(--ok-fond); }
+.s-code_trouve { color: var(--signal); background: var(--signal-fond); }
+.s-code_mort { color: var(--mort); background: var(--mort-fond); }
+.s-code_vide { color: var(--vide); background: var(--vide-fond); }
+.s-sur_demande { color: var(--demande); background: var(--demande-fond); }
+.s-donnees_seules { color: var(--donnees); background: var(--donnees-fond); }
+.s-aucun, .s-sans_texte, .s-a_scanner { color: var(--neutre); background: var(--neutre-fond); }
+.depots-article { display: grid; gap: 10px; min-width: 260px; }
+.depot-ligne { display: grid; gap: 3px; }
+.depot-nom { display: flex; align-items: center; gap: 10px; }
+.depot-nom a { font-family: var(--mono); font-size: 12.5px; max-width: 34ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.depot-meta { font-size: 12.5px; color: var(--doux); }
+.jauge { display: inline-flex; gap: 2px; flex: none; }
+.jauge i { width: 9px; height: 6px; border-radius: 1px; background: var(--filet-fort); }
+.jauge i.plein { background: var(--accent); }
+.puces { display: flex; flex-wrap: wrap; gap: 4px; max-width: 30ch; }
+.puce { font-family: var(--etroit); font-size: 12px; padding: 2px 7px; border-radius: 4px; background: var(--accent-doux); color: var(--encre); white-space: nowrap; }
+.vide { color: var(--doux); font-size: 13px; }
+.part { display: grid; grid-template-columns: minmax(80px, 160px) auto; gap: 10px; align-items: center; font-variant-numeric: tabular-nums; }
+.part .piste { height: 8px; border-radius: 3px; background: var(--neutre-fond); overflow: hidden; }
+.part .piste span { display: block; height: 100%; background: var(--ok); }
+.plus { display: flex; justify-content: center; padding: 14px; }
+.plus button, .bouton { font: inherit; font-family: var(--etroit); font-size: 14px; color: var(--accent); background: var(--surface); border: 1px solid var(--filet-fort); border-radius: 6px; padding: 7px 14px; cursor: pointer; }
+.lecture { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 24px; font-size: 14px; color: var(--doux); border-top: 1px solid var(--filet-fort); padding-top: 22px; }
+.lecture h2 { font-family: var(--etroit); font-weight: 600; font-size: 15px; letter-spacing: .02em; color: var(--encre); margin: 0 0 8px; }
+.lecture p, .lecture dl { margin: 0; max-width: 60ch; }
+.lecture dl { display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; align-items: baseline; }
+.lecture dt { display: flex; align-items: center; gap: 8px; color: var(--encre); font-family: var(--etroit); white-space: nowrap; }
+.bouton-scripts { font-family: var(--etroit); font-size: 13px; font-weight: 500; color: var(--accent); background: var(--accent-doux); border: 1px solid transparent; border-radius: 6px; padding: 4px 10px; cursor: pointer; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.bouton-scripts:hover { border-color: var(--accent); }
+.voile { position: fixed; inset: 0; background: var(--voile); z-index: 20; }
+.volet { position: fixed; top: 0; right: 0; bottom: 0; width: min(1180px, 100vw); background: var(--surface); box-shadow: var(--ombre); z-index: 21; display: grid; grid-template-rows: auto minmax(0, 1fr); padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+.volet-tete { display: flex; gap: 16px; align-items: start; justify-content: space-between; padding: 16px 20px 12px; border-bottom: 1px solid var(--filet); }
+.volet-tete h2 { font-family: var(--etroit); font-weight: 600; font-size: 20px; line-height: 1.25; margin: 2px 0 4px; text-wrap: balance; }
+.fermer { font: inherit; font-size: 22px; line-height: 1; color: var(--doux); background: var(--surface); border: 1px solid var(--filet-fort); border-radius: 6px; width: 36px; height: 36px; cursor: pointer; flex: none; }
+.volet-corps { display: grid; grid-template-columns: minmax(240px, 330px) minmax(0, 1fr); min-height: 0; }
+.volet-liste { border-right: 1px solid var(--filet); overflow: auto; padding: 12px; display: grid; gap: 8px; align-content: start; }
+.volet-liste input { font: inherit; font-size: 14px; color: var(--encre); background: var(--fond); border: 1px solid var(--filet-fort); border-radius: 6px; padding: 7px 10px; width: 100%; }
+.groupe-depot { display: grid; gap: 1px; }
+.groupe-depot h3 { font-family: var(--mono); font-size: 12px; font-weight: 500; margin: 8px 0 2px; overflow-wrap: anywhere; }
+.groupe-depot .licence { font-family: var(--etroit); font-size: 12px; color: var(--doux); margin-bottom: 4px; }
+.fichier { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: baseline; text-align: left; font: inherit; font-family: var(--mono); font-size: 12.5px; color: var(--encre); background: none; border: 0; border-radius: 5px; padding: 5px 8px; cursor: pointer; }
+.fichier:hover { background: var(--fond); }
+.fichier[aria-current="true"] { background: var(--accent-doux); }
+.fichier .chemin { overflow-wrap: anywhere; }
+.fichier .n { font-family: var(--etroit); font-size: 11.5px; color: var(--doux); white-space: nowrap; }
+.fichier.ferme .chemin { color: var(--doux); }
+.volet-lecture { display: grid; grid-template-rows: auto minmax(0, 1fr); min-width: 0; min-height: 0; }
+.lecture-tete { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; padding: 10px 16px; border-bottom: 1px solid var(--filet); font-size: 13px; color: var(--doux); min-height: 44px; }
+.lecture-tete .chemin { font-family: var(--mono); color: var(--encre); overflow-wrap: anywhere; }
+.lecture-code { overflow: auto; background: var(--code-fond); min-height: 0; }
+.lecture-code .avis { padding: 18px; color: var(--doux); max-width: 62ch; margin: 0; }
+.code { display: flex; min-width: max-content; font-family: var(--mono); font-size: 12.5px; line-height: 1.6; }
+.code pre { margin: 0; padding: 12px 16px; font: inherit; }
+.gouttiere { color: var(--doux); text-align: right; user-select: none; border-right: 1px solid var(--filet); opacity: .75; }
+.code code { white-space: pre; font: inherit; color: var(--encre); }
+.hljs-keyword, .hljs-selector-tag, .hljs-literal, .hljs-meta .hljs-keyword { color: var(--hl-motcle); }
+.hljs-string, .hljs-regexp, .hljs-attr { color: var(--hl-chaine); }
+.hljs-comment, .hljs-quote { color: var(--hl-commentaire); font-style: italic; }
+.hljs-number, .hljs-symbol { color: var(--hl-nombre); }
+.hljs-title, .hljs-section { color: var(--hl-titre); }
+.hljs-built_in, .hljs-type { color: var(--hl-integre); }
+.visuellement-cache { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+@media (max-width: 760px) {
+  .volet-corps { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(120px, 36vh) minmax(0, 1fr); }
+  .volet-liste { border-right: 0; border-bottom: 1px solid var(--filet); }
+}
+@media (max-width: 640px) {
+  .compte { margin-left: 0; width: 100%; }
+  .chiffre .valeur { font-size: 26px; }
+}
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
+</style>
+
+<div class="page">
+  <header>
+    <div class="sur-titre" id="source">Neurosciences · Europe PMC</div>
+    <h1>Bibliothèque du code natif</h1>
+    <p class="chapeau">Le code publié par les auteurs d'articles de neurosciences : trouvé dans le texte de l'article et dans ses métadonnées, puis vérifié à la source, dépôt par dépôt.</p>
+    <div class="meta" id="meta"></div>
+  </header>
+
+  <section class="chiffres" id="chiffres" aria-label="Chiffres de la bibliothèque"></section>
+
+  <section class="repartition" aria-label="Répartition des articles par statut">
+    <div class="barre" id="barre"></div>
+    <div class="legende" id="legende"></div>
+  </section>
+
+  <nav class="onglets" role="tablist" aria-label="Vues">
+    <button role="tab" id="t-articles" aria-controls="v-articles" aria-selected="true">Articles<span class="n" id="n-articles"></span></button>
+    <button role="tab" id="t-familles" aria-controls="v-familles" aria-selected="false">Par famille de méthodes<span class="n" id="n-familles"></span></button>
+    <button role="tab" id="t-depots" aria-controls="v-depots" aria-selected="false">Dépôts<span class="n" id="n-depots"></span></button>
+  </nav>
+
+  <section id="v-articles" role="tabpanel" aria-labelledby="t-articles" style="display:grid;gap:14px">
+    <div class="outils">
+      <label for="recherche">Chercher<input type="search" id="recherche" placeholder="titre, DOI, dépôt, revue…"></label>
+      <label for="f-statut">Statut<select id="f-statut"></select></label>
+      <label for="f-famille">Famille<select id="f-famille"></select></label>
+      <label for="f-hote">Hôte du code<select id="f-hote"></select></label>
+      <label for="f-licence">Licence<select id="f-licence">
+        <option value="">toutes</option>
+        <option value="oui">réutilisable</option>
+        <option value="non">sans licence</option>
+      </select></label>
+      <label for="tri">Ordre<select id="tri">
+        <option value="date-">plus récents</option>
+        <option value="date+">plus anciens</option>
+        <option value="statut">statut</option>
+      </select></label>
+      <span class="compte" id="compte-articles"></span>
+    </div>
+    <div class="defile">
+      <table>
+        <thead><tr><th>Article</th><th>Statut</th><th>Code des auteurs</th><th>Scripts</th><th>Familles de méthodes</th></tr></thead>
+        <tbody id="corps-articles"></tbody>
+      </table>
+      <div class="plus" id="plus-articles" hidden><button type="button" id="bouton-plus">Afficher 200 de plus</button></div>
+    </div>
+  </section>
+
+  <section id="v-familles" role="tabpanel" aria-labelledby="t-familles" hidden style="display:grid;gap:14px">
+    <p class="chapeau">Les familles sont celles du catalogue méthode → bibliothèque de stat_bruteforce : chaque méthode y porte le motif qui la reconnaît dans les Méthodes d'un article. Un article compte dans chaque famille qu'il nomme.</p>
+    <div class="defile">
+      <table>
+        <thead><tr><th>Famille</th><th class="nombre">Articles</th><th>Avec le code des auteurs</th><th>Méthodes les plus citées</th><th>Exemples de dépôts</th></tr></thead>
+        <tbody id="corps-familles"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="v-depots" role="tabpanel" aria-labelledby="t-depots" hidden style="display:grid;gap:14px">
+    <div class="outils">
+      <label for="recherche-depots">Chercher<input type="search" id="recherche-depots" placeholder="dépôt, langage, licence…"></label>
+      <span class="compte" id="compte-depots"></span>
+    </div>
+    <div class="defile">
+      <table>
+        <thead><tr><th>Dépôt</th><th>État</th><th>Licence</th><th class="nombre">Scripts</th><th>Langages</th><th>Dernier commit</th><th>Archive</th><th class="nombre">Articles</th></tr></thead>
+        <tbody id="corps-depots"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <footer class="lecture">
+    <div>
+      <h2>Niveaux de preuve</h2>
+      <dl>
+        <dt><span class="jauge" aria-hidden="true"><i class="plein"></i><i></i><i></i><i></i></span>trouvé</dt><dd>L'article cite le lien.</dd>
+        <dt><span class="jauge" aria-hidden="true"><i class="plein"></i><i class="plein"></i><i></i><i></i></span>vivant</dt><dd>Le lien répond aujourd'hui.</dd>
+        <dt><span class="jauge" aria-hidden="true"><i class="plein"></i><i class="plein"></i><i class="plein"></i><i></i></span>inventorié</dt><dd>Fichiers listés, scripts comptés, commit relevé.</dd>
+        <dt><span class="jauge" aria-hidden="true"><i class="plein"></i><i class="plein"></i><i class="plein"></i><i class="plein"></i></span>importé</dt><dd>Une copie est gardée, avec son empreinte. Seulement si la licence le permet.</dd>
+      </dl>
+    </div>
+    <div>
+      <h2>Comment un lien devient « code des auteurs »</h2>
+      <p>Chaque lien est jugé sur la phrase et la section qui le portent : une section « Code availability », une ligne « This paper » du tableau des ressources, une référence signée par les auteurs de l'article. Un lien vers une boîte à outils publique (MNE, EEGLAB, FieldTrip…) ou vers un jeu de données est classé à part. La vérification peut corriger le texte : un dépôt de « données » qui contient des dizaines de scripts porte du code.</p>
+    </div>
+    <div>
+      <h2>Ce qui n'est pas publié</h2>
+      <p>Ni le texte des articles, ni leurs PDF : un lien DOI sortant, rien d'autre. Un dépôt sans licence reste un lien et un commit, jamais une copie.</p>
+    </div>
+  </footer>
+</div>
+
+<div class="voile" id="voile" hidden></div>
+<aside class="volet" id="volet" role="dialog" aria-modal="true" aria-labelledby="volet-titre" hidden>
+  <header class="volet-tete">
+    <div>
+      <div class="sur-titre" id="volet-sur">Scripts publiés par les auteurs</div>
+      <h2 id="volet-titre"></h2>
+      <div class="sous" id="volet-sous"></div>
+    </div>
+    <button type="button" class="fermer" id="volet-fermer" aria-label="Fermer le volet">×</button>
+  </header>
+  <div class="volet-corps">
+    <nav class="volet-liste" aria-label="Fichiers">
+      <label for="filtre-scripts" class="visuellement-cache">Filtrer les fichiers</label>
+      <input type="search" id="filtre-scripts" placeholder="filtrer : .py, preprocessing…">
+      <div id="liste-scripts"></div>
+    </nav>
+    <section class="volet-lecture" aria-label="Lecture">
+      <div class="lecture-tete" id="lecture-tete"></div>
+      <div class="lecture-code" id="lecture-code"></div>
+    </section>
+  </div>
+</aside>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/matlab.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/r.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/julia.min.js"></script>
+<script type="application/json" id="donnees">/*__DONNEES__*/</script>
+<script>
+(function () {
+  "use strict";
+  var D = JSON.parse(document.getElementById("donnees").textContent);
+  var STATUTS = {
+    code_verifie: ["Code vérifié", "var(--ok)"],
+    code_trouve: ["Code signalé", "var(--signal)"],
+    code_vide: ["Dépôt sans script", "var(--vide)"],
+    code_mort: ["Lien mort", "var(--mort)"],
+    sur_demande: ["Sur demande", "var(--demande)"],
+    donnees_seules: ["Données seules", "var(--donnees)"],
+    aucun: ["Aucun code", "var(--neutre)"],
+    sans_texte: ["Texte fermé", "var(--filet-fort)"],
+    a_scanner: ["À lire", "var(--filet)"]
+  };
+  var ORDRE = ["code_verifie", "code_trouve", "code_vide", "code_mort", "sur_demande", "donnees_seules", "aucun", "sans_texte", "a_scanner"];
+  var NIVEAUX = ["trouve", "vivant", "inventorie", "importe"];
+  var NOMS_NIVEAUX = {trouve: "trouvé", vivant: "vivant", inventorie: "inventorié", importe: "importé"};
+
+  function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return {"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"}[c]; }); }
+  function nf(n) { return (n || 0).toLocaleString("fr-FR"); }
+  function pc(n, t) { return t ? Math.round(100 * n / t) + " %" : "—"; }
+  function $(id) { return document.getElementById(id); }
+
+  // ─── en-tête et chiffres ──────────────────────────────────────────────
+  var C = D.chiffres;
+  $("source").textContent = "Neurosciences · " + (D.perimetre.sources || "Europe PMC");
+  // Servie par un vrai hébergement (GitHub Pages, un Space statique), la page a
+  // ses exports à côté d'elle : on les propose, avec la base en SQL dans le
+  // navigateur (Datasette Lite). Ailleurs, les liens mèneraient nulle part.
+  var heberge = location.protocol.indexOf("http") === 0 && !/claude\.ai|claudeusercontent|anthropic/.test(location.hostname);
+  var exports = "";
+  if (heberge) {
+    var base = new URL("bibliotheque_publique.db", location.href).href;
+    exports = 'exports : <a href="articles.csv">articles.csv</a> · <a href="depots.csv">depots.csv</a> · ' +
+      '<a href="donnees.json">donnees.json</a> · <a href="https://lite.datasette.io/?url=' + encodeURIComponent(base) +
+      '" target="_blank" rel="noopener">la base en SQL (Datasette Lite)</a>';
+  }
+  $("meta").innerHTML = [
+    "mis à jour le " + esc(D.genere_le),
+    D.perimetre.debut ? "articles publiés du " + esc(D.perimetre.debut) + " au " + esc(D.perimetre.fin) : "",
+    D.perimetre.requete ? "périmètre : " + esc(D.perimetre.requete) : "",
+    exports
+  ].filter(Boolean).map(function (x) { return "<span>" + x + "</span>"; }).join("");
+  var tuiles = [
+    ["Articles lus", nf(C.articles), C.plein_texte + " avec plein texte"],
+    ["Avec le code des auteurs", nf(C.avec_code), pc(C.avec_code, C.articles) + " des articles lus"],
+    ["Code vérifié à la source", nf(C.code_verifie), nf(C.depots_code_vivants) + " dépôts vivants, " + nf(C.scripts) + " scripts"],
+    ["Code « sur demande »", nf(C.sur_demande), pc(C.sur_demande, C.articles) + " des articles lus"],
+    ["Liens de code morts", nf(C.depots_code_morts), nf(C.depots_archives) + " dépôts archivés chez Software Heritage"]
+  ];
+  $("chiffres").innerHTML = tuiles.map(function (t) {
+    return '<div class="chiffre"><span class="etiquette">' + t[0] + '</span><span class="valeur">' + t[1] + '</span><span class="detail">' + esc(t[2]) + "</span></div>";
+  }).join("");
+
+  var total = C.articles || 1;
+  $("barre").innerHTML = ORDRE.filter(function (s) { return C.statuts[s]; }).map(function (s) {
+    return '<span style="width:' + (100 * C.statuts[s] / total) + "%;background:" + STATUTS[s][1] + '" title="' + STATUTS[s][0] + " : " + C.statuts[s] + '"></span>';
+  }).join("");
+  $("legende").innerHTML = ORDRE.filter(function (s) { return C.statuts[s]; }).map(function (s) {
+    return '<span><span class="pastille-couleur" style="background:' + STATUTS[s][1] + '"></span>' + STATUTS[s][0] + " <b>" + nf(C.statuts[s]) + "</b> · " + pc(C.statuts[s], total) + "</span>";
+  }).join("");
+
+  // ─── onglets ──────────────────────────────────────────────────────────
+  var vues = ["articles", "familles", "depots"];
+  function montrer(v) {
+    vues.forEach(function (x) {
+      $("t-" + x).setAttribute("aria-selected", x === v ? "true" : "false");
+      $("v-" + x).hidden = x !== v;
+    });
+    try { history.replaceState(null, "", "#" + v); } catch (e) {}
+  }
+  vues.forEach(function (x) { $("t-" + x).addEventListener("click", function () { montrer(x); }); });
+  $("n-articles").textContent = nf(D.articles.length);
+  $("n-familles").textContent = nf(D.familles.length);
+  $("n-depots").textContent = nf(D.depots.length);
+  var h = (location.hash || "").slice(1);
+  if (vues.indexOf(h) >= 0) montrer(h);
+
+  // ─── vue « Articles » ─────────────────────────────────────────────────
+  function options(id, valeurs, tout) {
+    $(id).innerHTML = '<option value="">' + tout + "</option>" + valeurs.map(function (v) {
+      return '<option value="' + esc(v[0]) + '">' + esc(v[1]) + "</option>";
+    }).join("");
+  }
+  options("f-statut", ORDRE.filter(function (s) { return C.statuts[s]; }).map(function (s) { return [s, STATUTS[s][0] + " (" + C.statuts[s] + ")"]; }), "tous");
+  options("f-famille", D.familles.map(function (f) { return [f.famille, f.famille + " (" + f.articles + ")"]; }), "toutes");
+  var hotes = {};
+  D.articles.forEach(function (a) { a.code.forEach(function (c) { hotes[c.hote] = (hotes[c.hote] || 0) + 1; }); });
+  options("f-hote", Object.keys(hotes).sort(function (x, y) { return hotes[y] - hotes[x]; }).map(function (k) { return [k, k + " (" + hotes[k] + ")"]; }), "tous");
+
+  function jauge(niveau) {
+    var i = NIVEAUX.indexOf(niveau);
+    var html = "";
+    for (var k = 0; k < 4; k++) html += "<i" + (k <= i ? ' class="plein"' : "") + "></i>";
+    return '<span class="jauge" role="img" aria-label="Niveau de preuve : ' + (NOMS_NIVEAUX[niveau] || niveau) + '" title="' + (NOMS_NIVEAUX[niveau] || niveau) + '">' + html + "</span>";
+  }
+  function metaDepot(c) {
+    var m = [];
+    if (c.etat === "mort") m.push("le lien ne répond plus");
+    else if (c.etat === "inaccessible") m.push("inaccessible (privé ou panne)");
+    else if (c.etat === "a_verifier") m.push("pas encore vérifié");
+    if (c.licence) m.push(c.licence); else if (c.etat === "vivant" && c.inventorie) m.push("sans licence");
+    if (c.scripts != null) m.push(nf(c.scripts) + " script" + (c.scripts > 1 ? "s" : ""));
+    var l = Object.keys(c.langages || {}).slice(0, 3).map(function (k) { return k + " " + c.langages[k]; });
+    if (l.length) m.push(l.join(", "));
+    if (c.type) m.push(c.type);
+    if (c.swh) m.push("archivé");
+    m.push("vu dans : " + c.ou);
+    return m.join(" · ");
+  }
+  function ligneArticle(a) {
+    var titre = a.doi ? '<a href="https://doi.org/' + esc(a.doi) + '" target="_blank" rel="noopener">' + esc(a.titre || a.doi) + "</a>" : esc(a.titre || a.id);
+    var sous = [esc(a.revue), esc(a.date)];
+    if (a.doi) sous.push('<span class="mono">' + esc(a.doi) + "</span>");
+    var code = a.code.length ? '<div class="depots-article">' + a.code.map(function (c) {
+      return '<div class="depot-ligne"><div class="depot-nom">' + jauge(c.niveau) + '<a href="' + esc(c.url) + '" target="_blank" rel="noopener" title="' + esc(c.norme) + '">' + esc(c.norme) + '</a></div><div class="depot-meta">' + esc(metaDepot(c)) + "</div></div>";
+    }).join("") + "</div>" : '<span class="vide">' + (a.statut === "sur_demande" ? "« disponible sur demande »" : a.donnees ? a.donnees + " lien" + (a.donnees > 1 ? "s" : "") + " de données" : "—") + "</span>";
+    var fams = a.familles.slice(0, 3).map(function (f) { return '<span class="puce">' + esc(f) + "</span>"; }).join("");
+    if (a.familles.length > 3) fams += '<span class="puce" title="' + esc(a.familles.slice(3).join(", ")) + '">+' + (a.familles.length - 3) + "</span>";
+    var lisibles = a.code.reduce(function (t, c) { return t + (c.lus || 0); }, 0);
+    var scripts = lisibles ? '<button type="button" class="bouton-scripts" data-article="' + esc(a.id) + '">' + nf(lisibles) + " fichier" + (lisibles > 1 ? "s" : "") + " ›</button>"
+      : (a.code.length ? '<span class="vide">à la source</span>' : '<span class="vide">—</span>');
+    return "<tr><td><div class=\"titre-article\">" + titre + '</div><div class="sous">' + sous.filter(Boolean).map(function (s) { return "<span>" + s + "</span>"; }).join("") + '</div></td><td><span class="statut s-' + a.statut + '">' + (STATUTS[a.statut] || [a.statut])[0] + "</span></td><td>" + code + "</td><td>" + scripts + '</td><td><div class="puces">' + (fams || '<span class="vide">—</span>') + "</div></td></tr>";
+  }
+  var affiches = 200, courants = [];
+  function filtrer() {
+    var q = $("recherche").value.trim().toLowerCase();
+    var fs = $("f-statut").value, ff = $("f-famille").value, fh = $("f-hote").value, fl = $("f-licence").value, tri = $("tri").value;
+    courants = D.articles.filter(function (a) {
+      if (fs && a.statut !== fs) return false;
+      if (ff && a.familles.indexOf(ff) < 0) return false;
+      if (fh && !a.code.some(function (c) { return c.hote === fh; })) return false;
+      if (fl === "oui" && !a.code.some(function (c) { return c.redistribuable === "oui"; })) return false;
+      if (fl === "non" && !a.code.some(function (c) { return c.etat === "vivant" && c.inventorie && !c.licence; })) return false;
+      if (q && (a.titre + " " + a.doi + " " + a.revue + " " + a.code.map(function (c) { return c.norme; }).join(" ")).toLowerCase().indexOf(q) < 0) return false;
+      return true;
+    });
+    courants.sort(function (x, y) {
+      if (tri === "statut") return ORDRE.indexOf(x.statut) - ORDRE.indexOf(y.statut) || (y.date > x.date ? 1 : -1);
+      if (tri === "date+") return x.date > y.date ? 1 : x.date < y.date ? -1 : 0;
+      return x.date < y.date ? 1 : x.date > y.date ? -1 : 0;
+    });
+    affiches = 200;
+    rendre();
+  }
+  function rendre() {
+    $("corps-articles").innerHTML = courants.slice(0, affiches).map(ligneArticle).join("") ||
+      '<tr><td colspan="5" class="vide">Aucun article ne correspond à ces filtres.</td></tr>';
+    $("compte-articles").textContent = nf(courants.length) + " article" + (courants.length > 1 ? "s" : "") + " affiché" + (courants.length > 1 ? "s" : "");
+    $("plus-articles").hidden = courants.length <= affiches;
+  }
+  $("bouton-plus").addEventListener("click", function () { affiches += 200; rendre(); });
+  var attente;
+  $("recherche").addEventListener("input", function () { clearTimeout(attente); attente = setTimeout(filtrer, 150); });
+  ["f-statut", "f-famille", "f-hote", "f-licence", "tri"].forEach(function (id) { $(id).addEventListener("change", filtrer); });
+  filtrer();
+
+  // ─── vue « Par famille » ──────────────────────────────────────────────
+  $("corps-familles").innerHTML = D.familles.map(function (f) {
+    var part = f.articles ? 100 * f.avec_code / f.articles : 0;
+    return "<tr><td><b>" + esc(f.famille) + '</b><div class="sous">' + nf(f.methodes_catalogue) + " méthodes au catalogue</div></td>" +
+      '<td class="nombre">' + nf(f.articles) + "</td>" +
+      '<td><div class="part"><div class="piste"><span style="width:' + part + '%"></span></div><span>' + nf(f.avec_code) + " · " + Math.round(part) + " %</span></div></td>" +
+      "<td>" + (f.methodes.length ? '<div class="puces">' + f.methodes.map(function (m) { return '<span class="puce">' + esc(m[0]) + " " + m[1] + "</span>"; }).join("") + "</div>" : '<span class="vide">—</span>') + "</td>" +
+      "<td>" + (f.exemples.length ? '<div class="depots-article">' + f.exemples.map(function (e) { return '<div class="depot-nom"><a href="' + esc(e.url) + '" target="_blank" rel="noopener" title="' + esc(e.norme) + '">' + esc(e.norme) + "</a></div>"; }).join("") + "</div>" : '<span class="vide">—</span>') + "</td></tr>";
+  }).join("") || '<tr><td colspan="5" class="vide">Aucune famille reconnue pour l\'instant.</td></tr>';
+
+  // ─── vue « Dépôts » ───────────────────────────────────────────────────
+  var ETATS = {vivant: ["vivant", "s-code_verifie"], mort: ["mort", "s-code_mort"], inaccessible: ["inaccessible", "s-code_trouve"], a_verifier: ["à vérifier", "s-aucun"], non_verifiable: ["non vérifiable", "s-aucun"]};
+  function ligneDepot(d) {
+    var e = ETATS[d.etat] || [d.etat, "s-aucun"];
+    var lang = Object.keys(d.langages || {}).slice(0, 3).map(function (k) { return k + " " + d.langages[k]; }).join(", ");
+    return '<tr><td><div class="depot-nom">' + jauge(d.niveau) + '<a href="' + esc(d.url) + '" target="_blank" rel="noopener" title="' + esc(d.norme) + '">' + esc(d.norme) + "</a></div>" + (d.type ? '<div class="sous">' + esc(d.type) + "</div>" : "") + "</td>" +
+      '<td><span class="statut ' + e[1] + '">' + e[0] + "</span></td>" +
+      "<td>" + (d.licence ? esc(d.licence) : (d.etat === "vivant" && d.inventorie ? '<span class="vide">aucune</span>' : '<span class="vide">—</span>')) + "</td>" +
+      '<td class="nombre">' + (d.lus ? '<button type="button" class="bouton-scripts" data-depot="' + esc(d.norme) + '">' + (d.scripts == null ? nf(d.lus) : nf(d.scripts)) + " ›</button>" : (d.scripts == null ? "—" : nf(d.scripts))) + "</td>" +
+      "<td>" + (lang ? esc(lang) : '<span class="vide">—</span>') + "</td>" +
+      '<td class="mono">' + (d.commit ? esc(d.commit.slice(0, 10)) + (d.date_commit ? " · " + esc(d.date_commit.slice(0, 10)) : "") : "—") + "</td>" +
+      "<td>" + (d.swh === 1 ? "Software Heritage" : d.swh === 0 ? '<span class="vide">non archivé</span>' : '<span class="vide">—</span>') + "</td>" +
+      '<td class="nombre">' + nf(d.articles) + "</td></tr>";
+  }
+  function filtrerDepots() {
+    var q = $("recherche-depots").value.trim().toLowerCase();
+    var l = D.depots.filter(function (d) {
+      return !q || (d.norme + " " + d.licence + " " + Object.keys(d.langages || {}).join(" ") + " " + d.type).toLowerCase().indexOf(q) >= 0;
+    });
+    $("corps-depots").innerHTML = l.map(ligneDepot).join("") || '<tr><td colspan="8" class="vide">Aucun dépôt ne correspond.</td></tr>';
+    $("compte-depots").textContent = nf(l.length) + " dépôt" + (l.length > 1 ? "s" : "");
+  }
+  $("recherche-depots").addEventListener("input", function () { clearTimeout(attente); attente = setTimeout(filtrerDepots, 150); });
+  filtrerDepots();
+
+  // ─── le volet des scripts ─────────────────────────────────────────────
+  // Le texte des scripts vit dans scripts/NN.json, un lot par groupe de
+  // dépôts, chargé seulement quand on ouvre le volet.
+  var LANGAGES = {"Python": "python", "Jupyter": "python", "MATLAB": "matlab", "R": "r", "Julia": "julia",
+    "C": "c", "C++": "cpp", "C/C++": "cpp", "CUDA": "cpp", "Shell": "bash", "JavaScript": "javascript",
+    "TypeScript": "typescript", "Java": "java", "Go": "go", "Rust": "rust", "Perl": "perl",
+    "Scala": "scala", "Quarto": "markdown", "Texte": "markdown", "Licence": "plaintext"};
+  var lots = {}, charges = [], declencheur = null;
+  var parArticle = {}, parDepot = {};
+  D.articles.forEach(function (a) { parArticle[a.id] = a; });
+  D.depots.forEach(function (d) { parDepot[d.norme] = d; });
+
+  function chargerLot(n) {
+    var cle = String(n).padStart(2, "0");
+    if (!lots[cle]) {
+      lots[cle] = fetch("scripts/" + cle + ".json").then(function (r) {
+        if (!r.ok) throw new Error("HTTP " + r.status);
+        return r.json();
+      });
+    }
+    return lots[cle];
+  }
+  function ouvrirVolet(titre, sous, depots) {
+    declencheur = document.activeElement;
+    $("volet-titre").textContent = titre;
+    $("volet-sous").innerHTML = sous;
+    $("filtre-scripts").value = "";
+    $("liste-scripts").innerHTML = '<p class="vide">Chargement des scripts…</p>';
+    $("lecture-tete").innerHTML = "";
+    $("lecture-code").innerHTML = '<p class="avis">Choisissez un fichier dans la liste.</p>';
+    $("voile").hidden = false;
+    $("volet").hidden = false;
+    document.body.style.overflow = "hidden";
+    $("volet-fermer").focus();
+    Promise.all(depots.map(function (d) {
+      return chargerLot(d.lot).then(function (lot) { return lot[d.norme] || null; }, function () { return null; });
+    })).then(function (res) { afficherListe(res.filter(Boolean)); });
+  }
+  function fermerVolet() {
+    $("volet").hidden = true;
+    $("voile").hidden = true;
+    document.body.style.overflow = "";
+    if (declencheur && declencheur.focus) declencheur.focus();
+  }
+  function afficherListe(depots) {
+    charges = depots;
+    if (!depots.length) {
+      $("liste-scripts").innerHTML = '<p class="vide">' + (location.protocol === "file:"
+        ? "Les scripts se chargent depuis le dossier scripts/ : ouvrez cette page par un serveur (python3 -m http.server dans site/) ou sur son hébergement."
+        : "Aucun script lisible pour ce code.") + "</p>";
+      return;
+    }
+    var html = "";
+    depots.forEach(function (d, i) {
+      html += '<div class="groupe-depot"><h3>' + esc(d.depot) + '</h3><div class="licence">' +
+        (d.licence ? "Licence " + esc(d.licence) : "Aucune licence déclarée") +
+        (d.version ? " · commit " + esc(d.version.slice(0, 10)) : "") +
+        (d.publie ? "" : " · à lire à la source") + "</div>";
+      d.fichiers.forEach(function (f, j) {
+        if (f.g === "note") { html += '<p class="vide">' + esc(f.note) + "</p>"; return; }
+        html += '<button type="button" class="fichier' + (f.t == null ? " ferme" : "") + '" data-i="' + i + '" data-j="' + j +
+          '" data-chemin="' + esc(f.c.toLowerCase()) + '"><span class="chemin">' + esc(f.c) + '</span><span class="n">' +
+          (f.n != null ? nf(f.n) + " l." : esc(f.l || "")) + "</span></button>";
+      });
+      html += "</div>";
+    });
+    $("liste-scripts").innerHTML = html;
+    // On ouvre d'emblée le premier SCRIPT lisible (pas le README).
+    var premier = null;
+    depots.some(function (d, i) {
+      return d.fichiers.some(function (f, j) {
+        if (f.g === "script" && f.t != null) { premier = [i, j]; return true; }
+        return false;
+      });
+    });
+    if (premier) lireFichier(premier[0], premier[1]);
+  }
+  function lireFichier(i, j) {
+    var d = charges[i], f = d.fichiers[j];
+    Array.prototype.forEach.call(document.querySelectorAll("#liste-scripts .fichier"), function (b) {
+      if (+b.getAttribute("data-i") === i && +b.getAttribute("data-j") === j) b.setAttribute("aria-current", "true");
+      else b.removeAttribute("aria-current");
+    });
+    var tete = '<span class="chemin">' + esc(f.c) + "</span>";
+    if (f.l) tete += "<span>" + esc(f.l) + "</span>";
+    if (f.n != null) tete += "<span>" + nf(f.n) + " lignes</span>";
+    if (f.x) tete += "<span>coupé</span>";
+    if (f.t != null) tete += '<button type="button" class="bouton" id="copier">Copier</button>';
+    if (f.src) tete += '<a href="' + esc(f.src) + '" target="_blank" rel="noopener">Voir à la source</a>';
+    $("lecture-tete").innerHTML = tete;
+    var zone = $("lecture-code");
+    zone.scrollTop = 0;
+    zone.scrollLeft = 0;
+    if (f.t == null) {
+      zone.innerHTML = '<p class="avis">' + esc(f.note || "Ce fichier n'a pas de texte ici.") +
+        (f.src ? ' <a href="' + esc(f.src) + '" target="_blank" rel="noopener">Ouvrir à la source</a>.' : "") + "</p>";
+      return;
+    }
+    var texte = f.t.replace(/\n$/, "");
+    var n = texte.split("\n").length, gouttiere = "";
+    for (var k = 1; k <= n; k++) gouttiere += k + "\n";
+    zone.innerHTML = '<div class="code"><pre class="gouttiere" aria-hidden="true"></pre><pre><code></code></pre></div>';
+    zone.querySelector(".gouttiere").textContent = gouttiere;
+    var code = zone.querySelector("code");
+    code.textContent = texte;
+    var alias = LANGAGES[f.l] || (/\.(md|markdown)$/i.test(f.c) ? "markdown" : "");
+    if (window.hljs && alias && window.hljs.getLanguage(alias) && texte.length < 150000) {
+      code.className = "language-" + alias;
+      try { window.hljs.highlightElement(code); } catch (e) { /* le texte reste lisible sans couleurs */ }
+    }
+    var bouton = $("copier");
+    if (bouton) bouton.addEventListener("click", function () {
+      var fait = function () { bouton.textContent = "Copié"; };
+      var selectionner = function () {
+        var r = document.createRange(); r.selectNodeContents(code);
+        var sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(r);
+        bouton.textContent = "Texte sélectionné";
+      };
+      try { navigator.clipboard.writeText(f.t).then(fait, selectionner); } catch (e) { selectionner(); }
+    });
+  }
+  $("liste-scripts").addEventListener("click", function (e) {
+    var b = e.target.closest(".fichier");
+    if (b) lireFichier(+b.getAttribute("data-i"), +b.getAttribute("data-j"));
+  });
+  $("filtre-scripts").addEventListener("input", function () {
+    var q = this.value.trim().toLowerCase();
+    Array.prototype.forEach.call(document.querySelectorAll("#liste-scripts .fichier"), function (b) {
+      b.hidden = q !== "" && b.getAttribute("data-chemin").indexOf(q) < 0;
+    });
+  });
+  $("volet-fermer").addEventListener("click", fermerVolet);
+  $("voile").addEventListener("click", fermerVolet);
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape" && !$("volet").hidden) fermerVolet();
+  });
+  $("corps-articles").addEventListener("click", function (e) {
+    var b = e.target.closest(".bouton-scripts");
+    if (!b) return;
+    var a = parArticle[b.getAttribute("data-article")];
+    if (!a) return;
+    var depots = a.code.filter(function (c) { return c.lus > 0; }).map(function (c) { return {norme: c.norme, lot: c.lot}; });
+    ouvrirVolet(a.titre || a.doi, [esc(a.revue), esc(a.date), a.doi ? '<a href="https://doi.org/' + esc(a.doi) + '" target="_blank" rel="noopener">' + esc(a.doi) + "</a>" : ""]
+      .filter(Boolean).join(" · "), depots);
+  });
+  $("corps-depots").addEventListener("click", function (e) {
+    var b = e.target.closest(".bouton-scripts");
+    if (!b) return;
+    var d = parDepot[b.getAttribute("data-depot")];
+    if (!d) return;
+    ouvrirVolet(d.norme, (d.licence ? "Licence " + esc(d.licence) : "Aucune licence déclarée") + " · cité par " +
+      nf(d.articles) + " article" + (d.articles > 1 ? "s" : "") + ' · <a href="' + esc(d.url) + '" target="_blank" rel="noopener">ouvrir le dépôt</a>',
+      [{norme: d.norme, lot: d.lot}]);
+  });
+})();
+</script>

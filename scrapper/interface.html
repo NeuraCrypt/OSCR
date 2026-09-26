@@ -1,0 +1,290 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Code natif</title>
+<style>
+:root {
+  --fond: #FAFAFA; --surface: #FFFFFF; --encre: #1A1D23; --doux: #6B7280; --filet: #E5E7EB;
+  --accent: #5B3A8C; --accent-doux: #F1ECF8; --ok: #2F7D4F; --signal: #8F6200; --mort: #B3261E;
+  --demande: #44557A; --donnees: #1D7470; --neutre: #9CA3AF; --code-fond: #F6F7F9;
+  --hl-motcle: #7A3E9D; --hl-chaine: #2F7D4F; --hl-commentaire: #7B8494; --hl-nombre: #9A5B00;
+  --hl-titre: #1F5F8B; --hl-integre: #1D7470;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --fond: #0E1014; --surface: #15181E; --encre: #E6E8EC; --doux: #9199A6; --filet: #262A33;
+    --accent: #B89BE8; --accent-doux: #241C35; --ok: #6CC58F; --signal: #E3B14F; --mort: #F08A82;
+    --demande: #9EB0D6; --donnees: #62C3BC; --neutre: #6B7280; --code-fond: #0B0D11;
+    --hl-motcle: #C8A6F2; --hl-chaine: #7FD19B; --hl-commentaire: #7F8A9C; --hl-nombre: #E8B75A;
+    --hl-titre: #8EC2F0; --hl-integre: #6FD0C8;
+    color-scheme: dark;
+  }
+}
+* { box-sizing: border-box; }
+/* L'attribut hidden doit gagner sur les display: grid/flex des classes. */
+[hidden] { display: none !important; }
+body { margin: 0; background: var(--fond); color: var(--encre);
+  font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; }
+.mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12.5px; }
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.barre { position: sticky; top: 0; z-index: 2; background: var(--fond); border-bottom: 1px solid var(--filet);
+  padding: 12px clamp(12px, 3vw, 28px); display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; }
+.barre h1 { font-size: 15px; font-weight: 600; margin: 0; }
+.comptes { color: var(--doux); font-size: 13px; font-variant-numeric: tabular-nums; }
+.barre input[type=search] { margin-left: auto; font: inherit; width: min(340px, 100%); padding: 6px 10px;
+  border: 1px solid var(--filet); border-radius: 6px; background: var(--surface); color: var(--encre); }
+.barre label { color: var(--doux); font-size: 13px; display: flex; gap: 6px; align-items: center; }
+main { padding: 0 clamp(12px, 3vw, 28px) 40px; }
+.defile { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; }
+th { text-align: left; font-weight: 500; color: var(--doux); font-size: 12px; padding: 10px 10px 8px;
+  border-bottom: 1px solid var(--filet); white-space: nowrap; }
+td { padding: 9px 10px; border-bottom: 1px solid var(--filet); vertical-align: top; }
+td.date { white-space: nowrap; color: var(--doux); font-variant-numeric: tabular-nums; }
+td.titre { min-width: 240px; max-width: 480px; }
+td.depot { min-width: 230px; }
+td.licence span { white-space: nowrap; }
+.revue { color: var(--doux); font-size: 12.5px; }
+.statut { white-space: nowrap; font-size: 12.5px; }
+.statut::before { content: "●"; margin-right: 5px; }
+.s-code_verifie { color: var(--ok); } .s-code_trouve { color: var(--signal); } .s-code_vide { color: var(--signal); }
+.s-code_mort { color: var(--mort); } .s-sur_demande { color: var(--demande); }
+.s-donnees_seules { color: var(--donnees); } .s-aucun, .s-sans_texte, .s-a_scanner { color: var(--neutre); }
+.pile { display: grid; gap: 3px; }
+.pile .mono { white-space: nowrap; max-width: 40ch; overflow: hidden; text-overflow: ellipsis; display: block; }
+.vide { color: var(--doux); }
+button.scripts { font: inherit; font-size: 13px; color: var(--accent); background: var(--accent-doux);
+  border: 0; border-radius: 5px; padding: 3px 9px; cursor: pointer; white-space: nowrap; }
+.plus { display: flex; justify-content: center; padding: 16px; }
+.plus button { font: inherit; color: var(--accent); background: none; border: 1px solid var(--filet);
+  border-radius: 6px; padding: 6px 14px; cursor: pointer; }
+.message { padding: 24px 0; color: var(--doux); }
+/* le volet */
+.voile { position: fixed; inset: 0; background: rgba(0, 0, 0, .35); z-index: 5; }
+.volet { position: fixed; top: 0; right: 0; bottom: 0; width: min(1120px, 100vw); z-index: 6;
+  background: var(--surface); box-shadow: 0 10px 40px rgba(0, 0, 0, .25);
+  display: grid; grid-template-rows: auto minmax(0, 1fr); }
+.volet-tete { display: flex; gap: 12px; justify-content: space-between; align-items: start;
+  padding: 12px 16px; border-bottom: 1px solid var(--filet); }
+.volet-tete h2 { font-size: 15px; font-weight: 600; margin: 0 0 2px; }
+.fermer { font: inherit; font-size: 20px; line-height: 1; background: none; border: 1px solid var(--filet);
+  border-radius: 6px; width: 32px; height: 32px; color: var(--doux); cursor: pointer; flex: none; }
+.volet-corps { display: grid; grid-template-columns: minmax(220px, 300px) minmax(0, 1fr); min-height: 0; }
+.liste { border-right: 1px solid var(--filet); overflow: auto; padding: 8px; }
+.liste h3 { font: 500 12px ui-monospace, Menlo, monospace; margin: 10px 6px 2px; overflow-wrap: anywhere; }
+.liste .lic { font-size: 12px; color: var(--doux); margin: 0 6px 6px; }
+.fichier { display: flex; justify-content: space-between; gap: 8px; width: 100%; text-align: left; font: 12.5px ui-monospace, Menlo, monospace;
+  color: var(--encre); background: none; border: 0; border-radius: 4px; padding: 4px 6px; cursor: pointer; }
+.fichier span:first-child { overflow-wrap: anywhere; }
+.fichier span:last-child { color: var(--doux); white-space: nowrap; }
+.fichier:hover { background: var(--fond); }
+.fichier[aria-current=true] { background: var(--accent-doux); }
+.fichier.ferme span:first-child { color: var(--doux); }
+.lecture { display: grid; grid-template-rows: auto minmax(0, 1fr); min-width: 0; min-height: 0; }
+.lecture-tete { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; padding: 8px 14px;
+  border-bottom: 1px solid var(--filet); font-size: 12.5px; color: var(--doux); min-height: 40px; }
+.lecture-tete .mono { color: var(--encre); }
+.lecture-tete button { font: inherit; color: var(--accent); background: none; border: 1px solid var(--filet);
+  border-radius: 5px; padding: 2px 8px; cursor: pointer; }
+.code { overflow: auto; background: var(--code-fond); }
+.code .avis { padding: 16px; color: var(--doux); margin: 0; max-width: 60ch; }
+.lignes { display: flex; min-width: max-content; font: 12.5px/1.6 ui-monospace, SFMono-Regular, Menlo, monospace; }
+.lignes pre { margin: 0; padding: 10px 14px; font: inherit; }
+.gout { color: var(--doux); text-align: right; user-select: none; border-right: 1px solid var(--filet); opacity: .7; }
+.lignes code { font: inherit; white-space: pre; }
+.hljs-keyword, .hljs-literal { color: var(--hl-motcle); } .hljs-string, .hljs-regexp { color: var(--hl-chaine); }
+.hljs-comment, .hljs-quote { color: var(--hl-commentaire); font-style: italic; } .hljs-number { color: var(--hl-nombre); }
+.hljs-title, .hljs-section { color: var(--hl-titre); } .hljs-built_in, .hljs-type { color: var(--hl-integre); }
+@media (max-width: 720px) {
+  .volet-corps { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(110px, 34vh) minmax(0, 1fr); }
+  .liste { border-right: 0; border-bottom: 1px solid var(--filet); }
+  .barre input[type=search] { margin-left: 0; }
+}
+</style>
+</head>
+<body>
+<div class="barre">
+  <h1>Code natif</h1>
+  <span class="comptes" id="comptes"></span>
+  <input type="search" id="q" placeholder="titre, DOI, dépôt, revue…" aria-label="Chercher">
+  <label for="tous"><input type="checkbox" id="tous"> tous les articles</label>
+</div>
+<main>
+  <div class="defile">
+    <table>
+      <thead><tr><th>Date</th><th>DOI</th><th>Titre</th><th>Statut</th><th>Dépôt</th><th>Licence</th><th>Scripts</th></tr></thead>
+      <tbody id="corps"></tbody>
+    </table>
+  </div>
+  <p class="message" id="message" hidden></p>
+  <div class="plus" id="plus" hidden><button type="button" id="bouton-plus">Afficher plus</button></div>
+</main>
+
+<div class="voile" id="voile" hidden></div>
+<aside class="volet" id="volet" role="dialog" aria-modal="true" aria-labelledby="volet-titre" hidden>
+  <div class="volet-tete">
+    <div><h2 id="volet-titre"></h2><div class="revue" id="volet-sous"></div></div>
+    <button type="button" class="fermer" id="fermer" aria-label="Fermer">×</button>
+  </div>
+  <div class="volet-corps">
+    <nav class="liste" id="liste" aria-label="Fichiers"></nav>
+    <section class="lecture" aria-label="Lecture">
+      <div class="lecture-tete" id="lecture-tete"></div>
+      <div class="code" id="code"></div>
+    </section>
+  </div>
+</aside>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/matlab.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/r.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/julia.min.js"></script>
+<script>
+(function () {
+  "use strict";
+  var STATUTS = {code_verifie: "vérifié", code_trouve: "signalé", code_vide: "dépôt vide", code_mort: "lien mort",
+    sur_demande: "sur demande", donnees_seules: "données seules", aucun: "aucun code", sans_texte: "texte fermé"};
+  var LANGAGES = {"Python": "python", "Jupyter": "python", "MATLAB": "matlab", "R": "r", "Julia": "julia", "C": "c",
+    "C++": "cpp", "C/C++": "cpp", "Shell": "bash", "JavaScript": "javascript", "Java": "java", "Texte": "markdown"};
+  var PAGE = 100, offset = 0, total = 0, lignes = {}, attente, declencheur;
+  function $(id) { return document.getElementById(id); }
+  function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+    return {"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"}[c]; }); }
+  function nf(n) { return (n || 0).toLocaleString("fr-FR"); }
+  function api(chemin) { return fetch(chemin).then(function (r) { return r.json(); }); }
+
+  function comptes() {
+    api("/api/etat").then(function (e) {
+      if (e.erreur) { $("comptes").textContent = e.erreur; return; }
+      var maj = e.maj ? new Date(e.maj * 1000).toLocaleString("fr-FR", {dateStyle: "short", timeStyle: "short"}) : "—";
+      var stock = Object.keys(e.stock || {}).map(function (d) {
+        var m = e.stock[d].split("-");
+        return new Date(+m[0], +m[1] - 1, 1).toLocaleDateString("fr-FR", {month: "long", year: "numeric"});
+      });
+      $("comptes").textContent = nf(e.avec_code) + " articles avec code sur " + nf(e.articles) + " · " + nf(e.depots) +
+        " dépôts · " + nf(e.scripts) + " scripts · dernier article lu " + maj +
+        (stock.length ? " · stock : " + stock.join(", ") + " en cours" : "");
+    });
+  }
+  function ligne(a) {
+    lignes[a.id] = a;
+    var doi = a.doi ? '<a class="mono" href="https://doi.org/' + esc(a.doi) + '" target="_blank" rel="noopener">' + esc(a.doi) + "</a>" : '<span class="vide">—</span>';
+    var depots = a.code.map(function (c) {
+      return '<a class="mono" href="' + esc(c.url) + '" target="_blank" rel="noopener" title="' + esc(c.norme) + '">' + esc(c.norme) + "</a>";
+    }).join("");
+    var licences = a.code.map(function (c) { return "<span>" + esc(c.licence || (c.etat === "vivant" ? "sans licence" : "—")) + "</span>"; }).join("");
+    var n = a.code.reduce(function (t, c) { return t + (c.n || 0); }, 0);
+    return "<tr><td class=\"date\">" + esc(a.date) + "</td><td>" + doi + '</td><td class="titre">' + esc(a.titre || "—") +
+      '<div class="revue">' + esc(a.revue) + '</div></td><td><span class="statut s-' + esc(a.statut) + '">' + esc(STATUTS[a.statut] || a.statut) +
+      '</span></td><td class="depot"><div class="pile">' + (depots || '<span class="vide">—</span>') + '</div></td><td class="licence"><div class="pile">' +
+      (licences || '<span class="vide">—</span>') + "</div></td><td>" +
+      (n ? '<button type="button" class="scripts" data-id="' + esc(a.id) + '">' + nf(n) + " ›</button>" : '<span class="vide">—</span>') + "</td></tr>";
+  }
+  function charger(ajouter) {
+    if (!ajouter) { offset = 0; lignes = {}; }
+    var url = "/api/articles?n=" + PAGE + "&offset=" + offset + "&tous=" + ($("tous").checked ? 1 : 0) +
+      "&q=" + encodeURIComponent($("q").value.trim());
+    api(url).then(function (r) {
+      if (r.erreur) { $("message").hidden = false; $("message").textContent = r.erreur; return; }
+      total = r.total;
+      var html = r.lignes.map(ligne).join("");
+      if (ajouter) $("corps").insertAdjacentHTML("beforeend", html); else $("corps").innerHTML = html;
+      offset += r.lignes.length;
+      $("message").hidden = total > 0;
+      $("message").textContent = "Aucun article ne correspond.";
+      $("plus").hidden = offset >= total;
+      $("bouton-plus").textContent = "Afficher plus (" + nf(total - offset) + " restants)";
+    }).catch(function () {
+      $("message").hidden = false;
+      $("message").textContent = "Le serveur ne répond pas : lancez « scrapper serveur ».";
+    });
+  }
+  $("q").addEventListener("input", function () { clearTimeout(attente); attente = setTimeout(function () { charger(false); }, 200); });
+  $("tous").addEventListener("change", function () { charger(false); });
+  $("bouton-plus").addEventListener("click", function () { charger(true); });
+
+  // ─── le volet ─────────────────────────────────────────────────────────
+  var depots = [];
+  function ouvrir(a) {
+    declencheur = document.activeElement;
+    $("volet-titre").textContent = a.titre || a.doi;
+    $("volet-sous").textContent = [a.revue, a.date, a.doi].filter(Boolean).join(" · ");
+    $("liste").innerHTML = '<p class="vide">Chargement…</p>';
+    $("lecture-tete").innerHTML = "";
+    $("code").innerHTML = "";
+    $("voile").hidden = false; $("volet").hidden = false;
+    document.body.style.overflow = "hidden";
+    $("fermer").focus();
+    api("/api/scripts?article=" + encodeURIComponent(a.id)).then(function (r) {
+      depots = r.depots || [];
+      var html = "", premier = null;
+      depots.forEach(function (d, i) {
+        html += "<h3>" + esc(d.depot) + '</h3><div class="lic">' + esc(d.licence || "sans licence") +
+          (d.version ? " · " + esc(d.version.slice(0, 10)) : "") + "</div>";
+        d.fichiers.forEach(function (f, j) {
+          if (f.g === "note") { html += '<p class="vide">' + esc(f.note) + "</p>"; return; }
+          if (!premier && f.g === "script" && f.lisible) premier = [i, j];
+          html += '<button type="button" class="fichier' + (f.lisible ? "" : " ferme") + '" data-i="' + i + '" data-j="' + j + '"><span>' +
+            esc(f.c) + "</span><span>" + (f.n != null ? nf(f.n) : "") + "</span></button>";
+        });
+      });
+      $("liste").innerHTML = html || '<p class="vide">Aucun fichier.</p>';
+      if (premier) lire(premier[0], premier[1]);
+    });
+  }
+  function fermer() {
+    $("volet").hidden = true; $("voile").hidden = true; document.body.style.overflow = "";
+    if (declencheur && declencheur.focus) declencheur.focus();
+  }
+  function lire(i, j) {
+    var d = depots[i], f = d.fichiers[j];
+    Array.prototype.forEach.call(document.querySelectorAll(".fichier"), function (b) {
+      if (+b.dataset.i === i && +b.dataset.j === j) b.setAttribute("aria-current", "true"); else b.removeAttribute("aria-current");
+    });
+    $("lecture-tete").innerHTML = '<span class="mono">' + esc(f.c) + "</span>" + (f.l ? "<span>" + esc(f.l) + "</span>" : "") +
+      (f.n != null ? "<span>" + nf(f.n) + " lignes</span>" : "") + (f.lisible ? '<button type="button" id="copier">Copier</button>' : "") +
+      (f.src ? '<a href="' + esc(f.src) + '" target="_blank" rel="noopener">source</a>' : "");
+    if (!f.lisible) { $("code").innerHTML = '<p class="avis">' + esc(f.note || "Pas de texte pour ce fichier.") + "</p>"; return; }
+    $("code").innerHTML = '<p class="avis">Chargement…</p>';
+    api("/api/fichier?depot=" + encodeURIComponent(d.depot) + "&chemin=" + encodeURIComponent(f.c)).then(function (r) {
+      var texte = (r.texte || "").replace(/\n$/, ""), n = texte.split("\n").length, g = "";
+      for (var k = 1; k <= n; k++) g += k + "\n";
+      $("code").innerHTML = '<div class="lignes"><pre class="gout" aria-hidden="true"></pre><pre><code></code></pre></div>';
+      $("code").querySelector(".gout").textContent = g;
+      var code = $("code").querySelector("code");
+      code.textContent = texte;
+      var alias = LANGAGES[f.l];
+      if (window.hljs && alias && window.hljs.getLanguage(alias) && texte.length < 150000) {
+        code.className = "language-" + alias;
+        try { window.hljs.highlightElement(code); } catch (e) { /* lisible sans couleurs */ }
+      }
+      var b = $("copier");
+      if (b) b.onclick = function () {
+        try { navigator.clipboard.writeText(r.texte).then(function () { b.textContent = "Copié"; }); } catch (e) { /* sans presse-papiers */ }
+      };
+    });
+  }
+  $("corps").addEventListener("click", function (e) {
+    var b = e.target.closest("button.scripts");
+    if (b && lignes[b.dataset.id]) ouvrir(lignes[b.dataset.id]);
+  });
+  $("liste").addEventListener("click", function (e) {
+    var b = e.target.closest(".fichier");
+    if (b) lire(+b.dataset.i, +b.dataset.j);
+  });
+  $("fermer").addEventListener("click", fermer);
+  $("voile").addEventListener("click", fermer);
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape" && !$("volet").hidden) fermer(); });
+
+  comptes();
+  setInterval(comptes, 60000);  // la veille avance pendant qu'on regarde
+  charger(false);
+})();
+</script>
+</body>
+</html>
