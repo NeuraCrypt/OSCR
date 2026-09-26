@@ -18,7 +18,7 @@ from __future__ import annotations
 from collections.abc import Iterator
 from dataclasses import dataclass, field
 
-from ..net import Client, Outage, is_transient
+from ..net import Client, Outage, Unavailable, is_transient
 
 BASE = "https://www.ebi.ac.uk/europepmc/webservices/rest"
 
@@ -140,6 +140,13 @@ def by_doi(client: Client, doi: str) -> EpmcArticle | None:
     return _article(res[0]) if res else None
 
 
+def _service_answers(client: Client) -> bool:
+    """A control request: does Europe PMC answer at all right now?"""
+    r = client.get(f"{BASE}/search", params={"query": "PMCID:PMC13592814", "format": "json",
+                                              "pageSize": "1", "resultType": "idlist"})
+    return r.ok
+
+
 def fulltext(client: Client, fulltext_id: str) -> str | None:
     """The JATS of a paper. Cached forever: it does not change."""
     if not fulltext_id:
@@ -148,6 +155,9 @@ def fulltext(client: Client, fulltext_id: str) -> str | None:
     if is_transient(r.status):
         # An outage (the Mac waking up, the Wi-Fi) is not an answer: returning
         # None would file the paper as "without full text", and it would be
-        # skipped forever.
+        # skipped forever. But when Europe PMC answers everything else, this one
+        # document is broken: waiting for it would stop the harvest for good.
+        if r.status and _service_answers(client):
+            raise Unavailable(f"Europe PMC fullTextXML {fulltext_id}: {r.status}")
         raise Outage(f"Europe PMC fullTextXML {fulltext_id}: {r.status or r.text[:120]}")
     return r.text if r.ok and r.text.lstrip().startswith("<") else None

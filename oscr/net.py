@@ -64,6 +64,12 @@ class Outage(RuntimeError):
     "without full text")."""
 
 
+class Unavailable(RuntimeError):
+    """The server answers, but not for this resource: it fails alone, again and again
+    (Europe PMC's full text of PMC13324234 answered 500 for hours on 2026-09-26 while
+    every other one came back). Not an outage: waiting would block the pass forever."""
+
+
 def is_transient(status: int) -> bool:
     """An outage response (network down, server overloaded), not an answer about the resource."""
     return status == 0 or status in RETRYABLE
