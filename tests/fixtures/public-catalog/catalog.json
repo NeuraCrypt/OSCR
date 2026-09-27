@@ -1,5 +1,5 @@
 {
- "generated_at": "2026-09-27T01:47:26Z",
+ "generated_at": "2026-09-27T02:20:44Z",
  "scope": {
   "sources": "local corpus, DataCite",
   "from": "2026-09-21",
@@ -127,7 +127,7 @@
      "url": "https://github.com/oscr-fixture/unlicensed",
      "host": "github.com",
      "level": "found",
-     "lot": 7,
+     "lot": 103,
      "files_read": 1,
      "state": "alive",
      "license": "",
@@ -279,7 +279,7 @@
    "level": "found",
    "type": "",
    "inventoried": true,
-   "lot": 7,
+   "lot": 103,
    "files_read": 1
   }
  ],
