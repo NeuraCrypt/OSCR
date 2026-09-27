@@ -217,6 +217,14 @@ def main(argv: list[str] | None = None) -> int:
     lb = sp.add_parser("labels", help="import the owner's category labels from the annotation file")
     lb.add_argument("csv", nargs="?", default="data/annotation/sample.csv")
 
+    ct = sp.add_parser("contacts", help="the authors' contact details: PRIVATE, to the private dataset only")
+    ct.add_argument("action", choices=["summary", "build", "publish"],
+                    help="summary: counts; build: contacts.parquet in --folder; publish: build, check that the "
+                         "dataset is private, send")
+    ct.add_argument("--folder", default="data/contacts")
+    ct.add_argument("--dataset", default=cfg.get("OSCR_CONTACTS_DATASET", "OpenScientificCodeRegistry/Private"))
+    ct.add_argument("--dry-run", action="store_true", help="publish: build and check, send nothing")
+
     sc = sp.add_parser("scripts", help="the authors' scripts on Hugging Face: deduplicated Parquet blocks, "
                                        "one manifest per repository, verified licenses only")
     sc.add_argument("action", choices=["audit", "build", "publish"],
@@ -317,6 +325,14 @@ def main(argv: list[str] | None = None) -> int:
                                                  platform=cfg.get("OSCR_PLATFORM_NAME", "OSCR")), flush=True)
                 except (Exception, SystemExit) as e:
                     errors.append(f"Scripts on Hugging Face: {e}")
+            if cfg.get("OSCR_CONTACTS_DATASET"):
+                # Private: contacts.publish refuses a dataset that is not private.
+                from . import contacts
+                try:
+                    print(f"{now()} " + contacts.publish(con, Path("data/contacts"), cfg["OSCR_CONTACTS_DATASET"],
+                                                         platform=cfg.get("OSCR_PLATFORM_NAME", "OSCR")), flush=True)
+                except (Exception, SystemExit) as e:
+                    errors.append(f"Contacts on Hugging Face: {e}")
             if errors:
                 raise SystemExit("\n".join(errors))
         elif a.command == "enrich":
@@ -328,6 +344,15 @@ def main(argv: list[str] | None = None) -> int:
         elif a.command == "scripts":
             print(_scripts(con, a.action, Path(a.folder), a.dataset, dry_run=a.dry_run,
                            platform=cfg.get("OSCR_PLATFORM_NAME", "Open Scientific Code Registry (OSCR)")))
+        elif a.command == "contacts":
+            from . import contacts
+            platform = cfg.get("OSCR_PLATFORM_NAME", "Open Scientific Code Registry (OSCR)")
+            if a.action == "summary":
+                print(contacts.summary(con))
+            elif a.action == "build":
+                print(contacts.build(con, Path(a.folder), platform=platform))
+            else:
+                print(contacts.publish(con, Path(a.folder), a.dataset, platform=platform, dry_run=a.dry_run))
         elif a.command == "zenodo":
             _zenodo(con, a)
         elif a.command == "reverify":

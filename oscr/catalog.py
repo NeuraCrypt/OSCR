@@ -324,6 +324,19 @@ def _repositories(con: sqlite3.Connection, repos: dict[str, sqlite3.Row],
     return out
 
 
+#: An email address in a script, as the public site would show it: the owner's rule is that
+#: no email address is displayed (they are collected privately, see `oscr/contacts.py`). Not
+#: a git remote ("git@github.com:lab/repo.git"), not a decorator ("@property").
+_EMAIL_IN_TEXT = re.compile(r"(?<![\w.+%-])(?!git@)[\w.+%-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}\b")
+EMAIL_MASK = "[email hidden]"
+
+
+def mask_emails(text: str) -> str:
+    """The same text, every email address replaced by EMAIL_MASK (lines are kept as they are,
+    so the reader's line numbers and the paper ↔ code matches still hold)."""
+    return _EMAIL_IN_TEXT.sub(EMAIL_MASK, text) if "@" in text else text
+
+
 def script_lots(con: sqlite3.Connection, public: bool) -> dict[int, dict[str, Any]]:
     """The scripts' text, repository by repository, split into lots.
 
@@ -347,6 +360,11 @@ def script_lots(con: sqlite3.Connection, public: bool) -> dict[int, dict[str, An
                 # legendflex.m): the database keeps it as is, the export says so.
                 text = text.replace("�", "?")
                 note = (note + "; " if note else "") + 'unreadable character in the original, replaced by "?"'
+            if public and text and "@" in text:
+                masked = mask_emails(text)
+                if masked != text:
+                    text = masked
+                    note = (note + "; " if note else "") + "email addresses hidden (read the original at the source)"
             files.append({
                 "path": f["path"], "language": f["language"], "kind": f["kind"], "lines": f["lines"],
                 "text": text, "truncated": bool(f["truncated"]), "note": note,
@@ -536,6 +554,13 @@ def public_db(con: sqlite3.Connection, path: Path) -> None:
         "UPDATE file SET text = NULL, note = ? WHERE repo IN "
         "(SELECT repo FROM repository WHERE redistributable NOT IN ('yes', 'with_conditions'))",
         (NOTE_LICENSE,))
+    # The authors' contact details are private: they go to the private dataset only
+    # (oscr/contacts.py), never into a public output. Email addresses in the scripts' text
+    # are hidden, as on the site.
+    target.execute("DROP TABLE IF EXISTS contact")
+    target.executemany("UPDATE file SET text = ? WHERE rowid = ?",
+                       [(mask_emails(t), rid) for rid, t in
+                        target.execute("SELECT rowid, text FROM file WHERE text LIKE '%@%'").fetchall()])
     target.commit()
     target.execute("VACUUM")
     target.close()
