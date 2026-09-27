@@ -13,6 +13,7 @@
     oscr export                          regenerate the catalogue and its tables
     oscr dashboard                       the local dashboard (http://127.0.0.1:8790)
     oscr stats                           the library's figures
+    oscr scripts audit|build|publish     the authors' scripts on Hugging Face (verified licenses only)
 """
 from __future__ import annotations
 
@@ -49,6 +50,20 @@ def settings(path: Path = SETTINGS) -> dict[str, str]:
             key, value = line.split("=", 1)
             out[key.strip()] = value.strip().strip("\"'")
     return out
+
+
+def _scripts(con, action: str, folder: Path, dataset: str, *, platform: str, dry_run: bool = False) -> str:
+    from . import scriptstore
+    if action == "audit":
+        return json.dumps(scriptstore.audit(con), ensure_ascii=False, indent=1)
+    out = scriptstore.build(con, folder)
+    done = (f"{len(out['blocks'])} new block(s) for {out['new_files']} new files, {out['manifests']} manifest(s) "
+            f"written, {len(out['withdrawn'])} withdrawn; {out['repositories']} repositories published")
+    if action == "build":
+        return done
+    if not dataset:
+        raise SystemExit("scripts publish: --dataset (or OSCR_SCRIPTS_DATASET) is required")
+    return done + "\n" + scriptstore.publish(con, folder, dataset, platform=platform, dry_run=dry_run)
 
 
 def _options(a: argparse.Namespace) -> harvest.Options:
@@ -190,6 +205,15 @@ def main(argv: list[str] | None = None) -> int:
     ze.add_argument("--create", action="store_true", help="community: create it when it does not exist")
     ze.add_argument("--dry-run", action="store_true", help="deposit: show the record without sending anything")
 
+    sc = sp.add_parser("scripts", help="the authors' scripts on Hugging Face: deduplicated Parquet blocks, "
+                                       "one manifest per repository, verified licenses only")
+    sc.add_argument("action", choices=["audit", "build", "publish"],
+                    help="audit: what would leave and why the rest stays; build: new blocks and manifests; "
+                         "publish: build, then send what the dataset does not have yet")
+    sc.add_argument("--folder", default="data/scripts", help="where the blocks and manifests are written")
+    sc.add_argument("--dataset", default=cfg.get("OSCR_SCRIPTS_DATASET", ""), help="Hugging Face org/dataset")
+    sc.add_argument("--dry-run", action="store_true", help="publish: build and count, send nothing")
+
     n = sp.add_parser("nightly", help="the publication: public catalogue, then Hugging Face and the website")
     n.add_argument("--out", default="data/public", help="a separate folder, only ever generated in public mode")
     n.add_argument("--dataset", default=cfg.get("OSCR_HF_DATASET", ""), help="Hugging Face user/dataset (empty: send nothing)")
@@ -275,8 +299,17 @@ def main(argv: list[str] | None = None) -> int:
                     print(f"{now()} {publish.deploy_cloudflare(out, a.cloudflare)}", flush=True)
                 except (Exception, SystemExit) as e:
                     errors.append(f"Cloudflare: {e}")
+            if cfg.get("OSCR_SCRIPTS_DATASET"):
+                try:
+                    print(f"{now()} " + _scripts(con, "publish", Path("data/scripts"), cfg["OSCR_SCRIPTS_DATASET"],
+                                                 platform=cfg.get("OSCR_PLATFORM_NAME", "OSCR")), flush=True)
+                except (Exception, SystemExit) as e:
+                    errors.append(f"Scripts on Hugging Face: {e}")
             if errors:
                 raise SystemExit("\n".join(errors))
+        elif a.command == "scripts":
+            print(_scripts(con, a.action, Path(a.folder), a.dataset, dry_run=a.dry_run,
+                           platform=cfg.get("OSCR_PLATFORM_NAME", "Open Scientific Code Registry (OSCR)")))
         elif a.command == "zenodo":
             _zenodo(con, a)
         elif a.command == "reverify":

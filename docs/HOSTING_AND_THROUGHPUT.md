@@ -6,7 +6,7 @@ checked on 2026-09-25 and 26 on the official pages by three independent searches
 free tier in June 2026 without notice.*
 
 > **Since this study**, the Mac runs the harvester continuously and publishes every night
-> (see [GETTING_STARTED.md](GETTING_STARTED.md)), the website is on Cloudflare Pages, and the
+> (see [GETTING_STARTED.md](GETTING_STARTED.md)), the website is on Cloudflare Workers (static assets; Pages until 2026-09-26), and the
 > GitHub Actions workflow (`.github/workflows/harvest.yml`) is dormant: it only runs by hand.
 
 ---

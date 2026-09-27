@@ -1,13 +1,13 @@
 # Platform plan — Phase 0: audit and plan
 
-Status: **Phase 0, for the owner's validation — none of the platform phases is implemented yet.**
+Status: **Phase 0 validated by the owner on 2026-09-27, with the decisions of §13. Phase 1 in progress.**
 Date: 2026-09-26. Scope: turn the catalogue into a full platform (arXiv + SSRN + PubMed +
 a Kaggle dataset page), at zero cost, following `CLAUDE.md`. The platform's name lives in
 one configuration variable, `SITE_NAME` (current value: `OSCR`).
 
 Legend used below: **[M]** the Mac (harvester, SQLite, source of truth) · **[C]** Cloudflare
 D1 "catalog" database · **[U]** Cloudflare D1 "community" database · **[S]** static files
-on Cloudflare Pages · **[B]** fetched by the reader's browser from the original source.
+on Cloudflare Workers (static assets) · **[B]** fetched by the reader's browser.
 
 ---
 
@@ -32,15 +32,15 @@ on Cloudflare Pages · **[B]** fetched by the reader's browser from the original
 
 - **The English switch** (approved by the owner): the `oscr` package, the English schema, the
   `org.oscr.*` launchd tasks, the Hugging Face dataset renamed `opsecsystems/oscr-catalog`
-  (still private), the Zenodo sandbox community `oscr`, the Cloudflare Pages project `oscr`
-  (https://oscr-2lj.pages.dev).
+  (still private), the Zenodo sandbox community `oscr`, the website on Cloudflare Workers
+  (https://oscr.yannbellec-b.workers.dev).
 - **The paper ↔ code alignment engine** (`oscr/align.py`, method `lexical-v1`): on 25 papers,
   159 pairs; a fresh hand-checked sample of 33 gave 24 correct, 9 plausible, 0 wrong. Pairs are
   stored with paragraph numbers and short evidence terms only.
 - **The Code ↔ Paper reader**: side-by-side view; the paper is loaded in the reader's browser
   from Europe PMC (CORS verified); OSCR never stores or serves article text.
 - **The script storage decision** (`SCRIPT_STORAGE.md`): deduplicated, zstd, Parquet blocks on
-  a public Hugging Face dataset, index in D1.
+  the Hugging Face dataset `OpenScientificCodeRegistry/Database`, one manifest per repository.
 - README, Apache-2.0 license (data and maps CC0-1.0), docs, figures.
 
 ### Gaps against the mission
@@ -82,10 +82,10 @@ Every figure below was checked on 2026-09-26 on the official documentation (sour
 
 | constraint | value | consequence |
 |---|---|---|
-| Pages: files per deployment | 20,000 (25 MiB per file); the same for Workers static assets | one static HTML page per paper stops at ~15,000 papers (margin kept) |
-| Pages: builds | 500 per month; the docs do not say whether direct uploads count | one deployment per night, uploads skip unchanged files |
-| Static requests | free and unlimited, as long as they do not invoke a Function (`_routes.json`) | static first, always |
-| Workers / Pages Functions | **100,000 requests a day for all dynamic routes together** (reset 00:00 UTC; "fail open" possible); 10 ms CPU per request; 128 MB; 50 subrequests | search, API, sign-in and writes only; **a cached response still counts as a request** (Cache API runs the Worker) |
+| Workers static assets: files per version | 20,000 (25 MiB per file); the same limit as Pages | one static HTML page per paper stops at ~15,000 papers (margin kept) |
+| Deployments | a Worker deployment uploads only the changed assets; no build at Cloudflare (Pages allowed 500 builds a month) | one deployment per night |
+| Static requests | free and unlimited, as long as they do not run the Worker's code (assets are served first) | static first, always |
+| Workers (dynamic routes) | **100,000 requests a day for all dynamic routes together** (reset 00:00 UTC; "fail open" possible); 10 ms CPU per request; 128 MB; 50 subrequests | search, API, sign-in and writes only; **a cached response still counts as a request** (Cache API runs the Worker) |
 | Worker size | 64 MiB uncompressed, start-up ≤ 1 s (the 3 MB limit of the mission was removed on 2026-09-04) | a Markdown sanitizer and a small router fit |
 | Astro on Cloudflare | the Cloudflare adapter (v13+) no longer deploys on-demand pages to Pages: SSR and server islands need Workers | Astro stays static; dynamic endpoints are plain Pages Functions (or the site moves to Workers, decision D10) |
 | D1 | 500 MB per database, 10 databases (5 GB); **5 M rows read and 100 k rows written a day** (each index adds a write); 50 queries per request, 100 parameters, 30 s per query; FTS5 supported, but a database with FTS5 cannot be exported (drop, export, recreate) | D1 holds a projection pushed as deltas; facet counts are precomputed; FTS5 in its own database; the Mac stays the source of truth and backup (plus 7 days of Time Travel) |
@@ -97,7 +97,7 @@ Every figure below was checked on 2026-09-26 on the official documentation (sour
 | Turnstile | free, unlimited | on every public form |
 | Hugging Face (public dataset) | free "best-effort", responsible use beyond a few GB; < 100k files per repository; byte ranges with CORS (checked) | script blocks and open data (`SCRIPT_STORAGE.md`) |
 | Home uplink | ~0.9 MB/s measured (first Cloudflare deployment: 143 MB in 159 s); a launchd task at background priority is throttled by macOS (~25 KB/s measured for the nightly Hugging Face upload) | everything published is incremental; big one-off uploads run at normal priority |
-| Script texts at full stock | 15–26 GB raw → **2.3–4.3 GB stored** (deduplicated, Parquet zstd) → 1.6–3.0 GB public | Parquet blocks on Hugging Face, read in the browser; index in D1 (decided, `SCRIPT_STORAGE.md`) |
+| Script texts at full stock | 15–26 GB raw → **2.3–4.3 GB stored** (deduplicated, Parquet zstd) → 1.6–3.0 GB public | Parquet blocks on Hugging Face, read in the browser; positions in the static pages, one manifest per repository (decided, `SCRIPT_STORAGE.md`) |
 
 **Upstream APIs.**
 - **OpenAlex** now needs a free API key (since 2026-02-13). The free credit is $1 a day.
@@ -140,11 +140,11 @@ flowchart LR
     DB --> P[projector: deltas]
     J[job runner] --> DB
   end
-  P -- "D1 HTTP API (≤ 90k rows/day)" --> C[(D1 catalog + script index)]
-  P -- "nightly build, changed files only" --> S[Pages static]
+  P -- "D1 HTTP API (≤ 90k rows/day)" --> C[(D1 catalog)]
+  P -- "nightly build, changed files only" --> S[Worker static assets]
   P -- "nightly deltas, new script blocks" --> HF[Hugging Face: open data + script blocks]
   U[(D1 community)] -- "jobs, submissions, claims, validations (polled)" --> J
-  W[Pages Functions: search, API, auth, writes] --> C
+  W[Worker code: search, API, auth, writes] --> C
   W --> U
   B[reader's browser] --> S
   B --> W
@@ -158,14 +158,15 @@ flowchart LR
   local model). Nothing listens on the network.
 - **[C] D1 catalog**: a read-optimized projection of what the site needs to render and search
   — papers with code (and "on request" / "data only"), their entities, facets and a full-text
-  index — plus, in a database of its own, the **script index** (repository, commit, path →
-  digest, block, position). Pushed by the Mac as idempotent upserts, within a daily row
-  budget.
+  index. Pushed by the Mac as idempotent upserts, within a daily row budget. The scripts
+  have no index in D1: their (block, row) positions are written into the static pages, and
+  one manifest per repository sits next to the blocks on Hugging Face.
 - **[U] D1 community**: accounts, identities, roles, sessions, claims, submissions, jobs,
   discussions, votes, reproduction reports, moderation, collections, subscriptions,
   notifications, saved searches, audit log. Written by the site; polled by the Mac.
-- **[S] Pages**: prerendered bounded pages, JSON shards, feeds; Pages Functions serve search,
-  API, sign-in and writes (and, if decided, unbounded pages on demand).
+- **[S] The Worker**: its static assets are the prerendered bounded pages, JSON shards and
+  feeds (free, unlimited); its code serves search, API, sign-in and writes, and the entity
+  pages rendered on demand.
 - **[B] The browser** fetches the heavy texts: the paper from Europe PMC (never stored nor
   served by OSCR; CORS verified), and a script from the **Parquet blocks on Hugging Face**
   with HTTP range requests (~78 KB per script shown; decided 2026-09-26, `SCRIPT_STORAGE.md`).
@@ -396,7 +397,7 @@ The justification is in `docs/ARCHITECTURE.md` ("Search engine").
 
 ## 8. Accounts, roles, sessions
 
-- Sign-in with ORCID (OpenID Connect), GitHub (OAuth) and Google (OpenID Connect) in Pages
+- Sign-in with ORCID (OpenID Connect), GitHub (OAuth) and Google (OpenID Connect) in the Worker
   Functions; several identities linked to one account.
 - Sessions: a random 256-bit id in an `HttpOnly; Secure; SameSite=Lax` cookie; only its hash
   in D1 (`sessions`); CSRF token on every form; no in-memory state (stateless Workers).
@@ -449,36 +450,26 @@ updated, nothing deployed without the owner's go-ahead.
 
 ---
 
-## 13. Decisions needed from the owner
+## 13. The owner's decisions (2026-09-27)
 
-- **D1 — Availability statements.** Showing the full "Code availability" or "Data
-  availability" text republishes part of the paper.
-  - Proposal: show it only when the paper's license allows it (CC BY, CC0, CC BY-SA; also
-    CC BY-NC, since the platform is non-commercial); otherwise a short summary and a link.
-  - This amends the rule "no article text leaves".
-- **D2 — Scope of pages.** Two options:
-  - pages for papers with code, on request and data only (50–90k at full stock), plus a
-    lookup by DOI for every other paper read ("no code found, checked on …");
-  - or a page for every paper read (610k), which forces on-demand rendering for everything.
-- **D3 — Search engine.** FTS5 in D1 (proposed), or the static Parquet index on Hugging
-  Face (no Worker request per search).
-- **D4 — OAuth applications.** The ORCID, GitHub and Google apps must be registered by the
-  owner (free); I cannot create accounts.
-- **D5 — Email.** In-site notifications only (proposed), or Resend's free tier (3,000 a month)
-  for opt-in emails.
-- **D6 — Local model for classification.** Which model, and when it may use the GPU (for
-  example nights only, to leave the Mac free).
-- **D7 — The "neuro" query is broad** (a PISA 2022 paper got in). Tighten it with the new
-  classification, or keep everything and filter by category.
-- **D8 — Custom domain.** None (zero cost, `oscr-2lj.pages.dev`: `oscr.pages.dev` was already
-  taken), or ~€10 a year for a clean address.
-- **D9 — Pages or Workers.** Cloudflare now says "start new projects with Workers", and
-  Astro's Cloudflare adapter no longer renders on demand on Pages.
-  - Keep Pages with hand-written Functions (proposed while the site is static).
-  - Or move to Workers static assets now, with the same free limits and a `*.workers.dev`
-    address, before the address is widely shared.
-- **D10 — OpenAlex API key.** A free OpenAlex account is required for the enrichment. It is
-  the owner's to create, and the key goes in the keychain.
+Also in `CLAUDE.md`, which binds every phase.
+
+| | decision |
+|---|---|
+| D1 | Availability statements: full text only under an open license (CC BY, CC0, CC BY-SA, CC BY-NC); otherwise a short summary and a link |
+| D2 | Pages only for papers with code, "on request" and "data only"; a DOI lookup for every other paper read |
+| D3 | FTS5 in D1; a search runs only when submitted; a clear message when the quota is spent; plan B: a static index on Hugging Face |
+| D4 | The owner creates the ORCID (sandbox first), GitHub and Google applications |
+| D5 | Notifications in the site only |
+| D6 | Compare two or three local models on a sample the owner labels by hand (annotation file prepared in Phase 1); rules first, a model for the ambiguous cases; GPU from 01:00 to 07:00 |
+| D7 | Broad harvest, filtered by classification; off-topic papers stay on the Mac, out of the site and the statistics |
+| D8 | The free address while building (https://oscr.yannbellec-b.workers.dev); a domain before the public launch |
+| D9 | Cloudflare Workers now (done 2026-09-27; the old Pages address redirects) |
+| D10 | The owner creates the OpenAlex key |
+| scripts | No D1 index: positions in the static pages at build, one manifest per repository on Hugging Face (`OpenScientificCodeRegistry/Database`); published only once the license filter is applied and verified |
+
+**Open for Phase 4 (the paper page):** abstracts are article text too. The same license rule
+as D1 is proposed for them.
 
 ## 14. Risks
 

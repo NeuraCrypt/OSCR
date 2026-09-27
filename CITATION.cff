@@ -11,7 +11,7 @@ abstract: >-
 authors:
   - name: "The OSCR contributors"
 repository-code: "https://github.com/yannbellec/Open-Scientific-Code-Registry-OSCR-"
-url: "https://oscr-2lj.pages.dev"
+url: "https://oscr.yannbellec-b.workers.dev"
 license: Apache-2.0
 keywords:
   - research software
