@@ -12,7 +12,7 @@ The rules that govern everything below are in [CLAUDE.md](../CLAUDE.md):
 | **The alignment** (`oscr align`) | the Mac; the harvester also runs it once a day for the papers still without pairs | pairs the paper's paragraphs with lines of the authors' code (method `lexical-v1`) and stores the pairs in the `alignment` table | $0 |
 | **The local dashboard** (`oscr dashboard`) | the Mac, http://127.0.0.1:8790 | the table of the private database, for the owner only, read-only | $0 |
 | **The public catalogue** (`oscr nightly`) | the Mac, at 04:17 | `data/public/` in public mode, then the Hugging Face dataset, then the website | $0 |
-| **The website** (`website/`, Astro) | Cloudflare Pages | the public site, built from the public catalogue, with the Code ↔ Paper reader | $0 |
+| **The website** (`website/`, Astro) | Cloudflare Workers (static assets) | the public site, built from the public catalogue, with the Code ↔ Paper reader | $0 |
 | **The map DOIs** (`oscr zenodo`) | Zenodo (CERN) | a map validated by an author receives a DOI in the community | $0 |
 
 ```mermaid
@@ -23,7 +23,7 @@ flowchart LR
   B --> I["local dashboard, port 8790"]
   B --> N["nightly: public catalogue"]
   N --> HF["Hugging Face, private dataset"]
-  N --> P["website: Astro on Cloudflare Pages"]
+  N --> P["website: Astro on Cloudflare Workers"]
   P -. "planned: the author's ORCID validation" .-> B
   B --> Z["Zenodo: DOI of the validated map"]
   Z --> P
@@ -76,9 +76,9 @@ Its life:
 
 ## What remains to build, in order
 
-1. ~~Deploy the website~~: done on 2026-09-26, https://oscr-2lj.pages.dev, rebuilt every night.
+1. ~~Deploy the website~~: done on 2026-09-26, https://oscr.yannbellec-b.workers.dev, rebuilt every night.
 2. **Author validation.** ORCID offers sign-in for free (public API, `/authenticate`
-   scope). A Pages Function receives the validation and writes it to D1. The Mac picks it
+   scope). The site's Worker receives the validation and writes it to D1. The Mac picks it
    up, then deposits the map on Zenodo.
 3. **Search**, designed in the platform plan (below).
 4. ~~A first paper ↔ code alignment~~: `lexical-v1`, computed on the Mac. Next: GROBID for
@@ -91,8 +91,8 @@ Checked on 2026-09-26 in Cloudflare's documentation; the full table, with source
 
 | Service | Limit | Consequence |
 |---|---|---|
-| Pages | 20,000 files per deployment; 25 MiB per file; 500 builds per month; static requests free and unlimited | one static page per paper holds up to ~15,000 papers with code. Beyond that: pages grouped, or rendered on demand |
-| Pages Functions (Workers) | 100,000 requests per day for all dynamic routes, cached or not; 10 ms of CPU per request; 64 MiB per Worker | kept for actions: sign-in, validation, search, API |
+| Workers static assets | 20,000 files per version; 25 MiB per file; asset requests free and unlimited | one static page per paper holds up to ~15,000 papers with code. Beyond that: pages grouped, or rendered on demand |
+| Workers | 100,000 requests per day for all dynamic routes, cached or not; 10 ms of CPU per request; 64 MiB per Worker | kept for actions: sign-in, validation, search, API |
 | D1 | 500 MB per database, 10 databases; 5 M rows read and 100,000 written per day | the catalogue projection, the script index and the community, pushed as deltas |
 | Hugging Face | public datasets free ("best-effort"); byte ranges with CORS | the open data, and the script blocks |
 | Zenodo | 50 GB per record; 60 requests per minute without a token | a map weighs a few KB |

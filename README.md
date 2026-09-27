@@ -10,7 +10,7 @@
   <a href="LICENSE"><img alt="License: Apache-2.0" src="https://img.shields.io/badge/license-Apache--2.0-blue"></a>
   <a href="pyproject.toml"><img alt="Python 3.12" src="https://img.shields.io/badge/python-3.12-3776AB?logo=python&logoColor=white"></a>
   <a href="website/"><img alt="Website built with Astro" src="https://img.shields.io/badge/website-Astro-BC52EE?logo=astro&logoColor=white"></a>
-  <a href="https://oscr-2lj.pages.dev"><img alt="Website status" src="https://img.shields.io/website?url=https%3A%2F%2Foscr-2lj.pages.dev&label=oscr-2lj.pages.dev&up_message=online&down_message=offline"></a>
+  <a href="https://oscr.yannbellec-b.workers.dev"><img alt="Website status" src="https://img.shields.io/website?url=https%3A%2F%2Foscr.yannbellec-b.workers.dev&label=oscr.yannbellec-b.workers.dev&up_message=online&down_message=offline"></a>
   <a href="https://huggingface.co/datasets/opsecsystems/oscr-catalog"><img alt="Hugging Face dataset, private for now" src="https://img.shields.io/badge/Hugging%20Face-oscr--catalog%20%28private%20for%20now%29-FFD21E?logo=huggingface&logoColor=black"></a>
   <a href="https://sandbox.zenodo.org/communities/oscr"><img alt="Zenodo sandbox community oscr" src="https://img.shields.io/badge/Zenodo-sandbox%20community%3A%20oscr-1682D4?logo=zenodo&logoColor=white"></a>
   <a href="https://fair-software.eu"><img alt="fair-software.eu: 3 of 5 recommendations met" src="https://img.shields.io/badge/fair--software.eu-%E2%97%8F%20%20%E2%97%8F%20%20%E2%97%8B%20%20%E2%97%8F%20%20%E2%97%8B-orange"></a>
@@ -24,7 +24,7 @@ records the result with its evidence. From the catalogue, one click opens the pa
 the authors' script, with paired highlights showing which paragraph matches which lines.
 
 <p align="center">
-  <a href="https://oscr-2lj.pages.dev"><b>Website</b></a> ·
+  <a href="https://oscr.yannbellec-b.workers.dev"><b>Website</b></a> ·
   <a href="https://huggingface.co/datasets/opsecsystems/oscr-catalog"><b>Open catalogue</b></a> (private until release) ·
   <a href="docs/GETTING_STARTED.md">Getting started</a> ·
   <a href="docs/ARCHITECTURE.md">Architecture</a> ·
@@ -138,7 +138,7 @@ flowchart LR
   end
   subgraph public [Public, at no cost]
     hf["Hugging Face<br/>CC0 catalogue"]
-    web["oscr-2lj.pages.dev<br/>Cloudflare Pages"]
+    web["oscr.yannbellec-b.workers.dev<br/>Cloudflare Workers"]
     zen["Zenodo<br/>tracing-map DOIs"]
   end
   epmc --> watch
@@ -290,7 +290,7 @@ The rules:
 | **Harvester**: `oscr watch`, launchd agent `org.oscr.harvester` | a Mac Studio, around the clock, at low priority | reads papers, finds and verifies code, keeps the scripts' text in a private SQLite database (WAL) | $0 |
 | **Dashboard**: `oscr dashboard`, agent `org.oscr.dashboard` | the same Mac, http://127.0.0.1:8790, local only | a live, read-only view of the private database | $0 |
 | **Nightly publication**: `oscr nightly`, agent `org.oscr.nightly`, 04:17 | the same Mac | writes the public catalogue to `data/public/`, uploads it to Hugging Face, rebuilds and deploys the website | $0 |
-| **Website**: [`website/`](website/), Astro, static | Cloudflare Pages, https://oscr-2lj.pages.dev | the catalogue, a page per paper, the Code ↔ Paper reader | $0 |
+| **Website**: [`website/`](website/), Astro, static | Cloudflare Workers (static assets), https://oscr.yannbellec-b.workers.dev | the catalogue, a page per paper, the Code ↔ Paper reader | $0 |
 | **Open catalogue** | Hugging Face dataset `opsecsystems/oscr-catalog`, private until the owner decides | `articles.csv`, `repositories.csv`, `scripts.jsonl`, `alignments.jsonl`, `oscr_public.db` | $0 |
 | **Tracing-map DOIs**: `oscr zenodo …` | Zenodo (CERN); the sandbox during development | a DOI for each author-validated map | $0 |
 | **Code and CI** | GitHub | this repository, [GitHub Actions](.github/workflows/ci.yml) | $0 |
@@ -390,7 +390,7 @@ all described in [docs/GETTING_STARTED.md](docs/GETTING_STARTED.md).
 ## Roadmap
 
 - [ ] **Author validation on the website**: an author signs in with ORCID (free public API),
-      reviews their map, validates or corrects it. A Cloudflare Pages Function writes the
+      reviews their map, validates or corrects it. The site's Worker writes the
       validation to D1; the Mac picks it up and deposits the map on Zenodo. No real DOI before
       this exists, on purpose.
 - [ ] **Search** on the website, designed in the platform plan below.

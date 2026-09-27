@@ -1,0 +1,185 @@
+{
+ "generated_at": "2026-09-27T00:11:13Z",
+ "scope": {
+  "sources": "local corpus, DataCite",
+  "from": "2026-09-21",
+  "to": "2026-09-23",
+  "queries": ""
+ },
+ "figures": {
+  "articles": 3,
+  "fulltext": 3,
+  "with_code": 2,
+  "code_verified": 2,
+  "on_request": 1,
+  "code_on_request_mentioned": 1,
+  "repos_code": 2,
+  "repos_code_alive": 2,
+  "repos_code_dead": 0,
+  "repos_archived": 0,
+  "scripts": 3,
+  "scripts_read": 3,
+  "alignments": 2,
+  "aligned_papers": 1,
+  "statuses": {
+   "code_verified": 2,
+   "on_request": 1
+  }
+ },
+ "articles": [
+  {
+   "id": "doi:10.5555/oscr.fixture.3",
+   "slug": "doi_10.5555_oscr.fixture.3",
+   "doi": "10.5555/oscr.fixture.3",
+   "pmcid": "PMC0000003",
+   "fulltext_id": "PMC0000003",
+   "title": "A synthetic study with code on request",
+   "journal": "Journal of Synthetic Fixtures",
+   "published": "2026-09-23",
+   "status": "on_request",
+   "families": [],
+   "data_links": 0,
+   "code": [],
+   "card": null,
+   "alignment": null
+  },
+  {
+   "id": "doi:10.5555/oscr.fixture.2",
+   "slug": "doi_10.5555_oscr.fixture.2",
+   "doi": "10.5555/oscr.fixture.2",
+   "pmcid": "PMC0000002",
+   "fulltext_id": "PMC0000002",
+   "title": "A synthetic study whose code has no license",
+   "journal": "Journal of Synthetic Fixtures",
+   "published": "2026-09-22",
+   "status": "code_verified",
+   "families": [],
+   "data_links": 0,
+   "code": [
+    {
+     "repo": "github.com/oscr-fixture/unlicensed",
+     "url": "https://github.com/oscr-fixture/unlicensed",
+     "host": "github.com",
+     "level": "found",
+     "lot": 7,
+     "files_read": 1,
+     "state": "alive",
+     "license": "",
+     "redistributable": "no",
+     "scripts": 1,
+     "languages": {
+      "MATLAB": 1
+     },
+     "type": "",
+     "swh": null,
+     "inventoried": true,
+     "commit": "0000000000000000000000000000000000000000",
+     "where": "“Code availability”"
+    }
+   ],
+   "card": null,
+   "alignment": null
+  },
+  {
+   "id": "doi:10.5555/oscr.fixture.1",
+   "slug": "doi_10.5555_oscr.fixture.1",
+   "doi": "10.5555/oscr.fixture.1",
+   "pmcid": "PMC0000001",
+   "fulltext_id": "PMC0000001",
+   "title": "A synthetic EEG study for the OSCR build test",
+   "journal": "Journal of Synthetic Fixtures",
+   "published": "2026-09-21",
+   "status": "code_verified",
+   "families": [
+    "Spectral & time-frequency"
+   ],
+   "data_links": 0,
+   "code": [
+    {
+     "repo": "github.com/oscr-fixture/eeg-analysis",
+     "url": "https://github.com/oscr-fixture/eeg-analysis",
+     "host": "github.com",
+     "level": "found",
+     "lot": 26,
+     "files_read": 3,
+     "state": "alive",
+     "license": "MIT",
+     "redistributable": "yes",
+     "scripts": 2,
+     "languages": {
+      "Python": 2
+     },
+     "type": "",
+     "swh": null,
+     "inventoried": true,
+     "commit": "0000000000000000000000000000000000000000",
+     "where": "“Code availability”"
+    }
+   ],
+   "card": null,
+   "alignment": {
+    "lot": 3,
+    "pairs": 2,
+    "method": "lexical-v1"
+   }
+  }
+ ],
+ "families": [
+  {
+   "family": "Spectral & time-frequency",
+   "catalog_methods": 20,
+   "articles": 1,
+   "with_code": 1,
+   "methods": [],
+   "examples": [
+    {
+     "repo": "github.com/oscr-fixture/eeg-analysis",
+     "url": "https://github.com/oscr-fixture/eeg-analysis"
+    }
+   ]
+  }
+ ],
+ "repositories": [
+  {
+   "repo": "github.com/oscr-fixture/eeg-analysis",
+   "url": "https://github.com/oscr-fixture/eeg-analysis",
+   "host": "github.com",
+   "state": "alive",
+   "license": "MIT",
+   "scripts": 2,
+   "languages": {
+    "Python": 2
+   },
+   "commit": "0000000000000000000000000000000000000000",
+   "commit_date": "2026-09-20T12:00:00+00:00",
+   "swh": null,
+   "articles": 1,
+   "level": "found",
+   "type": "",
+   "inventoried": true,
+   "lot": 26,
+   "files_read": 3
+  },
+  {
+   "repo": "github.com/oscr-fixture/unlicensed",
+   "url": "https://github.com/oscr-fixture/unlicensed",
+   "host": "github.com",
+   "state": "alive",
+   "license": "",
+   "scripts": 1,
+   "languages": {
+    "MATLAB": 1
+   },
+   "commit": "0000000000000000000000000000000000000000",
+   "commit_date": "",
+   "swh": null,
+   "articles": 1,
+   "level": "found",
+   "type": "",
+   "inventoried": true,
+   "lot": 7,
+   "files_read": 1
+  }
+ ],
+ "public": true
+}

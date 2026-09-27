@@ -194,10 +194,10 @@ def test_the_night_rebuilds_the_website_and_puts_it_online(tmp_path, monkeypatch
     def fake_run(step, cwd, env, **kw):
         calls.append((step[:3], env["CATALOG_DIR"]))
         import subprocess
-        return subprocess.CompletedProcess(step, 0, stdout="✨ Deployment complete! https://ab12.oscr.pages.dev\n",
-                                           stderr="")
+        return subprocess.CompletedProcess(step, 0, stdout="Uploaded oscr (3.1 sec)\nDeployed oscr triggers\n"
+                                           "  https://oscr.example.workers.dev\n", stderr="")
     monkeypatch.setattr(publish.subprocess, "run", fake_run)
     r = publish.deploy_cloudflare(tmp_path / "pub", "oscr", website=tmp_path)
-    assert r == "website online: https://ab12.oscr.pages.dev"
-    assert [s for s, _ in calls] == [["npm", "run", "build"], ["npx", "wrangler", "pages"]]
+    assert r == "website online: https://oscr.example.workers.dev"
+    assert [s for s, _ in calls] == [["npm", "run", "build"], ["npx", "wrangler", "deploy"]]
     assert calls[0][1] == str((tmp_path / "pub").resolve())

@@ -13,6 +13,28 @@
 - **The platform's name lives in one configuration variable, `SITE_NAME`**; never hard-code
   it.
 
+## The owner's decisions of 2026-09-27 (Phase 0)
+
+- **Availability statements**: their full text only under an open license (CC BY, CC0,
+  CC BY-SA, CC BY-NC); otherwise a short summary and a link.
+- **Pages** only for papers with code, "on request" and "data only"; any other paper read is
+  found by a DOI lookup.
+- **Search**: SQLite FTS5 in D1. A search runs only when the form is submitted (never as you
+  type). When the daily quota is spent, a clear message says so. Plan B: a static index on
+  Hugging Face.
+- **Sign-in**: the owner creates the ORCID (sandbox first), GitHub and Google applications.
+- **Notifications**: in the site only. No email.
+- **Classification**: rules first, a local model only for the ambiguous cases, compared
+  beforehand on a sample the owner labels by hand. **The model uses the GPU only between
+  01:00 and 07:00.**
+- **Scope**: harvest broadly, filter by classification. Off-topic papers stay on the Mac,
+  out of the site and out of the statistics.
+- **Address**: the free `workers.dev` address while building; a domain before the public
+  launch.
+- **Hosting**: Cloudflare Workers (the site as static assets, the dynamic routes as the
+  Worker's code), not Pages. Site: https://oscr.yannbellec-b.workers.dev
+- **OpenAlex**: the owner creates the key; it goes in the keychain.
+
 ## DOIs and Zenodo
 
 - DOIs are assigned through **Zenodo** (free), **only for tracing maps validated by an
@@ -30,27 +52,33 @@
 In the code: `oscr/zenodo.py`. A test validation (`proof = 'test'`) is accepted by the
 sandbox only; the public database does not export it.
 
-## Script copies (decided 2026-09-26)
+## Script copies (decided 2026-09-26, index settled 2026-09-27)
 
-OSCR keeps copies of the authors' scripts, stored this way (measurements and projection:
-`docs/SCRIPT_STORAGE.md`):
+OSCR keeps copies of the authors' scripts, stored this way (measurements, projection and
+license audit: `docs/SCRIPT_STORAGE.md`; code: `oscr/scriptstore.py`, `oscr scripts …`):
 
-1. **Deduplication** by content digest (SHA-256): each unique file is stored once.
-2. **zstd compression.**
-3. **Parquet blocks**: one row per unique file (digest, compressed content, size, language),
-   split into blocks; plus an **index table in D1** (repository, commit, path → digest,
-   block, position).
-4. The blocks go to a **public Hugging Face dataset**, added incrementally (new blocks only;
-   a published block never changes). The script reader reads the row it needs in the
-   browser, with HTTP range requests (hyparquet).
+1. **Deduplication** by content digest (SHA-256 of the text): each unique file is stored once.
+2. **zstd compression** (Parquet page compression, level 19).
+3. **Parquet blocks** (`blocks/NNNNN.parquet`): one row per unique file (sha256, language,
+   size, lines, content), 64 rows per row group, 64 KiB pages, rows sorted by language then
+   size, ~30 MB per block. **A published block never changes**: new files go into new blocks.
+4. **No index in D1.** The positions (block, row) are written into the static pages at
+   build time, and **one manifest per repository** (`manifests/<xx>/<repository>.json`:
+   commit, license, and for each file its digest, block and row) serves the pages rendered
+   on demand.
+5. The blocks and manifests go to the Hugging Face dataset
+   **`OpenScientificCodeRegistry/Database`**, incrementally (`oscr scripts publish`, and
+   every night). The reader reads the row it needs in the browser, with HTTP range requests
+   (hyparquet).
 
-- **Only files whose license allows redistribution** go to the public dataset. The others
-  stay on the Mac, with their metadata (not their text) in D1; the site links to the source
-  at the verified commit.
-- Layout: zstd level 19 page compression, 64 rows per row group, 64 KiB pages, rows sorted
-  by language then size, blocks of 25–50 MB (a script view downloads ~78 KB).
-- The D1 index is pushed within the free write budget: the Mac queues it and sends at most
-  ~50,000 rows a day.
+- **Only verified licenses leave the Mac.** A file is published when its repository's
+  license allows redistribution AND is confirmed by the repository's own license file (for
+  an archive without one: by its record). A license inferred from a README sentence,
+  "other-open" without a license file, or no license: the file stays on the Mac, and the
+  site links to it at the source, at the verified commit.
+- The scripts dataset is published **only once the license filter is applied and verified**:
+  done on 2026-09-27 (`oscr scripts audit`; figures in `docs/SCRIPT_STORAGE.md`). Any change
+  to the filter is audited again before the next publication.
 
 ## The website's style (website/)
 
@@ -93,4 +121,4 @@ OSCR keeps copies of the authors' scripts, stored this way (measurements and pro
 - The tokens (Hugging Face, Zenodo) never go into the repository nor into the settings.
   They stay at their standard location or in the macOS keychain (`org.oscr.zenodo-sandbox`,
   `org.oscr.zenodo`).
-- No commit without being asked.
+- Commits: one per phase, on a dedicated branch; no other commit without being asked.
