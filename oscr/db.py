@@ -36,7 +36,11 @@ from collections.abc import Iterable
 from pathlib import Path
 from typing import Any
 
-SCHEMA_VERSION = 3
+#: The schema written by SCHEMA below; every later change is a numbered file in
+#: oscr/migrations/ (NNNN_name.sql), applied once, in order, when the database opens.
+BASE_VERSION = 3
+MIGRATIONS = Path(__file__).with_name("migrations")
+SCHEMA_VERSION = max([BASE_VERSION, *(int(f.name[:4]) for f in MIGRATIONS.glob("[0-9][0-9][0-9][0-9]_*.sql"))])
 
 STATUSES: tuple[str, ...] = (
     "code_verified",     # an authors' repository, alive, inventoried
@@ -230,8 +234,30 @@ def open_db(path: Path | str) -> sqlite3.Connection:
     con.execute("PRAGMA journal_mode = WAL")
     con.execute("PRAGMA synchronous = NORMAL")  # safe in WAL mode, and fewer writes
     con.executescript(SCHEMA)
-    con.execute("INSERT OR IGNORE INTO meta VALUES ('schema_version', ?)", (str(SCHEMA_VERSION),))
+    con.execute("INSERT OR IGNORE INTO meta VALUES ('schema_version', ?)", (str(BASE_VERSION),))
+    con.commit()
+    migrate(con)
     return con
+
+
+def migrate(con: sqlite3.Connection) -> list[str]:
+    """Apply the migrations the database has not seen, each in its own transaction: a
+    failed migration leaves the database at the previous version. Returns their names."""
+    current = int(con.execute("SELECT value FROM meta WHERE name = 'schema_version'").fetchone()[0])
+    done = []
+    for f in sorted(MIGRATIONS.glob("[0-9][0-9][0-9][0-9]_*.sql")):
+        n = int(f.name[:4])
+        if n <= current:
+            continue
+        try:
+            con.executescript("BEGIN;\n" + f.read_text() +
+                              f"\nUPDATE meta SET value = '{n}' WHERE name = 'schema_version';\nCOMMIT;")
+        except sqlite3.Error:
+            con.rollback()
+            raise
+        done.append(f.name)
+        current = n
+    return done
 
 
 def _j(v: Any) -> str:
@@ -295,8 +321,14 @@ def save_repository(con: sqlite3.Connection, repo: str, record: dict[str, Any]) 
     columns = [k for k in record if k != "repo"]
     values = [(_j(v) if isinstance(v, (dict, list)) else v) for v in (record[k] for k in columns)]
     assignments = ", ".join(f"{c} = ?" for c in columns)
+    now = time.time()
     con.execute(f"UPDATE repository SET {assignments}, verified_at = ? WHERE repo = ?",
-                (*values, time.time(), repo))
+                (*values, now, repo))
+    if "state" in record:
+        # Every verdict is kept, not only the last one: a repository's history of answers.
+        con.execute("INSERT OR REPLACE INTO alive_check (repo, checked_at, state, http_status, error) "
+                    "VALUES (?, ?, ?, ?, ?)", (repo, now, record["state"], record.get("http_status"),
+                                               record.get("error", "")))
 
 
 def save_contents(con: sqlite3.Connection, repo: str, version: str,
@@ -338,3 +370,29 @@ def set_cursor(con: sqlite3.Connection, source: str, value: str) -> None:
 
 def log_event(con: sqlite3.Connection, event: str, **details: Any) -> None:
     con.execute("INSERT INTO log VALUES (?,?,?)", (time.time(), event, _j(details)))
+
+
+def record_provenance(con: sqlite3.Connection, entity: str, entity_id: str, sources: dict[str, str],
+                      ref: str = "", at: float | None = None) -> None:
+    """Where each enriched value of a record came from (`field → source`), and when."""
+    at = at or time.time()
+    con.executemany("INSERT OR REPLACE INTO field_provenance (entity, entity_id, field, source, source_ref, "
+                    "fetched_at) VALUES (?, ?, ?, ?, ?, ?)",
+                    [(entity, entity_id, f, s, ref, at) for f, s in sources.items() if s])
+
+
+def save_version(con: sqlite3.Connection, entity: str, entity_id: str, snapshot: dict[str, Any],
+                 actor: str = "harvester") -> int | None:
+    """Keep `snapshot` as a new version of the record when it differs from the last one,
+    with what changed (`field → [before, after]`). Returns the new version, or None."""
+    last = con.execute("SELECT version, snapshot FROM version WHERE entity = ? AND entity_id = ? "
+                       "ORDER BY version DESC LIMIT 1", (entity, entity_id)).fetchone()
+    before = json.loads(last["snapshot"]) if last else {}
+    if last and before == snapshot:
+        return None
+    diff = {k: [before.get(k), snapshot.get(k)] for k in sorted(set(before) | set(snapshot))
+            if before.get(k) != snapshot.get(k)}
+    n = (last["version"] if last else 0) + 1
+    con.execute("INSERT INTO version (entity, entity_id, version, created_at, actor, snapshot, diff) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?)", (entity, entity_id, n, time.time(), actor, _j(snapshot), _j(diff)))
+    return n
