@@ -28,12 +28,45 @@ _DATA_REPOSITORIES: tuple[tuple[str, str], ...] = (
     ("zenodo:", "Zenodo"), ("figshare:", "figshare"), ("osf:", "OSF"), ("doi:10.5061/", "Dryad"),
     ("doi:10.5281/", "Zenodo"), ("doi:10.6084/", "figshare"), ("doi:10.17605/", "OSF"),
     ("doi:10.18112/openneuro", "OpenNeuro"), ("doi:10.48324/dandi", "DANDI"), ("doi:10.12751/g-node", "GIN"),
+    ("geo:", "NCBI GEO"), ("sra:", "NCBI SRA"), ("bioproject:", "NCBI BioProject"),
+    ("arrayexpress:", "ArrayExpress"), ("biostudies:", "BioStudies"), ("pride:", "PRIDE"), ("ega:", "EGA"),
     ("ncbi.nlm.nih.gov", "NCBI"), ("physionet.org", "PhysioNet"), ("rcsb.org", "PDB"), ("ebi.ac.uk", "EMBL-EBI"),
     ("uniprot.org", "UniProt"), ("kaggle.com", "Kaggle"), ("humanconnectome.org", "Human Connectome Project"),
     ("synapse.org", "Synapse"), ("data.mendeley.com", "Mendeley Data"), ("ukbiobank.ac.uk", "UK Biobank"),
     ("crcns.org", "CRCNS"), ("portal.brain-map.org", "Allen Brain Map"), ("huggingface.co", "Hugging Face"),
     ("doi:", "DOI"),
 )
+
+
+#: Datasets of the big databases are named by their accession, which the link key does not
+#: hold: every GEO series was keyed "ncbi.nlm.nih.gov/geo/query" (92 links on 2026-09-27),
+#: the accession being in the query string. (pattern, prefix, canonical URL)
+_ACCESSIONS: tuple[tuple[re.Pattern[str], str, str], ...] = (
+    (re.compile(r"\b(G(?:SE|SM|PL|DS)\d{3,})\b", re.I), "geo", "https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc={}"),
+    (re.compile(r"\b((?:SRP|SRR|SRX|SRS|ERP|ERR|DRP|DRR)\d{5,})\b", re.I), "sra", "https://www.ncbi.nlm.nih.gov/sra/{}"),
+    (re.compile(r"\b(PRJ(?:NA|EB|DB)\d+)\b", re.I), "bioproject", "https://www.ncbi.nlm.nih.gov/bioproject/{}"),
+    (re.compile(r"\b(E-[A-Z]{4}-\d+)\b", re.I), "arrayexpress", "https://www.ebi.ac.uk/biostudies/arrayexpress/studies/{}"),
+    (re.compile(r"\b(S-[A-Z]{4,}\d+)\b", re.I), "biostudies", "https://www.ebi.ac.uk/biostudies/studies/{}"),
+    (re.compile(r"\b(PXD\d{6})\b", re.I), "pride", "https://www.ebi.ac.uk/pride/archive/projects/{}"),
+    (re.compile(r"\b(EGA[SD]\d{11})\b", re.I), "ega", "https://ega-archive.org/{}"),
+)
+#: The root of a database, without an accession: not a dataset.
+_GENERIC_DATA_KEYS = ("ncbi.nlm.nih.gov/geo", "ncbi.nlm.nih.gov/sra", "ncbi.nlm.nih.gov/bioproject",
+                      "ebi.ac.uk/biostudies", "ebi.ac.uk/arrayexpress", "ebi.ac.uk/pride", "ebi.ac.uk/ena")
+
+
+def dataset_id(key: str, url: str = "") -> tuple[str, str] | None:
+    """(the dataset's id, its URL) for a data link: the accession for the big databases
+    (`geo:GSE157827`), else the link's key; None for a database's root, with no accession."""
+    for pattern, prefix, canonical in _ACCESSIONS:
+        m = pattern.search(f"{key} {url}")
+        if m:
+            accession = m.group(1).upper()
+            return f"{prefix}:{accession}", (url if accession.lower() in url.lower() else canonical.format(accession))
+    k = key.lower().rstrip("/")
+    if any(k == g or k.startswith(g + "/") for g in _GENERIC_DATA_KEYS):
+        return None
+    return key, url
 
 
 def data_repository(key: str) -> str:
@@ -51,13 +84,19 @@ def link_datasets(con: sqlite3.Connection, article_id: str) -> int:
     rows = con.execute("SELECT repo, url, found_by FROM link WHERE article_id = ? AND role = 'data'",
                        (article_id,)).fetchall()
     con.execute("DELETE FROM paper_dataset WHERE article_id = ?", (article_id,))
+    linked = 0
     for r in rows:
+        ident = dataset_id(r["repo"], r["url"] or "")
+        if ident is None:
+            continue
+        did, url = ident
         con.execute("INSERT INTO dataset (id, repository, url) VALUES (?, ?, ?) ON CONFLICT(id) DO UPDATE "
                     "SET url = CASE WHEN dataset.url = '' THEN excluded.url ELSE dataset.url END",
-                    (r["repo"], data_repository(r["repo"]), r["url"] or ""))
+                    (did, data_repository(did), url))
         con.execute("INSERT OR IGNORE INTO paper_dataset (article_id, dataset_id, relation, found_by) "
-                    "VALUES (?, ?, 'cited', ?)", (article_id, r["repo"], r["found_by"] or ""))
-    return len(rows)
+                    "VALUES (?, ?, 'cited', ?)", (article_id, did, r["found_by"] or ""))
+        linked += 1
+    return linked
 
 
 def coverage(con: sqlite3.Connection) -> dict[str, Any]:

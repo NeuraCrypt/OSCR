@@ -1,0 +1,44 @@
+---
+// The datasets cited by the papers with a page, grouped by the repository that holds them.
+import Base from "../../layouts/Base.astro";
+import { number, plural } from "../../lib/catalog";
+import { datasetName, datasetPages, datasets, datasetUrl, STATIC_MAX, type Dataset } from "../../lib/entities";
+
+const groups = new Map<string, Dataset[]>();
+for (const d of datasetPages) {
+  const key = d.repository || "Other";
+  if (!groups.has(key)) groups.set(key, []);
+  groups.get(key)!.push(d);
+}
+const repositories = [...groups.entries()].sort((x, y) => y[1].length - x[1].length || x[0].localeCompare(y[0]));
+---
+<Base
+  title="Datasets"
+  description="The datasets cited by the papers with their code, code on request or data only."
+  breadcrumb={[{ text: "Browse", href: "/browse/" }, { text: "Datasets" }]}
+>
+  <h1>Datasets</h1>
+  <p class="summary">
+    {plural(datasets.length, "dataset")} cited by the papers with a page, by the repository that holds them.
+  </p>
+  {datasets.length === 0 && <p>No dataset yet.</p>}
+  {repositories.map(([repository, list]) => (
+    <>
+      <h2>{repository} <small>({plural(list.length, "dataset")})</small></h2>
+      <ul>
+        {list.map((d) => (
+          <li>
+            <a href={datasetUrl(d.id)}>{datasetName(d)}</a>{d.title && <> · <span class="code">{d.id}</span></>} — cited by{" "}
+            {plural(d.counts.papers, "paper")}
+          </li>
+        ))}
+      </ul>
+    </>
+  ))}
+  {datasets.length > datasetPages.length && (
+    <p class="line">
+      {plural(datasets.length - datasetPages.length, "other dataset")} will have their page when pages are rendered on
+      demand (beyond the first {number(STATIC_MAX.dataset)}).
+    </p>
+  )}
+</Base>

@@ -5,3 +5,4 @@ dist/
 # Copied from the harvester's public export on every build (scripts/data.mjs)
 src/data/
 public/scripts/
+public/lookup/

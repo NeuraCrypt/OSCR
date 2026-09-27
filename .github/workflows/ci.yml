@@ -36,10 +36,12 @@ jobs:
 
   # The website is built from a tiny public catalogue kept in the repository, never from
   # the harvester's data: tests/fixtures/public-catalog/ holds what `oscr nightly` writes
-  # to data/public/ (in public mode), for one or two papers whose code has an open license:
+  # to data/public/ (in public mode), for a few invented papers (tools/make_fixture.py):
   #   catalog.json        with "public": true;
   #   scripts/NN.json     the script lots named by the catalogue's repositories;
-  #   alignments/NN.json  optional, the Code ↔ Paper pairs.
+  #   alignments/NN.json  optional, the Code ↔ Paper pairs;
+  #   entities/*.json     authors, journals, institutions, tools, datasets, categories;
+  #   lookup/NNN.json     the DOI lookup's shards.
   # Without it, the job says so and skips the build instead of failing.
   website:
     name: Website (Astro build)
@@ -76,3 +78,10 @@ jobs:
         if: steps.fixture.outputs.ready == 'true'
         working-directory: website
         run: npm run build
+
+      # Every kind of page exists (the fixture exercises them all), every internal link
+      # leads to a file, no page shows an email address; prints the number of files.
+      - name: Check the routes and the links
+        if: steps.fixture.outputs.ready == 'true'
+        working-directory: website
+        run: npm run check -- --every-route

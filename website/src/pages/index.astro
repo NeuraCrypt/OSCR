@@ -1,21 +1,11 @@
 ---
 import Base from "../layouts/Base.astro";
+import Listing from "../components/Listing.astro";
 import { SITE_TAGLINE } from "../config";
-import {
-  byDay, catalog, number, plural, readerUrl, recordUrl, shortName, status, withCode, type Article,
-} from "../lib/catalog";
+import { catalog, number, plural, withCode } from "../lib/catalog";
 
 const f = catalog.figures;
-const days = byDay(withCode);
 const matched = withCode.filter((a) => (a.alignment?.pairs ?? 0) > 0).length;
-let num = 0;
-const readable = (a: Article) => a.code.reduce((n, d) => n + (d.files_read || 0), 0);
-const keys = (a: Article) => ({
-  title: a.title.toLowerCase(),
-  doi: a.doi.toLowerCase(),
-  journal: a.journal.toLowerCase(),
-  repo: a.code.map((d) => `${d.repo} ${d.url}`).join(" ").toLowerCase(),
-});
 ---
 <Base breadcrumb={[{ text: "Catalogue" }]}>
   <h1>{SITE_TAGLINE}</h1>
@@ -26,48 +16,7 @@ const keys = (a: Article) => ({
     {matched > 0 && ` Code\u00a0↔\u00a0Paper matches computed for ${plural(matched, "paper")}.`}
   </p>
 
-  {days.map((d) => (
-    <>
-      <h2 class="day">{d.label} <small>({plural(d.articles.length, "paper")})</small></h2>
-      <dl class="listing">
-        {d.articles.map((a) => {
-          num += 1;
-          const s = status(a.status);
-          const n = readable(a);
-          const pairs = a.alignment?.pairs ?? 0;
-          const map = a.card?.doi ? a.card : null;
-          const k = keys(a);
-          return (
-            <>
-              <dt data-title={k.title} data-doi={k.doi} data-journal={k.journal} data-repo={k.repo}>
-                <span class="num">[{num}]</span>{" "}
-                <a class="reader-link" href={readerUrl(a)}>Code ↔ Paper</a>{" "}
-                <a href={recordUrl(a)}>doi:{a.doi}</a>{" "}
-                [<a href={`https://doi.org/${a.doi}`}>paper</a>, <a href={`${recordUrl(a)}#code`}>repository</a>]
-              </dt>
-              <dd>
-                <div class="title">{a.title}</div>
-                <div class="line"><span class="label">Journal:</span> {a.journal || "—"}</div>
-                <div class="line">
-                  <span class="label">Authors' code:</span>{" "}
-                  {a.code.map((r, i) => (
-                    <>{i > 0 && ", "}<a class="code" href={r.url}>{shortName(r)}</a> ({r.license || "no license"})</>
-                  ))}
-                </div>
-                <div class="line">
-                  <span class="label">Status:</span>{" "}
-                  {s.tone ? <span class={s.tone}>{s.label}</span> : s.label}
-                  {n > 0 && <>, {plural(n, "file")} readable</>}
-                  {pairs > 0 && <>, {plural(pairs, "match", "matches")}</>}
-                  {map && <>, map validated by an author (<a href={`https://doi.org/${map.doi}`}>DOI</a>)</>}
-                </div>
-              </dd>
-            </>
-          );
-        })}
-      </dl>
-    </>
-  ))}
+  <Listing articles={withCode} searchable />
 
   <script>
     // The masthead search arrives here through the address (?q=…&field=…): the

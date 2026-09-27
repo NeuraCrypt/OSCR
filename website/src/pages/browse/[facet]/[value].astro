@@ -1,0 +1,27 @@
+---
+// The papers of one category, the catalogue's way: by day of publication.
+import Base from "../../../layouts/Base.astro";
+import Listing from "../../../components/Listing.astro";
+import { number, plural } from "../../../lib/catalog";
+import { categoryPages, facetLabel, papersOf, type Category } from "../../../lib/entities";
+
+export function getStaticPaths() {
+  return categoryPages.map((c) => ({ params: { facet: c.facet, value: c.slug }, props: { c } }));
+}
+
+const { c } = Astro.props as { c: Category };
+const label = facetLabel(c.facet);
+const papers = papersOf(c.papers);
+---
+<Base
+  title={`${c.name} (${label.toLowerCase()})`}
+  description={`The papers in the category “${c.name}” (${label.toLowerCase()}).`}
+  breadcrumb={[{ text: "Browse", href: "/browse/" }, { text: label, href: `/browse/#${c.facet}` }, { text: c.value }]}
+>
+  <h1>{c.name}</h1>
+  <p class="summary">
+    {label}: {plural(c.counts.papers, "paper")} with a page, {number(c.counts.with_code)} of them with their authors'
+    code.
+  </p>
+  <Listing articles={papers} />
+</Base>
