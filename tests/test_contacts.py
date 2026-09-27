@@ -120,3 +120,22 @@ def test_the_site_hides_email_addresses_in_code():
     assert "jane.doe@fib.fr" not in masked and catalog.EMAIL_MASK in masked
     assert "git@github.com:lab/repo.git" in masked and "@property" in masked
     assert masked.count("\n") == code.count("\n")
+
+
+def test_a_huge_repository_shows_only_part_of_its_text_on_the_site(tmp_path, monkeypatch):
+    monkeypatch.setattr(catalog, "MAX_SITE_TEXT_PER_REPO", 50)
+    con = _db_with_contacts(tmp_path)
+    con.execute("INSERT INTO repository (repo, url, host, kind, state, license, redistributable) VALUES "
+                "('github.com/big/toolbox', 'https://github.com/big/toolbox', 'github.com', 'forge', 'alive', "
+                "'MIT', 'yes')")
+    con.execute("INSERT INTO link (article_id, repo, url, host, kind, role, confidence, found_by) VALUES "
+                "('doi:10.1/c', 'github.com/big/toolbox', 'https://github.com/big/toolbox', 'github.com', 'forge', "
+                "'code', 'high', 'text:availability')")
+    for i in range(3):
+        con.execute("INSERT INTO file (repo, path, version, language, kind, size, lines, text) VALUES "
+                    "('github.com/big/toolbox', ?, 'c', 'Python', 'script', 30, 1, ?)", (f"f{i}.py", "x" * 30))
+    con.commit()
+    lots = catalog.script_lots(con, public=True)
+    files = lots[catalog.lot_of("github.com/big/toolbox")]["github.com/big/toolbox"]["files"]
+    assert [f["text"] is not None for f in files] == [True, False, False]
+    assert "read it at the source" in files[2]["note"]

@@ -36,7 +36,13 @@ from . import methods
 
 #: Script texts and matches are served in LOTS, loaded on demand: the pages stay light,
 #: and a static host serves them as they are.
-N_LOTS: int = 32
+#: Lots of the scripts' text and of the matches: a Workers static asset may not exceed
+#: 25 MiB. 32 lots reached 30 MiB with 4,226 papers (2026-09-27); 128 keep them small.
+N_LOTS: int = 128
+#: At most this much text per repository on the site: beyond it, files are listed with a
+#: link to the source. One toolbox (1,714 files, 23.6 MB of text) filled a lot by itself.
+#: The Hugging Face copy of the scripts keeps everything.
+MAX_SITE_TEXT_PER_REPO: int = 8_000_000
 
 #: The licenses under which a script's text is republished. Without a license, code is
 #: "all rights reserved": it is shown at the source, not here.
@@ -353,8 +359,13 @@ def script_lots(con: sqlite3.Connection, public: bool) -> dict[int, dict[str, An
         published = (not public) or d["redistributable"] in PUBLISHABLE
         withdrawn_note = NOTE_NO_LICENSE if not d["license"] else NOTE_LICENSE
         files = []
+        shown = 0
         for f in con.execute("SELECT * FROM file WHERE repo = ? ORDER BY kind DESC, path", (repo,)):
             text, note = (f["text"], f["note"]) if published else (None, withdrawn_note)
+            if public and text:
+                shown += len(text)
+                if shown > MAX_SITE_TEXT_PER_REPO:
+                    text, note = None, "too large a repository to show every file here: read it at the source"
             if text and "�" in text:
                 # The replacement character is already in the ORIGINAL ("S�ren" in
                 # legendflex.m): the database keeps it as is, the export says so.
