@@ -1,0 +1,32 @@
+---
+// The tools found in the authors' code (the imports of their scripts), the most used first.
+import Base from "../../layouts/Base.astro";
+import { number, plural } from "../../lib/catalog";
+import { STATIC_MAX, toolPages, tools, toolUrl } from "../../lib/entities";
+---
+<Base
+  title="Tools"
+  description="The libraries, toolboxes and software found in the code of the papers' authors."
+  breadcrumb={[{ text: "Browse", href: "/browse/" }, { text: "Tools" }]}
+>
+  <h1>Tools</h1>
+  <p class="summary">
+    {plural(tools.length, "tool")} found in the authors' code of the papers with a page, the most used first. A tool
+    is found in the scripts of the authors' repositories (what they import), not in the text of the paper.
+  </p>
+  {tools.length === 0 && <p>No tool yet: they are found when the repositories are described.</p>}
+  <ul>
+    {toolPages.map((t) => (
+      <li>
+        <a href={toolUrl(t.id)}>{t.name}</a>{t.kind && ` (${t.kind})`} — {plural(t.counts.papers, "paper")},{" "}
+        {plural(t.counts.repositories, "repository", "repositories")}
+      </li>
+    ))}
+  </ul>
+  {tools.length > toolPages.length && (
+    <p class="line">
+      {plural(tools.length - toolPages.length, "other tool")} will have their page when pages are rendered on demand
+      (beyond the first {number(STATIC_MAX.tool)}).
+    </p>
+  )}
+</Base>

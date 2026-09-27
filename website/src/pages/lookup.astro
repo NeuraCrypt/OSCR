@@ -1,0 +1,35 @@
+---
+// The DOI lookup (decision D2): any paper read can be found here, with or without a page.
+// The page is static; the lookup runs in the reader's browser when the form is submitted
+// (src/scripts/lookup.ts), and fetches one shard, /lookup/NNN.json.
+import Base from "../layouts/Base.astro";
+import { SITE_NAME } from "../config";
+import { catalog, number } from "../lib/catalog";
+---
+<Base
+  title="DOI lookup"
+  description="Was this paper read, and was its authors' code found? Any paper read, with or without a page."
+  breadcrumb={[{ text: "DOI lookup" }]}
+>
+  <h1>DOI lookup</h1>
+  <p class="summary">
+    Has {SITE_NAME} read a paper, and what did it find? Every open-access neuroscience paper it has read can be looked up
+    by its DOI, with or without a page ({number(catalog.figures.articles)} papers read in all).
+  </p>
+  <form id="lookup" action="/lookup/" method="get">
+    <label for="doi">DOI</label>{" "}
+    <input id="doi" name="doi" type="text" size="34" placeholder="10.1234/abcd" autocomplete="off" spellcheck="false"
+      required />{" "}
+    <button type="submit">Look up</button>
+  </form>
+  <p id="lookup-result" role="status" aria-live="polite"></p>
+  <noscript><p class="warning">The lookup runs in your browser: it needs JavaScript.</p></noscript>
+  <p class="line">
+    A paper has a page when its authors published their code, when its code is available on request, or when it shares
+    its data only. Every other paper read is only found here.
+  </p>
+
+  <script>
+    import "../scripts/lookup";
+  </script>
+</Base>

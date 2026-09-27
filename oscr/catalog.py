@@ -389,6 +389,10 @@ def generate(con: sqlite3.Connection, folder: Path, *, public: bool = False, mir
                 _mirror(con, lots, mirror)
         else:
             _alignments_jsonl(con, lots, folder / "alignments.jsonl")
+    if public:
+        # The website's navigation: entities/, lookup/, and each paper's page and its links.
+        from . import entities
+        entities.generate(con, folder, d["articles"])
     (folder / "catalog.json").write_text(json.dumps(d, ensure_ascii=False, indent=1))
     _articles_csv(con, folder / "articles.csv")
     _repositories_csv(con, folder / "repositories.csv")
