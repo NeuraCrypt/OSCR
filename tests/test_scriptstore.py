@@ -128,3 +128,12 @@ def test_what_is_not_published_yet_is_sent_by_the_next_upload(con, tmp_path):
         == "dry run: 4 files to send, 0 to remove → x/y"
     card = (tmp_path / "store" / "README.md").read_text()
     assert "license: other" in card and "| MIT | 1 |" in card
+
+
+def test_the_dataset_token_comes_from_the_environment_or_the_keychain(monkeypatch):
+    monkeypatch.setenv("OSCR_HF_TOKEN", "  from-env  ")
+    assert scriptstore.token() == "from-env"
+    monkeypatch.delenv("OSCR_HF_TOKEN")
+    monkeypatch.setattr(scriptstore.subprocess, "run",
+                        lambda *a, **k: scriptstore.subprocess.CompletedProcess(a, 44, stdout="", stderr=""))
+    assert scriptstore.token() is None     # not in the keychain: the default login

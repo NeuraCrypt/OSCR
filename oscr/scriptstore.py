@@ -23,8 +23,10 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import re
 import sqlite3
+import subprocess
 import time
 from collections.abc import Iterable
 from pathlib import Path
@@ -320,6 +322,25 @@ def pending(con: sqlite3.Connection) -> tuple[list[str], list[str]]:
     return send, remove
 
 
+#: The macOS keychain entry of the Hugging Face token allowed to write to the scripts'
+#: dataset, which belongs to an organization that the owner's own login may not reach.
+#: Never in a file of the project nor in the settings (CLAUDE.md).
+KEYCHAIN_SERVICE = "org.oscr.huggingface"
+
+
+def token() -> str | None:
+    """The token for the scripts' dataset: $OSCR_HF_TOKEN, else the keychain entry, else
+    None (the default Hugging Face login)."""
+    if os.environ.get("OSCR_HF_TOKEN", "").strip():
+        return os.environ["OSCR_HF_TOKEN"].strip()
+    try:
+        r = subprocess.run(["security", "find-generic-password", "-s", KEYCHAIN_SERVICE, "-w"],
+                           capture_output=True, text=True, timeout=10)
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    return (r.stdout.strip() or None) if r.returncode == 0 else None
+
+
 def publish(con: sqlite3.Connection, folder: Path, dataset: str, *, platform: str,
             dry_run: bool = False) -> str:
     """Send what the dataset does not have yet (and the card), remove withdrawn manifests.
@@ -333,7 +354,7 @@ def publish(con: sqlite3.Connection, folder: Path, dataset: str, *, platform: st
     if dry_run:
         return f"dry run: {len(send)} files to send, {len(remove)} to remove → {dataset}"
     from huggingface_hub import HfApi
-    HfApi().upload_folder(
+    HfApi(token=token()).upload_folder(
         folder_path=str(folder), repo_id=dataset, repo_type="dataset", allow_patterns=send,
         delete_patterns=remove or None,
         commit_message=f"Scripts of {time.strftime('%Y-%m-%d', time.gmtime())}: "
