@@ -109,10 +109,19 @@ _LICENSE_ALIASES: dict[str, str] = {
 
 
 def license_of(text: str) -> str:
-    """The SPDX id of a LICENSE file, recognized by its signature sentence."""
+    """The SPDX id of a LICENSE file: the license whose signature comes FIRST in the text.
+
+    A license names others in passing: section 13 of the GPL-3.0 names the GNU Affero
+    General Public License, and the GPLs name the Lesser (Library) GPL. Taking the first
+    signature of the list that matched anywhere labeled 38 GPL-3.0 repositories AGPL-3.0
+    (seen 2026-09-27). On a tie, the more specific signature, listed first, wins."""
+    best: tuple[int, str] | None = None
     for pattern, spdx in _SIGNATURES:
-        if re.search(pattern, text, re.I):
-            return spdx
+        m = re.search(pattern, text, re.I)
+        if m and (best is None or m.start() < best[0]):
+            best = (m.start(), spdx)
+    if best:
+        return best[1]
     return "other" if text.strip() else ""
 
 

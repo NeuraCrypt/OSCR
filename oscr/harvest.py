@@ -91,6 +91,10 @@ def _family_names(authors: list[str]) -> list[str]:
 def scan_article(con: sqlite3.Connection, client: Client, art: europepmc.EpmcArticle,
                  opts: Options, xml: str | None = None, tally: Tally | None = None) -> str:
     db.save_article(con, art.as_dict())
+    # Never hold the database's write lock across a network call: the nightly publication
+    # and the enrichment write too, and waited in vain behind a Zenodo rate-limit pause
+    # ("database is locked", 2026-09-27).
+    con.commit()
     if xml is None and art.fulltext_id:
         try:
             xml = europepmc.fulltext(client, art.fulltext_id)
@@ -165,6 +169,7 @@ def verify_article(con: sqlite3.Connection, client: Client, article_id: str, opt
                 link = links.Link(l["url"], l["repo"], l["host"], l["kind"],
                                   identifier=l["repo"].split("/", 1)[-1])
             db.save_repository(con, l["repo"], _verify_one(client, link, a, opts))
+            con.commit()      # before the next network call (see scan_article)
             done += 1
         # The Zenodo record names the GitHub repository the archive comes from: it is
         # added with the same role at EVERY reading of the paper — whether the record

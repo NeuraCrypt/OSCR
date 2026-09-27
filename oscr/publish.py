@@ -122,19 +122,19 @@ def publish_hf(site: Path, dataset: str, *, mirror: Path | None = None, dry_run:
 
 def deploy_cloudflare(catalog: Path, project: str, website: Path = WEBSITE) -> str:
     """Rebuild the website from the public catalogue (`catalog`, generated in public
-    mode) and send it to Cloudflare Pages by direct upload: no git repository and no
-    build at Cloudflare. `npx wrangler login` must have been done once; wrangler keeps
-    and renews its login itself."""
+    mode) and put it online as the static assets of a Cloudflare Worker (`project` is the
+    Worker's name): no git repository and no build at Cloudflare, and only the files that
+    changed are uploaded. `npx wrangler login` must have been done once; wrangler keeps and
+    renews its login itself."""
     env = {**os.environ, "CATALOG_DIR": str(catalog.resolve())}
     steps = [] if (website / "node_modules").exists() else [["npm", "install", "--no-audit", "--no-fund"]]
     steps += [["npm", "run", "build"],
-              ["npx", "wrangler", "pages", "deploy", "dist", "--project-name", project,
-               "--branch", "main", "--commit-dirty=true"]]
+              ["npx", "wrangler", "deploy", "--name", project]]
     output = ""
     for step in steps:
         r = subprocess.run(step, cwd=website, env=env, capture_output=True, text=True, timeout=1800)
         if r.returncode != 0:
             raise RuntimeError(f"{' '.join(step[:4])} failed: " + (r.stderr or r.stdout).strip()[-600:])
         output = r.stdout
-    url = re.search(r"https://[\w.-]+\.pages\.dev\S*", output)
+    url = re.search(r"https://[\w.-]+\.workers\.dev\S*", output)
     return f"website online: {url.group(0) if url else project}"

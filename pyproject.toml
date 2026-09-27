@@ -18,10 +18,12 @@ dependencies = [
     # Publishing to Hugging Face is part of normal operation: as an "extra", the first
     # `uv run` without it uninstalled it from .venv.
     "huggingface_hub>=0.25",
+    # The scripts' Parquet blocks (oscr/scriptstore.py): zstd page compression.
+    "pyarrow>=17",
 ]
 
 [project.urls]
-Homepage = "https://oscr-2lj.pages.dev"
+Homepage = "https://oscr.yannbellec-b.workers.dev"
 Repository = "https://github.com/yannbellec/Open-Scientific-Code-Registry-OSCR-"
 
 [dependency-groups]

@@ -9,7 +9,7 @@
     "dev": "npm run data && astro dev",
     "build": "npm run data && astro build",
     "preview": "astro preview",
-    "deploy": "npm run build && wrangler pages deploy dist --project-name oscr --branch main --commit-dirty=true"
+    "deploy": "npm run build && wrangler deploy"
   },
   "dependencies": {
     "astro": "^7.3.5"

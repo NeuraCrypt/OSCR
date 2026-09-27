@@ -9,7 +9,7 @@ Everything to do, in order. The commands are typed in the Mac's Terminal.
 | **The harvester** (continuous watch) | running since 2026-09-26 |
 | **The local dashboard** | running on http://127.0.0.1:8790 |
 | **The nightly publication** (Hugging Face) | connected through `hf auth login` (OAuth, renews itself) |
-| **The public website** (Cloudflare Pages) | online at https://oscr-2lj.pages.dev, rebuilt every night |
+| **The public website** (Cloudflare Workers) | online at https://oscr.yannbellec-b.workers.dev, rebuilt every night |
 | **Map DOIs** (Zenodo) | sandbox connected, community `oscr` created, one test deposit made |
 | **The code** | on https://github.com/yannbellec/Open-Scientific-Code-Registry-OSCR- |
 | **Author validation** (ORCID) | not built yet; without it, no real DOI |
@@ -108,7 +108,7 @@ All development happens on **sandbox.zenodo.org**: its DOIs are fake (prefix `10
    This test validation stays in your database, marked `test`. It never appears in the
    exports, and the real Zenodo ignores it.
 
-## Step 5: Cloudflare Pages, put the website online (10 min)
+## Step 5: Cloudflare Workers, put the website online (10 min)
 
 **First, a decision**: once deployed, the website is **public**. It only shows the public
 catalogue:
@@ -117,35 +117,37 @@ catalogue:
 - no text of any paper: the Code ↔ Paper reader has the visitor's browser load it from
   Europe PMC.
 
+The site is a Cloudflare **Worker whose static assets are the built pages** (owner's
+decision D9, 2026-09-26): asset requests are free and unlimited, and the server code of
+the coming phases (search, sign-in) will live in the same Worker.
+
 1. Create a free account on https://dash.cloudflare.com, if you do not have one.
 2. Sign in. The browser opens; click **Allow**.
    ```bash
    cd /Volumes/Expansion/Scrapper/website
    npx wrangler login
    ```
-3. Create the project. If the name is taken, choose another one, and replace `oscr` in the
-   `deploy` script of `package.json`.
-   ```bash
-   npx wrangler pages project create oscr --production-branch main
-   ```
-4. Put the site online:
+3. Put the site online. The first deployment creates the Worker `oscr` (`name` in
+   `website/wrangler.toml`) and, if the account has none yet, asks for a `workers.dev`
+   subdomain.
    ```bash
    npm run deploy
    ```
    The build reads the public catalogue that `oscr nightly` writes to `../data/public`
-   (another folder with `CATALOG_DIR=…`). The site is then at https://oscr-2lj.pages.dev.
-5. **Every night, automatically**: in `~/.config/oscr/settings`, set
-   `OSCR_CLOUDFLARE_PROJECT=oscr`.
+   (another folder with `CATALOG_DIR=…`). The site is then at
+   https://oscr.yannbellec-b.workers.dev.
+4. **Every night, automatically**: in `~/.config/oscr/settings`, set
+   `OSCR_CLOUDFLARE_PROJECT=oscr` (the Worker's name).
    - At 04:17, after Hugging Face, the site is rebuilt with the day's catalogue and put
-     online.
+     online; only the files that changed are uploaded.
    - Wrangler keeps and renews its own sign-in.
    - To test right away: `launchctl kickstart gui/$(id -u)/org.oscr.nightly`.
 
 The website takes its display name from `SITE_NAME` (default `OSCR`) and `SITE_TAGLINE`,
 read at build time (`website/src/config.ts`); no page writes the name itself.
 
-A domain name would be the only possible cost (about €10 a year). It is not needed: the
-`.pages.dev` address is free.
+The free `workers.dev` address serves while the platform is being built; a domain name
+(about €10 a year) comes before the public launch (owner's decision D8).
 
 ## Step 6: save the code (5 min)
 
@@ -220,7 +222,7 @@ The settings are in `~/.config/oscr/settings`.
 - **Author validation**: an author signs in on the website with their ORCID, reviews their
   map, validates or corrects it.
   - ORCID offers sign-in for free (public API; registration on orcid.org/developer-tools).
-  - The validation will go through a Pages Function and D1 at Cloudflare. The Mac will pick
+  - The validation will go through the site's Worker and D1 at Cloudflare. The Mac will pick
     it up and deposit the map on Zenodo.
   - **Without it, no real DOI is possible**: on purpose (see [CLAUDE.md](../CLAUDE.md)).
 - **Search** on the website: designed in [PLATFORM_PLAN.md](PLATFORM_PLAN.md), awaiting the

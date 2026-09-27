@@ -5,20 +5,78 @@ Decided by the owner on 2026-09-26; measured the same day on the private databas
 
 ## The decision
 
-OSCR keeps copies of the authors' scripts:
+Decided by the owner on 2026-09-26; the index was settled on 2026-09-27.
 
-1. **Deduplication** by content digest (SHA-256). Each unique file is stored once.
-2. **zstd compression.**
-3. **Parquet blocks.** One row per unique file: digest, compressed content, size, language.
-   Blocks are split by size. An **index table in D1** maps
-   (repository, commit, path) → (digest, block, position).
-4. **A public Hugging Face dataset** holds the blocks, added incrementally: new blocks only,
-   and a published block never changes. The script reader reads the row it needs **in the
-   browser**, with HTTP range requests (hyparquet).
+1. **Deduplication** by content digest (SHA-256 of the text). Each unique file is stored
+   once.
+2. **zstd compression**: Parquet page compression, level 19.
+3. **Parquet blocks** (`blocks/NNNNN.parquet`). One row per unique file: `sha256`,
+   `language`, `size`, `lines`, `content`.
+   - 64 rows per row group and 64 KiB pages; rows sorted by language, then size.
+   - ~30 MB per block.
+   - **A published block never changes**: new files go into new blocks.
+4. **No index in D1.**
+   - The positions (block, row) are written into the static pages at build time.
+   - **One manifest per repository** (`manifests/<xx>/<repository>.json`) serves the pages
+     rendered on demand. It holds the commit, the license and how it was confirmed, and for
+     each file its path, digest, block and row.
+5. **The Hugging Face dataset `OpenScientificCodeRegistry/Database`** holds the blocks and
+   manifests, added incrementally (`oscr scripts publish`, then every night). The script
+   reader reads the row it needs **in the browser**, with HTTP range requests (hyparquet).
 
-Only files whose license allows redistribution go to the public dataset. The others stay on
-the Mac. Their metadata goes to D1, but not their text, and the site links to the source at
-the verified commit.
+**Only verified licenses leave the Mac** (`oscr/scriptstore.py`). A file is published when
+its repository's license allows redistribution **and** is confirmed:
+- for a git repository, by its root license file;
+- for an archive (Zenodo, figshare…), by a license file of the archive, or else by the
+  license of its record.
+
+The license published is the one that file or record names.
+
+Everything else stays on the Mac, and the site links to the source at the verified commit:
+- a license inferred from a README sentence;
+- "other-open" without a license file;
+- no license.
+
+## The license audit (2026-09-27)
+
+`oscr scripts audit` reports what would leave and why the rest stays.
+
+**First, a detection bug.** Before the audit, license detection took the first signature
+of its list that matched anywhere in the text. A license names others in passing: section
+13 of the GPL-3.0 names the GNU Affero GPL, and the GPLs name the Lesser GPL. The fix:
+the license whose signature comes first in the text wins. The database was then relabelled
+from the stored license files:
+
+| recorded | corrected | repositories |
+|---|---|---|
+| AGPL-3.0 | GPL-3.0 | 35 |
+| LGPL-2.1 | GPL-2.0 | 3 |
+| other | MIT | 3 |
+| other | GPL-3.0 | 1 |
+
+**Result.**
+- **Published: 285 repositories, 13,832 files.** Their licenses:
+  - MIT: 135 repositories;
+  - GPL-3.0: 41;
+  - CC BY 4.0: 48 (6 by a license file, 42 by the record);
+  - Apache-2.0: 19;
+  - BSD-3-Clause: 13;
+  - CC0: 7;
+  - GPL-2.0: 5;
+  - BSD-2-Clause, AGPL-3.0, LGPL-3.0, CC BY-SA: a few each;
+  - CC BY-NC(-SA/-ND): 6, for non-commercial reuse only, as the dataset card says.
+- **Held on the Mac: 231 repositories, 6,137 files:**
+  - no license: 205;
+  - a license file not recognized as open: 5;
+  - a license known only from a README sentence: 16;
+  - "other-open" without a license file: 2;
+  - other unconfirmed labels: 3.
+- **Seven repositories are published under a license other than the one recorded**, the
+  one their own license file names. For example, Zenodo archives recorded as CC BY 4.0 hold
+  code with an MIT license file.
+
+**First build** (2026-09-27): 1 block of **12,203 unique files (19.8 MB, 191 row groups)**
+and 286 manifests, 23 MB in all.
 
 ## What deduplication and compression save
 
@@ -86,7 +144,7 @@ The stock is ~42,000 papers with the authors' code (range 30–55k; see `PLATFOR
 | raw text: 473 KB | 155 MB | 19.9 GB (14–26) |
 | **stored (dedup + Parquet zstd 19, 64-row groups): 78 KB** | **25.6 MB** | **3.3 GB (2.3–4.3)** |
 | public share (licenses that allow redistribution: 70% of the bytes) | 17.9 MB | **2.3 GB (1.6–3.0)** |
-| D1 index: 52 rows | 17,095 rows | 2.2 M rows (1.6–2.9 M) |
+| manifests: one per repository | 286 | ~40–60k |
 
 ## The free tiers
 
@@ -97,23 +155,10 @@ responsible use "beyond the first few gigabytes". A public dataset of ~2.3 GB, g
   25–50 MB give fewer than 150 files.
 - Daily commits of new blocks are fine; the history can be squashed if it grows.
 
-**D1.**
-- **Storage.** Stored WITHOUT ROWID, one row per (repository, commit, path) with integer keys
-  takes ~70 bytes, so ~150 MB at full scale. That fits in a D1 database of its own (500 MB
-  per database, 10 databases).
-- **Writes.** One write per row: no secondary index, and upserts with `ON CONFLICT DO UPDATE`.
-- ⚠️ **The daily write limit (100,000 rows) does not keep up with the start of the backfill.**
-  - The backfill reads ~18,000 papers a day. In 2025–2026 that is up to ~2,000 papers with
-    code, so ~100,000 index rows a day: the whole D1 budget.
-  - **Proposal:** the Mac queues the index rows and pushes at most ~50,000 a day. The script
-    reader then lags behind the catalogue during the first weeks of the backfill.
-  - The backlog, 2.2 M rows at 50,000 a day, clears in ~45 days, about the length of the
-    backfill.
-  - Afterwards, ~150 new papers with code a day means ~8,000 rows a day.
-- **Fallback if the budget gets tight:** one D1 row per repository and commit, holding the
-  file manifest as compressed JSON. That is ~60,000 rows in all instead of 2.2 M. The cost
-  is that searching file paths in SQL is lost.
-- **Reads:** one primary-key lookup per script view.
+**D1.** Not used for the scripts (decision of 2026-09-27). The (block, row) positions go
+into the static pages at build time; the pages rendered on demand read the repository's
+manifest from Hugging Face. So the 100,000-writes-a-day budget, which the backfill would
+have filled, is not touched.
 
 **The uplink.** Measured on 2026-09-26: the first Cloudflare deployment sent 143 MB in 159 s,
 ~0.9 MB/s. A task at launchd's background priority is throttled by macOS: the nightly Hugging
@@ -125,9 +170,9 @@ Face upload measured ~25 KB/s.
 **The browser.**
 - hyparquet with a zstd decoder (fzstd) adds 62 KB minified (21 KB gzipped), on the reader
   page only.
-- A script view costs one D1 lookup, which is one Worker request, plus one or two range
-  requests to Hugging Face. The block's footer is fetched once and then comes from the
-  browser cache.
+- A script view costs no Worker request: one or two range requests to Hugging Face (the
+  position comes with the page, or from the repository's manifest). The block's footer is
+  fetched once and then comes from the browser cache.
 
 ## Reproduce
 
