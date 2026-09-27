@@ -1,0 +1,44 @@
+---
+// A tool: what it is, the authors' repositories that use it, and their papers.
+import Base from "../../layouts/Base.astro";
+import Listing from "../../components/Listing.astro";
+import { plural, shortName } from "../../lib/catalog";
+import { papersOf, rridUrl, toolPages, type Tool } from "../../lib/entities";
+
+export function getStaticPaths() {
+  return toolPages.map((t) => ({ params: { id: t.slug }, props: { t } }));
+}
+
+const { t } = Astro.props as { t: Tool };
+const papers = papersOf(t.papers);
+const rrid = rridUrl(t.rrid);
+---
+<Base
+  title={t.name}
+  description={`The papers whose authors' code uses ${t.name}.`}
+  breadcrumb={[{ text: "Browse", href: "/browse/" }, { text: "Tools", href: "/tools/" }, { text: t.name }]}
+>
+  <h1>{t.name}</h1>
+  <p class="summary">
+    Found in the code of {plural(t.counts.papers, "paper")}, in{" "}
+    {plural(t.counts.repositories, "repository", "repositories")} of their authors.
+  </p>
+  {t.kind && <div class="line"><span class="label">Kind:</span> {t.kind}</div>}
+  {t.homepage && <div class="line"><span class="label">Homepage:</span> <a href={t.homepage}>{t.homepage}</a></div>}
+  {t.rrid && (
+    <div class="line"><span class="label">RRID:</span> {rrid ? <a href={rrid}>{t.rrid}</a> : t.rrid}</div>
+  )}
+
+  <h2>Repositories</h2>
+  <details open={t.repositories.length <= 12}>
+    <summary>{plural(t.repositories.length, "repository", "repositories")} whose code uses {t.name}</summary>
+    <ul>
+      {t.repositories.map((r) => (
+        <li>{r.url ? <a class="code" href={r.url}>{shortName(r)}</a> : <span class="code">{shortName(r)}</span>}</li>
+      ))}
+    </ul>
+  </details>
+
+  <h2>Papers</h2>
+  <Listing articles={papers} />
+</Base>

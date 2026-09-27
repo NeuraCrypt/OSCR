@@ -1,0 +1,35 @@
+---
+// The journals of the papers with a page, by title, each with its papers with code out of
+// the papers read in it.
+import Base from "../../layouts/Base.astro";
+import { number, plural } from "../../lib/catalog";
+import { journalPages, journals, journalUrl, STATIC_MAX } from "../../lib/entities";
+
+const sorted = [...journalPages].sort((x, y) => x.title.localeCompare(y.title));
+---
+<Base
+  title="Journals"
+  description="The journals of the papers with their code, code on request or data only."
+  breadcrumb={[{ text: "Browse", href: "/browse/" }, { text: "Journals" }]}
+>
+  <h1>Journals</h1>
+  <p class="summary">
+    {plural(journals.length, "journal")} with at least one paper with a page. For each, the papers with their authors'
+    code out of the papers read in it.
+  </p>
+  {journals.length === 0 && <p>No journal yet.</p>}
+  <ul>
+    {sorted.map((j) => (
+      <li>
+        <a href={journalUrl(j.id)}>{j.title}</a> — {number(j.counts.with_code)} with code out of{" "}
+        {plural(j.counts.read, "paper")} read
+      </li>
+    ))}
+  </ul>
+  {journals.length > journalPages.length && (
+    <p class="line">
+      {plural(journals.length - journalPages.length, "other journal")} will have their page when pages are rendered on
+      demand (beyond the first {number(STATIC_MAX.journal)}).
+    </p>
+  )}
+</Base>

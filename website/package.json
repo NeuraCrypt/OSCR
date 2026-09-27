@@ -8,6 +8,7 @@
     "data": "node scripts/data.mjs",
     "dev": "npm run data && astro dev",
     "build": "npm run data && astro build",
+    "check": "node scripts/check.mjs",
     "preview": "astro preview",
     "deploy": "npm run build && wrangler deploy"
   },

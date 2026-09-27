@@ -2,6 +2,7 @@
 // See scripts/data.mjs: it comes from CATALOG_DIR, always exported in public mode.
 import { existsSync, readFileSync } from "node:fs";
 import raw from "../data/catalog.json";
+import { dayInWords } from "./format";
 
 /** A repository cited by a paper as its authors' code, and what verification found. */
 export type Repo = {
@@ -30,6 +31,9 @@ export type Card = {
   concept_doi?: string;
 };
 
+/** An author as a paper lists them: `orcid` is "" when they have no (valid) ORCID iD. */
+export type PaperAuthor = { name: string; orcid: string };
+
 export type Article = {
   id: string;
   slug: string;
@@ -45,6 +49,13 @@ export type Article = {
   code: Repo[];
   card: Card | null;
   alignment: { lot: number; pairs: number; method: string } | null;
+  // Since Phase 2 (oscr/entities.py): whether the paper has a page (D2, D7) and, when it
+  // has one, what its page links to. Absent from an older export.
+  page?: boolean;
+  authors?: PaperAuthor[];
+  journal_id?: string;
+  tools?: string[];
+  datasets?: string[];
 };
 
 /** A file of a lot of scripts. `text` is null when the license of the repository
@@ -92,25 +103,20 @@ export const webUrl = (u: string | null | undefined) => (u && /^https?:\/\//i.te
 export const catalog = raw as unknown as Catalog;
 for (const a of catalog.articles) for (const r of a.code) r.url = webUrl(r.url);
 
-/** The papers whose authors' code was found: they are the ones the site shows. */
+/** The papers whose authors' code was found: the home page lists them, and each has a
+ *  Code ↔ Paper reader. */
 export const withCode = catalog.articles.filter((a) => a.code.length > 0);
+
+/** The papers that have a page (the owner's decision D2): the authors' code, code on
+ *  request, or data only; never an off-topic paper (D7). An export older than Phase 2
+ *  does not say: its papers with code keep their page. */
+export const withPage = catalog.articles.filter((a) => a.page === true || a.code.length > 0);
 
 export const recordUrl = (a: Article) => `/paper/${a.slug}/`;
 export const readerUrl = (a: Article) => `/paper/${a.slug}/code/`;
 export const lot2 = (n: number) => String(n).padStart(2, "0");
 
-/** The status, in words; `tone` is `ok`, `warning` or nothing (science.css). */
-export const STATUSES: Record<string, { label: string; tone: "ok" | "warning" | "" }> = {
-  code_verified: { label: "code verified", tone: "ok" },
-  code_found: { label: "code found, not verified yet", tone: "warning" },
-  code_empty: { label: "empty repository", tone: "warning" },
-  code_dead: { label: "dead link", tone: "warning" },
-  on_request: { label: "code on request", tone: "" },
-  data_only: { label: "data only", tone: "" },
-  none: { label: "no code", tone: "" },
-  no_fulltext: { label: "full text unavailable", tone: "" },
-};
-export const status = (s: string) => STATUSES[s] ?? { label: s.replace(/_/g, " "), tone: "" as const };
+export { STATUSES, status } from "./status";
 
 export const STATES: Record<string, string> = {
   alive: "the link answers",
@@ -142,7 +148,7 @@ export function shortName(d: Pick<Repo, "repo" | "url">): string {
   return d.repo;
 }
 
-export { number, plural } from "./format";
+export { dateInWords, dayInWords, number, plural } from "./format";
 
 /** The papers grouped by day of publication, from the most recent to the oldest. */
 export function byDay(articles: Article[]): { day: string; label: string; articles: Article[] }[] {
@@ -155,20 +161,6 @@ export function byDay(articles: Article[]): { day: string; label: string; articl
   return [...groups.entries()]
     .sort(([x], [y]) => (x < y ? 1 : x > y ? -1 : 0))
     .map(([day, list]) => ({ day, label: dayInWords(day), articles: list }));
-}
-
-/** "2026-09-21" → "Monday, 21 September 2026"; a month or a year alone stays so. */
-export function dayInWords(day: string): string {
-  if (/^\d{4}-\d{2}-\d{2}$/.test(day)) {
-    return new Date(`${day}T00:00:00Z`).toLocaleDateString("en-GB", {
-      weekday: "long", day: "numeric", month: "long", year: "numeric", timeZone: "UTC",
-    });
-  }
-  if (/^\d{4}-\d{2}$/.test(day)) {
-    return new Date(`${day}-01T00:00:00Z`).toLocaleDateString("en-GB", { month: "long", year: "numeric", timeZone: "UTC" });
-  }
-  if (/^\d{4}$/.test(day)) return day;
-  return "Unknown date";
 }
 
 /** The date of the catalog, e.g. "26 September 2026, 21:23 UTC". */
