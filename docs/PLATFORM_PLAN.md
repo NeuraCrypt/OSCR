@@ -1,6 +1,8 @@
 # Platform plan — Phase 0: audit and plan
 
-Status: **Phase 0 validated by the owner on 2026-09-27, with the decisions of §13. Phase 1 built (awaiting the owner's approval to run on the Mac); Phases 2 and 3 in progress.**
+Status: **Phase 0 validated by the owner on 2026-09-27, with the decisions of §13. Phase 1 built
+(awaiting the owner's approval to run on the Mac). Phase 2 (navigation) built on its branch,
+awaiting the owner's review (§6, §12). Phase 3 in progress.**
 Date: 2026-09-26. Scope: turn the catalogue into a full platform (arXiv + SSRN + PubMed +
 a Kaggle dataset page), at zero cost, following `CLAUDE.md`. The platform's name lives in
 one configuration variable, `SITE_NAME` (current value: `OSCR`).
@@ -331,10 +333,11 @@ within 5,000/h. Git history: local, no quota.
 |---|---|---|
 | `/` | search bar, key figures, new today / this week, categories with counts, top journals and tools | static, rebuilt nightly |
 | `/search` | simple and advanced search, facets with counts, sorts, export | static shell + Svelte island + search API |
-| `/browse/`, `/browse/<category>/`, `/browse/<category>/<year>/` | category tree; new / recent / by year, paginated like arXiv lists | static (bounded) |
-| `/paper/<id>/` + tabs (`code`, `map`, `data`, `versions`, `discussion`, `reproductions`, `cite`, `activity`, `similar`) | the central page | static while under the file budget, then on demand (SSR from `papers.doc`); tabs with live data are islands |
+| `/browse/`, `/browse/<facet>/<value>/` (built, Phase 2); `/browse/<category>/<year>/` | category tree by facet with counts; a category's papers by day; later by year, paginated like arXiv lists | static (bounded) |
+| `/paper/<id>/` + tabs (`code`, `map`, `data`, `versions`, `discussion`, `reproductions`, `cite`, `activity`, `similar`) | the central page; since Phase 2 also for "on request" and "data only" (D2), linking to its authors, journal, tools, datasets and categories | static while under the file budget, then on demand (SSR from `papers.doc`); tabs with live data are islands |
 | `/paper/<id>/read/` | Code ↔ Paper reader | same shell as the paper; texts fetched by the browser |
-| `/author/<orcid>/`, `/journal/<issn>/`, `/institution/<ror>/`, `/tool/<slug>/`, `/dataset/<id>/` | entity pages | static for the top N of each, on demand for the long tail |
+| `/authors/`, `/author/<orcid>/`, `/journals/`, `/journal/<id>/`, `/institutions/`, `/institution/<ror>/`, `/tools/`, `/tool/<id>/`, `/datasets/`, `/dataset/<id>/` (built, Phase 2) | entity indexes and pages | static for the top `STATIC_MAX` (2,000) of each type by papers, on demand for the long tail (Phase 3) |
+| `/lookup/` (built, Phase 2) | the DOI lookup: any in-scope paper read, with or without a page (D2) | static page; the browser fetches one of ≤ 4,096 shards `/lookup/NNN.json` (first 3 hex characters of sha1(DOI)) |
 | `/observatory/` | reserved for statistics and reports | static placeholder |
 | `/account/…`, `/submit/`, `/admin/…`, `/moderation/…` | accounts, submission, administration | on demand (Functions), never cached |
 | `/about/`, `/governance/`, `/cite/`, `/data-license/`, `/takedown/`, `/privacy/`, `/terms/`, `/help/`, `/api/` | institutional pages | static |
@@ -342,6 +345,15 @@ within 5,000/h. Git history: local, no quota.
 
 Every route is written so that switching one entity type from prerendered to on-demand is a
 configuration change (`prerender` per route, same component, data from `papers.doc`).
+
+**Built in Phase 2.** `oscr/entities.py` writes `entities/*.json` (authors with an ORCID iD,
+journals, institutions by ROR id, tools, datasets, categories) and `lookup/NNN.json` into the
+public export; only the papers with a page count, and off-topic papers appear nowhere, the
+lookup included (D7). A category is shown when the owner or a model set it, or the rules did
+with a confidence of at least 0.6 and no ambiguity. Measured on a synthetic export at today's
+scale (2,380 papers read, 471 with a page, 548 authors with an ORCID iD): 3,736 files, of which
+1,949 pages and 1,782 lookup shards. At the full stock the lookup takes 4,096 files and the
+entities at most 2,000 per type: the paper pages must go on demand first (Phase 3).
 
 ### Page counts
 
@@ -436,7 +448,7 @@ nightly to Hugging Face as JSON and Parquet (deltas only, to fit the uplink).
 | phase | delivers | depends on |
 |---|---|---|
 | 1 — harvester enrichment | the J, E and G fields first (no new request), the article type and the rates on research articles, then OpenAlex, Crossref integrity, GitHub metadata, git history, tool detection, RRIDs, datasets, classification (rules, then local model), provenance, versions; migrations; backfill of the papers already read | decisions D1, D6 |
-| 2 — navigation | categories, journals, institutions, authors, tools, datasets pages | 1 |
+| 2 — navigation | categories, journals, institutions, authors, tools, datasets pages; the DOI lookup; pages for "on request" and "data only" (D2). **Built on branch `phase-2`, awaiting review, not deployed**; institutions await ROR ids from OpenAlex | 1 |
 | 3 — search | D1 projection + FTS5, facets, advanced search, export | 1, D3 |
 | 4 — full paper page | all tabs, Versions with diff | 1–3 |
 | 5 — accounts | ORCID, GitHub, Google, roles, author and maintainer verification | D4 (OAuth apps) |

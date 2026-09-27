@@ -1,0 +1,52 @@
+---
+// Browse: the categories of the papers with a page, facet by facet, with their counts;
+// then the other ways in (authors, journals, institutions, tools, datasets, the lookup).
+import Base from "../../layouts/Base.astro";
+import { number, plural, withPage } from "../../lib/catalog";
+import { authors, categories, datasets, facets, institutions, journals, tools } from "../../lib/entities";
+
+const withCode = withPage.filter((a) => a.code.length > 0).length;
+const threshold = Math.round(categories.min_confidence * 100);
+const counted = (n: number, withCodeCount: number) =>
+  `${plural(n, "paper")}${withCodeCount > 0 ? `, ${number(withCodeCount)} with code` : ""}`;
+---
+<Base
+  title="Browse"
+  description="The papers with their authors' code, code on request or data only, by category, author, journal, institution, tool and dataset."
+  breadcrumb={[{ text: "Browse" }]}
+>
+  <h1>Browse</h1>
+  <p class="summary">
+    {plural(withPage.length, "paper")} with a page: {number(withCode)} with their authors' code, the others with code on
+    request or data only. By category, and by the people, journals, institutions, tools and datasets behind them.
+  </p>
+
+  {facets.length === 0 ? (
+    <p>No paper is classified yet: the categories appear here once the classification has run.</p>
+  ) : (
+    facets.map((f) => (
+      <>
+        <h2 id={f.facet}>{f.label}</h2>
+        <ul>
+          {f.values.map((v) => (
+            <li>{v.url ? <a href={v.url}>{v.name}</a> : v.name} ({counted(v.counts.papers, v.counts.with_code)})</li>
+          ))}
+        </ul>
+      </>
+    ))
+  )}
+  <p class="line">
+    A paper is in a category when its classification says so: the owner's label first, then a model's for the cases
+    the rules find ambiguous, then the rules when they are at least {threshold}% confident.
+  </p>
+
+  <h2>Other ways in</h2>
+  <ul>
+    <li><a href="/authors/">Authors</a>: {plural(authors.length, "author")} with an ORCID iD</li>
+    <li><a href="/journals/">Journals</a>: {plural(journals.length, "journal")}</li>
+    <li><a href="/institutions/">Institutions</a>: {plural(institutions.length, "institution")}, from ROR identifiers</li>
+    <li><a href="/tools/">Tools</a>: {plural(tools.length, "tool")} found in the authors' code</li>
+    <li><a href="/datasets/">Datasets</a>: {plural(datasets.length, "dataset")} cited</li>
+    <li><a href="/lookup/">DOI lookup</a>: any paper read, with or without a page</li>
+  </ul>
+</Base>

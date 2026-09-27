@@ -1,18 +1,18 @@
 {
- "generated_at": "2026-09-27T00:19:30Z",
+ "generated_at": "2026-09-27T01:47:26Z",
  "scope": {
   "sources": "local corpus, DataCite",
   "from": "2026-09-21",
-  "to": "2026-09-23",
+  "to": "2026-09-25",
   "queries": ""
  },
  "figures": {
-  "articles": 3,
-  "fulltext": 3,
+  "articles": 5,
+  "fulltext": 5,
   "research_articles": 0,
   "research_with_code": 0,
   "by_type": {
-   "unknown": 3
+   "unknown": 5
   },
   "with_code": 2,
   "code_verified": 2,
@@ -28,10 +28,61 @@
   "aligned_papers": 1,
   "statuses": {
    "code_verified": 2,
+   "data_only": 1,
+   "none": 1,
    "on_request": 1
   }
  },
  "articles": [
+  {
+   "id": "doi:10.5555/oscr.fixture.5",
+   "slug": "doi_10.5555_oscr.fixture.5",
+   "doi": "10.5555/oscr.fixture.5",
+   "pmcid": "PMC0000005",
+   "fulltext_id": "PMC0000005",
+   "title": "A synthetic study where no code was found",
+   "journal": "Journal of Synthetic Fixtures",
+   "published": "2026-09-25",
+   "status": "none",
+   "families": [],
+   "data_links": 0,
+   "code": [],
+   "card": null,
+   "alignment": null,
+   "page": false
+  },
+  {
+   "id": "doi:10.5555/oscr.fixture.4",
+   "slug": "doi_10.5555_oscr.fixture.4",
+   "doi": "10.5555/oscr.fixture.4",
+   "pmcid": "PMC0000004",
+   "fulltext_id": "PMC0000004",
+   "title": "A synthetic study that shares its data only",
+   "journal": "Journal of Synthetic Fixtures",
+   "published": "2026-09-24",
+   "status": "data_only",
+   "families": [],
+   "data_links": 1,
+   "code": [],
+   "card": null,
+   "alignment": null,
+   "page": true,
+   "authors": [
+    {
+     "name": "Ben Example",
+     "orcid": "0000-0000-0000-0028"
+    },
+    {
+     "name": "Eve Nameless",
+     "orcid": ""
+    }
+   ],
+   "journal_id": "issn:0000-0019",
+   "tools": [],
+   "datasets": [
+    "doi:10.5555/oscr.fixture.data.1"
+   ]
+  },
   {
    "id": "doi:10.5555/oscr.fixture.3",
    "slug": "doi_10.5555_oscr.fixture.3",
@@ -46,7 +97,17 @@
    "data_links": 0,
    "code": [],
    "card": null,
-   "alignment": null
+   "alignment": null,
+   "page": true,
+   "authors": [
+    {
+     "name": "Ada Fixture",
+     "orcid": "0000-0000-0000-001X"
+    }
+   ],
+   "journal_id": "issn:0000-0019",
+   "tools": [],
+   "datasets": []
   },
   {
    "id": "doi:10.5555/oscr.fixture.2",
@@ -83,7 +144,21 @@
     }
    ],
    "card": null,
-   "alignment": null
+   "alignment": null,
+   "page": true,
+   "authors": [
+    {
+     "name": "Ben Example",
+     "orcid": "0000-0000-0000-0028"
+    },
+    {
+     "name": "Dan Nameless",
+     "orcid": ""
+    }
+   ],
+   "journal_id": "issn:0000-0019",
+   "tools": [],
+   "datasets": []
   },
   {
    "id": "doi:10.5555/oscr.fixture.1",
@@ -126,7 +201,29 @@
     "lot": 3,
     "pairs": 2,
     "method": "lexical-v1"
-   }
+   },
+   "page": true,
+   "authors": [
+    {
+     "name": "Ada Fixture",
+     "orcid": "0000-0000-0000-001X"
+    },
+    {
+     "name": "Ben Example",
+     "orcid": "0000-0000-0000-0028"
+    },
+    {
+     "name": "Cleo Nameless",
+     "orcid": ""
+    }
+   ],
+   "journal_id": "issn:0000-0019",
+   "tools": [
+    "matplotlib",
+    "numpy",
+    "scipy"
+   ],
+   "datasets": []
   }
  ],
  "families": [

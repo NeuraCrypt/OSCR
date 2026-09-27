@@ -88,6 +88,40 @@ A page of the website puts a paper and its authors' code side by side.
 The website's name is not written in its pages: it comes from `SITE_NAME` (default `OSCR`)
 and `SITE_TAGLINE`, set in `website/src/config.ts` or at build time.
 
+## The website's pages
+
+Every page is static: Astro builds it from the public export (`data/public/`, written by
+`oscr nightly` in public mode), and the Worker serves it as a static asset. Every `<title>`
+ends with `SITE_NAME`; the only style is `science.css`.
+
+| route | what it shows | from the export |
+|---|---|---|
+| `/` | the papers with their authors' code, by day of publication | `catalog.json` |
+| `/paper/<slug>/` | a paper with code, code on request or data only (decision D2): its authors (those with an ORCID iD linked), journal, categories, tools, code and data | `catalog.json`, `entities/` |
+| `/paper/<slug>/code/` | the Code ↔ Paper reader, for the papers with code | `catalog.json`, `alignments/`, `scripts/` |
+| `/browse/` | the categories by facet, with their counts; the other ways in | `entities/categories.json` |
+| `/browse/<facet>/<value>/` | the papers of a category, by day | `entities/categories.json` |
+| `/authors/`, `/author/<orcid>/` | the authors with an ORCID iD: latest affiliations, institutions, tools, papers | `entities/authors.json` |
+| `/journals/`, `/journal/<id>/` | ISSN, publisher, papers with code out of papers read | `entities/journals.json` |
+| `/institutions/`, `/institution/<ror>/` | the authors' institutions, by ROR id | `entities/institutions.json` |
+| `/tools/`, `/tool/<id>/` | the tools found in the authors' code: repositories, papers | `entities/tools.json` |
+| `/datasets/`, `/dataset/<id>/` | the datasets cited, by repository | `entities/datasets.json` |
+| `/lookup/` | the DOI lookup: any paper read, with or without a page | `lookup/NNN.json`, fetched by the browser |
+| `/about/` | what the registry is, and what it never publishes | — |
+
+- **Who counts.** `oscr/entities.py` counts only the papers with a page (D2): the authors'
+  code (verified, found, empty, dead), code on request, data only. An off-topic paper appears
+  nowhere, the lookup included (D7).
+- **People** are merged by ORCID iD only; a name without one stays a name on its paper's
+  page. No email address or telephone number leaves the export, and the build removes any
+  string that still looks like an address.
+- **The lookup** is static: the page fetches one shard, `/lookup/NNN.json` (the first 3 hex
+  characters of the SHA-1 of the lowercased DOI), only when its form is submitted.
+- **Bounded.** `STATIC_MAX` (`website/src/lib/entities.ts`): 2,000 pages per entity type,
+  the entities with the most papers; beyond, pages will be rendered on demand by the Worker
+  from D1 (Phase 3). `npm run check` (in CI with `--every-route`) checks every route and every
+  internal link after the build, and prints the number of files.
+
 ## The tracing map
 
 The map (`tracing-map.json`, see `oscr/zenodo.py`) says, for a paper:
@@ -140,8 +174,9 @@ neuro stock, of which ~2.3 GB are public.
 ## Planned platform
 
 The platform extension (a normalized D1 catalogue, accounts, search and a community) is
-specified in [PLATFORM_PLAN.md](PLATFORM_PLAN.md). Nothing in it is built yet: it awaits the
-owner's validation, and each phase will follow the rules of [CLAUDE.md](../CLAUDE.md).
+specified in [PLATFORM_PLAN.md](PLATFORM_PLAN.md). Each phase follows the rules of
+[CLAUDE.md](../CLAUDE.md); Phase 2 (navigation, the pages above) is built on its branch and
+awaits the owner's review.
 
 ### Search engine
 

@@ -46,3 +46,16 @@ def test_the_owners_labels_win_and_decide_what_leaves(con, tmp_path):
     rows = sorted(tuple(r) for r in con.execute("SELECT facet, value FROM paper_category WHERE method = 'owner'"))
     assert rows == [("modality", "eeg"), ("modality", "meg"), ("on_topic", "no"),
                                         ("organism", "human")]
+
+
+def test_a_dataset_of_a_big_database_is_named_by_its_accession():
+    geo = "https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE157827"
+    assert enrich.dataset_id("ncbi.nlm.nih.gov/geo/query", geo) == ("geo:GSE157827", geo)
+    assert enrich.dataset_id("ncbi.nlm.nih.gov/sra", "https://www.ncbi.nlm.nih.gov/sra/srp123456")[0] == "sra:SRP123456"
+    assert enrich.dataset_id("ebi.ac.uk/biostudies/arrayexpress", "https://www.ebi.ac.uk/biostudies/arrayexpress/"
+                             "studies/E-MTAB-1234")[0] == "arrayexpress:E-MTAB-1234"
+    # The root of the database, with no accession, is not a dataset.
+    assert enrich.dataset_id("ncbi.nlm.nih.gov/geo/query", "https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi") is None
+    assert enrich.dataset_id("openneuro:ds004080", "https://openneuro.org/datasets/ds004080") == \
+        ("openneuro:ds004080", "https://openneuro.org/datasets/ds004080")
+    assert enrich.data_repository("geo:GSE157827") == "NCBI GEO"

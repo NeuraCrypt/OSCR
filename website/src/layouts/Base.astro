@@ -19,6 +19,11 @@ const {
   breadcrumb = [],
 } = Astro.props;
 const fullTitle = title ? `${title} — ${SITE_NAME}` : SITE_TAGLINE === SITE_NAME ? SITE_NAME : `${SITE_NAME} — ${SITE_TAGLINE}`;
+// The ways in besides the catalogue, after the path, unless the path already says them.
+const sections = [
+  { text: "Browse", href: "/browse/" },
+  { text: "DOI lookup", href: "/lookup/" },
+].filter((s) => !breadcrumb.some((b) => b.text === s.text));
 ---
 <!doctype html>
 <html lang="en">
@@ -54,12 +59,16 @@ const fullTitle = title ? `${title} — ${SITE_NAME}` : SITE_TAGLINE === SITE_NA
       <a href="/">{SITE_NAME}</a>{breadcrumb.map((b) => (
         <> › {b.href ? <a href={b.href}>{b.text}</a> : b.text}</>
       ))}
+      {/* Markup only: science.css has no style for links in the masthead. */}
+      {sections.map((s, i) => <>{i === 0 ? " | " : " · "}<a href={s.href}>{s.text}</a></>)}
     </nav>
     <main>
       <slot />
     </main>
     <footer>
       <a href="/">Catalogue</a>
+      <a href="/browse/">Browse</a>
+      <a href="/lookup/">DOI lookup</a>
       <a href="/about/">About</a>
       <a href="https://github.com/yannbellec/Open-Scientific-Code-Registry-OSCR-">GitHub</a>
       {SITE_NAME} · Catalogue of {generatedInWords(catalog.generated_at)}. Each script keeps the license of its
