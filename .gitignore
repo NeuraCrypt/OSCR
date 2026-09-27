@@ -20,3 +20,6 @@ mirror/
 
 # The local configuration of the Claude app (website preview).
 .claude/
+
+# macOS folder metadata.
+.DS_Store

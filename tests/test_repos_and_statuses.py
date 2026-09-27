@@ -19,6 +19,18 @@ def test_licenses():
     assert repos.redistributable("") == "no"
 
 
+def test_a_license_is_the_one_its_title_names_not_one_it_mentions():
+    gpl3 = ("GNU GENERAL PUBLIC LICENSE\n Version 3, 29 June 2007\n ...\n 13. Use with the GNU Affero "
+            "General Public License.\n ... use the GNU Lesser General Public License instead of this License.")
+    agpl3 = "GNU AFFERO GENERAL PUBLIC LICENSE\n Version 3, 19 November 2007\n ... the GNU General Public License"
+    gpl2 = ("GNU GENERAL PUBLIC LICENSE\n Version 2, June 1991\n ... covered by the GNU Library General "
+            "Public License instead.")
+    lgpl3 = "GNU LESSER GENERAL PUBLIC LICENSE\n Version 3, 29 June 2007\n ... the GNU General Public License"
+    lgpl21 = "GNU LESSER GENERAL PUBLIC LICENSE\n Version 2.1, February 1999"
+    assert [repos.license_of(t) for t in (gpl3, agpl3, gpl2, lgpl3, lgpl21)] == [
+        "GPL-3.0", "AGPL-3.0", "GPL-2.0", "LGPL-3.0", "LGPL-2.1"]
+
+
 def test_a_lone_zip_leaves_the_script_count_unknown():
     assert repos._inventory(["vignetteAnalysis.zip"])["n_scripts"] is None
 

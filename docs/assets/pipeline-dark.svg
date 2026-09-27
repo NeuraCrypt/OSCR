@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="960" height="490" viewBox="0 0 960 490" role="img" aria-labelledby="pipeline-t pipeline-d">
 <title id="pipeline-t">How OSCR works</title>
-<desc id="pipeline-d">Diagram. For every open-access paper, four steps from left to right. 1, Read: Europe PMC, the full text as JATS XML, or the metadata alone. 2, Find: the paper's availability statements, author-signed references and supplementary files; Crossref and DataCite; GitHub READMEs citing the DOI and Hugging Face. A link found is at the evidence level 'found'. 3, Judge: each link is the authors' code, data, or a third-party tool, with readable reasons. 4, Verify at the source: git ls-remote and a partial clone, the Zenodo, OSF, figshare and Dryad APIs, Software Heritage; the scripts' text, README and license are kept, never data; levels 'alive' and 'inventoried'. Everything goes to a private SQLite database on the Mac. From it, two public outputs: the catalogue (CC0), published every night at 04:17 to Hugging Face and oscr-2lj.pages.dev, with no article text and script text only under a permissive license; and the tracing map, which gets a Zenodo DOI only after one of the paper's authors validates it with ORCID.</desc>
+<desc id="pipeline-d">Diagram. For every open-access paper, four steps from left to right. 1, Read: Europe PMC, the full text as JATS XML, or the metadata alone. 2, Find: the paper's availability statements, author-signed references and supplementary files; Crossref and DataCite; GitHub READMEs citing the DOI and Hugging Face. A link found is at the evidence level 'found'. 3, Judge: each link is the authors' code, data, or a third-party tool, with readable reasons. 4, Verify at the source: git ls-remote and a partial clone, the Zenodo, OSF, figshare and Dryad APIs, Software Heritage; the scripts' text, README and license are kept, never data; levels 'alive' and 'inventoried'. Everything goes to a private SQLite database on the Mac. From it, two public outputs: the catalogue (CC0), published every night at 04:17 to Hugging Face and oscr.yannbellec-b.workers.dev, with no article text and script text only under a permissive license; and the tracing map, which gets a Zenodo DOI only after one of the paper's authors validates it with ORCID.</desc>
 <style>
 text { font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; fill: #e6edf3; }
 .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; }
@@ -98,7 +98,7 @@ text { font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neu
 <rect class="card" x="24" y="370" width="444" height="100" rx="10"/>
 <text class="out-h" x="44" y="396">Public catalogue · CC0</text>
 <text class="b" x="44" y="418">Every night at 04:17: Hugging Face dataset and</text>
-<text class="b" x="44" y="436">oscr-2lj.pages.dev. No article text, no PDF; a script's</text>
+<text class="b" x="44" y="436">oscr.yannbellec-b.workers.dev. No article text, no PDF; a script's</text>
 <text class="b" x="44" y="454">text only when its license allows it.</text>
 <rect class="card" x="492" y="370" width="444" height="100" rx="10"/>
 <text class="out-h" x="512" y="396">Tracing map · Zenodo DOI</text>

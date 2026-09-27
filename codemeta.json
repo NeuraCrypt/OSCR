@@ -13,7 +13,7 @@
   "issueTracker": "https://github.com/yannbellec/Open-Scientific-Code-Registry-OSCR-/issues",
   "continuousIntegration": "https://github.com/yannbellec/Open-Scientific-Code-Registry-OSCR-/actions/workflows/ci.yml",
   "readme": "https://github.com/yannbellec/Open-Scientific-Code-Registry-OSCR-/blob/main/README.md",
-  "url": "https://oscr-2lj.pages.dev",
+  "url": "https://oscr.yannbellec-b.workers.dev",
   "license": "https://spdx.org/licenses/Apache-2.0",
   "dateCreated": "2026-09-25",
   "developmentStatus": "https://www.repostatus.org/#active",
