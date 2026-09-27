@@ -5,7 +5,14 @@
 - **Zero cost.** If a feature does not fit the free tiers, flag it and propose an
   alternative instead of building it.
 - **No secret in the code**: tokens go in the macOS keychain or in Cloudflare secrets.
-- **No email address or other non-public personal data is displayed.**
+- **No email address or other non-public personal data is displayed.** The website hides
+  every email address, including those in the authors' code (`catalog.mask_emails`).
+- **The authors' contact details are collected, privately** (decided 2026-09-27): email,
+  given and family names, ORCID, organization, address and affiliation of each author,
+  linked to the paper and its DOI (`oscr/contacts.py`, table `contact`). They go only to
+  the **private** Hugging Face dataset `OpenScientificCodeRegistry/Private`; the publisher
+  refuses a dataset that is not private. Never on the site, never in a public output
+  (`catalog.public_db` drops the table). No mass email to the authors.
 - **Nothing is deployed without the owner's approval.** One commit per phase, on a
   dedicated branch.
 - **Style: `science.css` only.** A component that needs a new style gets a proposed
