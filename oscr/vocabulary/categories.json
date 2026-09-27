@@ -1,0 +1,438 @@
+{
+  "version": "2026-09-27",
+  "about": "The classification vocabulary of OSCR (decisions D6 and D7): the facets, their allowed values, one-line definitions and synthetic examples. `value` is what the code and the annotation file use; `name` is the label shown to people; `id` is the key of the `categories` table (docs/PLATFORM_PLAN.md, section 4). The rules live in oscr/classify.py; the annotation guide is docs/ANNOTATION.md.",
+  "conventions": {
+    "separator": "; ",
+    "unsure": "?",
+    "not_applicable": "-"
+  },
+  "facets": {
+    "on_topic": {
+      "name": "Neuroscience",
+      "multi": false,
+      "definition": "Neuroscience means research on the nervous system (brain, spinal cord, nerves, retina: their cells, circuits, development and diseases), or research on the mind that uses neural measures (recordings, imaging, stimulation, lesions, neural tissue). Psychology or psychiatry with questionnaires and behavior only is not neuroscience; neither is a paper where 'neural' only means an artificial neural network.",
+      "values": [
+        {
+          "value": "yes",
+          "id": "on_topic.yes",
+          "name": "yes",
+          "definition": "The paper studies the nervous system, or studies the mind with neural measures.",
+          "examples": [
+            "an fMRI study of working memory in healthy adults",
+            "dopaminergic neuron loss in a mouse model of Parkinson's disease",
+            "a trial of an antiseizure drug in focal epilepsy"
+          ],
+          "aliases": ["y", "true", "1", "oui"]
+        },
+        {
+          "value": "no",
+          "id": "on_topic.no",
+          "name": "no",
+          "definition": "Anything else, including psychology or psychiatry without neural measures and machine learning outside neuroscience.",
+          "examples": [
+            "a questionnaire survey of stress among university students",
+            "a convolutional neural network that grades colon biopsies",
+            "cortical bone screws in hip surgery"
+          ],
+          "aliases": ["n", "false", "0", "non"]
+        }
+      ]
+    },
+    "modality": {
+      "name": "Modality",
+      "multi": true,
+      "definition": "The kind of data the paper itself collects or analyses (for a review: the kind of data it discusses). List every modality that is a real part of the work, not those only mentioned in the background.",
+      "values": [
+        {
+          "value": "eeg",
+          "id": "modality.eeg",
+          "name": "EEG",
+          "definition": "Scalp electroencephalography, including event-related potentials (ERP) and sleep EEG.",
+          "examples": ["resting-state EEG in older adults", "a P300 oddball ERP study", "sleep spindles in overnight EEG"],
+          "aliases": ["electroencephalography", "erp", "scalp eeg"]
+        },
+        {
+          "value": "meg",
+          "id": "modality.meg",
+          "name": "MEG",
+          "definition": "Magnetoencephalography (SQUID or optically pumped magnetometers).",
+          "examples": ["MEG source imaging of auditory responses", "OPM-MEG in children"],
+          "aliases": ["magnetoencephalography", "opm-meg"]
+        },
+        {
+          "value": "fmri",
+          "id": "modality.fmri",
+          "name": "fMRI",
+          "definition": "Functional MRI (BOLD), task or resting state.",
+          "examples": ["task fMRI of reward anticipation", "resting-state functional connectivity in adolescents"],
+          "aliases": ["functional mri", "bold", "rs-fmri"]
+        },
+        {
+          "value": "structural_mri",
+          "id": "modality.structural_mri",
+          "name": "structural MRI / diffusion",
+          "definition": "MRI other than BOLD fMRI: anatomical (T1, T2, FLAIR), diffusion (DTI, tractography), perfusion, spectroscopy, quantitative MRI, clinical MRI reading.",
+          "examples": ["cortical thickness in schizophrenia", "DTI tractography of the arcuate fasciculus", "MRI lesion load in multiple sclerosis"],
+          "aliases": ["structural mri", "smri", "mri", "diffusion", "dti", "dwi", "diffusion mri", "structural"]
+        },
+        {
+          "value": "pet_spect",
+          "id": "modality.pet_spect",
+          "name": "PET / SPECT",
+          "definition": "Positron emission tomography or single-photon emission tomography, including amyloid, tau, FDG and dopamine transporter scans.",
+          "examples": ["amyloid PET in preclinical Alzheimer's disease", "DaT-SPECT in parkinsonism"],
+          "aliases": ["pet", "spect", "pet/spect"]
+        },
+        {
+          "value": "fnirs",
+          "id": "modality.fnirs",
+          "name": "fNIRS",
+          "definition": "Functional near-infrared spectroscopy and diffuse optical tomography.",
+          "examples": ["prefrontal fNIRS during a dual task", "fNIRS hyperscanning of parent-child pairs"],
+          "aliases": ["nirs", "near-infrared spectroscopy"]
+        },
+        {
+          "value": "ieeg",
+          "id": "modality.ieeg",
+          "name": "intracranial EEG (iEEG / ECoG / SEEG)",
+          "definition": "Human intracranial recordings: electrocorticography (ECoG), stereo-EEG (SEEG), depth electrodes, including local field potentials from deep brain stimulation leads.",
+          "examples": ["SEEG seizure-onset zones", "ECoG high-gamma responses to speech", "subthalamic beta activity recorded from DBS leads"],
+          "aliases": ["intracranial eeg", "ecog", "seeg", "intracranial"]
+        },
+        {
+          "value": "extracellular",
+          "id": "modality.extracellular",
+          "name": "extracellular electrophysiology (units, LFP)",
+          "definition": "Extracellular recordings of single units, multi-unit activity or local field potentials, mostly in animals or in vitro (tetrodes, silicon probes, Neuropixels, microelectrode arrays); human microelectrode single units count here too.",
+          "examples": ["Neuropixels recordings in mouse visual cortex", "hippocampal place cells recorded with tetrodes", "a microelectrode array of cultured neurons"],
+          "aliases": ["extracellular electrophysiology", "units", "single units", "lfp", "ephys"]
+        },
+        {
+          "value": "intracellular",
+          "id": "modality.intracellular",
+          "name": "intracellular / patch clamp",
+          "definition": "Intracellular recordings: patch clamp (whole-cell, voltage or current clamp), sharp electrodes, two-electrode voltage clamp.",
+          "examples": ["whole-cell recordings in hippocampal slices", "patch clamp of iPSC-derived neurons", "voltage clamp of a channel expressed in oocytes"],
+          "aliases": ["patch clamp", "patch-clamp", "whole-cell", "intracellular recording"]
+        },
+        {
+          "value": "optical",
+          "id": "modality.optical",
+          "name": "optical imaging (calcium, voltage, 2-photon)",
+          "definition": "Optical imaging of neural activity: calcium or voltage imaging (one- or two-photon, widefield, miniscopes), fiber photometry, intrinsic signal imaging.",
+          "examples": ["two-photon calcium imaging in mouse visual cortex", "fiber photometry of dopamine release", "light-sheet calcium imaging of the larval zebrafish brain"],
+          "aliases": ["optical imaging", "calcium imaging", "two-photon", "2-photon", "voltage imaging", "photometry"]
+        },
+        {
+          "value": "behavior",
+          "id": "modality.behavior",
+          "name": "behavior only",
+          "definition": "Behavioral, cognitive or psychological measures only (tasks, tests, psychophysics, eye tracking, questionnaires, rating scales), with no neural recording or imaging.",
+          "examples": ["a psychophysics study of visual crowding", "water-maze and open-field tests after a drug in rats", "cognitive tests in older adults"],
+          "aliases": ["behavior only", "behaviour", "behaviour only", "behavioral", "behavioural"]
+        },
+        {
+          "value": "modeling",
+          "id": "modality.modeling",
+          "name": "computational modeling (no new data)",
+          "definition": "Computational modeling without new data: theory, simulations, models fitted to published data.",
+          "examples": ["a spiking network model of working memory", "a neural mass model of seizure onset", "a normative theory of grid cells"],
+          "aliases": ["modelling", "computational modeling", "computational modelling", "simulation", "model"]
+        },
+        {
+          "value": "omics",
+          "id": "modality.omics",
+          "name": "genetics / omics",
+          "definition": "Genetics and omics: sequencing, genotyping, GWAS, transcriptomics (bulk, single-cell, spatial), proteomics, metabolomics, epigenomics.",
+          "examples": ["single-nucleus RNA-seq of the human cortex", "a genome-wide association study of migraine", "a de novo variant found by exome sequencing"],
+          "aliases": ["genetics", "genomics", "transcriptomics", "proteomics", "sequencing"]
+        },
+        {
+          "value": "histology",
+          "id": "modality.histology",
+          "name": "histology / microscopy",
+          "definition": "Histology and microscopy of tissue or cells: staining, immunohistochemistry, immunofluorescence, confocal or electron microscopy, tissue clearing, neuropathology.",
+          "examples": ["immunohistochemistry of microglia after injury", "electron microscopy of synapses", "post-mortem tau neuropathology"],
+          "aliases": ["histology", "microscopy", "immunohistochemistry", "neuropathology"]
+        },
+        {
+          "value": "other",
+          "id": "modality.other",
+          "name": "other",
+          "definition": "Any other data: clinical records and outcomes, blood or CSF biomarkers, EMG and other physiology, brain stimulation outcomes (TMS, tDCS), CT, ultrasound, retinal imaging, molecular assays (western blot, ELISA, qPCR).",
+          "examples": ["plasma neurofilament light in ALS", "motor evoked potentials after TMS", "a registry of stroke outcomes"],
+          "aliases": ["others"]
+        }
+      ]
+    },
+    "organism": {
+      "name": "Organism",
+      "multi": true,
+      "definition": "The species studied: where the subjects, tissue, cells or data come from. For in vitro work, the species the cells come from (human iPSC-derived neurons are human).",
+      "values": [
+        {
+          "value": "human",
+          "id": "organism.human",
+          "name": "human",
+          "definition": "Humans: participants, patients, human tissue or human cells.",
+          "examples": ["EEG in healthy adults", "post-mortem human brain tissue", "human iPSC-derived neurons"],
+          "aliases": ["humans", "homo sapiens"]
+        },
+        {
+          "value": "mouse",
+          "id": "organism.mouse",
+          "name": "mouse",
+          "definition": "Mice, including transgenic lines and mouse cells.",
+          "examples": ["5xFAD mice", "mouse visual cortex slices", "primary mouse microglia"],
+          "aliases": ["mice", "murine", "mus musculus"]
+        },
+        {
+          "value": "rat",
+          "id": "organism.rat",
+          "name": "rat",
+          "definition": "Rats and rat cells.",
+          "examples": ["Sprague-Dawley rats after brain injury", "rat hippocampal cultures"],
+          "aliases": ["rats", "rattus norvegicus"]
+        },
+        {
+          "value": "nhp",
+          "id": "organism.nhp",
+          "name": "non-human primate",
+          "definition": "Non-human primates: macaques, marmosets and other monkeys.",
+          "examples": ["single units in macaque prefrontal cortex", "marmoset vocal communication"],
+          "aliases": ["non-human primate", "nonhuman primate", "primate", "monkey", "macaque", "marmoset"]
+        },
+        {
+          "value": "zebrafish",
+          "id": "organism.zebrafish",
+          "name": "zebrafish",
+          "definition": "Zebrafish (Danio rerio).",
+          "examples": ["whole-brain imaging in larval zebrafish", "a zebrafish seizure model"],
+          "aliases": ["danio rerio"]
+        },
+        {
+          "value": "drosophila",
+          "id": "organism.drosophila",
+          "name": "drosophila",
+          "definition": "Drosophila (fruit flies).",
+          "examples": ["mushroom body neurons in Drosophila", "courtship behavior of flies"],
+          "aliases": ["fruit fly", "fly", "flies", "drosophila melanogaster"]
+        },
+        {
+          "value": "c_elegans",
+          "id": "organism.c_elegans",
+          "name": "C. elegans",
+          "definition": "Caenorhabditis elegans.",
+          "examples": ["chemotaxis circuits in C. elegans", "a C. elegans model of neurodegeneration"],
+          "aliases": ["c. elegans", "caenorhabditis elegans", "worm", "elegans"]
+        },
+        {
+          "value": "other",
+          "id": "organism.other",
+          "name": "other",
+          "definition": "Any other species: other mammals (cats, dogs, pigs, ferrets, bats...), birds, amphibians, other fish, other invertebrates, and cells from other species.",
+          "examples": ["zebra finch song learning", "tectum of Xenopus tadpoles", "octopus arm nerve cord"],
+          "aliases": ["others", "other species"]
+        },
+        {
+          "value": "none",
+          "id": "organism.none",
+          "name": "none (in silico)",
+          "definition": "No organism: pure theory, simulation, or a method tested on synthetic data.",
+          "examples": ["a spiking network simulation", "a filtering method tested on simulated signals"],
+          "aliases": ["in silico", "none (in silico)", "no organism"]
+        }
+      ]
+    },
+    "population": {
+      "name": "Population",
+      "multi": true,
+      "definition": "The condition studied. 'healthy' when the study is about typical subjects only (healthy people, wild-type animals, healthy aging); otherwise the condition(s). Healthy controls in a patient study do not add 'healthy'. An animal model of a disease counts as that disease. Write '-' when there are no subjects at all (pure theory, a simulation, a method on synthetic data).",
+      "values": [
+        {
+          "value": "healthy",
+          "id": "population.healthy",
+          "name": "healthy",
+          "definition": "Typical subjects only; no condition studied.",
+          "examples": ["EEG in healthy young adults", "place cells in wild-type mice", "memory in healthy older adults"],
+          "aliases": ["healthy subjects", "typical"]
+        },
+        {
+          "value": "epilepsy",
+          "id": "population.epilepsy",
+          "name": "epilepsy",
+          "definition": "Epilepsy and seizures, including animal seizure models and developmental and epileptic encephalopathies.",
+          "examples": ["SEEG in drug-resistant focal epilepsy", "a kainate model of temporal lobe epilepsy", "Dravet syndrome"],
+          "aliases": ["seizures", "seizure"]
+        },
+        {
+          "value": "alzheimers",
+          "id": "population.alzheimers",
+          "name": "Alzheimer's / dementia",
+          "definition": "Alzheimer's disease and other dementias, mild cognitive impairment, amyloid and tau models.",
+          "examples": ["amyloid PET in mild cognitive impairment", "APP/PS1 mice", "frontotemporal dementia"],
+          "aliases": ["alzheimer", "alzheimer's", "alzheimers disease", "alzheimer's disease", "dementia", "ad", "mci"]
+        },
+        {
+          "value": "parkinsons",
+          "id": "population.parkinsons",
+          "name": "Parkinson's",
+          "definition": "Parkinson's disease, parkinsonism and its models (MPTP, 6-OHDA, alpha-synuclein).",
+          "examples": ["subthalamic DBS in Parkinson's disease", "6-OHDA lesioned rats", "alpha-synuclein aggregation in neurons"],
+          "aliases": ["parkinson", "parkinson's", "parkinson's disease", "parkinsons disease", "pd", "parkinsonism"]
+        },
+        {
+          "value": "stroke",
+          "id": "population.stroke",
+          "name": "stroke",
+          "definition": "Stroke and cerebrovascular disease: ischemic stroke, intracerebral or subarachnoid hemorrhage, aneurysms, small vessel disease, animal ischemia models.",
+          "examples": ["outcomes after thrombectomy", "middle cerebral artery occlusion in mice", "post-stroke aphasia"],
+          "aliases": ["cerebrovascular", "cerebrovascular disease"]
+        },
+        {
+          "value": "schizophrenia",
+          "id": "population.schizophrenia",
+          "name": "schizophrenia / psychosis",
+          "definition": "Schizophrenia and psychosis, including clinical high risk and first episode.",
+          "examples": ["auditory hallucinations in schizophrenia", "a first-episode psychosis cohort"],
+          "aliases": ["psychosis", "schizophrenia / psychosis", "scz"]
+        },
+        {
+          "value": "depression",
+          "id": "population.depression",
+          "name": "depression",
+          "definition": "Depression: major depressive disorder, depressive symptoms, treatment-resistant depression, depression models.",
+          "examples": ["ketamine in treatment-resistant depression", "rumination and fMRI in major depression", "a chronic stress model of depression in mice"],
+          "aliases": ["mdd", "major depression", "major depressive disorder"]
+        },
+        {
+          "value": "bipolar",
+          "id": "population.bipolar",
+          "name": "bipolar",
+          "definition": "Bipolar disorder.",
+          "examples": ["lithium response in bipolar disorder", "sleep and mania"],
+          "aliases": ["bipolar disorder"]
+        },
+        {
+          "value": "autism",
+          "id": "population.autism",
+          "name": "autism",
+          "definition": "Autism spectrum disorder and autism models.",
+          "examples": ["speech tracking in autistic children", "Shank3 mutant mice"],
+          "aliases": ["asd", "autism spectrum disorder"]
+        },
+        {
+          "value": "adhd",
+          "id": "population.adhd",
+          "name": "ADHD",
+          "definition": "Attention-deficit/hyperactivity disorder.",
+          "examples": ["methylphenidate and fMRI in ADHD", "inattention in adults with ADHD"],
+          "aliases": ["attention-deficit/hyperactivity disorder"]
+        },
+        {
+          "value": "multiple_sclerosis",
+          "id": "population.multiple_sclerosis",
+          "name": "multiple sclerosis",
+          "definition": "Multiple sclerosis and its models (EAE, cuprizone).",
+          "examples": ["MRI lesions in relapsing-remitting MS", "EAE mice"],
+          "aliases": ["ms", "multiple sclerosis"]
+        },
+        {
+          "value": "tbi",
+          "id": "population.tbi",
+          "name": "traumatic brain injury",
+          "definition": "Traumatic brain injury and concussion, and their models.",
+          "examples": ["concussion in athletes", "controlled cortical impact in rats"],
+          "aliases": ["traumatic brain injury", "concussion"]
+        },
+        {
+          "value": "pain",
+          "id": "population.pain",
+          "name": "pain",
+          "definition": "Pain: acute and chronic pain, nociception, neuropathic pain, headache and migraine.",
+          "examples": ["chronic low back pain", "migraine with aura", "nociceptor sensitization in mice"],
+          "aliases": ["chronic pain", "migraine", "headache"]
+        },
+        {
+          "value": "sleep",
+          "id": "population.sleep",
+          "name": "sleep disorders",
+          "definition": "Sleep disorders: insomnia, sleep apnea, narcolepsy, REM sleep behavior disorder, restless legs, circadian rhythm disorders. Sleep in healthy people is 'healthy'.",
+          "examples": ["narcolepsy type 1", "obstructive sleep apnea and cognition", "cognitive behavioral therapy for insomnia"],
+          "aliases": ["sleep disorders", "sleep disorder", "insomnia"]
+        },
+        {
+          "value": "other_condition",
+          "id": "population.other_condition",
+          "name": "other condition",
+          "definition": "Any other condition: brain tumors, ALS, Huntington's disease, ataxias, dystonia, neuropathies, spinal cord injury, infections, anxiety, PTSD, OCD, addiction, neurodevelopmental syndromes, hearing or vision loss, conditions outside the nervous system.",
+          "examples": ["glioblastoma", "alcohol use disorder", "spinal cord injury in rats"],
+          "aliases": ["other", "other condition", "condition"]
+        }
+      ]
+    },
+    "subfield": {
+      "name": "Subfield",
+      "multi": false,
+      "definition": "The paper's main angle. Pick one; when two fit equally well, pick the one that best describes the main question and name the other in the notes.",
+      "values": [
+        {
+          "value": "cognitive",
+          "id": "subfield.cognitive",
+          "name": "cognitive",
+          "definition": "Cognitive neuroscience: perception, attention, memory, language, emotion, decision-making, consciousness, social cognition, usually with task-based measures.",
+          "examples": ["EEG of predictive processing in speech", "fMRI of episodic memory retrieval"],
+          "aliases": ["cognition", "cognitive neuroscience"]
+        },
+        {
+          "value": "systems",
+          "id": "subfield.systems",
+          "name": "systems",
+          "definition": "Systems neuroscience: circuits, networks and neural coding; how populations of neurons and brain areas produce behavior, often in animals.",
+          "examples": ["hippocampal place-cell sequences", "a thalamocortical circuit for arousal"],
+          "aliases": ["systems neuroscience", "circuits"]
+        },
+        {
+          "value": "clinical",
+          "id": "subfield.clinical",
+          "name": "clinical / translational",
+          "definition": "Clinical and translational neuroscience: diagnosis, prognosis, treatment and biomarkers of a condition, in patients or in disease models aimed at therapy; case reports.",
+          "examples": ["a trial of DBS for depression", "MRI predictors of outcome after stroke", "a case report of autoimmune encephalitis"],
+          "aliases": ["clinical / translational", "translational", "clinical neuroscience"]
+        },
+        {
+          "value": "computational",
+          "id": "subfield.computational",
+          "name": "computational",
+          "definition": "Computational neuroscience: theory and models of neural function (biophysical, network, normative, cognitive models).",
+          "examples": ["a normative model of grid cells", "a neural mass model of EEG rhythms"],
+          "aliases": ["computational neuroscience", "theory", "theoretical"]
+        },
+        {
+          "value": "developmental",
+          "id": "subfield.developmental",
+          "name": "developmental",
+          "definition": "Developmental neuroscience: development of the nervous system and of brain function, from embryo to adolescence (neurogenesis, migration, maturation).",
+          "examples": ["cortical interneuron migration in the embryo", "infant brain maturation with MRI"],
+          "aliases": ["development", "developmental neuroscience"]
+        },
+        {
+          "value": "cellular",
+          "id": "subfield.cellular",
+          "name": "cellular / molecular",
+          "definition": "Cellular and molecular neuroscience: cells, synapses, channels, receptors, genes, signaling pathways, glia.",
+          "examples": ["gating of a sodium channel", "microglial engulfment of synapses", "a signaling pathway in neuronal survival"],
+          "aliases": ["cellular / molecular", "molecular", "cellular neuroscience", "molecular neuroscience"]
+        },
+        {
+          "value": "methods",
+          "id": "subfield.methods",
+          "name": "methods / tools",
+          "definition": "Methods and tools: new methods, software, hardware, datasets, atlases, protocols, benchmarks.",
+          "examples": ["an open-source EEG preprocessing toolbox", "a public MRI dataset", "a new flexible electrode array"],
+          "aliases": ["methods / tools", "tools", "method", "tool", "software"]
+        }
+      ]
+    }
+  }
+}

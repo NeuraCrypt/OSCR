@@ -107,29 +107,63 @@ def _where(found_by: str, section: str) -> str:
           "Crossref" if location.startswith("crossref") else location)
 
 
+#: The article types whose code rate is meaningful: primary research. Reviews, conference
+#: abstracts, case reports, corrections and editorials are counted apart (measured on
+#: 2026-09-26: 17.4% of research articles have the authors' code, 0.9% of reviews, 0% of
+#: the 262 conference abstracts).
+RESEARCH_TYPES: tuple[str, ...] = ("research-article", "brief-report", "methods-article", "data-paper",
+                                   "rapid-communication", "short-report")
+#: A paper the classification judged off-topic stays on the Mac: out of the site and out
+#: of the statistics (owner's decision D7). Unclassified papers ('') count.
+IN_SCOPE = "scanned_at IS NOT NULL AND on_topic != 'no'"
+#: The links, repositories and matches that may leave: those of papers in scope. A
+#: repository cited only by off-topic papers stays on the Mac with them (D7).
+IN_SCOPE_IDS = f"SELECT id FROM article WHERE {IN_SCOPE}"
+PUBLIC_REPOS = f"SELECT DISTINCT repo FROM link WHERE article_id IN ({IN_SCOPE_IDS})"
+#: Licenses under which a paper's availability statements may be shown in full (owner's
+#: decision D1); under any other, a short summary and a link.
+OPEN_ARTICLE_LICENSES: tuple[str, ...] = ("cc by", "cc-by", "cc0", "cc by-sa", "cc-by-sa", "cc by-nc", "cc-by-nc")
+
+
+def statement_is_publishable(article_license: str) -> bool:
+    """D1: CC BY, CC0, CC BY-SA, CC BY-NC (any version); not the -ND variants."""
+    lic = (article_license or "").lower().replace("_", "-").strip()
+    if "nd" in re.split(r"[\s/.-]+", lic):
+        return False
+    return any(lic.startswith(o) for o in OPEN_ARTICLE_LICENSES)
+
+
 def figures(con: sqlite3.Connection) -> dict[str, Any]:
     q = lambda sql, *p: con.execute(sql, p).fetchone()[0]  # noqa: E731
     statuses = {r["status"]: r["n"] for r in con.execute(
-        "SELECT status, COUNT(*) AS n FROM article WHERE scanned_at IS NOT NULL GROUP BY status")}
+        f"SELECT status, COUNT(*) AS n FROM article WHERE {IN_SCOPE} GROUP BY status")}
     code_in_state = ("SELECT DISTINCT l.repo FROM link l JOIN repository r ON r.repo = l.repo "
-                     "WHERE l.role = 'code' AND r.state = ?")
+                     f"WHERE l.role = 'code' AND r.state = ? AND l.article_id IN ({IN_SCOPE_IDS})")
+    research = ",".join(f"'{t}'" for t in RESEARCH_TYPES)
+    code = ",".join(f"'{s}'" for s in _CODE_STATUSES)
     return {
-        "articles": q("SELECT COUNT(*) FROM article WHERE scanned_at IS NOT NULL"),
-        "fulltext": q("SELECT COUNT(*) FROM article WHERE has_fulltext = 1"),
+        "articles": q(f"SELECT COUNT(*) FROM article WHERE {IN_SCOPE}"),
+        "fulltext": q(f"SELECT COUNT(*) FROM article WHERE {IN_SCOPE} AND has_fulltext = 1"),
+        "research_articles": q(f"SELECT COUNT(*) FROM article WHERE {IN_SCOPE} AND type IN ({research})"),
+        "research_with_code": q(f"SELECT COUNT(*) FROM article WHERE {IN_SCOPE} AND type IN ({research}) "
+                                f"AND status IN ({code})"),
+        "by_type": {r[0] or "unknown": r[1] for r in con.execute(
+            f"SELECT type, COUNT(*) FROM article WHERE {IN_SCOPE} GROUP BY type ORDER BY 2 DESC")},
         "with_code": sum(statuses.get(s, 0) for s in _CODE_STATUSES),
         "code_verified": statuses.get("code_verified", 0),
         "on_request": statuses.get("on_request", 0),
-        "code_on_request_mentioned": q("SELECT COUNT(*) FROM article WHERE code_on_request = 1"),
-        "repos_code": q("SELECT COUNT(DISTINCT repo) FROM link WHERE role = 'code'"),
+        "code_on_request_mentioned": q(f"SELECT COUNT(*) FROM article WHERE {IN_SCOPE} AND code_on_request = 1"),
+        "repos_code": q(f"SELECT COUNT(DISTINCT repo) FROM link WHERE role = 'code' AND article_id IN ({IN_SCOPE_IDS})"),
         "repos_code_alive": len(con.execute(code_in_state, ("alive",)).fetchall()),
         "repos_code_dead": len(con.execute(code_in_state, ("dead",)).fetchall()),
         "repos_archived": q("SELECT COUNT(DISTINCT r.repo) FROM repository r JOIN link l ON l.repo = r.repo "
-                            "WHERE l.role = 'code' AND r.swh_archived = 1"),
+                            f"WHERE l.role = 'code' AND r.swh_archived = 1 AND l.article_id IN ({IN_SCOPE_IDS})"),
         "scripts": q("SELECT COALESCE(SUM(n_scripts), 0) FROM repository WHERE repo IN "
-                     "(SELECT repo FROM link WHERE role = 'code')"),
-        "scripts_read": q("SELECT COUNT(*) FROM file WHERE kind = 'script' AND text IS NOT NULL"),
-        "alignments": q("SELECT COUNT(*) FROM alignment"),
-        "aligned_papers": q("SELECT COUNT(DISTINCT article_id) FROM alignment"),
+                     f"(SELECT repo FROM link WHERE role = 'code' AND article_id IN ({IN_SCOPE_IDS}))"),
+        "scripts_read": q(f"SELECT COUNT(*) FROM file WHERE kind = 'script' AND text IS NOT NULL "
+                          f"AND repo IN ({PUBLIC_REPOS})"),
+        "alignments": q(f"SELECT COUNT(*) FROM alignment WHERE article_id IN ({IN_SCOPE_IDS})"),
+        "aligned_papers": q(f"SELECT COUNT(DISTINCT article_id) FROM alignment WHERE article_id IN ({IN_SCOPE_IDS})"),
         "statuses": statuses,
     }
 
@@ -158,7 +192,7 @@ def catalog_data(con: sqlite3.Connection) -> dict[str, Any]:
                  for r in con.execute("SELECT * FROM card_doi WHERE instance = 'zenodo'")}
 
     articles = []
-    for a in con.execute("SELECT * FROM article WHERE scanned_at IS NOT NULL ORDER BY published DESC"):
+    for a in con.execute(f"SELECT * FROM article WHERE {IN_SCOPE} ORDER BY published DESC"):
         code = []
         n_data = 0
         for l in links_by_article.get(a["id"], []):
@@ -268,7 +302,7 @@ def _repositories(con: sqlite3.Connection, repos: dict[str, sqlite3.Row],
     order = ["found", "alive", "inventoried", "imported"]
     count: Counter[str] = Counter()
     best_level: dict[str, str] = {}
-    for r in con.execute("SELECT article_id, repo FROM link WHERE role = 'code'"):
+    for r in con.execute(f"SELECT article_id, repo FROM link WHERE role = 'code' AND article_id IN ({IN_SCOPE_IDS})"):
         count[r["repo"]] += 1
         level = levels.get((r["article_id"], r["repo"]), "found")
         if order.index(level) >= order.index(best_level.get(r["repo"], "found")):
@@ -299,7 +333,7 @@ def script_lots(con: sqlite3.Connection, public: bool) -> dict[int, dict[str, An
     """
     lots: dict[int, dict[str, Any]] = defaultdict(dict)
     repos = {r["repo"]: r for r in con.execute("SELECT * FROM repository")}
-    for repo in [r["repo"] for r in con.execute("SELECT DISTINCT repo FROM file")]:
+    for repo in [r["repo"] for r in con.execute(f"SELECT DISTINCT repo FROM file WHERE repo IN ({PUBLIC_REPOS})")]:
         d = repos.get(repo)
         if d is None:
             continue
@@ -327,7 +361,7 @@ def alignment_lots(con: sqlite3.Connection) -> dict[int, dict[str, Any]]:
     lots: dict[int, dict[str, Any]] = defaultdict(dict)
     fulltext = {r["id"]: (r["fulltext_id"] or r["pmcid"]) for r in con.execute(
         "SELECT id, fulltext_id, pmcid FROM article WHERE id IN (SELECT article_id FROM alignment)")}
-    for r in con.execute("SELECT * FROM alignment ORDER BY article_id, pair"):
+    for r in con.execute(f"SELECT * FROM alignment WHERE article_id IN ({IN_SCOPE_IDS}) ORDER BY article_id, pair"):
         entry = lots[lot_of(r["article_id"])].setdefault(
             r["article_id"], {"method": r["method"], "fulltext_id": fulltext.get(r["article_id"], ""), "pairs": []})
         entry["pairs"].append({
@@ -367,7 +401,7 @@ def _articles_csv(con: sqlite3.Connection, path: Path) -> None:
         w = csv.writer(f)
         w.writerow(["id", "doi", "pmid", "pmcid", "title", "journal", "published", "article_license",
                     "status", "code_on_request", "families", "code_repositories", "code_licenses", "scripts"])
-        for a in con.execute("SELECT * FROM article WHERE scanned_at IS NOT NULL ORDER BY published DESC"):
+        for a in con.execute(f"SELECT * FROM article WHERE {IN_SCOPE} ORDER BY published DESC"):
             code = con.execute("SELECT l.repo, r.license, r.n_scripts FROM link l LEFT JOIN repository r "
                                "ON r.repo = l.repo WHERE l.article_id = ? AND l.role = 'code'", (a["id"],)).fetchall()
             w.writerow([a["id"], a["doi"], a["pmid"], a["pmcid"], a["title"], a["journal"], a["published"],
@@ -383,7 +417,7 @@ def _repositories_csv(con: sqlite3.Connection, path: Path) -> None:
                     "commit_date", "n_files", "n_scripts", "languages", "swh_archived", "articles"])
         for d in con.execute(
                 "SELECT r.*, COUNT(l.article_id) AS n FROM repository r JOIN link l ON l.repo = r.repo "
-                "WHERE l.role = 'code' GROUP BY r.repo ORDER BY n DESC, r.repo"):
+                f"WHERE l.role = 'code' AND l.article_id IN ({IN_SCOPE_IDS}) GROUP BY r.repo ORDER BY n DESC, r.repo"):
             w.writerow([d["repo"], d["url"], d["host"], d["state"], d["resource_type"], d["license"],
                         d["redistributable"], d["commit_id"], d["commit_date"], d["n_files"], d["n_scripts"],
                         d["languages"], d["swh_archived"], d["n"]])
@@ -467,6 +501,30 @@ def public_db(con: sqlite3.Connection, path: Path) -> None:
     # is by sql.js or Datasette Lite.
     target.execute("PRAGMA journal_mode = DELETE")
     target.execute("UPDATE link SET excerpt = ''")
+    # Off-topic papers stay on the Mac (D7), with everything attached to them.
+    off = "SELECT id FROM article WHERE on_topic = 'no'"
+    for (table,) in target.execute("SELECT m.name FROM sqlite_master m WHERE m.type = 'table' AND EXISTS "
+                                   "(SELECT 1 FROM pragma_table_info(m.name) WHERE name = 'article_id')").fetchall():
+        target.execute(f"DELETE FROM {table} WHERE article_id IN ({off})")
+    target.execute(f"DELETE FROM article WHERE id IN ({off})")
+    # What only off-topic papers (or nothing) pointed at goes too: repositories, their files
+    # and facts, datasets, people and funders no paper in scope names.
+    target.execute("DELETE FROM repository WHERE repo NOT IN (SELECT repo FROM link)")
+    for table in ("file", "alive_check", "repo_feature", "repo_tool", "script_manifest"):
+        if target.execute("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?", (table,)).fetchone():
+            target.execute(f"DELETE FROM {table} WHERE repo NOT IN (SELECT repo FROM repository)")
+    target.execute("DELETE FROM dataset WHERE id NOT IN (SELECT dataset_id FROM paper_dataset)")
+    target.execute("DELETE FROM author WHERE orcid NOT IN (SELECT orcid FROM paper_author)")
+    target.execute("DELETE FROM funder WHERE id NOT IN (SELECT funder_id FROM grant_award)")
+    target.execute("DELETE FROM journal WHERE id NOT IN (SELECT journal_id FROM article)")
+    # No text of a paper leaves: abstracts, the raw Europe PMC records, the history of the
+    # enriched records; availability statements only under an open license (D1).
+    target.execute("UPDATE article SET abstract = ''")
+    target.execute("DROP TABLE IF EXISTS epmc_record")
+    target.execute("DROP TABLE IF EXISTS version")
+    closed = [r[0] for r in target.execute("SELECT id, license FROM article").fetchall()
+              if not statement_is_publishable(r[1])]
+    target.executemany("UPDATE statement SET text = '' WHERE article_id = ?", [(i,) for i in closed])
     # Development tests (test validations, sandbox DOIs) never leave.
     target.execute("DELETE FROM validation WHERE proof != 'orcid'")
     target.execute("DELETE FROM card_doi WHERE instance != 'zenodo'")

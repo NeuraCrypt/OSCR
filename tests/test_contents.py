@@ -55,6 +55,14 @@ def con(tmp_path):
         db.save_contents(c, repo, "abc123", [
             contents.read("analysis.py", b"print('secret of ' + __name__)\n"),
             contents.read("../../escape.py", b"x = 1\n")])
+    # Both repositories are the code of a paper in scope: only those reach the export (D7).
+    db.save_article(c, {"id": "doi:10.1/p", "doi": "10.1/p", "title": "P", "published": "2026-09-01"})
+    db.mark_scanned(c, "doi:10.1/p", has_fulltext=True, has_statement=True, code_on_request=False,
+                    data_on_request=False, families=[], methods=[])
+    for repo in ("github.com/open/repo", "github.com/closed/repo"):
+        c.execute("INSERT INTO link (article_id, repo, url, host, kind, role, confidence, found_by) "
+                  "VALUES ('doi:10.1/p', ?, ?, 'github.com', 'forge', 'code', 'high', 'text:availability')",
+                  (repo, f"https://{repo}"))
     c.commit()
     yield c
     c.close()
