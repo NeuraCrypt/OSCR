@@ -35,6 +35,7 @@ a:hover { text-decoration: underline; }
 .bar { position: sticky; top: 0; z-index: 2; background: var(--bg); border-bottom: 1px solid var(--rule);
   padding: 12px clamp(12px, 3vw, 28px); display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; }
 .bar h1 { font-size: 15px; font-weight: 600; margin: 0; }
+.enrichment { margin: 0; padding: 4px 16px; font-size: 12px; opacity: .75; border-bottom: 1px solid rgba(127, 127, 127, .3); }
 .counts { color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
 .bar input[type=search] { margin-left: auto; font: inherit; width: min(340px, 100%); padding: 6px 10px;
   border: 1px solid var(--rule); border-radius: 6px; background: var(--surface); color: var(--ink); }
@@ -115,6 +116,7 @@ button.scripts { font: inherit; font-size: 13px; color: var(--accent); backgroun
   <input type="search" id="q" placeholder="title, DOI, repository, journal…" aria-label="Search">
   <label for="all"><input type="checkbox" id="all"> all papers</label>
 </div>
+<p class="enrichment" id="enrichment" hidden></p>
 <main>
   <div class="scroll">
     <table>
@@ -171,6 +173,18 @@ button.scripts { font: inherit; font-size: 13px; color: var(--accent); backgroun
         " repositories · " + nf(e.scripts) + " scripts · " + nf(e.aligned) + " aligned · last paper read " + updated +
         (backfill.length ? " · backfill: " + backfill.join(", ") + " in progress" : "");
     });
+  }
+  function enrichment() {
+    // Phase 1: the share of papers whose record holds each field (hidden before the migration).
+    api("/api/enrichment").then(function (e) {
+      if (e.error || !$("enrichment")) return;
+      var parts = [["type", "type"], ["abstract", "abstract"], ["orcid", "ORCID"], ["keywords", "keywords"],
+        ["mesh", "MeSH"], ["funding", "funding"], ["references", "references"], ["rrids", "RRIDs"],
+        ["statements", "statements"], ["datasets", "datasets"], ["classified", "classified"]];
+      $("enrichment").textContent = "Enrichment: " + parts.map(function (p) { return p[1] + " " + e[p[0]] + "%"; }).join(" · ") +
+        " · off-topic " + nf(e.off_topic) + " · tools found in " + nf(e.repositories_with_tools) + " repositories";
+      $("enrichment").hidden = false;
+    }).catch(function () {});
   }
   function row(a) {
     rows[a.id] = a;
@@ -284,7 +298,8 @@ button.scripts { font: inherit; font-size: 13px; color: var(--accent); backgroun
   document.addEventListener("keydown", function (e) { if (e.key === "Escape" && !$("drawer").hidden) close(); });
 
   counts();
-  setInterval(counts, 60000);  // the harvester moves on while you watch
+  enrichment();
+  setInterval(function () { counts(); enrichment(); }, 60000);  // the harvester moves on while you watch
   load(false);
 })();
 </script>

@@ -14,6 +14,8 @@
     oscr dashboard                       the local dashboard (http://127.0.0.1:8790)
     oscr stats                           the library's figures
     oscr scripts audit|build|publish     the authors' scripts on Hugging Face (verified licenses only)
+    oscr enrich [--all] [--epmc]         Phase 1: the enriched records of the papers already read
+    oscr labels data/annotation/sample.csv   the owner's category labels (they win over the rules)
 """
 from __future__ import annotations
 
@@ -205,6 +207,16 @@ def main(argv: list[str] | None = None) -> int:
     ze.add_argument("--create", action="store_true", help="community: create it when it does not exist")
     ze.add_argument("--dry-run", action="store_true", help="deposit: show the record without sending anything")
 
+    en = sp.add_parser("enrich", help="Phase 1: the enriched records (bibliography, people, subjects, "
+                                      "categories, datasets, repository tools) of the papers already read")
+    en.add_argument("--all", action="store_true", help="every paper, not only those never enriched")
+    en.add_argument("--epmc", action="store_true",
+                    help="first fetch the Europe PMC core results of the papers that have none (100 per request)")
+    en.add_argument("--max", type=int, default=None)
+
+    lb = sp.add_parser("labels", help="import the owner's category labels from the annotation file")
+    lb.add_argument("csv", nargs="?", default="data/annotation/sample.csv")
+
     sc = sp.add_parser("scripts", help="the authors' scripts on Hugging Face: deduplicated Parquet blocks, "
                                        "one manifest per repository, verified licenses only")
     sc.add_argument("action", choices=["audit", "build", "publish"],
@@ -307,6 +319,12 @@ def main(argv: list[str] | None = None) -> int:
                     errors.append(f"Scripts on Hugging Face: {e}")
             if errors:
                 raise SystemExit("\n".join(errors))
+        elif a.command == "enrich":
+            from . import enrich
+            print(enrich.backfill(con, client, everything=a.all, epmc=a.epmc, maximum=a.max))
+        elif a.command == "labels":
+            from . import enrich
+            print(enrich.import_owner_labels(con, Path(a.csv)))
         elif a.command == "scripts":
             print(_scripts(con, a.action, Path(a.folder), a.dataset, dry_run=a.dry_run,
                            platform=cfg.get("OSCR_PLATFORM_NAME", "Open Scientific Code Registry (OSCR)")))

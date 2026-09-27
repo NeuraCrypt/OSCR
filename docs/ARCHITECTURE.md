@@ -33,6 +33,40 @@ The database is in WAL mode: the harvester writes while the dashboard and the ni
 read, and none of them blocks the others. What leaves the Mac (`oscr_public.db`) is put back
 into a single file, with no excerpt of any paper.
 
+## The enriched record (Phase 1)
+
+Every paper read gets a record beyond its links. It is built on the Mac from what the Mac
+already holds: `oscr/enrich.py`, run on every new paper and by `oscr enrich` for the papers
+read before.
+
+| source | what it gives | module |
+|---|---|---|
+| the cached full text (JATS, both of Europe PMC's flavours) | type, abstract, journal (ISSN, publisher), volume, issue, pages, dates, authors (order, ORCID, affiliations, ROR, corresponding), funding, keywords, subjects, references, RRIDs, availability statements | `oscr/biblio.py` |
+| the Europe PMC `core` result (kept in `epmc_record` since Phase 1) | MeSH, grants, more ORCIDs, citation count, open-access flag, corrections and retractions | `oscr/biblio.py` |
+| the Retraction Watch data (a weekly download, looked up locally by DOI) | retractions, corrections, expressions of concern | `oscr/sources/retractions.py` |
+| the stored file lists and scripts | notebooks, README, CITATION.cff, environment files, tests, CI; the tools used (imports and calls) | `oscr/repofeatures.py` |
+| rules over title, keywords, MeSH, journal, abstract | on topic or not, modality, organism, population, subfield, each with a confidence and its reasons | `oscr/classify.py` |
+
+- **The schema changes by numbered migrations** (`oscr/migrations/NNNN_*.sql`), applied once,
+  in order, each in one transaction, when the database opens. Schema 4 adds the tables of
+  [PLATFORM_PLAN.md](PLATFORM_PLAN.md) §4.
+- **Provenance**: `field_provenance` says where each value came from (jats, epmc,
+  retraction-watch…) and when.
+- **Versions**: `version` keeps each change of a record, with what changed; texts appear
+  there only as digests.
+- **Every verdict on a repository** is kept in `alive_check`, not only the last one.
+- **Categories** (owner's decision D6): the rules first; the owner's own labels
+  (`oscr labels data/annotation/sample.csv`) win over the rules. A local model will decide
+  the ambiguous cases, only between 01:00 and 07:00, once compared with the owner's labels
+  (`tools/compare_models.py`).
+- **Off-topic papers** (D7) stay on the Mac: they are out of every public output (the
+  catalogue, the scripts, the matches, the public database) and out of the statistics.
+- **No article text leaves** (`catalog.public_db`). Abstracts, the raw Europe PMC records and
+  the versions are removed from the public database, and availability statements are kept
+  only under CC BY, CC0, CC BY-SA or CC BY-NC (D1).
+- **Rates are computed on research articles** (`catalog.RESEARCH_TYPES`); reviews,
+  conference abstracts, case reports and notices are counted apart.
+
 ## The Code ↔ Paper reader
 
 A page of the website puts a paper and its authors' code side by side.

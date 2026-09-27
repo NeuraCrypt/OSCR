@@ -1,6 +1,6 @@
 # Platform plan — Phase 0: audit and plan
 
-Status: **Phase 0 validated by the owner on 2026-09-27, with the decisions of §13. Phase 1 in progress.**
+Status: **Phase 0 validated by the owner on 2026-09-27, with the decisions of §13. Phase 1 built (awaiting the owner's approval to run on the Mac); Phases 2 and 3 in progress.**
 Date: 2026-09-26. Scope: turn the catalogue into a full platform (arXiv + SSRN + PubMed +
 a Kaggle dataset page), at zero cost, following `CLAUDE.md`. The platform's name lives in
 one configuration variable, `SITE_NAME` (current value: `OSCR`).
@@ -449,6 +449,40 @@ suite keeps passing), screenshots desktop and phone, `docs/ARCHITECTURE.md` and 
 updated, nothing deployed without the owner's go-ahead.
 
 ---
+
+### Phase 1, as built (2026-09-27)
+
+Measured on a copy of the database (3,685 papers read; `oscr enrich --all --epmc`: 3,642
+Europe PMC records in 37 requests and 55 s, then 3,685 papers enriched in 4 min 44 s,
+0 errors):
+
+| field | papers |
+|---|---|
+| type | 99.1% |
+| abstract (kept private) | 97.3% |
+| authors | 98.9% |
+| an author with an ORCID | 63.3% |
+| keywords | 80.7% |
+| MeSH | 51.0% |
+| funding | 50.8% |
+| references | 90.8% |
+| availability statements (kept private; public under D1) | 70.1% |
+| RRIDs | 4.7% |
+| datasets | 10.1% |
+| categories (rules) | 100% |
+
+- **Off-topic** (D7): 653 papers (17.7%), 102 of them with code, stay on the Mac. Agent's
+  review of the 88 off-topic papers with code in an earlier snapshot: none was
+  neuroscience.
+- **In scope**: 3,032 papers. 17.6% of the research articles have the authors' code
+  (350 of 1,990).
+- **Repositories**: 705 described (features), tools found in 540 (233-tool vocabulary,
+  110 checked RRIDs; 40 of 40 hand-checked detections correct).
+- **Owner's labels**: `data/annotation/sample.csv` (150 papers) awaits the owner. Then
+  `oscr labels`, and the model comparison (`tools/compare_models.py`, 01:00–07:00 only).
+- **Not yet**: OpenAlex (awaits the owner's key); GitHub metadata (needs a token); the
+  commit at the paper's publication (needs deeper clones); a model for the ambiguous
+  categories (after the comparison).
 
 ## 13. The owner's decisions (2026-09-27)
 

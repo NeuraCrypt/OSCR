@@ -57,6 +57,9 @@ class EpmcArticle:
     published: str = ""
     license: str = ""
     source: str = "europepmc"
+    #: The `core` search result as received (abstract, MeSH, grants, ORCIDs, corrections…):
+    #: kept in `epmc_record` since Phase 1, not part of the `article` row.
+    core: dict = field(default_factory=dict, repr=False)
 
     def as_dict(self) -> dict:
         # `fulltext_id` is a column of the `article` table since schema 3: the
@@ -90,7 +93,28 @@ def _article(r: dict) -> EpmcArticle:
         id=identifier(doi, pmcid, f"{r.get('source', '')}:{r.get('id', '')}"),
         doi=doi, pmid=r.get("pmid") or "", pmcid=pmcid, fulltext_id=fulltext_id,
         title=(r.get("title") or "").strip(), authors=authors, journal=journal,
-        published=r.get("firstPublicationDate") or "", license=(r.get("license") or "").lower())
+        published=r.get("firstPublicationDate") or "", license=(r.get("license") or "").lower(),
+        # A `core` result carries these; a `lite` one does not, and is not worth keeping.
+        core=r if ("authorList" in r or "abstractText" in r or "meshHeadingList" in r) else {})
+
+
+def by_pmcids(client: Client, pmcids: list[str]) -> dict[str, dict]:
+    """The `core` results of papers already read, 100 PMCIDs per request: the fields each
+    pass receives but did not keep before Phase 1 (MeSH, grants, ORCIDs, corrections…)."""
+    out: dict[str, dict] = {}
+    for i in range(0, len(pmcids), 100):
+        chunk = [p for p in pmcids[i:i + 100] if p]
+        if not chunk:
+            continue
+        r = client.get(f"{BASE}/search", params={
+            "query": " OR ".join(f"PMCID:{p}" for p in chunk), "format": "json", "pageSize": "1000",
+            "resultType": "core"})
+        if is_transient(r.status):
+            raise Outage(f"Europe PMC /search: HTTP {r.status}")
+        for res in (r.json() or {}).get("resultList", {}).get("result", []) if r.ok else []:
+            if res.get("pmcid"):
+                out[res["pmcid"].upper()] = res
+    return out
 
 
 def query(domain_or_query: str, since: str, until: str, *,

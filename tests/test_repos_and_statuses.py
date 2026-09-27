@@ -145,3 +145,55 @@ def test_a_successful_verification_clears_the_error_of_an_earlier_attempt(con):
     db.save_repository(con, "github.com/a/b", {"state": "unreachable", "error": "clone: timed out"})
     db.save_repository(con, "github.com/a/b", {"state": "alive", "n_files": 3, "n_scripts": 2})
     assert tuple(con.execute("SELECT state, error FROM repository").fetchone()) == ("alive", "")
+
+
+def test_statements_are_published_in_full_only_under_an_open_license():
+    for lic in ("cc by", "CC BY 4.0", "cc-by-nc", "cc by-sa", "cc0", "CC BY-NC 4.0"):
+        assert catalog.statement_is_publishable(lic), lic
+    for lic in ("cc by-nc-nd", "cc-by-nd", "CC BY-NC-ND 4.0", "", "other", "all rights reserved"):
+        assert not catalog.statement_is_publishable(lic), lic
+
+
+def test_the_public_database_holds_no_article_text_and_no_off_topic_paper(con, tmp_path):
+    for n, (lic, topic) in enumerate((("cc by", "yes"), ("cc by-nc-nd", "yes"), ("cc by", "no"))):
+        aid = f"doi:10.1/p{n}"
+        db.save_article(con, {"id": aid, "doi": f"10.1/p{n}", "title": f"P{n}", "published": "2026-09-01",
+                              "license": lic})
+        db.mark_scanned(con, aid, has_fulltext=True, has_statement=True, code_on_request=False,
+                        data_on_request=False, families=[], methods=[])
+        con.execute("UPDATE article SET abstract = 'SECRET ABSTRACT', on_topic = ? WHERE id = ?", (topic, aid))
+        con.execute("INSERT INTO statement (article_id, kind, title, text) VALUES (?, 'code', 'Code availability', "
+                    "'SECRET STATEMENT')", (aid,))
+        con.execute("INSERT INTO epmc_record VALUES (?, '{\"abstractText\": \"SECRET\"}', 0)", (aid,))
+    con.commit()
+    catalog.generate(con, tmp_path / "out", public=True)
+    pub = sqlite3.connect(tmp_path / "out" / "oscr_public.db")
+    assert [r[0] for r in pub.execute("SELECT id FROM article ORDER BY id")] == ["doi:10.1/p0", "doi:10.1/p1"]
+    assert pub.execute("SELECT COUNT(*) FROM article WHERE abstract != ''").fetchone()[0] == 0
+    assert dict(pub.execute("SELECT article_id, text FROM statement").fetchall()) == \
+        {"doi:10.1/p0": "SECRET STATEMENT", "doi:10.1/p1": ""}
+    assert pub.execute("SELECT name FROM sqlite_master WHERE name IN ('epmc_record', 'version')").fetchall() == []
+    catalog_json = (tmp_path / "out" / "catalog.json").read_text()
+    assert "P2" not in catalog_json and "SECRET" not in catalog_json
+
+
+def test_nothing_of_an_off_topic_paper_leaves(con, tmp_path):
+    """D7: an off-topic paper's repositories, scripts and matches stay on the Mac too."""
+    status, _ = _paper_with(con, tmp_path, "https://github.com/off/topic", "code",
+                            {"state": "alive", "n_files": 2, "n_scripts": 1, "license": "MIT",
+                             "redistributable": "yes"})
+    con.execute("INSERT INTO file (repo, path, version, language, kind, size, lines, text) VALUES "
+                "('github.com/off/topic', 'secret.py', 'c', 'Python', 'script', 20, 1, 'OFF_TOPIC_CODE = 1')")
+    con.execute("INSERT INTO alignment (article_id, pair, paragraph, section, repo, path, start_line, end_line, "
+                "symbol, score, evidence, method, computed_at) VALUES ('doi:10.1/x', 1, 1, 'Methods', "
+                "'github.com/off/topic', 'secret.py', 1, 1, 's', 0.9, '[\"OFFTOPICTERM\"]', 'lexical-v1', 0)")
+    con.execute("UPDATE article SET on_topic = 'no' WHERE id = 'doi:10.1/x'")
+    con.commit()
+    catalog.generate(con, tmp_path / "out", public=True)
+    out = tmp_path / "out"
+    everything = "".join(p.read_text(errors="ignore") for p in out.rglob("*") if p.is_file() and p.suffix != ".db")
+    assert "off/topic" not in everything and "OFF_TOPIC_CODE" not in everything and "OFFTOPICTERM" not in everything
+    pub = sqlite3.connect(out / "oscr_public.db")
+    for table in ("repository", "file", "link", "alignment", "alive_check"):
+        assert pub.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0] == 0, table
+    assert status == "code_verified"

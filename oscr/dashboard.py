@@ -6,6 +6,7 @@ regenerate: what the harvester wrote is there at the next reload. It listens on
 
     GET /                          the page
     GET /api/stats                 the counts
+    GET /api/enrichment            how much of the Phase 1 enrichment is filled
     GET /api/articles?q=&all=&offset=&n=
     GET /api/scripts?article=      the files of a paper's repositories (without text)
     GET /api/file?repo=&path=      the text of a file
@@ -143,6 +144,9 @@ def handler(db_path: Path) -> type[BaseHTTPRequestHandler]:
             try:
                 if u.path == "/api/stats":
                     self._json(stats(con))
+                elif u.path == "/api/enrichment":
+                    from .enrich import coverage
+                    self._json(coverage(con))
                 elif u.path == "/api/articles":
                     n = max(1, min(MAX_PER_PAGE, int(p.get("n", "100") or 100)))
                     self._json(articles(con, p.get("q", "").strip(), p.get("all") == "1",

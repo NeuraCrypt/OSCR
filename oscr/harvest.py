@@ -58,6 +58,9 @@ class Options:
     records: bool = True
     #: Compute the paper ↔ code matches of papers whose code text is stored.
     align: bool = True
+    #: Phase 1: build the paper's enriched record (bibliography, people, subjects,
+    #: categories, datasets) and describe its repositories (features, tools).
+    enrich: bool = True
 
 
 @dataclass
@@ -138,10 +141,28 @@ def scan_article(con: sqlite3.Connection, client: Client, art: europepmc.EpmcArt
         if tally is not None:
             tally.verified += n
     status = conclude(con, art.id, opts)
+    if art.core:
+        # The `core` result every pass receives: kept since Phase 1 (MeSH, grants, ORCIDs…).
+        con.execute("INSERT OR REPLACE INTO epmc_record (article_id, json, fetched_at) VALUES (?, ?, ?)",
+                    (art.id, json.dumps(art.core, ensure_ascii=False), time.time()))
     con.commit()
     if opts.align and xml and status.startswith("code_"):
         _align_quietly(con, client, art.id, xml)
+    if opts.enrich:
+        _enrich_quietly(con, art.id, xml, art.core or None)
     return status
+
+
+def _enrich_quietly(con: sqlite3.Connection, article_id: str, xml: str | None, core: dict | None) -> None:
+    """The enriched record is a bonus: a failure is logged, it never costs the paper its scan."""
+    from . import enrich
+    try:
+        enrich.enrich_article(con, article_id, xml=xml, core=core)
+        con.commit()
+    except Exception as e:
+        con.rollback()
+        db.log_event(con, "enrich_error", article=article_id, error=f"{type(e).__name__}: {e}"[:300])
+        con.commit()
 
 
 def _should_verify(role: str, kind: str) -> bool:
