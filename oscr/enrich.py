@@ -329,6 +329,11 @@ def enrich_article(con: sqlite3.Connection, article_id: str, *, xml: str | None 
         db.record_provenance(con, "article", article_id, rec.get("provenance", {}),
                              ref=a["fulltext_id"] or a["pmcid"] or "", at=now)
     link_datasets(con, article_id)
+    # The authors' contact details, private (oscr/contacts.py): from the same full text and
+    # Europe PMC record, into the `contact` table only.
+    from . import contacts
+    contacts.write(con, article_id, contacts.merge(contacts.from_jats(xml) if xml else [],
+                                                   contacts.from_epmc(core) if core else []), now)
     categories = _classify(con, article_id, a, rec, now)
     db.save_version(con, "article", article_id, _snapshot(rec, categories))
     repos = [r[0] for r in con.execute("SELECT DISTINCT repo FROM link WHERE article_id = ? AND role = 'code'",

@@ -50,6 +50,12 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
   border: 1px solid #777; border-radius: 0;
 }
 .masthead select, .masthead button { font: inherit; border-radius: 0; }
+/* The ways in (Browse, DOI lookup) in the masthead (approved by the owner, 2026-09-27) */
+.masthead nav { display: flex; gap: 1em; font-size: .9em; }
+.masthead nav a, .masthead nav a:visited { color: var(--masthead-text); }
+/* A form in a page (the DOI lookup), like the masthead's search (approved 2026-09-27) */
+main form input[type="text"], main form button { font: inherit; border-radius: 0; }
+main form input[type="text"] { width: min(28em, 100%); padding: .15em .35em; border: 1px solid #777; box-sizing: border-box; }
 
 /* Breadcrumb under the masthead */
 .breadcrumb {
