@@ -1,18 +1,47 @@
 ---
-// /r/: the one shell of every repository page (/r/<owner>/<name>/…, public/_redirects).
+// /r/: the ONE static shell of every repository page (public/_redirects: "/r/* /r/ 200"; 0 Worker
+// requests for a signed-out reader, D00-5; no file per repository, C5). Its script
+// (src/scripts/repo-shell.ts, a file: the page's Content-Security-Policy forbids inline scripts)
+// reads /r/<owner>/<name>/[settings/|branches/], the repository from GitHub's anonymous API on the
+// reader's own quota, and OSCR's layer (the static shard, or GET /api/forge/repo signed in), then
+// replaces the placeholder below.
 //
-// STUB, created by the foundation (F) of phase 01 so that the site builds and every link resolves;
-// owned by E7, which builds the page. science.css only; the platform's name from src/config.ts.
+// science.css only; the platform's name from src/config.ts, handed to the script in data-site (the
+// browser scripts never name the platform). data-github-*: GitHub's addresses for a local run
+// against the fake GitHub (tests/forge/fake-github.ts served over HTTP), set at build time from
+// FORGE_GITHUB_API_URL / FORGE_GITHUB_RAW_URL / FORGE_GITHUB_WEB_URL, and only when they are http
+// addresses on this machine; the script checks them again (repo-view.ts githubEndpoints).
 import Base from "../../layouts/Base.astro";
 import { SITE_NAME } from "../../config";
+
+const local = (v: unknown): string | undefined =>
+  typeof v === "string" && /^http:\/\/(?:localhost|127\.0\.0\.1)(?::\d{1,5})?(?:\/[A-Za-z0-9._/-]*)?$/.test(v) ? v : undefined;
+const githubApi = local(import.meta.env.FORGE_GITHUB_API_URL);
+const githubRaw = local(import.meta.env.FORGE_GITHUB_RAW_URL);
+const githubWeb = local(import.meta.env.FORGE_GITHUB_WEB_URL);
 ---
 <Base
   title="Repository"
   description="A code repository in its author's GitHub account: how to clone it, the papers it is attached to, and how the registry follows it."
   breadcrumb={[{ text: "Repositories", href: "/repositories/" }, { text: "Repository" }]}
 >
-  <h1>Repository</h1>
-  <p class="summary">A code repository in its author's GitHub account: how to clone it, the papers it is attached to, and how the registry follows it.</p>
-  <p class="warning">This page is being built: it is not in service yet.</p>
-  <p>Where repositories live and what {SITE_NAME} keeps of them: <a href="/hosting/">the hosting guides</a>.</p>
+  <div id="repo-shell" data-site={SITE_NAME} data-github-api={githubApi} data-github-raw={githubRaw} data-github-web={githubWeb}>
+    <h1>Repository</h1>
+    <p class="summary" aria-live="polite">Reading the repository from GitHub…</p>
+    <noscript>
+      <p class="warning">
+        This page reads the repository from GitHub in your browser, which needs JavaScript. The
+        same repository is on GitHub at the same owner and name: github.com/&lt;owner&gt;/&lt;name&gt;.
+      </p>
+    </noscript>
+    <p>
+      Repositories live in their authors' own GitHub accounts; git goes straight to github.com.
+      {SITE_NAME} links them to their papers: <a href="/hosting/">the hosting guides</a>,
+      <a href="/repositories/">your repositories</a>.
+    </p>
+  </div>
+
+  <script>
+    import "../../scripts/repo-shell";
+  </script>
 </Base>
