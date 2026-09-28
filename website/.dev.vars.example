@@ -1,0 +1,21 @@
+# The accounts' settings for `npx wrangler dev` (docs/ACCOUNTS.md). Copy this file to .dev.vars,
+# which git ignores, and fill it with the DEVELOPMENT applications' values (ORCID sandbox, the
+# development GitHub OAuth App, the Google client's localhost redirect). Never the production
+# values: those are Cloudflare secrets (`npx wrangler secret put`), set by the owner.
+
+# The server key: signs the sign-in's state cookie and derives the CSRF tokens. At least 32
+# characters: openssl rand -base64 48
+SESSION_KEY=replace-with-the-output-of-openssl-rand-base64-48
+
+# ORCID, sandbox first (https://sandbox.orcid.org/developer-tools).
+ORCID_CLIENT_ID=APP-XXXXXXXXXXXXXXXX
+ORCID_CLIENT_SECRET=replace-me
+ORCID_ISSUER=https://sandbox.orcid.org
+
+# GitHub, an OAuth App whose callback is http://localhost:8787/api/auth/github/callback.
+GITHUB_CLIENT_ID=replace-me
+GITHUB_CLIENT_SECRET=replace-me
+
+# Google, a Web client that lists http://localhost:8787/api/auth/google/callback.
+GOOGLE_CLIENT_ID=replace-me.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=replace-me

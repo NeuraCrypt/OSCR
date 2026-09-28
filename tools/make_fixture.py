@@ -1,6 +1,7 @@
 """The website's CI catalogue: a tiny, entirely synthetic public export.
 
     uv run python tools/make_fixture.py            # → tests/fixtures/public-catalog/
+    uv run python tools/make_fixture.py --database data/fixture.db   # the synthetic database only
 
 Invented papers (DOIs under 10.5555, the prefix Crossref reserves for tests), two invented
 repositories and a few lines of invented code: nothing is copied from a real paper or a
@@ -24,6 +25,7 @@ from __future__ import annotations
 
 import json
 import shutil
+import sqlite3
 import sys
 from pathlib import Path
 
@@ -156,10 +158,10 @@ def _checks(con, repo: str, checks: list[tuple[float, str, int | None]]) -> None
     con.execute("UPDATE repository SET verified_at = ? WHERE repo = ?", (max(c[0] for c in checks), repo))
 
 
-def build(out: Path = OUT) -> Path:
-    tmp = out.parent / (out.name + ".building")
-    shutil.rmtree(tmp, ignore_errors=True)
-    con = db.open_db(tmp / "fixture.db")
+def database(path: Path) -> sqlite3.Connection:
+    """The synthetic Mac database behind the fixture: the papers, their authors and code. The
+    community projector's tests and the accounts' end-to-end run start from it too."""
+    con = db.open_db(path)
     # 1. A paper with licensed code and two paper ↔ code pairs.
     a = _paper(con, 1, "A synthetic EEG study for the OSCR build test")
     _code(con, a, "https://github.com/oscr-fixture/eeg-analysis",
@@ -251,6 +253,13 @@ def build(out: Path = OUT) -> Path:
     _phase4(con, a, b, c, d, x)
     con.execute("UPDATE article SET scanned_at = ?", (READ_AT,))
     con.commit()
+    return con
+
+
+def build(out: Path = OUT) -> Path:
+    tmp = out.parent / (out.name + ".building")
+    shutil.rmtree(tmp, ignore_errors=True)
+    con = database(tmp / "fixture.db")
     catalog.generate(con, tmp / "export", public=True)
     con.close()
     shutil.rmtree(out, ignore_errors=True)
@@ -359,4 +368,9 @@ def _phase4(con, a: str, b: str, c: str, d: str, x: str) -> None:
 
 
 if __name__ == "__main__":
-    print(f"fixture catalogue → {build()}")
+    if len(sys.argv) == 3 and sys.argv[1] == "--database":
+        # Only the synthetic Mac database (for `oscr --db <it> community push --local`).
+        database(Path(sys.argv[2])).close()
+        print(f"fixture database → {sys.argv[2]}")
+    else:
+        print(f"fixture catalogue → {build()}")

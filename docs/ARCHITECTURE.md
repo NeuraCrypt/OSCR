@@ -16,6 +16,8 @@ The rules that govern everything below are in [CLAUDE.md](../CLAUDE.md):
 | **The search index** (`oscr d1 push`, Phase 3) | the Mac → Cloudflare D1 | the papers with a page, projected into two D1 databases (`oscr_catalog`, `oscr_search`), pushed as deltas within 80,000 rows written a day ([SEARCH.md](SEARCH.md)) | $0 |
 | **The Worker's code** (`website/worker/`, Phase 3) | Cloudflare Workers, `/api/*` only | `/api/search`: FTS5 in D1, facets, sorts, CSV and JSON exports | $0 (100,000 requests a day) |
 | **The map DOIs** (`oscr zenodo`) | Zenodo (CERN) | a map validated by an author receives a DOI in the community | $0 |
+| **The accounts** (`website/worker/account/`, Phase 5) | the Worker's code, `/api/auth/*` and `/api/account/*`, with the D1 database `oscr_community` | sign-in with ORCID, GitHub or Google; sessions; the verified authors and maintainers ([ACCOUNTS.md](ACCOUNTS.md)) | $0 |
+| **The accounts' facts** (`oscr community`) | the Mac | the ORCID iDs of the papers with a page and the owners of their repositories, pushed to `oscr_community` as deltas | $0 |
 
 ```mermaid
 flowchart LR
@@ -26,7 +28,9 @@ flowchart LR
   B --> N["nightly: public catalogue"]
   N --> HF["Hugging Face, private dataset"]
   N --> P["website: Astro on Cloudflare Workers"]
-  P -. "planned: the author's ORCID validation" .-> B
+  P -- "sign-in: /api/auth, /api/account" --> U[("D1 oscr_community")]
+  B -- "oscr community: ORCID iDs, repository owners" --> U
+  U -. "planned: the author's validation of a map (Phase 6)" .-> B
   B --> Z["Zenodo: DOI of the validated map"]
   Z --> P
 ```
@@ -111,6 +115,7 @@ ends with `SITE_NAME`; the only style is `science.css`.
 | `/datasets/`, `/dataset/<id>/` | the datasets cited, by repository | `entities/datasets.json` |
 | `/lookup/` | the DOI lookup: any paper read, with or without a page | `lookup/NNN.json`, fetched by the browser |
 | `/search/` | the search (Phase 3): a static page and a Svelte island that asks `/api/search` only when a search is submitted | D1, through the Worker |
+| `/account/` | sign-in, the linked identities, the roles, "your papers", the maintainer claim form (Phase 5) | nothing: the page asks `/api/account/me` |
 | `/about/` | what the registry is, and what it never publishes | — |
 
 - **Who counts.** `oscr/entities.py` counts only the papers with a page (D2): the authors'
@@ -187,9 +192,11 @@ Its life:
 ## What remains to build, in order
 
 1. ~~Deploy the website~~: done on 2026-09-26, https://oscr.yannbellec-b.workers.dev, rebuilt every night.
-2. **Author validation.** ORCID offers sign-in for free (public API, `/authenticate`
-   scope). The site's Worker receives the validation and writes it to D1. The Mac picks it
-   up, then deposits the map on Zenodo.
+2. **Author validation.** Sign-in is built (Phase 5, [ACCOUNTS.md](ACCOUNTS.md)): ORCID
+   (`openid` scope, free for non-commercial use), GitHub and Google, and an ORCID iD found
+   among a paper's authors makes a verified author of it. Next (Phase 6): the verified author
+   validates the map in the site's Worker, which writes it to D1; the Mac picks it up, then
+   deposits the map on Zenodo.
 3. ~~Search~~: built in Phase 3 (below, and [SEARCH.md](SEARCH.md)); the remote databases await the owner's approval.
 4. ~~A first paper ↔ code alignment~~: `lexical-v1`, computed on the Mac. Next: GROBID for
    the text, tree-sitter for the code, a local model on the Mac.

@@ -36,6 +36,15 @@ run_worker_first = ["/api/*"]
 # database_name = "oscr_search"
 # database_id = "<id of oscr_search>"
 # migrations_dir = "../migrations/d1/search"
+#
+# The accounts' database (Phase 5, docs/ACCOUNTS.md), once the owner has created it; until then
+# /api/account/me answers that sign-in is not available, and the account page says so:
+#
+# [[d1_databases]]
+# binding = "COMMUNITY"
+# database_name = "oscr_community"
+# database_id = "<id of oscr_community>"
+# migrations_dir = "../migrations/d1-community"
 
 # Local development only, never deployed: `npx wrangler dev --env local`, `oscr d1 push --local`.
 # The databases live in .wrangler/state; their ids name the local files, nothing remote.
@@ -53,3 +62,9 @@ binding = "SEARCH"
 database_name = "oscr_search"
 database_id = "00000000-0000-4000-8000-000000005ea7"
 migrations_dir = "../migrations/d1/search"
+
+[[env.local.d1_databases]]
+binding = "COMMUNITY"
+database_name = "oscr_community"
+database_id = "00000000-0000-4000-8000-00000000c0de"
+migrations_dir = "../migrations/d1-community"

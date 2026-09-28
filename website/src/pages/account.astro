@@ -1,0 +1,97 @@
+---
+// The account page (Phase 5). The page is static: its script (src/scripts/account.ts) asks the
+// Worker who is signed in (/api/account/me) and shows one of the two parts below. Sign-in, sessions
+// and verifications: website/worker/account/, docs/ACCOUNTS.md. science.css only.
+import Base from "../layouts/Base.astro";
+import { SITE_NAME } from "../config";
+
+const providers = [
+  { name: "orcid", label: "ORCID", why: "to be recognized as an author of your papers, through your ORCID iD" },
+  { name: "github", label: "GitHub", why: "to be recognized as a maintainer of their code" },
+  { name: "google", label: "Google", why: "to take part without either" },
+];
+---
+<Base
+  title="Account"
+  description="Sign in with ORCID, GitHub or Google: be recognized as an author of your papers or a maintainer of their code."
+  breadcrumb={[{ text: "Account" }]}
+>
+  <h1>Account</h1>
+  <p id="account-message" role="status" aria-live="polite"></p>
+  <noscript><p class="warning">The account page runs in your browser: it needs JavaScript.</p></noscript>
+
+  <div id="signed-out">
+    <p class="summary">
+      Sign in to {SITE_NAME} to be recognized as an author of your papers, or as a maintainer of their code.
+    </p>
+    <ul id="sign-in">
+      {providers.map((p) => (
+        <li data-provider={p.name}>
+          <a href={`/api/auth/${p.name}/start?return=/account/`}>Sign in with {p.label}</a>, {p.why}
+        </li>
+      ))}
+    </ul>
+    <p>
+      One account can hold all three: once signed in, link the others from this page. The first sign-in creates the
+      account; there is nothing else to fill in.
+    </p>
+
+    <h2>What signing in keeps</h2>
+    <ul>
+      <li>The name your provider gives, and your public identifiers: your ORCID iD, your GitHub login.</li>
+      <li>
+        No email address: ORCID and Google are asked for none, GitHub for no permission at all. Notifications, when they
+        come, stay in the site.
+      </li>
+      <li>
+        One cookie, for your session: a random number, of which {SITE_NAME} keeps only a fingerprint (its SHA-256).
+        Sessions last 30 days; signing out ends yours at once.
+      </li>
+      <li>Nothing else from your provider: its access is used during the sign-in, then dropped.</li>
+    </ul>
+  </div>
+
+  <div id="signed-in" hidden>
+    <p class="summary">Signed in as <strong id="account-name"></strong>.</p>
+
+    <h2>Your identities</h2>
+    <ul id="identities"></ul>
+    <p id="link-others" hidden>Link another: <span id="link-links"></span>.</p>
+
+    <h2>Your roles</h2>
+    <ul id="roles"></ul>
+
+    <h2>Your papers</h2>
+    <p id="papers-intro"></p>
+    <ul id="papers"></ul>
+    <form id="authorship-form" method="post" action="/api/account/authorship">
+      <p><button type="submit">Check my papers again</button></p>
+    </form>
+    <p id="authorship-result" role="status" aria-live="polite"></p>
+
+    <h2>Claim maintainership of a repository</h2>
+    <p>
+      The code repository of one of the papers {SITE_NAME} lists: on GitHub, you are its maintainer at once when you
+      own it, belong publicly to the organization that owns it, or contributed to it. {SITE_NAME} asks GitHub, with
+      your permission, and keeps only the answer. Otherwise, and for other forges, a moderator looks at your claim.
+    </p>
+    <form id="maintainer-form" method="post" action="/api/account/maintainer">
+      <label for="repo">Repository</label>{" "}
+      <input id="repo" name="repo" type="text" size="40" placeholder="https://github.com/owner/name" autocomplete="off"
+        spellcheck="false" required />{" "}
+      <button type="submit">Claim</button>
+    </form>
+    <p id="maintainer-result" role="status" aria-live="polite"></p>
+    <h3>Your claims</h3>
+    <p id="claims-none">None yet.</p>
+    <ul id="claims"></ul>
+
+    <form id="signout-form" method="post" action="/api/account/signout">
+      <p><button type="submit">Sign out</button></p>
+    </form>
+  </div>
+
+  <script>
+    import "../scripts/account";
+  </script>
+</Base>

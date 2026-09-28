@@ -4,23 +4,27 @@
 //
 // The routes, the first that matches wins:
 //   GET /api/search      the search (api.ts, search.ts; the contract: docs/SEARCH.md)
+//   /api/auth/*          sign-in with ORCID, GitHub, Google (account/; docs/ACCOUNTS.md)
+//   /api/account/*       the signed-in reader's account (account/)
 //
-// Phase 5 (accounts) plugs in here, and nowhere else in this file:
-//   import { handleAccount } from "./account/index.ts";
-//   ROUTES: { prefix: "/api/auth/", handle: handleAccount }, { prefix: "/api/account/", handle: handleAccount }
-// with its D1 database bound as COMMUNITY (wrangler.toml; typed in env.ts). Both prefixes are
-// already under `run_worker_first = ["/api/*"]`. The search's answers are public and cached
-// (Cache-Control: public, api.ts); an answer that depends on the reader (a session cookie) must
-// say `Cache-Control: private, no-store`.
+// The search's answers are public and cached (Cache-Control: public, api.ts); the accounts'
+// depend on the reader (a session cookie) and all say `Cache-Control: no-store`.
 //
 // Only the default export: the runtime takes every export of the main module for an entry point.
+import { handleAccount } from "./account/index.ts";
 import { error, handleSearch } from "./api.ts";
 import type { Context, Env, Handler } from "./env.ts";
 
 type Route = { path: string; handle: Handler } | { prefix: string; handle: Handler };
 
+/** The accounts answer for their own paths; one they do not know is a 404 like any other. */
+const account: Handler = async (request, env, ctx) =>
+  (await handleAccount(request, env, ctx)) ?? error(404, "not_found", "No such route.");
+
 const ROUTES: Route[] = [
   { path: "/api/search", handle: handleSearch },
+  { prefix: "/api/auth/", handle: account },
+  { prefix: "/api/account/", handle: account },
 ];
 
 function route(pathname: string): Handler | undefined {

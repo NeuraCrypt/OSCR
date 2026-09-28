@@ -67,7 +67,8 @@ for (const page of pages) {
       if (!ids.has(decodeURIComponent(url.slice(1)))) problems.push(`${page}: no element for the link ${url}`);
       continue;
     }
-    if (!url.startsWith("/") || url.startsWith("//")) continue;
+    // /api/* is the Worker's code (sign-in, search), not a file of dist/.
+    if (!url.startsWith("/") || url.startsWith("//") || url.startsWith("/api/")) continue;
     links += 1;
     const path = decodeURI(url.split(/[?#]/)[0].replace(/&amp;/g, "&"));
     if (!exists(path)) problems.push(`${page}: broken link ${url}`);

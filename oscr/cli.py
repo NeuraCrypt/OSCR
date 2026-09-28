@@ -17,6 +17,7 @@
     oscr enrich [--all] [--epmc]         Phase 1: the enriched records of the papers already read
     oscr labels data/annotation/sample.csv   the owner's category labels (they win over the rules)
     oscr d1 build|push|status --local    Phase 3: the search's D1 databases, as deltas (docs/SEARCH.md)
+    oscr community build|push --local    the sign-in's facts (ORCID iDs, repository owners) for the local D1
 """
 from __future__ import annotations
 
@@ -247,6 +248,12 @@ def main(argv: list[str] | None = None) -> int:
     dd.add_argument("--sql-dir", default="data/d1/sql", help="where the SQL files are written")
     dd.add_argument("--reset", action="store_true",
                     help="the target's databases were recreated empty: forget what they held, send everything")
+    cm = sp.add_parser("community", help="the facts the sign-in verifies (ORCID iDs of papers with a page, owners of "
+                                         "their repositories), as deltas for the D1 community database")
+    cm.add_argument("action", choices=["build", "push", "status"])
+    cm.add_argument("--local", action="store_true", help="the local D1 of `wrangler dev`: the only target for now")
+    cm.add_argument("--folder", default="data/community", help="the SQL files and the push's state")
+    cm.add_argument("--budget", type=int, default=None, help="rows written a day (default 10,000)")
 
     n = sp.add_parser("nightly", help="the publication: public catalogue, then Hugging Face and the website")
     n.add_argument("--out", default="data/public", help="a separate folder, only ever generated in public mode")
@@ -367,6 +374,9 @@ def main(argv: list[str] | None = None) -> int:
                 print(contacts.build(con, Path(a.folder), platform=platform))
             else:
                 print(contacts.publish(con, Path(a.folder), a.dataset, platform=platform, dry_run=a.dry_run))
+        elif a.command == "community":
+            from . import community
+            print(community.command(con, a.action, local=a.local, folder=Path(a.folder), budget=a.budget))
         elif a.command == "zenodo":
             _zenodo(con, a)
         elif a.command == "d1":

@@ -76,9 +76,11 @@ jobs:
         working-directory: website
         run: npm ci
 
-      # The search: the query language, the SQL the Worker builds, its answers and its errors,
-      # on SQLite databases made from migrations/d1/ (node:test, node:sqlite; no dependency).
-      - name: Test the search Worker
+      # The Worker's code: the search (the query language, the SQL it builds, its answers and
+      # its errors, on SQLite databases made from migrations/d1/) and the accounts
+      # (website/worker/account/). node:test with Node's own TypeScript support and
+      # node:sqlite, no dependency.
+      - name: Test the Worker
         if: steps.fixture.outputs.ready == 'true'
         working-directory: website
         run: npm test
