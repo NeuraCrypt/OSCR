@@ -165,13 +165,6 @@ def test_oscr_forge_dispatches_to_the_jobs_and_the_layer(base, tmp_path, monkeyp
     assert "jobs status\nlayer status" in capsys.readouterr().out
 
 
-def test_until_built_the_forge_commands_say_so(base):
-    with pytest.raises(SystemExit, match="not built yet"):
-        cli.main([*base, "forge", "poll", "--local"])
-    with pytest.raises(forgejobs.NotBuilt):
-        forgejobs.mirrors(None, target="remote", folder=Path("x"))
-
-
 def _fake_jobs(monkeypatch):
     monkeypatch.setattr(community, "open_d1", lambda target, **kw: SimpleNamespace(target=target))
     monkeypatch.setattr(jobs, "MacHarvester", lambda client, opts: None)
