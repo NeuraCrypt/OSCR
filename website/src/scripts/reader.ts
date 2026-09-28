@@ -49,7 +49,7 @@ function start(data: ReaderData) {
   let active = 0; // the pair being read; 0: none
   let ticket = 0; // the latest request to show a file: an older one that ends late is ignored
 
-  const paper = paperPane(data, paperBody, status);
+  const paper = paperPane(data, paperBody, status, () => afterPaper());
   const say = (text: string) => {
     if (live) live.textContent = text;
   };
@@ -74,7 +74,7 @@ function start(data: ReaderData) {
       togglePaper.textContent = on ? "Hide the paper" : "Show the paper";
     }
     if (remember) writePref(browserStore, PREFS.paper, on ? "shown" : "hidden");
-    if (on) void paper.load().then(afterPaper);
+    if (on) void paper.load();
   }
   togglePaper?.addEventListener("click", () => {
     setPaper(!paperShown(), true);

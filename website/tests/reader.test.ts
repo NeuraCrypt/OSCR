@@ -1,7 +1,7 @@
 // The Code ↔ Paper reader's logic (src/lib/code.ts, tree.ts, prefs.ts, reader.ts, lines.ts): the
 // language of a file, a notebook's and an R Markdown file's segments, the highlighter's lines, the
-// links to lines (#L10-L20), the list of files, the choices kept in the browser, and the pairs
-// joined to their files.
+// links to lines (#L10-L20), the list of files, the choices kept in the browser, the pairs
+// joined to their files, and the paper's request to Europe PMC (a time limit, one more try).
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import hljs from "highlight.js/lib/core";
@@ -12,6 +12,7 @@ import {
 import { EMBEDS, LOADERS } from "../src/lib/hljs-languages.ts";
 import { decorate, pairClass, sourceLines, splitLines } from "../src/lib/lines.ts";
 import { PREFS, readPref, writePref, type Store } from "../src/lib/prefs.ts";
+import { HttpError, TimeoutError, withRetry, worthRetrying } from "../src/lib/retry.ts";
 import {
   encodePath, fileHref, initialFile, mapPairs, readerFiles, sourceOf, type LotFileIn, type PairIn, type RepoIn,
 } from "../src/lib/reader.ts";
@@ -386,5 +387,59 @@ describe("the lines of a file", () => {
     assert.equal(link.get(3), 1);
     assert.equal(pairClass(7), "pair-1");
     assert.equal(sourceLines("https://gitlab.com/a/b/-/blob/c/d.py", 3, 5), "https://gitlab.com/a/b/-/blob/c/d.py#L3-5");
+  });
+});
+
+describe("the paper's request to Europe PMC", () => {
+  /** An attempt that answers after `ms` (or never, and then only an abort ends it). */
+  const after = (ms: number | null, answer: () => Promise<string>) => (signal: AbortSignal) =>
+    new Promise<string>((resolve, reject) => {
+      const t = ms === null ? null : setTimeout(() => answer().then(resolve, reject), ms);
+      signal.addEventListener("abort", () => {
+        if (t) clearTimeout(t);
+        reject(new DOMException("aborted", "AbortError"));
+      });
+    });
+
+  it("waits for a slow answer within the time limit, and says it is slow", async () => {
+    const slow: number[] = [];
+    const text = await withRetry(after(40, async () => "<article/>"), { timeout: 500, slowAfter: 10, onSlow: (n) => slow.push(n) });
+    assert.equal(text, "<article/>");
+    assert.deepEqual(slow, [1]);
+  });
+
+  it("tries once more when the first try gets no answer in time, or a server's error", async () => {
+    let n = 0;
+    const retried: number[] = [];
+    const text = await withRetry((signal) => (++n === 1 ? after(null, async () => "")(signal) : Promise.resolve("second")), {
+      timeout: 30, pause: 1, onRetry: (k) => retried.push(k),
+    });
+    assert.equal(text, "second");
+    assert.equal(n, 2);
+    assert.deepEqual(retried, [2]);
+    let m = 0;
+    assert.equal(await withRetry(async () => (++m === 1 ? Promise.reject(new HttpError(503)) : "ok"), { pause: 1 }), "ok");
+    assert.equal(m, 2);
+  });
+
+  it("gives up after its tries with a TimeoutError, and at once for a missing text", async () => {
+    let n = 0;
+    await assert.rejects(withRetry((signal) => (n++, after(null, async () => "")(signal)), { timeout: 20, pause: 1 }), (e: unknown) => {
+      assert.ok(e instanceof TimeoutError);
+      assert.equal(n, 2);
+      return true;
+    });
+    let m = 0;
+    await assert.rejects(withRetry(async () => (m++, Promise.reject(new HttpError(404))), { pause: 1 }), HttpError);
+    assert.equal(m, 1, "a text Europe PMC does not have is not asked again");
+  });
+
+  it("knows which failures may pass", () => {
+    assert.equal(worthRetrying(new TimeoutError(20)), true);
+    assert.equal(worthRetrying(new TypeError("Failed to fetch")), true);
+    assert.equal(worthRetrying(new HttpError(502)), true);
+    assert.equal(worthRetrying(new HttpError(429)), true);
+    assert.equal(worthRetrying(new HttpError(404)), false);
+    assert.equal(worthRetrying(new Error("the full text is not valid XML")), false);
   });
 });

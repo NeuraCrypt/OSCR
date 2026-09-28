@@ -6,6 +6,7 @@
 // (Python: `body.iter("p")`). The text is loaded only when the pane is shown.
 import { pairClass, type Part } from "../lib/lines";
 import type { ReaderData } from "../lib/reader";
+import { HttpError, TimeoutError, withRetry } from "../lib/retry";
 
 /** The link that activates pair k (the same markup on both sides, see code-view.ts). */
 export function pairLink(k: number, text: string, to: "code" | "paragraph"): HTMLAnchorElement {
@@ -83,8 +84,9 @@ function license(xml: Document): Part[] {
   return type ? [`License of the text: ${type}.`] : [];
 }
 
-/** The paper's pane: `load` fetches and renders the text once; `paragraph` finds one. */
-export function paperPane(data: ReaderData, body: HTMLElement, status: HTMLElement) {
+/** The paper's pane: `load` fetches and renders the text once (then calls `loaded`);
+ *  `paragraph` finds one. */
+export function paperPane(data: ReaderData, body: HTMLElement, status: HTMLElement, loaded: () => void) {
   let state: "idle" | "loading" | "done" | "failed" = "idle";
   let pending: Promise<void> | null = null;
 
@@ -139,46 +141,77 @@ export function paperPane(data: ReaderData, body: HTMLElement, status: HTMLEleme
     );
   }
 
+  /** The pane while the text comes: a sentence, and a thin bar that moves (science.css). */
+  function waiting(text: string) {
+    status.className = "loading";
+    status.textContent = text;
+  }
+
   function fail(reason: string) {
     state = "failed";
     status.className = "warning";
+    const again = document.createElement("button");
+    again.type = "button";
+    again.textContent = "Try again";
+    again.addEventListener("click", () => {
+      state = "idle";
+      void load();
+    });
     status.replaceChildren(
       `The text of this paper could not be loaded from Europe PMC (${reason}). Read it at `,
       link(data.doiUrl, "doi.org"),
       " or on ",
       link(data.epmcUrl, "Europe PMC"),
-      ".",
+      ", or ",
+      again,
     );
   }
 
   async function fetchText() {
     if (!data.fulltextId) return fail("Europe PMC has no full text for it");
     state = "loading";
-    status.textContent = "Loading the paper from Europe PMC…";
-    const ctl = new AbortController();
-    const timer = setTimeout(() => ctl.abort(), 30_000);
+    waiting("Loading the paper from Europe PMC…");
+    const url = `https://www.ebi.ac.uk/europepmc/webservices/rest/${encodeURIComponent(data.fulltextId)}/fullTextXML`;
     try {
-      const url = `https://www.ebi.ac.uk/europepmc/webservices/rest/${encodeURIComponent(data.fulltextId)}/fullTextXML`;
-      const r = await fetch(url, { signal: ctl.signal, credentials: "omit", referrerPolicy: "no-referrer" });
-      if (!r.ok) throw new Error(`Europe PMC answered HTTP ${r.status}`);
-      const xml = new DOMParser().parseFromString(await r.text(), "application/xml");
+      // Europe PMC's XML takes one to six seconds, sometimes more: 20 seconds a try, and one
+      // more try when the first gets no answer, a network error or a server's error.
+      const text = await withRetry(
+        async (signal) => {
+          const r = await fetch(url, { signal, credentials: "omit", referrerPolicy: "no-referrer" });
+          if (!r.ok) throw new HttpError(r.status);
+          return r.text();
+        },
+        {
+          tries: 2,
+          timeout: 20_000,
+          pause: 1_500,
+          slowAfter: 7_000,
+          onSlow: (n) => waiting(n === 1 ? "Loading the paper from Europe PMC… it is slow to answer; still waiting." : "Still waiting for Europe PMC…"),
+          onRetry: () => waiting("Europe PMC did not answer; trying again…"),
+        },
+      );
+      const xml = new DOMParser().parseFromString(text, "application/xml");
       if (xml.getElementsByTagName("parsererror").length > 0) throw new Error("the full text is not valid XML");
+      status.className = "";
       render(xml);
       state = "done";
+      loaded();
     } catch (err) {
       const e = err as Error;
-      fail(e.name === "AbortError" ? "Europe PMC did not answer in time" : e.message);
-    } finally {
-      clearTimeout(timer);
+      if (e instanceof HttpError && e.status === 404) return fail("it has no full text for this paper");
+      if (e instanceof TimeoutError) return fail(`no answer within ${e.seconds} seconds, tried twice`);
+      fail(e instanceof TypeError ? "the network did not let the request through" : e.message);
     }
   }
 
+  function load(): Promise<void> {
+    if (state === "idle") pending = fetchText();
+    return pending ?? Promise.resolve();
+  }
+
   return {
-    /** Fetch and render the text, once. */
-    load(): Promise<void> {
-      if (state === "idle") pending = fetchText();
-      return pending ?? Promise.resolve();
-    },
+    /** Fetch and render the text, once (again after a failure, from its button). */
+    load,
     get loaded() {
       return state === "done";
     },
