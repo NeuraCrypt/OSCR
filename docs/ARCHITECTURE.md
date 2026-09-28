@@ -100,7 +100,11 @@ A page of the website puts a paper and its authors' code side by side.
 
 - **Left, the paper.** Its full text is fetched from Europe PMC (open access, CORS allowed)
   by the reader's browser, never by the site, and shown as plain text. The site never stores
-  or serves the text of a paper.
+  or serves the text of a paper. Europe PMC's XML takes one to six seconds, sometimes more:
+  each try has 20 seconds, the pane says that it is loading (and when it is slow), and a try
+  that gets no answer, a network error or a server's error is made once more
+  (`website/src/lib/retry.ts`); a failure keeps links to doi.org and Europe PMC and a button
+  that tries again. The pane can be hidden, a choice kept in the browser.
 - **Right, the code.** One view is prerendered at build time; the others are fetched on
   demand from the lot of their repository (`/scripts/NN.json`). A script whose license does
   not allow republication is not copied: the reader lists the file and links to it at the
@@ -108,9 +112,13 @@ A page of the website puts a paper and its authors' code side by side.
 - **The pairs** come from `alignments/NN.json`, read at build time. A pair joins paragraph
   number *i* (the index of a `<p>` among all the `<p>` of the JATS `<body>`, in document
   order, which the browser computes the same way) and a line range of one file: the same
-  color on both sides. Clicking one side brings the other into view. The build keeps only the
-  known fields of a pair and drops any evidence term longer than 60 characters, so no
-  sentence of a paper can reach the site.
+  color on both sides, a light tint with a thin mark in the gutter, and a strong shade for the
+  pair being read; the rest of the code keeps its white ground. A range that covers the whole
+  file (90 % of its lines at least) is a weak match: only its first line is tinted, and the
+  legend says so. The page opens on the first match of the file it shows, both panes at it.
+  Clicking one side brings the other into view. The build keeps only the known fields of a
+  pair and drops any evidence term longer than 60 characters, so no sentence of a paper can
+  reach the site.
 
 The website's name is not written in its pages: it comes from `SITE_NAME` (default `OSCR`)
 and `SITE_TAGLINE`, set in `website/src/config.ts` or at build time.
