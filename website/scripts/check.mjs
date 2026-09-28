@@ -18,7 +18,7 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
-  ENTITY_TYPES, FILE_LIMIT, FILE_MARGIN, FIXED_FILES_MAX, LOOKUP_HEX, SHARDS, shardOf, STATIC_PAPERS,
+  ENTITY_TYPES, FILE_LIMIT, FILE_MARGIN, FIXED_FILES_MAX, keyOf, LOOKUP_HEX, SHARDS, shardOf, STATIC_PAPERS,
 } from "../src/lib/shards.ts";
 
 const DIST = "dist";
@@ -90,6 +90,8 @@ for (const f of files.filter((x) => x.startsWith("/records/"))) {
   const entries = type === "paper" ? content : content.entities ?? {};
   if (type !== "paper") for (const [slug, r] of Object.entries(content.rows ?? {})) rows.set(slug, r);
   for (const [key, record] of Object.entries(entries)) {
+    // The browser and the Worker read the key from the address (keyOf): it must read back the same.
+    if (keyOf(type, encodeURIComponent(key)) !== key) problems.push(`${f}: ${key} cannot be read from its address`);
     if ((await shardOf(key, SHARDS[type])) !== name) problems.push(`${f}: ${key} belongs in another shard`);
     records[type].set(key, record);
   }

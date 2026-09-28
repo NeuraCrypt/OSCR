@@ -435,7 +435,7 @@ the browser: authors 14.5 KB median (34 KB largest), institutions 15.6 KB (89 KB
 |---|---|---|
 | the real catalogue with OpenAlex (`data/dev-copy/oa-public`) | 16,905 | 8,272 (5,836 papers and readers, 2,304 record shards at most — 1,940 written —, 257 lookup) |
 | the real catalogue without OpenAlex (`data/dev-copy/public`) | 16,797 | 8,725 |
-| the fixture (`tests/fixtures/public-catalog`, 4 papers) | 55 | 68 (the shells, the shards and the letter pages are a fixed cost) |
+| the fixture (`tests/fixtures/public-catalog`, 4 papers) | 55 | 69 (the shells, the shards and the letter pages are a fixed cost) |
 | the fixture grown with 40,000 authors, 15,000 institutions, 12,000 papers, 150,000 DOIs (`npm run check:growth`, 2 papers static) | — | 2,628 |
 
 **The budget**: 2 × `STATIC_PAPERS` = 12,000 files of papers at most, and `FIXED_FILES_MAX` = 3,000
