@@ -1,0 +1,38 @@
+---
+// The search (Phase 3, the owner's decision D3): a static page and a Svelte island
+// (components/Search.svelte), which asks the Worker's /api/search only when a search is asked
+// for, never as one types. When the search's daily quota is spent, the page says so; Browse
+// and the DOI lookup are static and keep working.
+import Base from "../layouts/Base.astro";
+import Search from "../components/Search.svelte";
+import { SITE_NAME } from "../config";
+import { number, withPage } from "../lib/catalog";
+import { categories } from "../lib/entities";
+
+// The names of the category values, as Browse shows them, when the export gives them.
+const labels: Record<string, Record<string, string>> = {};
+for (const [facet, values] of Object.entries(categories.facets)) {
+  for (const [value, v] of Object.entries(values)) {
+    const name = (v as { name?: string }).name;
+    if (name && name !== value) (labels[facet] ??= {})[value] = name;
+  }
+}
+---
+<Base
+  title="Search"
+  description="Search the papers with their authors' code, code on request or data only: words, phrases, fields, filters by modality, organism, tool, journal, year and status."
+  breadcrumb={[{ text: "Search" }]}
+>
+  <h1>Search</h1>
+  <p class="summary">
+    The {number(withPage.length)} papers {SITE_NAME} has a page for: their titles, keywords, MeSH terms, authors, journals, code
+    repositories, the tools found in their code, their identifiers, and their abstracts when the paper's license is open.
+  </p>
+  <Search client:load labels={labels} />
+  <noscript>
+    <p class="warning">
+      The search runs in your browser: it needs JavaScript. <a href="/browse/">Browse</a> and the
+      <a href="/lookup/">DOI lookup</a> work without it.
+    </p>
+  </noscript>
+</Base>

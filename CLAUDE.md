@@ -87,6 +87,21 @@ license audit: `docs/SCRIPT_STORAGE.md`; code: `oscr/scriptstore.py`, `oscr scri
   done on 2026-09-27 (`oscr scripts audit`; figures in `docs/SCRIPT_STORAGE.md`). Any change
   to the filter is audited again before the next publication.
 
+## Accounts (Phase 5: built on its branch, not deployed)
+
+Sign-in with ORCID, GitHub and Google in the Worker's code (`website/worker/account/`, D1
+database `oscr_community`, `docs/ACCOUNTS.md`):
+
+- **No email address is asked for, read or stored**: ORCID and Google `openid` only, GitHub no
+  scope; notifications stay in the site (D5).
+- A provider's token is used during the sign-in's callback only, **never stored**; D1 keeps a
+  session's SHA-256, never its id.
+- Client ids and secrets and the server key (`SESSION_KEY`) are **Cloudflare secrets**, or
+  `website/.dev.vars` locally (gitignored).
+- **ORCID sandbox** until the owner sets `ORCID_ISSUER=https://orcid.org`.
+- The facts the verifications read (`paper_orcid`, `repo_owner`) come from the Mac
+  (`oscr community`); the Worker never writes them.
+
 ## The website's style (website/)
 
 - `website/src/styles/science.css` is the **only** source of style of the site. It is

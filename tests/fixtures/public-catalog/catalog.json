@@ -1,5 +1,5 @@
 {
- "generated_at": "2026-09-27T02:20:44Z",
+ "generated_at": "2026-09-28T01:15:24Z",
  "scope": {
   "sources": "local corpus, DataCite",
   "from": "2026-09-21",
@@ -9,10 +9,13 @@
  "figures": {
   "articles": 5,
   "fulltext": 5,
-  "research_articles": 0,
-  "research_with_code": 0,
+  "research_articles": 4,
+  "research_with_code": 2,
   "by_type": {
-   "unknown": 5
+   "research-article": 2,
+   "unknown": 1,
+   "brief-report": 1,
+   "data-paper": 1
   },
   "with_code": 2,
   "code_verified": 2,
@@ -81,7 +84,8 @@
    "tools": [],
    "datasets": [
     "doi:10.5555/oscr.fixture.data.1"
-   ]
+   ],
+   "page_lot": 75
   },
   {
    "id": "doi:10.5555/oscr.fixture.3",
@@ -107,7 +111,8 @@
    ],
    "journal_id": "issn:0000-0019",
    "tools": [],
-   "datasets": []
+   "datasets": [],
+   "page_lot": 35
   },
   {
    "id": "doi:10.5555/oscr.fixture.2",
@@ -158,7 +163,8 @@
    ],
    "journal_id": "issn:0000-0019",
    "tools": [],
-   "datasets": []
+   "datasets": [],
+   "page_lot": 72
   },
   {
    "id": "doi:10.5555/oscr.fixture.1",
@@ -173,7 +179,7 @@
    "families": [
     "Spectral & time-frequency"
    ],
-   "data_links": 0,
+   "data_links": 1,
    "code": [
     {
      "repo": "github.com/oscr-fixture/eeg-analysis",
@@ -196,7 +202,16 @@
      "where": "“Code availability”"
     }
    ],
-   "card": null,
+   "card": {
+    "validated_by": [
+     {
+      "name": "Fixture, Ada",
+      "orcid": "0000-0000-0000-001X"
+     }
+    ],
+    "doi": "10.5555/oscr.fixture.map.1",
+    "concept_doi": "10.5555/oscr.fixture.map.0"
+   },
    "alignment": {
     "lot": 3,
     "pairs": 2,
@@ -223,7 +238,10 @@
     "numpy",
     "scipy"
    ],
-   "datasets": []
+   "datasets": [
+    "doi:10.5555/oscr.fixture.data.1"
+   ],
+   "page_lot": 3
   }
  ],
  "families": [

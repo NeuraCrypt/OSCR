@@ -13,7 +13,11 @@ The rules that govern everything below are in [CLAUDE.md](../CLAUDE.md):
 | **The local dashboard** (`oscr dashboard`) | the Mac, http://127.0.0.1:8790 | the table of the private database, for the owner only, read-only | $0 |
 | **The public catalogue** (`oscr nightly`) | the Mac, at 04:17 | `data/public/` in public mode, then the Hugging Face dataset, then the website | $0 |
 | **The website** (`website/`, Astro) | Cloudflare Workers (static assets) | the public site, built from the public catalogue, with the Code ↔ Paper reader | $0 |
+| **The search index** (`oscr d1 push`, Phase 3) | the Mac → Cloudflare D1 | the papers with a page, projected into two D1 databases (`oscr_catalog`, `oscr_search`), pushed as deltas within 80,000 rows written a day ([SEARCH.md](SEARCH.md)) | $0 |
+| **The Worker's code** (`website/worker/`, Phase 3) | Cloudflare Workers, `/api/*` only | `/api/search`: FTS5 in D1, facets, sorts, CSV and JSON exports | $0 (100,000 requests a day) |
 | **The map DOIs** (`oscr zenodo`) | Zenodo (CERN) | a map validated by an author receives a DOI in the community | $0 |
+| **The accounts** (`website/worker/account/`, Phase 5) | the Worker's code, `/api/auth/*` and `/api/account/*`, with the D1 database `oscr_community` | sign-in with ORCID, GitHub or Google; sessions; the verified authors and maintainers ([ACCOUNTS.md](ACCOUNTS.md)) | $0 |
+| **The accounts' facts** (`oscr community`) | the Mac | the ORCID iDs of the papers with a page and the owners of their repositories, pushed to `oscr_community` as deltas | $0 |
 
 ```mermaid
 flowchart LR
@@ -24,7 +28,9 @@ flowchart LR
   B --> N["nightly: public catalogue"]
   N --> HF["Hugging Face, private dataset"]
   N --> P["website: Astro on Cloudflare Workers"]
-  P -. "planned: the author's ORCID validation" .-> B
+  P -- "sign-in: /api/auth, /api/account" --> U[("D1 oscr_community")]
+  B -- "oscr community: ORCID iDs, repository owners" --> U
+  U -. "planned: the author's validation of a map (Phase 6)" .-> B
   B --> Z["Zenodo: DOI of the validated map"]
   Z --> P
 ```
@@ -63,7 +69,8 @@ read before.
   catalogue, the scripts, the matches, the public database) and out of the statistics.
 - **No article text leaves** (`catalog.public_db`). Abstracts, the raw Europe PMC records and
   the versions are removed from the public database, and availability statements are kept
-  only under CC BY, CC0, CC BY-SA or CC BY-NC (D1).
+  only under CC BY, CC0, CC BY-SA or CC BY-NC (D1). The paper's page shows the abstract and the
+  statements under the same licenses only (Phase 4, below).
 - **Rates are computed on research articles** (`catalog.RESEARCH_TYPES`); reviews,
   conference abstracts, case reports and notices are counted apart.
 
@@ -97,7 +104,7 @@ ends with `SITE_NAME`; the only style is `science.css`.
 | route | what it shows | from the export |
 |---|---|---|
 | `/` | the papers with their authors' code, by day of publication | `catalog.json` |
-| `/paper/<slug>/` | a paper with code, code on request or data only (decision D2): its authors (those with an ORCID iD linked), journal, categories, tools, code and data | `catalog.json`, `entities/` |
+| `/paper/<slug>/` | a paper with code, code on request or data only (decision D2), in sections: Overview, Code, Map, Data, Versions, Cite, Similar (and Discussion, Reproductions, Activity, which open with sign-in); see "The paper's page" below | `catalog.json`, `entities/`, `papers/` |
 | `/paper/<slug>/code/` | the Code ↔ Paper reader, for the papers with code | `catalog.json`, `alignments/`, `scripts/` |
 | `/browse/` | the categories by facet, with their counts; the other ways in | `entities/categories.json` |
 | `/browse/<facet>/<value>/` | the papers of a category, by day | `entities/categories.json` |
@@ -107,6 +114,8 @@ ends with `SITE_NAME`; the only style is `science.css`.
 | `/tools/`, `/tool/<id>/` | the tools found in the authors' code: repositories, papers | `entities/tools.json` |
 | `/datasets/`, `/dataset/<id>/` | the datasets cited, by repository | `entities/datasets.json` |
 | `/lookup/` | the DOI lookup: any paper read, with or without a page | `lookup/NNN.json`, fetched by the browser |
+| `/search/` | the search (Phase 3): a static page and a Svelte island that asks `/api/search` only when a search is submitted | D1, through the Worker |
+| `/account/` | sign-in, the linked identities, the roles, "your papers", the maintainer claim form (Phase 5) | nothing: the page asks `/api/account/me` |
 | `/about/` | what the registry is, and what it never publishes | — |
 
 - **Who counts.** `oscr/entities.py` counts only the papers with a page (D2): the authors'
@@ -121,6 +130,44 @@ ends with `SITE_NAME`; the only style is `science.css`.
   the entities with the most papers; beyond, pages will be rendered on demand by the Worker
   from D1 (Phase 3). `npm run check` (in CI with `--every-route`) checks every route and every
   internal link after the build, and prints the number of files.
+
+## The paper's page (Phase 4)
+
+One page per paper, in sections reached through a bar of in-page links (`#overview`,
+`#code`, `#map`, `#data`, `#versions`, `#cite`, `#similar`, `#discussion`, `#reproductions`,
+`#activity`): no route of their own, no JavaScript needed, so the number of files does not
+change (5,999 files for a 3,032-paper export, before and after). The Code ↔ Paper reader stays
+at `/paper/<slug>/code/`.
+
+`oscr/paperpage.py` writes what the sections need into `papers/NN.json` (lots keyed by paper
+id, like `alignments/`), for the papers with a page only; the site reads them when it is built
+(`website/src/lib/paper.ts`, `src/components/paper/`).
+
+| section | shows | from |
+|---|---|---|
+| Overview | authors in order (their pages, their ORCID records), affiliations (the institution's text; no email, no phone), journal, volume, issue, pages, dates, type, language, license, identifiers, categories, keywords, MeSH, journal subjects, funding, citation count, references, RRIDs, integrity notices (a retraction, a correction or an expression of concern is said first, under the title); the abstract **only under D1's licenses** | `article`, `paper_author`, `paper_subject`, `grant_award`, `funder`, `paper_rrid`, `integrity_notice` |
+| Code | each repository: state, license, commit and its date, languages, size, Software Heritage, where it was found, what it holds (README, license file, CITATION.cff, environment files, tests, CI, notebooks), the tools found in it, the history of its availability checks (the last 20: date, state, HTTP status; a check's error text stays on the Mac); the way into the reader; the code statement | `repository`, `repo_feature`, `repo_tool`, `alive_check`, `statement` |
+| Map | proposed or validated (ORCID only), what the map holds, its DOI and its JSON on Zenodo once deposited (never the sandbox) | `validation`, `card_doi`, `file`, `alignment` |
+| Data | the datasets cited (their pages), the other data links and where each was found, the data statement | `link`, `paper_dataset`, `dataset`, `statement` |
+| Versions | the record's history, newest first: date, and what changed in its public facts | `version` |
+| Cite | the paper in an APA-like text, BibTeX, RIS and CSL-JSON, built at export; the map's too once it has a DOI; a copy button (`src/scripts/cite.ts`) | `article`, `journal`, `paper_author` |
+| Similar | up to 10 papers with a page, ranked by the tools, categories, datasets, cited references (`paper_reference` DOIs) and authors (ORCID iD) they share, each weighed by its rarity, with the reasons in words ("shares FieldTrip, EEG, 3 references") | computed at export |
+
+**What never leaves**, tested on synthetic databases (`tests/test_paperpage.py`) and checked
+again by `website/scripts/data.mjs`:
+- **a paper's texts under a closed license** (decision D1, `catalog.statement_is_publishable`,
+  applied to the abstract as to the statements): the page then says, from facts only, what the
+  statements point to (datasets, repositories) and whether they say "on request", and links to
+  the paper. Under CC BY, CC0, CC BY-SA or CC BY-NC, the text is shown with its license;
+- **an email address** or a telephone number (`entities.scrub`, then a last check per lot);
+- **anything of an off-topic paper** (D7), which is nobody's similar paper either;
+- **from the versions, only `paperpage.VERSION_FIELDS`**: the digests of the abstract and of the
+  statements, the classification's raw values (`categories`, `on_topic`) and any field added
+  later stay on the Mac; a version that changed only those is not listed;
+- Retraction Watch's reasons (the notice itself is linked), the Zenodo sandbox's tests.
+
+The map's creators include the platform: the export writes it `{platform}` and the site puts
+`SITE_NAME` there, escaped for each format.
 
 ## The tracing map
 
@@ -145,10 +192,12 @@ Its life:
 ## What remains to build, in order
 
 1. ~~Deploy the website~~: done on 2026-09-26, https://oscr.yannbellec-b.workers.dev, rebuilt every night.
-2. **Author validation.** ORCID offers sign-in for free (public API, `/authenticate`
-   scope). The site's Worker receives the validation and writes it to D1. The Mac picks it
-   up, then deposits the map on Zenodo.
-3. **Search**, designed in the platform plan (below).
+2. **Author validation.** Sign-in is built (Phase 5, [ACCOUNTS.md](ACCOUNTS.md)): ORCID
+   (`openid` scope, free for non-commercial use), GitHub and Google, and an ORCID iD found
+   among a paper's authors makes a verified author of it. Next (Phase 6): the verified author
+   validates the map in the site's Worker, which writes it to D1; the Mac picks it up, then
+   deposits the map on Zenodo.
+3. ~~Search~~: built in Phase 3 (below, and [SEARCH.md](SEARCH.md)); the remote databases await the owner's approval.
 4. ~~A first paper ↔ code alignment~~: `lexical-v1`, computed on the Mac. Next: GROBID for
    the text, tree-sitter for the code, a local model on the Mac.
 
@@ -175,13 +224,38 @@ neuro stock, of which ~2.3 GB are public.
 
 The platform extension (a normalized D1 catalogue, accounts, search and a community) is
 specified in [PLATFORM_PLAN.md](PLATFORM_PLAN.md). Each phase follows the rules of
-[CLAUDE.md](../CLAUDE.md); Phase 2 (navigation, the pages above) is built on its branch and
-awaits the owner's review.
+[CLAUDE.md](../CLAUDE.md); Phase 2 (navigation, the pages above) and Phase 3 (the search,
+below) are built on their branches and await the owner's review.
 
 ### Search engine
 
-Proposed: **SQLite FTS5 in D1**, not Pagefind. Details and figures are in
-[PLATFORM_PLAN.md](PLATFORM_PLAN.md) §7.
+**Built (Phase 3), awaiting the owner's review; the remote databases await approval.** SQLite
+FTS5 in D1, not Pagefind; the details, the API and the measurements are in
+[SEARCH.md](SEARCH.md), the choice in [PLATFORM_PLAN.md](PLATFORM_PLAN.md) §7.
+
+```mermaid
+flowchart LR
+  M[("Mac: SQLite")] -- "oscr d1 push: deltas, ≤ 80k rows a day" --> C[("D1 oscr_catalog: papers, facet_counts")]
+  M -- "idem" --> S[("D1 oscr_search: paper_fts (FTS5)")]
+  B["search page (Svelte island)"] -- "on submit only" --> W["Worker: /api/search"]
+  W -- "1 statement: MATCH, rank or date, ≤ 501 rows" --> S
+  W -- "1 statement: the page's rows by key" --> C
+```
+
+- **Two databases**, because a D1 database that holds FTS5 cannot be exported: `oscr_catalog`
+  (what a result row shows, the precomputed counts of the unfiltered view) and `oscr_search`
+  (the index).
+- **The filters are index tokens**, not an index table: each facet value of a paper is a token
+  of the index's `facets` column, so a filter is part of the MATCH, costs no row written per
+  value, and D1 reads only the matching rows.
+- **The key is the date**: YYYYMMDD × 100,000 + n. "Newest first" is the index's rowid order and
+  a date range a rowid range, without an index.
+- **Bounded costs**: a window of 500 results gives the page, the exact total and the facet
+  counts up to 500 (past it, the counts are the first 500's, the total says "more than 500" and
+  the pages stop there): a search reads at most ~540 rows (~600 at 50 results a page), an export
+  ~1,500; the Worker's CPU stays under ~3 ms (measured in V8, docs/SEARCH.md §5).
+- **Never an abstract in an answer**: abstracts are indexed only under an open license (D1's
+  rule), in a contentless index; results carry title, journal, date, status and links.
 
 **Why not Pagefind.** Pagefind writes one fragment file per indexed record, plus index
 chunks, filter files and a start-up file that lists every record.
@@ -192,19 +266,7 @@ chunks, filter files and a start-up file that lists every record.
 - Its maintainer calls ~180k pages "probably around the ceiling".
 - Everything indexed can be downloaded by anyone.
 
-**Why FTS5.**
-- **No files.** Daily updates are small row upserts from the Mac.
-- **Full query syntax:** boolean operators, phrases and column filters, with `bm25()` weights
-  per column.
-- **Indexed sort columns.**
-- **Facets:** counts are precomputed nightly for the unfiltered views and exact on filtered
-  queries.
-
-It lives in a D1 database of its own, because a D1 database that contains FTS5 tables
-cannot be exported.
-
 **The cost to watch.** Every search is a Worker request, even when cached, out of 100,000 a
-day for the whole site, plus D1 rows read (5 M a day; how FTS5 lookups count is not
-documented, so it will be measured). If that budget gets tight, the fallback costs no
-request: a static inverted index published as Parquet blocks on Hugging Face and read by byte
-ranges, like the scripts.
+day for the whole site, plus D1 rows read (5 M a day). If that budget gets tight, the fallback
+costs no request: a static inverted index published as Parquet blocks on Hugging Face and read
+by byte ranges, like the scripts (the owner's plan B, decision D3).

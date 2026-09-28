@@ -1,0 +1,56 @@
+---
+// The Cite section of a paper's page: the paper's citation — an APA-like text, BibTeX, RIS
+// and CSL-JSON, built by the export from its record — and its tracing map's, once the map
+// has a DOI. Each can be selected as text; with JavaScript, a button copies it
+// (src/scripts/cite.ts).
+//
+// The formats are lines of code that wrap, not a <pre>: science.css lets a <pre> scroll
+// sideways, and on a phone its longest line would widen the whole page. Each line break is
+// both a "\n" in the text (what the button copies, exactly) and a <br> (what one sees).
+import type { Article } from "../../lib/catalog";
+import type { Citation, PaperPage } from "../../lib/paper";
+import Wrap from "./Wrap.astro";
+
+interface Props {
+  a: Article;
+  p?: PaperPage;
+}
+const { a, p } = Astro.props;
+const blocks = (c: Citation, what: string) => [
+  { label: "BibTeX", text: c.bibtex, open: true, name: `the ${what}'s BibTeX` },
+  { label: "RIS", text: c.ris, open: false, name: `the ${what}'s RIS` },
+  { label: "CSL-JSON", text: JSON.stringify(c.csl, null, 2), open: false, name: `the ${what}'s CSL-JSON` },
+];
+const citations = [
+  p?.cite.paper && { title: "This paper", what: "paper", c: p.cite.paper },
+  p?.cite.map && { title: "Its tracing map", what: "map", c: p.cite.map },
+].filter(Boolean) as { title: string; what: string; c: Citation }[];
+---
+<section id="cite">
+  <h2>Cite</h2>
+  {citations.length === 0 && <p>Cite the paper by its DOI: <a href={`https://doi.org/${a.doi}`}>{a.doi}</a>.</p>}
+  {citations.map(({ title, what, c }) => (
+    <>
+      <h3>{title}</h3>
+      <p data-copy={`the ${what}'s citation`}><Wrap text={c.apa} /></p>
+      {blocks(c, what).map((b) => (
+        <details open={b.open}>
+          <summary>{b.label}</summary>
+          <p>
+            <code data-copy={b.name}>{b.text.split("\n").map((line, i) => (
+              <>{i > 0 && <br />}<Wrap text={i > 0 ? `\n${line}` : line} /></>
+            ))}</code>
+          </p>
+        </details>
+      ))}
+    </>
+  ))}
+  {a.code.length > 0 && !p?.cite.map && (
+    <p>The tracing map gets a citation of its own once an author has validated it and it has a DOI.</p>
+  )}
+  <p id="cite-status" role="status" aria-live="polite"></p>
+</section>
+
+<script>
+  import "../../scripts/cite";
+</script>

@@ -1,6 +1,7 @@
 """The website's CI catalogue: a tiny, entirely synthetic public export.
 
     uv run python tools/make_fixture.py            # → tests/fixtures/public-catalog/
+    uv run python tools/make_fixture.py --database data/fixture.db   # the synthetic database only
 
 Invented papers (DOIs under 10.5555, the prefix Crossref reserves for tests), two invented
 repositories and a few lines of invented code: nothing is copied from a real paper or a
@@ -13,11 +14,18 @@ only"; a journal; authors with an ORCID iD (invented, in the 0000-0000 block ORC
 issues) and without; an institution (a ROR id with letters ROR never uses); tools; a
 dataset; categories, including values the export must leave out; a paper read without
 code, found only by the DOI lookup; and an off-topic paper that must appear nowhere.
+
+Every section of a paper's page too (Phase 4): an open-license paper with its abstract and
+statements, closed-license ones whose texts must stay out, versions with a real change (and
+one that only changed texts), a map validated by an author with its DOI next to sandbox
+tests that must stay out, integrity notices, repository features and checks, funders,
+references shared between papers. SECRETS lists what must never reach the export.
 """
 from __future__ import annotations
 
 import json
 import shutil
+import sqlite3
 import sys
 from pathlib import Path
 
@@ -28,18 +36,35 @@ from oscr import catalog, db, enrich, find, links  # noqa: E402
 from oscr.align import METHOD  # noqa: E402
 
 OUT = ROOT / "tests" / "fixtures" / "public-catalog"
-KEEP = ("catalog.json", "scripts", "alignments", "entities", "lookup")
+KEEP = ("catalog.json", "scripts", "alignments", "entities", "lookup", "papers")
 COMMIT = "0" * 40
 #: When every fixture paper was read (2026-09-25 12:00 UTC): the lookup says it, and it
 #: must not change from one build to the next.
 READ_AT = 1_790_337_600.0
 JOURNAL = "issn:0000-0019"
 ADA, BEN, OTTO = "0000-0000-0000-001X", "0000-0000-0000-0028", "0000-0000-0000-0036"
+#: A validation made in the Zenodo sandbox, for tests: it never leaves (CLAUDE.md).
+TESTER = "0000-0000-0000-0044"
+DAY = 86_400.0
 FIXTURE_UNIVERSITY = "https://ror.org/0fixtur00"
 #: The paper that must appear nowhere on the site (D7), and what belongs to it alone.
 OFF_TOPIC = {"doi": "10.5555/oscr.fixture.9", "title": "An off-topic synthetic study that must appear nowhere",
              "journal": "Journal of Elsewhere", "orcid": OTTO, "author": "Otto Offtopic", "ror": "0elsewh00",
-             "dataset": "doi:10.5555/oscr.fixture.data.9", "category": "off-topic imaging"}
+             "dataset": "doi:10.5555/oscr.fixture.data.9", "category": "off-topic imaging",
+             "abstract": "An off-topic abstract that must appear nowhere",
+             "statement": "An off-topic statement that must appear nowhere",
+             "notice": "10.5555/oscr.fixture.offtopic.notice"}
+#: Texts and facts that must never reach the export: the abstract and statements of papers
+#: under a closed license, the digests kept by the versions, a classification's raw value,
+#: Retraction Watch's reasons, a sandbox test's validator and DOI.
+SECRETS = ("A closed abstract that must never reach the site",
+           "Closed statement: the data of this study are available on request",
+           "Closed statement: the code of this study",
+           "Closed statement: code available on request",
+           "0123456789abcdef", "fedcba9876543210", "00112233aabbccdd", "a1b2c3d4e5f60718",
+           "raw-rule-value-never-shown", "Falsified invented figure", "Tester, Theo", TESTER,
+           "10.5072/zenodo.999")
+REFS = [f"10.5555/oscr.fixture.ref.{i}" for i in (1, 2, 3)]
 MIT = ("MIT License\n\nCopyright (c) 2026 The OSCR fixture\n\nPermission is hereby granted, free of charge, "
        "to any person obtaining a copy of this software, to deal in the Software without restriction.\n")
 ANALYSIS = "\n".join([
@@ -67,11 +92,17 @@ def _paper(con, n: int, title: str, **extra) -> str:
     return art["id"]
 
 
-def _code(con, article_id: str, url: str, record: dict, contents: list[dict]) -> None:
+def _code(con, article_id: str, url: str, record: dict, contents: list[dict], data: tuple[str, ...] = ()) -> None:
+    """A code link (and data links to invented DOIs), as a scan and a verification write them."""
     link = links.normalize(url)
-    db.replace_links(con, article_id, [find.Candidate(link, "code", "high", 3.0, "text:availability",
-                                                      "", "Code availability")])
+    found = [find.Candidate(link, "code", "high", 3.0, "text:availability", "", "Code availability")]
+    for doi in data:
+        found.append(find.Candidate(links.Link(url=f"https://doi.org/{doi}", repo=f"doi:{doi}", host="doi.org",
+                                               kind="data"), "data", "high", 3.0, "text:availability", "",
+                                    "Data availability"))
+    db.replace_links(con, article_id, found)
     db.save_repository(con, link.repo, {**record, "_contents": contents})
+    enrich.link_datasets(con, article_id)
 
 
 def _data(con, article_id: str, doi: str) -> str:
@@ -100,10 +131,37 @@ def _categories(con, article_id: str, values: list[tuple[str, str, float, str, i
                     "VALUES (?,?,?,?,?,?)", [(article_id, *v) for v in values])
 
 
-def build(out: Path = OUT) -> Path:
-    tmp = out.parent / (out.name + ".building")
-    shutil.rmtree(tmp, ignore_errors=True)
-    con = db.open_db(tmp / "fixture.db")
+def _record(con, article_id: str, *, abstract: str = "", statements: tuple[tuple[str, str, str], ...] = (),
+            **fields) -> None:
+    """What the enrichment writes: the article's fields, its abstract and statements (kind,
+    title, text)."""
+    if fields:
+        con.execute(f"UPDATE article SET {', '.join(f'{k} = ?' for k in fields)} WHERE id = ?",
+                    (*fields.values(), article_id))
+    con.execute("UPDATE article SET abstract = ? WHERE id = ?", (abstract, article_id))
+    con.executemany("INSERT INTO statement (article_id, kind, title, text) VALUES (?,?,?,?)",
+                    [(article_id, *st) for st in statements])
+
+
+def _versions(con, article_id: str, snapshots: list[tuple[float, dict]]) -> None:
+    """The record's versions, at fixed times (db.save_version would stamp them now)."""
+    for n, (t, snapshot) in enumerate(snapshots, 1):
+        con.execute("INSERT INTO version (entity, entity_id, version, created_at, actor, snapshot, diff) "
+                    "VALUES ('article', ?, ?, ?, 'harvester', ?, '{}')", (article_id, n, t, json.dumps(snapshot)))
+
+
+def _checks(con, repo: str, checks: list[tuple[float, str, int | None]]) -> None:
+    """A repository's availability checks, at fixed times."""
+    con.execute("DELETE FROM alive_check WHERE repo = ?", (repo,))
+    con.executemany("INSERT INTO alive_check (repo, checked_at, state, http_status, error) VALUES (?,?,?,?,'')",
+                    [(repo, *c) for c in checks])
+    con.execute("UPDATE repository SET verified_at = ? WHERE repo = ?", (max(c[0] for c in checks), repo))
+
+
+def database(path: Path) -> sqlite3.Connection:
+    """The synthetic Mac database behind the fixture: the papers, their authors and code. The
+    community projector's tests and the accounts' end-to-end run start from it too."""
+    con = db.open_db(path)
     # 1. A paper with licensed code and two paper ↔ code pairs.
     a = _paper(con, 1, "A synthetic EEG study for the OSCR build test")
     _code(con, a, "https://github.com/oscr-fixture/eeg-analysis",
@@ -113,7 +171,8 @@ def build(out: Path = OUT) -> Path:
           [{"path": p, "language": lang, "kind": kind, "size": len(t), "lines": t.count("\n") + 1, "digest": "",
             "text": t} for p, lang, kind, t in (("LICENSE", "License", "doc", MIT),
                                                 ("analysis.py", "Python", "script", ANALYSIS),
-                                                ("plot.py", "Python", "script", PLOT))])
+                                                ("plot.py", "Python", "script", PLOT))],
+          data=("10.5555/oscr.fixture.data.1",))
     db.mark_scanned(con, a, has_fulltext=True, has_statement=True, code_on_request=False,
                     data_on_request=False, families=["Spectral & time-frequency"], methods=["Welch PSD"])
     con.execute("UPDATE article SET status = 'code_verified' WHERE id = ?", (a,))
@@ -131,7 +190,7 @@ def build(out: Path = OUT) -> Path:
           [{"path": "run.m", "language": "MATLAB", "kind": "script", "size": 12, "lines": 1, "digest": "",
             "text": "disp('run')\n"}])
     db.mark_scanned(con, b, has_fulltext=True, has_statement=True, code_on_request=False,
-                    data_on_request=False, families=[], methods=[])
+                    data_on_request=True, families=[], methods=[])
     con.execute("UPDATE article SET status = 'code_verified' WHERE id = ?", (b,))
     # 3. A paper whose code is "available on request".
     c = _paper(con, 3, "A synthetic study with code on request")
@@ -191,8 +250,16 @@ def build(out: Path = OUT) -> Path:
     _categories(con, c, [("modality", "MEG", 1.0, "owner", 0),
                          ("organism", "mouse", 0.4, "rule", 0)])              # not confident enough: left out
     _categories(con, d, [("modality", "EEG", 0.95, "rule", 0), ("organism", "human", 1.0, "owner", 0)])
+    _phase4(con, a, b, c, d, x)
     con.execute("UPDATE article SET scanned_at = ?", (READ_AT,))
     con.commit()
+    return con
+
+
+def build(out: Path = OUT) -> Path:
+    tmp = out.parent / (out.name + ".building")
+    shutil.rmtree(tmp, ignore_errors=True)
+    con = database(tmp / "fixture.db")
     catalog.generate(con, tmp / "export", public=True)
     con.close()
     shutil.rmtree(out, ignore_errors=True)
@@ -207,5 +274,103 @@ def build(out: Path = OUT) -> Path:
     return out
 
 
+def _phase4(con, a: str, b: str, c: str, d: str, x: str) -> None:
+    """What each section of a paper's page shows (oscr/paperpage.py)."""
+    code_statement = ("code", "Code availability",
+                      "The analysis code is at https://github.com/oscr-fixture/eeg-analysis, under the MIT license.")
+    data_statement = ("data", "DATA AVAILABILITY",
+                      "The invented recordings are at https://doi.org/10.5555/oscr.fixture.data.1.")
+    # 1: an open license (CC BY): its abstract and statements are shown in full.
+    _record(con, a, abstract="A synthetic abstract, written for the OSCR build test.\n\nIts second paragraph says "
+                             "that the band power of an invented EEG recording was measured.",
+            statements=(code_statement, data_statement,
+                        ("code_and_data", "Data and code availability", f"{data_statement[2]}\n\n{code_statement[2]}")),
+            type="research-article", language="en", volume="12", issue="3", pages="101-110", received="2026-05-02",
+            accepted="2026-08-30", published_online="2026-09-21", cited_by_count=4, references_count=3)
+    # 2: a closed license (CC BY-NC-ND): only facts about its texts.
+    _record(con, b, abstract="A closed abstract that must never reach the site.",
+            statements=(("data", "Data availability", "Closed statement: the data of this study are available on "
+                                                      "request from the authors."),
+                        ("code", "Code availability", "Closed statement: the code of this study is at "
+                                                      "https://github.com/oscr-fixture/unlicensed.")),
+            license="CC BY-NC-ND 4.0", type="research-article", language="en", cited_by_count=0, references_count=2)
+    # 3: no license at all, code on request.
+    _record(con, c, statements=(("code", "Code availability", "Closed statement: code available on request."),),
+            license="", type="brief-report")
+    # 4: data only, under CC BY: its data statement in full.
+    _record(con, d, statements=(("data", "Data availability statement",
+                                 "The invented recordings are deposited at https://doi.org/10.5555/oscr.fixture.data.1."),),
+            type="data-paper", language="en", references_count=1)
+    # 9: off-topic — none of it may leave.
+    _record(con, x, abstract=OFF_TOPIC["abstract"], statements=(("data", "Data availability", OFF_TOPIC["statement"]),))
+    con.execute("INSERT INTO integrity_notice (article_id, kind, notice_id, source, date, reasons) VALUES "
+                "(?, 'retraction', ?, 'retraction-watch', '2026-09-25', '')", (x, OFF_TOPIC["notice"]))
+
+    # Keywords, MeSH, a journal's subject, funding, an RRID, references (shared: similar papers).
+    con.executemany("INSERT INTO paper_subject (article_id, scheme, term, major) VALUES (?,?,?,?)",
+                    [(a, "keyword", "synthetic EEG", 0), (a, "keyword", "alpha band", 0),
+                     (a, "mesh", "Electroencephalography", 1), (a, "mesh", "Humans", 0), (a, "subject", "Neuroscience", 0)])
+    con.execute("INSERT INTO funder (id, name) VALUES ('name:fixture foundation for synthetic research', "
+                "'Fixture Foundation for Synthetic Research')")
+    con.executemany("INSERT INTO grant_award (article_id, funder_id, award) VALUES (?, "
+                    "'name:fixture foundation for synthetic research', ?)", [(a, "FX-0001"), (a, "FX-0002"), (b, "")])
+    con.execute("INSERT INTO paper_rrid (article_id, rrid, kind, name) VALUES (?, 'RRID:SCR_008633', 'SCR', 'NumPy')", (a,))
+    con.executemany("INSERT INTO paper_reference (article_id, position, doi) VALUES (?,?,?)",
+                    [(a, 1, REFS[0]), (a, 2, REFS[1]), (a, 3, REFS[2]), (b, 1, REFS[0]), (b, 2, REFS[1]),
+                     (d, 1, REFS[2]), (x, 1, REFS[0])])
+
+    # Integrity notices: a correction (Retraction Watch, whose reasons stay on the Mac) and a
+    # retraction.
+    con.executemany("INSERT INTO integrity_notice (article_id, kind, notice_id, source, date, reasons) VALUES "
+                    "(?,?,?,?,?,?)",
+                    [(a, "correction", "10.5555/oscr.fixture.correction.1", "retraction-watch", "2026-09-24",
+                      "Falsified invented figure"),
+                     (b, "retraction", "10.5555/oscr.fixture.retraction.2", "retraction-watch", "2026-09-26", "")])
+
+    # The repositories: what they hold, and every check at a fixed time.
+    eeg, unlicensed = "github.com/oscr-fixture/eeg-analysis", "github.com/oscr-fixture/unlicensed"
+    con.execute("INSERT INTO repo_feature (repo, n_notebooks, has_readme, has_citation_cff, has_license_file, env_files, "
+                "has_tests, has_ci, has_docs, data_like, computed_at) VALUES (?, 0, 0, 0, 1, '[\"requirements.txt\"]', "
+                "1, 0, 0, 0.0, ?)", (eeg, READ_AT))
+    _checks(con, eeg, [(READ_AT - 5 * DAY, "alive", 200), (READ_AT, "alive", 200)])
+    _checks(con, unlicensed, [(READ_AT - 7 * DAY, "unreachable", 503), (READ_AT, "alive", 200)])
+
+    # Versions: paper 1 changed once in public facts, then only in texts and categories (not
+    # listed); paper 2 has its first record only. The digests and raw values must not leave.
+    first = {"type": "research-article", "language": "en", "volume": "11", "issue": "3", "pages": "101-110",
+             "journal": {"title": "Journal of Synthetic Fixtures", "issn": "0000-0019", "eissn": "0000-0027",
+                         "publisher": "OSCR Fixture Press", "nlm_ta": ""},
+             "dates": {"received": "2026-05-02", "accepted": "2026-08-30", "epub": "2026-09-21", "ppub": "",
+                       "collection": "", "first_publication": "2026-09-21"},
+             "abstract": "0123456789abcdef",
+             "authors": [["Ada Fixture", ADA], ["Ben Example", BEN], ["Cleo Nameless", ""]],
+             "keywords": ["synthetic EEG"], "mesh": ["Electroencephalography", "Humans"],
+             "funding": [["Fixture Foundation for Synthetic Research", ["FX-0001"]]], "references": 2,
+             "rrids": ["RRID:SCR_008633"], "statements": [["code", "fedcba9876543210"], ["data", "00112233aabbccdd"]],
+             "integrity": [], "categories": {"on_topic": ["yes"], "modality": ["EEG", "raw-rule-value-never-shown"]}}
+    second = {**first, "volume": "12", "keywords": ["synthetic EEG", "alpha band"],
+              "funding": [["Fixture Foundation for Synthetic Research", ["FX-0001", "FX-0002"]]], "references": 3,
+              "integrity": [["correction", "10.5555/oscr.fixture.correction.1"]], "abstract": "a1b2c3d4e5f60718"}
+    third = {**second, "abstract": "fedcba9876543210", "categories": {"on_topic": ["yes"], "modality": ["EEG"]}}
+    _versions(con, a, [(READ_AT - 3 * DAY, first), (READ_AT - DAY, second), (READ_AT, third)])
+    _versions(con, b, [(READ_AT - DAY, {"type": "research-article", "abstract": "a1b2c3d4e5f60718",
+                                        "statements": [["data", "00112233aabbccdd"]],
+                                        "authors": [["Ben Example", BEN], ["Dan Nameless", ""]]})])
+
+    # Paper 1's map, validated by one of its authors with her ORCID, and its DOI on Zenodo;
+    # beside them, a sandbox test and its DOI, which never leave.
+    con.executemany("INSERT INTO validation (article_id, orcid, name, proof, validated_at, card) VALUES (?,?,?,?,?,'{}')",
+                    [(a, ADA, "Fixture, Ada", "orcid", READ_AT - DAY), (a, TESTER, "Tester, Theo", "test", READ_AT - DAY)])
+    con.executemany("INSERT INTO card_doi (article_id, instance, record_id, doi, concept_doi, deposited_at) "
+                    "VALUES (?,?,?,?,?,?)",
+                    [(a, "zenodo", "1000001", "10.5555/oscr.fixture.map.1", "10.5555/oscr.fixture.map.0", READ_AT),
+                     (a, "sandbox", "999", "10.5072/zenodo.999", "10.5072/zenodo.998", READ_AT)])
+
+
 if __name__ == "__main__":
-    print(f"fixture catalogue → {build()}")
+    if len(sys.argv) == 3 and sys.argv[1] == "--database":
+        # Only the synthetic Mac database (for `oscr --db <it> community push --local`).
+        database(Path(sys.argv[2])).close()
+        print(f"fixture database → {sys.argv[2]}")
+    else:
+        print(f"fixture catalogue → {build()}")

@@ -1,8 +1,10 @@
 # Platform plan — Phase 0: audit and plan
 
-Status: **Phase 0 validated by the owner on 2026-09-27, with the decisions of §13. Phase 1 built
-(awaiting the owner's approval to run on the Mac). Phase 2 (navigation) built on its branch,
-awaiting the owner's review (§6, §12). Phase 3 in progress.**
+Status: **Phase 0 validated by the owner on 2026-09-27, with the decisions of §13. Phases 1 and 2 are
+deployed; Phase 3 (search) is built and awaits the owner's approval for its remote setup
+(docs/SEARCH.md §7); Phase 4 (the full paper page) is built on its branch and awaits review
+(§12); Phase 5 (accounts) is built on its branch and awaits review and the owner's
+applications (§8, [ACCOUNTS.md](ACCOUNTS.md)).**
 Date: 2026-09-26. Scope: turn the catalogue into a full platform (arXiv + SSRN + PubMed +
 a Kaggle dataset page), at zero cost, following `CLAUDE.md`. The platform's name lives in
 one configuration variable, `SITE_NAME` (current value: `OSCR`).
@@ -221,17 +223,18 @@ applied with `wrangler d1 migrations apply` on Cloudflare and by `oscr` on the M
 | `statements` | `paper_id`✱, `kind` (code, data), `text`, `license_gate` | M (C: see decision D1) |
 | `field_provenance` | `entity`, `entity_id`✱, `field`, `source` (openalex, crossref, epmc, jats, pubmed, unpaywall, github, git, zenodo, rule, model), `source_ref`, `fetched_at` | M (C: compact map inside `doc`) |
 | `versions` | `entity`, `entity_id`✱, `version`, `created_at`, `actor` (harvester or user id), `snapshot` (JSON), `diff` (JSON) | M, C |
-| `paper_fts` | FTS5 over title, abstract, authors, keywords, MeSH, journal, repository names, README first lines, tools, identifiers | C |
+| `paper_fts` | FTS5 over title, abstract (open licenses only), authors, keywords, MeSH, journal, repository names, tools, identifiers, plus the filters as tokens; in its own database, `oscr_search` (Phase 3, `migrations/d1/`) | C |
 
 ### Community [U]
 
 | table | key columns |
 |---|---|
-| `users` | `id`, `display_name`, `created_at`, `bio`, public handles only (ORCID iD, GitHub login) — **no email stored unless the user asks for email notifications** |
-| `identities` | `user_id`✱, `provider` (orcid, github, google), `subject`✱ (OIDC `sub` / GitHub id), `linked_at` |
-| `sessions` | `id_hash`✱, `user_id`, `created_at`, `expires_at` (not in the mission's list; needed for stateless Workers) |
-| `roles` | `user_id`✱, `role` (member, verified_author, maintainer, moderator, admin), `scope_kind`, `scope_id`, `granted_by`, `granted_at` |
-| `claims` | `id`, `user_id`, `paper_id`✱, `kind` (author, maintainer), `evidence`, `status`✱, `decided_by`, `decided_at` |
+| `users` | `id`, `display_name`, `created_at`, public handles only (ORCID iD, GitHub login) — **no email, ever** (D5: notifications in the site). Built (Phase 5) |
+| `identities` | `user_id`✱, `provider` (orcid, github, google), `subject` (OIDC `sub` / GitHub id; key with the provider), `linked_at`. Built |
+| `sessions` | `id_hash` (key), `user_id`✱, `created_at`, `expires_at`, `last_seen_at`, `user_agent_hint`. Built |
+| `roles` | `user_id` (key prefix), `role` (member, verified_author, maintainer, moderator, admin), `scope_kind`, `scope_id`, `granted_by`, `granted_at`. Built |
+| `claims` | `id`, `user_id`✱, `kind` (author, maintainer), `paper_id` or `repo`, `evidence`, `status`, `decided_by`, `decided_at`. Built |
+| `paper_orcid`, `repo_owner` | the facts the verifications need, pushed by the Mac (`oscr community`). Built |
 | `submissions` | `id`, `user_id`, `doi`, `code_urls` (JSON), `checks` (JSON), `status`✱, `created_at` |
 | `jobs` | `id`, `kind` (harvest_doi, verify_repo, align, deposit_map, badge_pr), `payload` (JSON), `status`✱, `attempts`, `created_at`, `taken_at`, `finished_at`, `result` (JSON) |
 | `discussions` | `id`, `paper_id`✱, `kind` (question, error_report, reproduction), `title`, `status`✱, `author_id`, `created_at`, `resolved_by` |
@@ -334,7 +337,7 @@ within 5,000/h. Git history: local, no quota.
 | `/` | search bar, key figures, new today / this week, categories with counts, top journals and tools | static, rebuilt nightly |
 | `/search` | simple and advanced search, facets with counts, sorts, export | static shell + Svelte island + search API |
 | `/browse/`, `/browse/<facet>/<value>/` (built, Phase 2); `/browse/<category>/<year>/` | category tree by facet with counts; a category's papers by day; later by year, paginated like arXiv lists | static (bounded) |
-| `/paper/<id>/` + tabs (`code`, `map`, `data`, `versions`, `discussion`, `reproductions`, `cite`, `activity`, `similar`) | the central page; since Phase 2 also for "on request" and "data only" (D2), linking to its authors, journal, tools, datasets and categories | static while under the file budget, then on demand (SSR from `papers.doc`); tabs with live data are islands |
+| `/paper/<id>/` + tabs (`code`, `map`, `data`, `versions`, `discussion`, `reproductions`, `cite`, `activity`, `similar`) | the central page; since Phase 2 also for "on request" and "data only" (D2), linking to its authors, journal, tools, datasets and categories. Since Phase 4 the tabs are sections of the one page (`#overview`, `#code`, …), not routes: no file added | static while under the file budget, then on demand (SSR from `papers.doc`); tabs with live data are islands |
 | `/paper/<id>/read/` | Code ↔ Paper reader | same shell as the paper; texts fetched by the browser |
 | `/authors/`, `/author/<orcid>/`, `/journals/`, `/journal/<id>/`, `/institutions/`, `/institution/<ror>/`, `/tools/`, `/tool/<id>/`, `/datasets/`, `/dataset/<id>/` (built, Phase 2) | entity indexes and pages | static for the top `STATIC_MAX` (2,000) of each type by papers, on demand for the long tail (Phase 3) |
 | `/lookup/` (built, Phase 2) | the DOI lookup: any in-scope paper read, with or without a page (D2) | static page; the browser fetches one of ≤ 4,096 shards `/lookup/NNN.json` (first 3 hex characters of sha1(DOI)) |
@@ -405,19 +408,54 @@ whole site).
 
 The justification is in `docs/ARCHITECTURE.md` ("Search engine").
 
+### Built (Phase 3, branch `phase-3`), awaiting the owner's review
+
+The choice above, built and measured on a local D1 (wrangler 4.141); the contract, the figures
+and the remote steps awaiting approval are in `docs/SEARCH.md`.
+- **Two databases**, as proposed: `oscr_catalog` (`papers` with the filter columns and the result
+  row's `doc`, one secondary index for "most cited", `facet_counts`, `meta`) and `oscr_search`
+  (`paper_fts`, FTS5, contentless: abstracts indexed only under an open license, never stored nor
+  returned).
+- **Three changes from the proposal, measured first:**
+  - the filters are **tokens of the index** (its `facets` column), not a `paper_facet` table:
+    such a table costs ~8 rows written per paper (31,000 for 3,700 papers) and 20,000–32,000 rows
+    read to count the facets of 1,000 results, where the tokens cost no row written and the counts
+    come from the rows the index returns anyway;
+  - the facet counts are **exact over the results up to 500**; past 500, they are the first 500
+    results' (and the page says so); the empty query shows the precomputed counts;
+  - the key is **the publication date** (YYYYMMDD × 100,000 + n): "newest first" and date ranges
+    cost no index.
+- `ORDER BY rank` with the column weights configured in the table: D1 counts only the rows
+  returned (19 rows read for the top 20 of 48,000 matches), where `ORDER BY bm25(…)` reads every
+  match twice. A search reads ~40–120 rows when it is narrow and ~540 at most (the pages stop at
+  the first 500 results); an export ~1,500; the empty query ~150. The Worker's CPU: under ~3 ms
+  per search, measured in V8 at a simulated full stock of 91,500 papers.
+- The Mac pushes deltas (`oscr d1 push`): ~3 rows written per paper (measured), ~270k for 90k
+  papers, so a first full load takes 2–4 days within the 80,000-row daily budget, and then a
+  day's new papers and changes a few thousand rows.
+
 ---
 
 ## 8. Accounts, roles, sessions
 
-- Sign-in with ORCID (OpenID Connect), GitHub (OAuth) and Google (OpenID Connect) in the Worker
-  Functions; several identities linked to one account.
-- Sessions: a random 256-bit id in an `HttpOnly; Secure; SameSite=Lax` cookie; only its hash
-  in D1 (`sessions`); CSRF token on every form; no in-memory state (stateless Workers).
-- Secrets (OAuth client secrets, session key, D1 API token of the Mac) in Cloudflare secrets
-  and the macOS keychain — never in the repository.
-- Verified author: the signed-in ORCID appears among the paper's authors (OpenAlex, Crossref,
-  JATS); otherwise a manual claim goes to moderation. Maintainer: the GitHub account owns or
-  contributes to the repository (checked by a job on the Mac with its token).
+**Built in Phase 5** (branch `phase-5`, not deployed; details, measurements and the owner's
+steps: [ACCOUNTS.md](ACCOUNTS.md)).
+
+- Sign-in with ORCID (OpenID Connect, `openid`), GitHub (OAuth, no scope) and Google (OpenID
+  Connect, `openid` only) in the Worker's code (`website/worker/account/`): authorization code
+  flow, `state`, PKCE (S256), a nonce and the ID token's RS256 signature checked with WebCrypto.
+  Several identities linked to one account; no email address asked for, read or stored.
+- Sessions: a random 256-bit id in a `__Host-` cookie, `HttpOnly; Secure; SameSite=Lax`; only
+  its SHA-256 in D1; 30 days, sliding at most once a day; a CSRF token (an HMAC bound to the
+  session) and the site's `Origin` on every POST; no in-memory state.
+- Secrets (client ids and secrets, the server key) in Cloudflare secrets, `.dev.vars` locally
+  (gitignored) — never in the repository.
+- Verified author: the signed-in ORCID iD appears among the authors of a paper with a page
+  (`paper_orcid`, pushed by the Mac from the papers' metadata), at sign-in and on request.
+  Maintainer: on request, the GitHub account owns the repository, belongs publicly to its
+  organization or contributed to it — checked by the Worker with the person's own fresh token
+  (not kept), else a pending claim for moderation (Phase 7). Manual author claims: Phase 6.
+- D1 writes per sign-in (measured): 5 for a new account, 2 for a returning one; 3 for a link.
 
 ## 9. Submission, claim, edition, validation
 
@@ -449,9 +487,9 @@ nightly to Hugging Face as JSON and Parquet (deltas only, to fit the uplink).
 |---|---|---|
 | 1 — harvester enrichment | the J, E and G fields first (no new request), the article type and the rates on research articles, then OpenAlex, Crossref integrity, GitHub metadata, git history, tool detection, RRIDs, datasets, classification (rules, then local model), provenance, versions; migrations; backfill of the papers already read | decisions D1, D6 |
 | 2 — navigation | categories, journals, institutions, authors, tools, datasets pages; the DOI lookup; pages for "on request" and "data only" (D2). **Built on branch `phase-2`, awaiting review, not deployed**; institutions await ROR ids from OpenAlex | 1 |
-| 3 — search | D1 projection + FTS5, facets, advanced search, export | 1, D3 |
-| 4 — full paper page | all tabs, Versions with diff | 1–3 |
-| 5 — accounts | ORCID, GitHub, Google, roles, author and maintainer verification | D4 (OAuth apps) |
+| 3 — search | D1 projection + FTS5, facets, advanced search, export. **Built on branch `phase-3`, awaiting review, not deployed; the remote D1 databases await approval** (`docs/SEARCH.md`) | 1, D3 |
+| 4 — full paper page | all tabs, Versions with diff. **Built on branch `phase-4`, awaiting review, not deployed**: `oscr/paperpage.py` writes `papers/NN.json`; the tabs are sections of one page (Overview, Code, Map, Data, Versions, Cite, Similar; Discussion, Reproductions and Activity say what they will hold and that they open with sign-in); abstracts under D1's rule; the tab bar's style awaits the owner (markup only until then) | 1–3 |
+| 5 — accounts | ORCID, GitHub, Google, roles, author and maintainer verification. **Built on branch `phase-5`, awaiting review, not deployed**; awaits the owner's applications, secrets and database ([ACCOUNTS.md](ACCOUNTS.md)) | D4 (OAuth apps) |
 | 6 — submission, claims, edition, validation, Zenodo sandbox, badge | | 5 |
 | 7 — discussions, reproductions, moderation, notifications | | 5, D5 |
 | 8 — feeds, API, exports, institutional pages | | 1–4 |
@@ -514,8 +552,9 @@ Also in `CLAUDE.md`, which binds every phase.
 | D10 | The owner creates the OpenAlex key |
 | scripts | No D1 index: positions in the static pages at build, one manifest per repository on Hugging Face (`OpenScientificCodeRegistry/Database`); published only once the license filter is applied and verified |
 
-**Open for Phase 4 (the paper page):** abstracts are article text too. The same license rule
-as D1 is proposed for them.
+**Phase 4 (the paper page):** abstracts are article text too. D1's rule is applied to them, as
+proposed: in full under CC BY, CC0, CC BY-SA or CC BY-NC only; otherwise a line and a link to
+the paper. For the owner to confirm at review.
 
 ## 14. Risks
 

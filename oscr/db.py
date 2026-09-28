@@ -388,6 +388,9 @@ def save_version(con: sqlite3.Connection, entity: str, entity_id: str, snapshot:
     last = con.execute("SELECT version, snapshot FROM version WHERE entity = ? AND entity_id = ? "
                        "ORDER BY version DESC LIMIT 1", (entity, entity_id)).fetchone()
     before = json.loads(last["snapshot"]) if last else {}
+    # Compared as it is stored: a tuple comes back from JSON as a list, and must not count as
+    # a change (every re-enrichment stored a new version of every paper with authors).
+    snapshot = json.loads(_j(snapshot))
     if last and before == snapshot:
         return None
     diff = {k: [before.get(k), snapshot.get(k)] for k in sorted(set(before) | set(snapshot))

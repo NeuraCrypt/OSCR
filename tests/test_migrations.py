@@ -56,6 +56,10 @@ def test_a_record_gets_a_new_version_only_when_it_changes(tmp_path):
     assert db.save_version(con, "article", "doi:10.1/a", {"type": "research-article", "volume": "4"}) == 2
     diff = con.execute("SELECT diff FROM version WHERE version = 2").fetchone()[0]
     assert diff == '{"volume": ["3", "4"]}'
+    # The same record again, its pairs as tuples (enrich._snapshot): read back as lists, no change.
+    authors = {"type": "research-article", "volume": "4", "authors": [("Ada Fixture", "0000-0000-0000-001X")]}
+    assert db.save_version(con, "article", "doi:10.1/a", authors) == 3
+    assert db.save_version(con, "article", "doi:10.1/a", authors) is None
 
 
 def test_provenance_says_where_each_value_came_from(tmp_path):
