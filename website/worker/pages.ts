@@ -54,10 +54,15 @@ export async function paperRecord(assets: Assets, url: URL, slug: string): Promi
   return Object.hasOwn(shard, slug) ? shard[slug] : undefined;
 }
 
-/** A shell page (the build's HTML) with a view in place of <main>'s content (its script
- *  included, which then does not run), and its title, description and breadcrumb. The
- *  platform's name is the shell's own (<meta name="application-name">). null when the shell
- *  lacks what is replaced. */
+/** The build's module scripts (this site's files, never inline: the Content-Security-Policy
+ *  allows no other) in a piece of HTML. */
+const SCRIPT = /<script type="module" src="\/(?!\/)[^"<>]*"><\/script>/g;
+
+/** A shell page (the build's HTML) with a view in place of <main>'s content, and its title,
+ *  description and breadcrumb. The shell's scripts stay, after the view: the shell's own script
+ *  (src/scripts/paper-shell.ts) then finds the view already there and runs the Contribute
+ *  section's. The platform's name is the shell's own (<meta name="application-name">). null when
+ *  the shell lacks what is replaced. */
 export function fillShell(shell: string, view: View): string | null {
   const start = shell.indexOf("<main>");
   const end = shell.lastIndexOf("</main>");
@@ -66,7 +71,8 @@ export function fillShell(shell: string, view: View): string | null {
   const title = `${esc(view.title)}${site ? ` — ${site}` : ""}`;
   const attr = (name: string, value: string) => (s: string) =>
     s.replace(new RegExp(`(<meta (?:name|property)="${name}" content=")[^"]*(")`), (_, a: string, b: string) => `${a}${esc(value)}${b}`);
-  let out = shell.slice(0, start + "<main>".length) + view.html + shell.slice(end);
+  const scripts = (shell.slice(start, end).match(SCRIPT) ?? []).join("");
+  let out = shell.slice(0, start + "<main>".length) + view.html + scripts + shell.slice(end);
   out = out.replace(/<title>[^<]*<\/title>/, () => `<title>${title}</title>`);
   out = out.replace(/(<span id="crumb">)[^<]*(<\/span>)/, (_, a: string, b: string) => `${a}${esc(view.crumb)}${b}`);
   if (view.description) out = attr("og:description", view.description)(attr("description", view.description)(out));

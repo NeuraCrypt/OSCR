@@ -23,11 +23,13 @@ export const esc = (value: unknown) => String(value ?? "").replace(/[&<>"']/g, (
 export const href = (url: string | null | undefined) =>
   url && (/^https?:\/\/[^\s"<>]+$/i.test(url) || /^\/(?!\/)[^\s"<>]*$/.test(url)) ? url : "";
 
-/** A link, or its text alone when the address is not one (`cls`: science.css's class). */
+/** A link, or its text alone when the address is not one (`cls`: science.css's class). The text
+ *  may break inside a long name (`wrap`: a repository, a dataset, an address), so that a phone
+ *  never scrolls sideways. */
 export function a(text: string, url: string | null | undefined, cls = ""): string {
   const h = href(url);
   const c = cls ? ` class="${esc(cls)}"` : "";
-  return h ? `<a${c} href="${esc(h)}">${esc(text)}</a>` : cls ? `<span${c}>${esc(text)}</span>` : esc(text);
+  return h ? `<a${c} href="${esc(h)}">${wrap(text)}</a>` : cls ? `<span${c}>${wrap(text)}</span>` : wrap(text);
 }
 
 /** A text that may hold long addresses or paths: a line break is allowed (<wbr>) after a slash,
@@ -366,7 +368,12 @@ export function missingEntity(type: EntityType, key: string): View {
 // and its page, rendered by the Worker.
 
 export type Notice = { kind: string; id: string; date: string; source: string; url: string };
+/** A data link found in the paper; `cited`: it names one of the datasets the paper cites, which
+ *  the page lists by their own pages. */
+export type DataLinkRecord = { repo: string; url: string; repository: string; cited: boolean };
 export type PaperRecord = {
+  /** The registry's id of the paper ("doi:10.…"), which the Contribute section's requests name. */
+  id: string;
   slug: string;
   doi: string;
   title: string;
@@ -381,11 +388,14 @@ export type PaperRecord = {
   authors: Link[];
   institutions: Link[];
   categories: Link[];
-  code: { name: string; url: string; license: string; state: string }[];
+  /** `repo`: the registry's key of the repository (github.com/owner/name), which a correction names. */
+  code: { repo: string; name: string; url: string; license: string; state: string }[];
   files: number;
   pairs: number;
   map: string;
   datasets: Link[];
+  /** Every data link found in the paper, those of the datasets cited included. */
+  data: DataLinkRecord[];
   tools: Link[];
   /** The paper on Europe PMC. */
   europepmc: string;
@@ -411,6 +421,89 @@ const WITHOUT: Record<string, string> = {
 /** A consortium paper lists hundreds of authors: the first ones, then folded. */
 const SHOWN = 20;
 
+/** What a correction may say a link is (src/components/paper/Contribute.astro's). */
+const ROLES: readonly [string, string][] = [
+  ["code", "the authors' code"],
+  ["data", "their data"],
+  ["tool", "a tool they used"],
+  ["remove", "not this paper's: remove it"],
+];
+/** Why a record's removal is asked (the same as Contribute.astro's). */
+const REASONS: readonly [string, string][] = [
+  ["author_request", "I am an author of this paper, and ask for its removal"],
+  ["copyright", "It infringes a copyright"],
+  ["personal_data", "It shows personal data"],
+  ["incorrect", "It is wrong, and cannot be corrected"],
+  ["other", "Another reason (say which)"],
+];
+const options = (list: readonly [string, string][], selected = "") =>
+  list.map(([value, text]) => `<option value="${esc(value)}"${value === selected ? " selected" : ""}>${esc(text)}</option>`).join("");
+
+/** The Contribute section of a paper rendered on demand: the same ids and forms as the static
+ *  pages' (Contribute.astro), so that the same script (src/scripts/paper-actions.ts) runs them —
+ *  claim the paper, correct its links, request its removal. The tracing map's validation and the
+ *  badge stay on the static pages, which show the map. */
+function contribute(p: PaperRecord): string {
+  const back = `/paper/${p.slug}/`;
+  const links = [
+    ...p.code.map((r) => ({ repo: r.repo, url: r.url, role: "code", name: r.name })),
+    ...p.data.map((d) => ({ repo: d.repo, url: d.url, role: "data", name: d.repo })),
+  ].filter((l) => l.repo);
+  const linkItems = links
+    .map(
+      (l) =>
+        `<li data-repo="${esc(l.repo)}" data-role="${esc(l.role)}">` +
+        `${href(l.url) ? `<a class="code" href="${esc(href(l.url))}">${wrap(l.name)}</a>` : `<span class="code">${wrap(l.name)}</span>`}: ` +
+        `<select name="role-${esc(l.repo)}" aria-label="What ${esc(l.name)} is">${options(ROLES, l.role)}</select></li>`,
+    )
+    .join("");
+  return (
+    `<section id="contribute" data-paper="${esc(p.id)}" data-doi="${esc(p.doi)}" data-digest="" data-back="${esc(back)}">` +
+    `<h2>Contribute</h2>` +
+    `<p class="summary">The authors of this paper and the maintainers of its code can claim it and correct its record; ` +
+    `anyone signed in can ask for its removal. Every request goes to the registry's own machine, which answers it; your ` +
+    `account page follows them.</p>` +
+    `<p id="contribute-status" role="status" aria-live="polite"></p>` +
+    `<div id="contribute-signed-out"><p>${a("Sign in with ORCID", `/api/auth/orcid/start?return=${back}`)} to claim this paper ` +
+    `as one of its authors or correct its record: when the paper's metadata lists your ORCID iD, you are recognized at once. ` +
+    `Maintainers of its code: ${a("sign in with GitHub", `/api/auth/github/start?return=${back}`)}, then claim the repository ` +
+    `on ${a("your account page", "/account/")}.</p></div>` +
+    `<div id="contribute-signed-in" hidden><p id="contribute-who"></p>` +
+    `<div id="claim-block" hidden><h3>Claim this paper</h3><p id="claim-state"></p>` +
+    `<form id="claim-form" method="post" action="/api/claims" hidden>` +
+    `<p>Your ORCID iD is not among this paper's authors in its metadata: say why you are one of them, and a moderator looks at your claim.</p>` +
+    `<p><label for="claim-statement">Why you are one of its authors</label><br>` +
+    `<textarea id="claim-statement" name="statement" rows="3" maxlength="1000" required></textarea></p>` +
+    `<p><label for="claim-link">A page that shows it (optional)</label><br>` +
+    `<input id="claim-link" name="link" type="text" inputmode="url" placeholder="https://" autocomplete="off"></p>` +
+    `<p><button type="submit">Send the claim</button></p></form></div>` +
+    `<div id="edit-block" hidden><h3>Correct its record</h3>` +
+    `<p>Say what each link of this record is, remove the ones that are not the paper's, add the ones that are missing. The ` +
+    `correction becomes a new version of the record.</p>` +
+    `<form id="edit-form" method="post" action="/api/edits">` +
+    (linkItems ? `<fieldset><legend>Its links</legend><ul id="edit-links">${linkItems}</ul></fieldset>` : "") +
+    `<fieldset><legend>Links to add</legend>` +
+    `<p><label for="edit-add">One address a line: a forge, an archive, a dataset</label><br>` +
+    `<textarea id="edit-add" name="add" rows="2" spellcheck="false"></textarea></p>` +
+    `<p><label for="edit-add-role">They are</label> <select id="edit-add-role" name="add-role">` +
+    `<option value="code">the authors' code</option><option value="data">their data</option></select></p></fieldset>` +
+    `<p><label for="edit-note">A note on the correction (optional)</label><br>` +
+    `<textarea id="edit-note" name="note" rows="2" maxlength="500"></textarea></p>` +
+    `<p><button type="submit">Send the correction</button></p></form>` +
+    `<p id="edit-state" role="status" aria-live="polite"></p></div></div>` +
+    `<h3 id="removal">Request its removal</h3>` +
+    `<p id="removal-signed-out">To ask for this record to be removed from the registry, ${a("sign in", "/account/")} ` +
+    `(ORCID, GitHub or Google), then come back here: a moderator reads every request. Removal without an account comes later.</p>` +
+    `<p id="removal-state"></p>` +
+    `<form id="removal-form" method="post" action="/api/reports" hidden>` +
+    `<p><label for="removal-reason">Why</label><br><select id="removal-reason" name="reason">${options(REASONS)}</select></p>` +
+    `<p><label for="removal-details">What a moderator should know</label><br>` +
+    `<textarea id="removal-details" name="details" rows="3" maxlength="2000"></textarea></p>` +
+    `<p><button type="submit">Send the request</button></p></form>` +
+    `</section>`
+  );
+}
+
 /** The page of a paper past STATIC_PAPERS, from its record. It says what it leaves out. */
 export function paperView(p: PaperRecord): View {
   const hasCode = p.code.length > 0;
@@ -434,6 +527,8 @@ export function paperView(p: PaperRecord): View {
     p.files > 0 ? `${plural(p.files, "file")} of its code read` : "",
     p.pairs > 0 ? `${plural(p.pairs, "match", "matches")} between paragraphs and code` : "",
   ].filter(Boolean);
+  /** The data links other than those of the datasets cited (named by their pages already). */
+  const others = p.data.filter((l) => !l.cited);
   const code = hasCode
     ? p.code
         .map(
@@ -449,11 +544,11 @@ export function paperView(p: PaperRecord): View {
     `<h1>${wrap(p.title)}</h1>`,
     notices,
     `<nav class="tabs" aria-label="Sections of this page"><ul><li><a href="#overview">Overview</a></li>` +
-      `<li><a href="#code">Code</a></li><li><a href="#data">Data</a></li></ul></nav>`,
+      `<li><a href="#code">Code</a></li><li><a href="#data">Data</a></li><li><a href="#contribute">Contribute</a></li></ul></nav>`,
     `<p class="summary">This page is built on request from the registry's record of the paper. The ` +
-      `${esc(number(STATIC_PAPERS))} most recent papers have a fuller page, built ahead of time: the Code ↔ Paper reader, ` +
-      `the tracing map, the record's versions, how to cite it, similar papers, and the forms to claim or correct it. ` +
-      `This paper is older: its record, its code and its data are below.</p>`,
+      `${esc(number(STATIC_PAPERS))} most recent papers have a fuller page, built ahead of time, with the Code ↔ Paper reader, ` +
+      `the tracing map and its validation, the record's versions, how to cite it, similar papers and the README badge. ` +
+      `This paper is older: its record, its code, its data and the requests about it are below.</p>`,
     `<section id="overview"><h2>Overview</h2>`,
     authorsHtml,
     line("Journal", p.journal.text ? a(p.journal.text, p.journal.href) : "—"),
@@ -475,8 +570,21 @@ export function paperView(p: PaperRecord): View {
     p.map ? line("Tracing map", `validated by an author, ${a("its DOI", doiUrl(p.map))}`) : "",
     `</section>`,
     `<section id="data"><h2>Data</h2>`,
-    p.datasets.length ? `<h3>Datasets cited</h3><ul>${p.datasets.map((d) => `<li>${a(d.text, d.href)}</li>`).join("")}</ul>` : `<p>No dataset cited.</p>`,
+    p.datasets.length ? `<h3>Datasets cited</h3><ul>${p.datasets.map((d) => `<li>${a(d.text, d.href)}</li>`).join("")}</ul>` : "",
+    others.length
+      ? `<h3>${p.datasets.length ? "Other data links" : "Data links"}</h3><ul>` +
+        others
+          .map(
+            (l) =>
+              `<li>${href(l.url) ? `<a class="code" href="${esc(href(l.url))}">${wrap(l.repo)}</a>` : `<span class="code">${wrap(l.repo)}</span>`}` +
+              `${l.repository ? ` — ${esc(l.repository)}` : ""}</li>`,
+          )
+          .join("") +
+        `</ul>`
+      : "",
+    p.datasets.length || others.length ? "" : `<p>No dataset cited, and no data link found.</p>`,
     `</section>`,
+    contribute(p),
   ].join("");
   const access = [
     `<li>${a("The paper, at the publisher", doiUrl(p.doi))}</li>`,

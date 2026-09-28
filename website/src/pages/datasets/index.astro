@@ -1,6 +1,7 @@
 ---
 // The datasets cited by the papers with a page, grouped by the repository that holds them.
 import Base from "../../layouts/Base.astro";
+import Wrap from "../../components/paper/Wrap.astro";
 import { plural } from "../../lib/catalog";
 import { datasetName, datasets, datasetUrl, type Dataset } from "../../lib/entities";
 
@@ -28,7 +29,7 @@ const repositories = [...groups.entries()].sort((x, y) => y[1].length - x[1].len
       <ul>
         {list.map((d) => (
           <li>
-            <a href={datasetUrl(d.id)}>{datasetName(d)}</a>{d.title && <> · <span class="code">{d.id}</span></>} — cited by{" "}
+            <a href={datasetUrl(d.id)}><Wrap text={datasetName(d)} /></a>{d.title && <> · <span class="code"><Wrap text={d.id} /></span></>} — cited by{" "}
             {plural(d.counts.papers, "paper")}
           </li>
         ))}

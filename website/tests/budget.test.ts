@@ -131,6 +131,10 @@ describe("the markup", () => {
     assert.equal(a("x", "data:text/html,1", "code"), `<span class="code">x</span>`);
     assert.equal(doiUrl("10.1002/(SICI)1097-0258<1661::AID>3.0.CO;2-2"), "https://doi.org/10.1002/(SICI)1097-0258%3C1661::AID%3E3.0.CO;2-2");
     assert.deepEqual(wrapParts("https://doi.org/10.1016/j.x"), ["https://", "doi.org/", "10.1016/", "j.x"]);
+    // A long name in a link may break, on a phone: after a slash, or inside a run of 24 characters.
+    assert.equal(a("gitlab.esrf.fr/night_rail/applications", "https://x.example/", "code"),
+      `<a class="code" href="https://x.example/">gitlab.esrf.fr/<wbr>night_rail/<wbr>applications</a>`);
+    assert.equal(a("model_neural_tube_patterning_and_isthmic", ""), "model_neural_tube_patter<wbr>ning_and_isthmic");
   });
 
   it("lists papers the catalogue's way, the reader linked only where it is built", () => {
@@ -194,15 +198,33 @@ describe("the markup", () => {
     assert.ok(v.html.includes(`${STATIC_PAPERS.toLocaleString("en-GB")} most recent papers have a fuller page`));
     assert.ok(v.html.includes(`<a class="code" href="https://github.com/oscr-fixture/unlicensed">`));
     assert.ok(v.html.includes(`<span class="ok">the link answers</span>`));
-    assert.ok(v.html.includes(`<a href="https://doi.org/10.5555/oscr.fixture.2">10.5555/oscr.fixture.2</a>`));
+    assert.ok(v.html.includes(`<a href="https://doi.org/10.5555/oscr.fixture.2">10.5555/<wbr>oscr.fixture.2</a>`));
     assert.ok(v.html.startsWith(`<div class="record"><div class="body"><h1>`) && v.html.includes(`<aside class="sidebar">`));
     assert.equal(v.crumb, "doi:10.5555/oscr.fixture.2");
+    // The data links other than the datasets', and the Contribute section of the static pages, with
+    // the ids their script (src/scripts/paper-actions.ts) reads.
+    assert.ok(v.html.includes(`<h3>Data links</h3><ul><li><a class="code" href="https://osf.io/abcde/">osf:abcde</a> — OSF</li></ul>`));
+    assert.ok(v.html.includes(`<section id="contribute" data-paper="doi:10.5555/oscr.fixture.2" data-doi="10.5555/oscr.fixture.2" data-digest="" data-back="/paper/doi_10.5555_oscr.fixture.2/">`));
+    for (const id of ["contribute-status", "contribute-signed-out", "contribute-signed-in", "contribute-who", "claim-block", "claim-state",
+      "claim-form", "claim-statement", "edit-block", "edit-form", "edit-links", "edit-add", "edit-add-role", "edit-note", "edit-state",
+      "removal", "removal-signed-out", "removal-state", "removal-form", "removal-reason", "removal-details"]) {
+      assert.ok(v.html.includes(` id="${id}"`), id);
+    }
+    assert.ok(v.html.includes(`<li data-repo="github.com/oscr-fixture/unlicensed" data-role="code">`));
+    assert.ok(v.html.includes(`<li data-repo="osf:abcde" data-role="data">`));
+    assert.ok(v.html.includes(`<option value="code" selected>the authors&#39; code</option>`));
+    assert.ok(v.html.includes(`<a href="/api/auth/orcid/start?return=/paper/doi_10.5555_oscr.fixture.2/">Sign in with ORCID</a>`));
+    assert.ok(v.html.includes(`<li><a href="#contribute">Contribute</a></li>`));
+    assert.ok(!/<script|style=/.test(v.html));
+    const cited = paperView({ ...PAPER, datasets: [{ text: "ds000001", href: "/dataset/ds000001/" }], data: [{ ...PAPER.data[0], cited: true }] });
+    assert.ok(cited.html.includes(`<h3>Datasets cited</h3>`) && !cited.html.includes("Data links"), "a cited dataset's link is not listed twice");
     const folded = paperView({ ...PAPER, authors: Array.from({ length: 30 }, (_, i) => ({ text: `A${i}`, href: "" })) });
     assert.ok(folded.html.includes("<details><summary>and 10 other authors</summary>"));
   });
 });
 
 const PAPER: PaperRecord = {
+  id: "doi:10.5555/oscr.fixture.2",
   slug: "doi_10.5555_oscr.fixture.2",
   doi: "10.5555/oscr.fixture.2",
   title: "A synthetic study whose code has no license",
@@ -215,11 +237,12 @@ const PAPER: PaperRecord = {
   authors: [{ text: "Ben Example", href: "/author/0000-0000-0000-0028/" }, { text: "Dan Nameless", href: "" }],
   institutions: [{ text: "Fixture University (Netherlands)", href: "/institution/0fixtur00/" }],
   categories: [{ text: "EEG (modality)", href: "/browse/modality/eeg/" }],
-  code: [{ name: "oscr-fixture/unlicensed", url: "https://github.com/oscr-fixture/unlicensed", license: "", state: "alive" }],
+  code: [{ repo: "github.com/oscr-fixture/unlicensed", name: "oscr-fixture/unlicensed", url: "https://github.com/oscr-fixture/unlicensed", license: "", state: "alive" }],
   files: 1,
   pairs: 0,
   map: "",
   datasets: [],
+  data: [{ repo: "osf:abcde", url: "https://osf.io/abcde/", repository: "OSF", cited: false }],
   tools: [],
   europepmc: "https://europepmc.org/article/PMC/PMC0000002",
 };
@@ -267,7 +290,12 @@ describe("a page that no static file answers (worker/pages.ts)", () => {
     assert.ok(html.includes(`<span id="crumb">doi:10.5555/oscr.fixture.2</span>`));
     assert.ok(html.includes(`<meta property="og:title" content="A synthetic study whose code has no license">`));
     assert.ok(html.includes(`<main><div class="record"><div class="body"><h1>`));
-    assert.ok(!html.includes("paper-shell.js"), "the shell's script is replaced with <main>'s content");
+    assert.ok(!html.includes(`<div id="paper">`), "the shell's content is replaced with the paper's");
+    assert.ok(html.includes(`</section></div><aside class="sidebar">`));
+    assert.ok(
+      html.includes(`</aside></div><script type="module" src="/_astro/paper-shell.js"></script></main>`),
+      "the shell's script stays, after the page: it runs the Contribute section",
+    );
     assert.ok(html.includes("<footer>OSCR</footer>"));
     for (const [k, v] of Object.entries(PAPER_HEADERS)) assert.equal(res.headers.get(k), v, k);
     assert.deepEqual(files.asked, ["/records/paper/09.json", "/paper/404.html", "/paper/404"]);
@@ -316,7 +344,13 @@ describe("a page that no static file answers (worker/pages.ts)", () => {
     assert.ok(out.includes("<title>A &quot;quoted&quot; &lt;title&gt; &amp; $1 $&amp; — OSCR</title>"));
     assert.ok(out.includes(`<meta name="description" content="d &lt;x&gt;">`));
     assert.ok(out.includes(`<span id="crumb">c &amp; c</span>`));
-    assert.ok(out.includes("<main><p>body</p></main>"));
+    assert.ok(out.includes(`<main><p>body</p><script type="module" src="/_astro/paper-shell.js"></script></main>`));
+    // Only the build's module scripts stay: nothing inline, nothing from elsewhere.
+    const other = SHELL.replace(
+      `<script type="module" src="/_astro/paper-shell.js"></script>`,
+      `<script>alert(1)</script><script type="module" src="//evil.example/x.js"></script>`,
+    );
+    assert.ok(fillShell(other, { title: "", description: "", crumb: "", html: "<p>body</p>" })!.includes("<main><p>body</p></main>"));
     assert.equal(fillShell("<html><body>no main</body></html>", { title: "", description: "", crumb: "", html: "" }), null);
   });
 });

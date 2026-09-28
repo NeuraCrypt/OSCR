@@ -1,13 +1,23 @@
-// The page of a paper past STATIC_PAPERS, in the reader's browser: only when the assets serve
-// the shell themselves (wrangler.toml `not_found_handling = "404-page"`, with no Worker
-// request); as configured, the Worker renders the page and this script is not in it
-// (src/pages/paper/404.astro). It reads the paper's record in /records/paper/NN.json and renders
-// it with the markup of lib/render.ts, the Worker's. It never names the platform.
+// The script of the shell of the papers past STATIC_PAPERS (src/pages/paper/404.astro), in the
+// reader's browser. It never names the platform.
+//
+// - As configured (wrangler.toml, `not_found_handling = "none"`), the Worker renders the paper's
+//   page into the shell and keeps this script (worker/pages.ts): the page is already there, and
+//   this script only runs its Contribute section (src/scripts/paper-actions.ts, the static pages'
+//   own script).
+// - With `not_found_handling = "404-page"` (no Worker request), the assets serve the shell itself:
+//   this script reads the paper's record in /records/paper/NN.json, renders it with the markup of
+//   lib/render.ts, the Worker's, then runs its Contribute section the same way.
 import { missingPaper, paperView, type PaperRecord, type View } from "../lib/render";
 import { keyOf, shardOf, SHARDS } from "../lib/shards";
 
 const root = document.getElementById("paper");
 const status = document.getElementById("paper-status");
+
+/** The Contribute section's script, once the section is on the page. */
+const contribute = () => {
+  if (document.getElementById("contribute")) void import("./paper-actions");
+};
 
 function show(view: View, found: boolean) {
   const main = root?.closest("main");
@@ -18,7 +28,15 @@ function show(view: View, found: boolean) {
   const crumb = document.getElementById("crumb");
   if (crumb) crumb.textContent = view.crumb;
   if (view.description) document.querySelector<HTMLMetaElement>('meta[name="description"]')?.setAttribute("content", view.description);
-  if (found && location.hash) document.getElementById(decodeURIComponent(location.hash.slice(1)))?.scrollIntoView();
+  if (!found) {
+    const robots = document.createElement("meta");
+    robots.name = "robots";
+    robots.content = "noindex";
+    document.head.append(robots);
+    return;
+  }
+  if (location.hash) document.getElementById(decodeURIComponent(location.hash.slice(1)))?.scrollIntoView();
+  contribute();
 }
 
 function fail(why: string) {
@@ -47,10 +65,11 @@ async function render() {
   } catch (e) {
     return fail(e instanceof SyntaxError ? "the registry sent an answer that could not be read" : "the registry could not be reached; check the connection");
   }
-  const record = shard[slug];
+  const record = Object.hasOwn(shard, slug) ? shard[slug] : undefined;
   if (!record) return show(missingPaper(slug), false);
   if (rest.length === 1) history.replaceState(null, "", `/paper/${slug}/#code`);
   show(paperView(record), true);
 }
 
 if (root) void render();
+else contribute();

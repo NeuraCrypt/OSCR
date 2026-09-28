@@ -144,10 +144,13 @@ the catalogue's size (`website/src/lib/shards.ts`, held by `npm run check`; docs
 
 - **No file per entity.** An author, journal, institution, tool or dataset is one shell page per
   type, served for `/author/<orcid>/` and the like by a rewrite of `public/_redirects` (free, no
-  Worker request), and rendered in the browser from `/records/<type>/NN.json` (64 shards a type).
-- **Papers**: a static page (and reader) for the `STATIC_PAPERS` (6,500) most recent; the others
+  Worker request), and rendered in the browser from `/records/<type>/NN.json` (a fixed number of
+  shards per type, `SHARDS`: 2,304 files for the five types and the papers). The lists
+  (`/authors/`, …) link to every entity.
+- **Papers**: a static page (and reader) for the `STATIC_PAPERS` (6,000) most recent; the others
   are rendered by the Worker from `/records/paper/NN.json` (one Worker request a view, no D1 row),
-  with a reduced page that says what it leaves out. Every request no file answers runs the Worker
+  with a reduced page that says what it leaves out and keeps the Contribute section (claim,
+  correction, removal request). Every request no file answers runs the Worker
   (`not_found_handling = "none"`), which serves the 404 page itself.
 - **The DOI lookup**: 256 shards (`oscr/entities.py` LOOKUP_HEX, `/lookup/NN.json`).
 - A new kind of page adds a fixed number of files, never one per paper or per entity.

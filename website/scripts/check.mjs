@@ -63,13 +63,17 @@ for (const t of ENTITY_TYPES) {
   if (under.length) problems.push(`/${t}/ holds ${under[0]}, which its rewrite would hide`);
 }
 
-// The paper's shell must have what the Worker replaces (worker/pages.ts, fillShell).
+// The paper's shell must have what the Worker replaces (worker/pages.ts, fillShell), and the
+// module script it keeps (the Contribute section's), never an inline one: the page gets the
+// static pages' Content-Security-Policy.
 if (all.has("/paper/404.html")) {
   const shell = readFileSync(join(DIST, "paper/404.html"), "utf8");
   for (const [what, re] of [["<main>", /<main>[\s\S]*<\/main>/], ["<title>", /<title>[^<]*<\/title>/],
-    ["the breadcrumb's #crumb", /<span id="crumb">[^<]*<\/span>/], ["application-name", /<meta name="application-name" content="/]]) {
+    ["the breadcrumb's #crumb", /<span id="crumb">[^<]*<\/span>/], ["application-name", /<meta name="application-name" content="/],
+    ["module script in <main>", /<main>[\s\S]*<script type="module" src="\/[^"]+"><\/script>[\s\S]*<\/main>/]]) {
     if (!re.test(shell)) problems.push(`/paper/404.html: no ${what}, which the Worker fills`);
   }
+  if (/<script(?![^>]*\ssrc=)[^>]*>/.test(shell)) problems.push("/paper/404.html: an inline script, which its Content-Security-Policy forbids");
 }
 
 // 2. The records of the pages rendered on demand: each in the shard its key names.

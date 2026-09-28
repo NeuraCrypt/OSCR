@@ -142,7 +142,9 @@ export function paperRecord(a: Article): PaperRecord {
   const p = pageOf(a);
   const o = p?.overview;
   const people = o?.authors.length ? o.authors : (a.authors ?? []);
+  const cited = new Set(a.datasets ?? []);
   return {
+    id: a.id,
     slug: a.slug,
     doi: a.doi,
     title: a.title,
@@ -158,7 +160,7 @@ export function paperRecord(a: Article): PaperRecord {
       href: institutionUrl(x.ror),
     })),
     categories: categoriesOf(a).map((c) => ({ text: `${c.name} (${c.facet})`, href: c.url })),
-    code: a.code.map((r) => ({ name: shortName(r), url: r.url, license: r.license, state: r.state })),
+    code: a.code.map((r) => ({ repo: r.repo, name: shortName(r), url: r.url, license: r.license, state: r.state })),
     files: a.code.reduce((n, d) => n + (d.files_read || 0), 0),
     pairs: a.alignment?.pairs ?? 0,
     map: a.card?.doi ?? "",
@@ -166,6 +168,7 @@ export function paperRecord(a: Article): PaperRecord {
       const d = datasetOf(id);
       return { text: d ? datasetName(d) : id, href: datasetUrl(id) };
     }),
+    data: (p?.data ?? []).map((d) => ({ repo: d.repo, url: d.url, repository: d.repository, cited: !!d.dataset && cited.has(d.dataset) })),
     tools: (a.tools ?? []).map((id) => ({ text: toolOf(id)?.name ?? id, href: toolUrl(id) })),
     europepmc: europePmcUrl(a),
   };
