@@ -802,3 +802,32 @@ person who just installed the App is sent back at once.
 **Why.** Security and simplicity: one kind of code reaches act, always bound to a PKCE verifier,
 and nothing depends on how GitHub treats a verifier for a code asked without a challenge. Cost:
 one more redirection, on the installation path only.
+
+### D01-21. The creation form offers an open licence by default
+
+**Decision.** `/new/` pre-selects the MIT licence and says why a licence matters (reuse, the
+registry's copies of the scripts, archiving); "None" is one click away and says what it means. An
+address that asks for an empty repository (`readme=0`, the import page's link) gets no licence
+either, since an import needs an empty repository.
+
+**Why.** CLAUDE.md: only verified licences leave the Mac, and GitHub writes the LICENSE file that
+verifies it. The person still chooses, and the confirmation sentence names the licence.
+
+### D01-22. A paper's status at creation and linking comes from the roles only
+
+**Decision.** `papers.ts` `paperStatuses`: `linked` when the person holds `verified_author` for
+the paper or `maintainer` for the repository in `oscr_community.roles` (one read by the roles'
+key), `proposed` otherwise. Owning a brand-new repository is not a maintainer role by itself. The
+Mac checks the same roles again before it adds anything to a paper's record.
+
+**Why.** One rule on both sides, and Phase 6's rule for editing a record's links. Security: no one
+attaches a paper to code as "linked" by creating a repository.
+
+### D01-23. A first branch GitHub could not rename is said, and the repository recorded
+
+**Decision.** When `create` asks for a first branch named otherwise than GitHub's and the rename
+fails, the repository is recorded as GitHub made it, and the answer says so in words
+(`result.notes`), with the Branches page to rename it later.
+
+**Why.** The repository exists on GitHub: recording nothing would leave it invisible to the
+registry for a detail the person can change in one step.

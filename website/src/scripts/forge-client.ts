@@ -301,7 +301,12 @@ export function outcomeOf(res: { status: number; body: Json } | null, pending: P
     const done = typeof res.body.sentence === "string" && res.body.sentence ? res.body.sentence : pending.sentence;
     const text = [`Done, as you, on GitHub: ${done}.`.replace(/\.\.$/, ".")];
     if (res.body.outcome && res.body.outcome !== "done") text.push(`The registry noted it as ${String(res.body.outcome).replace(/_/g, " ")}.`);
-    return { tone: "ok", text, links: [back] };
+    const result = (res.body.result ?? {}) as Json;
+    // What did not go as asked (a first branch GitHub kept under its own name), in words.
+    if (Array.isArray(result.notes)) for (const n of result.notes) if (typeof n === "string" && n) text.push(n);
+    // A new repository: its page on this site (its quick setup when empty), a /r/ path only.
+    const page = typeof result.page === "string" && result.page.startsWith("/r/") && backPath(result.page) === result.page ? result.page : null;
+    return { tone: "ok", text, links: page ? [{ href: page, text: "The repository's page" }, back] : [back] };
   }
   const e = (res.body.error ?? {}) as Json;
   const text = [String(e.message ?? "The action could not be carried out. Please try again.")];
