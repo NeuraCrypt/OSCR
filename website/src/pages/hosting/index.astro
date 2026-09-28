@@ -1,10 +1,21 @@
 ---
-// /hosting/: the hosting guides.
-//
-// STUB, created by the foundation (F) of phase 01 so that the site builds and every link resolves;
-// owned by E11, which builds the page. science.css only; the platform's name from src/config.ts.
+// /hosting/: where repositories live (the researcher's own GitHub account, D00-2), what the registry
+// keeps of them, the mirror mode, and the index of the hosting guides. A static page (0 requests),
+// science.css only; the platform's name from src/config.ts; every figure from src/lib/limits-text.ts.
 import Base from "../../layouts/Base.astro";
 import { SITE_NAME } from "../../config";
+import { hostingFacts } from "../../lib/limits-text";
+
+const t = hostingFacts();
+const guides = [
+  { href: "/hosting/limits/", text: "Limits", about: `file, push and repository sizes on GitHub, tree limits, the push policy, ${SITE_NAME}'s own caps, and who pays for what.` },
+  { href: "/hosting/large-files/", text: "Large files", about: "where data goes before Git LFS, and how to use LFS when it is the right tool." },
+  { href: "/hosting/git/", text: "Git with GitHub", about: "clone, pull and push straight to github.com, credentials, SSH, tags, remotes, and what git's messages mean." },
+  { href: "/hosting/history/", text: "Rewriting history", about: "rewriting commits, removing large files or sensitive data, and what it does to tracing maps." },
+  { href: "/hosting/tokens/", text: "Tokens for git", about: "GitHub's fine-grained personal access tokens, made on GitHub, and why not the classic ones." },
+  { href: "/hosting/import/", text: "Importing a repository", about: "moving a repository from another host or version control system to GitHub, keeping its commit ids." },
+  { href: "/hosting/leave/", text: "Leaving", about: `the exit path: what stays yours, and what ${SITE_NAME} keeps.` },
+];
 ---
 <Base
   title="Hosting code"
@@ -12,7 +23,72 @@ import { SITE_NAME } from "../../config";
   breadcrumb={[{ text: "Hosting code" }]}
 >
   <h1>Hosting code</h1>
-  <p class="summary">Where research code lives, what the registry keeps of it, and the guides.</p>
-  <p class="warning">This page is being built: it is not in service yet.</p>
-  <p>Where repositories live and what {SITE_NAME} keeps of them: <a href="/hosting/">the hosting guides</a>.</p>
+  <p class="summary">
+    Repositories live in your own GitHub account; {SITE_NAME} links them to your papers and keeps its tracing maps.
+  </p>
+
+  <h2 id="where">Where repositories live</h2>
+  <p>
+    Your repositories live in your own GitHub account. {SITE_NAME} runs no git server and holds no repository: git
+    talks to github.com, with GitHub's own credentials, and GitHub's terms, quotas and limits apply as for any
+    repository of yours (<a href="/hosting/limits/">the limits</a>).
+  </p>
+  <ul>
+    <li>
+      When you <a href="/new/">create a repository</a> through {SITE_NAME}, its GitHub App creates it in your account
+      with your authorization, one repository per request. Nothing is written in your name without that authorization.
+    </li>
+    <li>
+      A repository you already have is <a href="/new/link/">linked</a>, not moved: it stays where it is (the mirror
+      mode, below).
+    </li>
+    <li><a href="/repositories/">Your repositories</a> lists the ones {SITE_NAME} knows in your GitHub account.</li>
+  </ul>
+
+  <h2 id="kept">What {SITE_NAME} keeps</h2>
+  <ul>
+    <li>The links between a repository and the DOIs of the papers it belongs to.</li>
+    <li>The tracing maps between a paper and its code, each pinned to a commit, and their validation by an author.</li>
+    <li>How {SITE_NAME} follows the repository (created, installed or read only), and when it last saw it.</li>
+    <li>
+      Copies of the scripts whose repository's licence allows it, confirmed by the repository's own licence file; the
+      other files are linked at the source, at the commit a map points to.
+    </li>
+    <li>
+      An archive by Software Heritage of the commits a map points to, only when an author asks for it
+      (<a href="/hosting/history/">rewriting history</a> says why it matters).
+    </li>
+  </ul>
+  <p>
+    {SITE_NAME} keeps no git object, no token and no email address. GitHub keeps the repository, its branches, tags,
+    releases, issues and pull requests.
+  </p>
+
+  <h2 id="mirror">The mirror mode</h2>
+  <p>
+    A repository you already have on GitHub is <a href="/new/link/">linked</a> to your papers and stays in your
+    account. How {SITE_NAME} follows it depends on one choice of yours:
+  </p>
+  <dl>
+    <dt>With {SITE_NAME}'s GitHub App installed on it</dt>
+    <dd>
+      GitHub tells {SITE_NAME} of each push, and {SITE_NAME} can write back (a branch, a release, a setting) only with
+      your authorization, one action at a time.
+    </dd>
+    <dt>Public, without the App</dt>
+    <dd>{SITE_NAME} only reads it: it looks for new commits every night, and never writes to it.</dd>
+  </dl>
+  <p>
+    Each repository's page says which in a sentence, and when {SITE_NAME} last saw it. When the repository has a
+    GitHub Pages site, the page links to it; {SITE_NAME} never rebuilds it.
+  </p>
+
+  <h2 id="guides">The guides</h2>
+  <ul>
+    {guides.map((g) => <li><a href={g.href}>{g.text}</a>: {g.about}</li>)}
+  </ul>
+  <p>
+    In short: a file in git stays under {t.file}, a push under {t.push}, a repository ideally under {t.repoIdeal};
+    data goes to release assets, Zenodo or Hugging Face before Git LFS.
+  </p>
 </Base>

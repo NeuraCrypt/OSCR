@@ -1,10 +1,28 @@
 ---
-// /hosting/tokens/: GitHub's tokens for git.
+// /hosting/tokens/: GitHub's fine-grained personal access tokens for git, and the token template
+// URLs (one repository, Contents write, an expiry); classic tokens and why not; name and
+// description, expiry and reminder, repository access, permissions per resource, prefixes, list and
+// last use, regenerate, delete, the count limit, revocation after a year unused, credential
+// revocation by token type, the artifact-metadata and vulnerability-alerts permissions, npm's token
+// changes. The registry issues no git token (D00-3); its own API tokens come with phase 10.
 //
-// STUB, created by the foundation (F) of phase 01 so that the site builds and every link resolves;
-// owned by E11, which builds the page. science.css only; the platform's name from src/config.ts.
+// A static page (0 requests), science.css only; the platform's name from src/config.ts; every figure
+// from src/lib/limits-text.ts, each with GitHub's page as its source.
 import Base from "../../layouts/Base.astro";
 import { SITE_NAME } from "../../config";
+import { TOKEN_PAGE, tokenTemplateUrl } from "../../lib/forge";
+import { hostingFacts, SOURCES } from "../../lib/limits-text";
+
+const t = hostingFacts();
+const example = tokenTemplateUrl({ owner: "OWNER", name: "NAME" });
+const prefixes = [
+  { prefix: "github_pat_", kind: "a fine-grained personal access token" },
+  { prefix: "ghp_", kind: "a classic personal access token" },
+  { prefix: "gho_", kind: "an OAuth app's token" },
+  { prefix: "ghu_", kind: "a GitHub App's user access token" },
+  { prefix: "ghs_", kind: "a GitHub App's installation token" },
+  { prefix: "ghr_", kind: "a refresh token" },
+];
 ---
 <Base
   title="Tokens for git"
@@ -12,7 +30,139 @@ import { SITE_NAME } from "../../config";
   breadcrumb={[{ text: "Hosting code", href: "/hosting/" }, { text: "Tokens for git" }]}
 >
   <h1>Tokens for git</h1>
-  <p class="summary">GitHub's fine-grained personal access tokens for git, made on GitHub.</p>
-  <p class="warning">This page is being built: it is not in service yet.</p>
-  <p>Where repositories live and what {SITE_NAME} keeps of them: <a href="/hosting/">the hosting guides</a>.</p>
+  <p class="summary">
+    git uses GitHub's own fine-grained personal access tokens, made on GitHub's page: {SITE_NAME} issues no git token.
+  </p>
+  <p>
+    Over HTTPS, git asks for your GitHub account and a password: the password is a token you make on GitHub
+    (<a href="/hosting/git/#https">git with GitHub</a>). {SITE_NAME} never sees it: git sends it to github.com only.
+    {SITE_NAME}'s own tokens, for its API, come later; they will never reach git.
+  </p>
+
+  <h2 id="fine-grained">Fine-grained personal access tokens</h2>
+  <p>
+    A fine-grained token acts for one account, on the repositories you choose, with the permissions you choose, until
+    the date you choose. For git, the right token reaches one repository, with Contents write, and expires. Source:
+    <a href={SOURCES.personalTokens}>Managing your personal access tokens</a>.
+  </p>
+  <h3 id="template">The token template URLs</h3>
+  <p>
+    A link to GitHub's new-token page can fill the form in advance; you review it and confirm on GitHub. Each
+    repository's page on {SITE_NAME} gives its own link, which asks for Contents write, an expiry of
+    {" "}{t.tokenTemplateDays} days and a name, and says in the description which repository to pick, since the link cannot
+    choose it. For a repository NAME of the account OWNER:
+  </p>
+  <pre class="commands">{example}</pre>
+  <p>
+    Or start from <a href={TOKEN_PAGE}>GitHub's new-token page</a>. Source:
+    <a href={SOURCES.tokenTemplates}>GitHub's changelog</a>.
+  </p>
+
+  <h2 id="classic">Classic tokens, and why not</h2>
+  <p>
+    A classic token's scopes reach every repository your account can reach (<code>repo</code> is all of them, private
+    ones included), and it may never expire. A classic token that leaks gives away everything; a fine-grained one, one
+    repository until its date. Use a fine-grained token unless GitHub's page says a feature needs a classic one.
+  </p>
+
+  <h2 id="settings">Making a token</h2>
+  <dl>
+    <dt id="name">Name and description</dt>
+    <dd>
+      A name of at most {t.tokenNameChars} characters, and a description of at most {t.tokenDescriptionChars}
+      characters: say what the token is for and on which computer, to know which to delete later.
+    </dd>
+    <dt id="expiry">Expiry and reminder</dt>
+    <dd>
+      {t.tokenDefaultDays} days by default, or a date up to {t.tokenMaxDays} days ahead; GitHub also offers no expiry,
+      which is best avoided. GitHub reminds you by email before a token expires; after that, git's password is refused
+      until you make a new one.
+    </dd>
+    <dt id="access">Repository access</dt>
+    <dd>
+      Public repositories (read-only), all repositories, or only select repositories: for git, "Only select
+      repositories", and the one repository.
+    </dd>
+    <dt id="permissions">Permissions per resource</dt>
+    <dd>
+      Repository permissions and account permissions, each none, read or write. Metadata read is always included. For
+      git: Contents read to clone a private repository, Contents write to push. Nothing else. Source:
+      <a href={SOURCES.tokenPermissions}>Permissions required for fine-grained personal access tokens</a>.
+    </dd>
+  </dl>
+  <p>The token is shown once: give it to git's credential helper at once (<a href="/hosting/git/#credential-cache">the credential cache</a>).</p>
+
+  <h2 id="prefixes">Prefixes</h2>
+  <p>
+    Every GitHub token starts with a prefix that tells its kind, so that a leaked token is recognised (GitHub's push
+    protection and secret scanning, <a href="/hosting/git/#push-protection">push protection</a>):
+  </p>
+  <table class="limits">
+    <caption>GitHub's token prefixes</caption>
+    <thead><tr><th>Prefix</th><th>Kind</th></tr></thead>
+    <tbody>
+      {prefixes.map((p) => <tr><td><code>{p.prefix}</code></td><td>{p.kind}</td></tr>)}
+    </tbody>
+  </table>
+  <p>Source: <a href={SOURCES.aboutAuthentication}>About authentication to GitHub</a>.</p>
+
+  <h2 id="manage">Managing your tokens</h2>
+  <dl>
+    <dt id="list">List and last use</dt>
+    <dd>GitHub's token settings list your tokens, their expiry, and when each was last used.</dd>
+    <dt id="regenerate">Regenerate</dt>
+    <dd>
+      A new value with the same settings and a new expiry; the old value stops working at once. Update the credential
+      helper of each computer.
+    </dd>
+    <dt id="delete">Delete</dt>
+    <dd>Revokes the token at once. Delete a token you no longer use, and any token that may have leaked.</dd>
+    <dt id="count">Count limit</dt>
+    <dd>An account holds at most {t.tokenCount} fine-grained tokens.</dd>
+    <dt id="unused">Revocation after {t.tokenUnused} unused</dt>
+    <dd>GitHub revokes a personal access token left unused for {t.tokenUnused}, and one found pushed to a public repository.</dd>
+  </dl>
+  <p>
+    Sources: <a href={SOURCES.personalTokens}>Managing your personal access tokens</a>,
+    <a href={SOURCES.tokenExpiry}>Token expiration and revocation</a>.
+  </p>
+  <h3 id="revocation-by-type">Credential revocation by token type</h3>
+  <p>
+    Since 2026-08-18, the administrators of an organization or enterprise can revoke or deauthorize every credential of
+    one type at once (personal access tokens, SSH keys, OAuth or GitHub App tokens), for everyone or for one member. If
+    your lab's organization does it, make a new token. Source:
+    <a href={SOURCES.credentialRevocation}>GitHub's changelog</a>.
+  </p>
+
+  <h2 id="new-permissions">Permissions that git does not need</h2>
+  <dl>
+    <dt>Artifact metadata</dt>
+    <dd>
+      Since 2026-01-13, a fine-grained permission of its own, in place of Contents, for GitHub's artifact metadata API.
+      A token for git never needs it. Source: <a href={SOURCES.artifactMetadata}>GitHub's changelog</a>.
+    </dd>
+    <dt>Vulnerability alerts</dt>
+    <dd>
+      Since 2026-09-03, a <code>vulnerability-alerts</code> permission for the token of GitHub Actions workflows
+      (<code>GITHUB_TOKEN</code>), to read Dependabot alerts with nothing more. It is not for git either. Source:
+      <a href={SOURCES.vulnerabilityAlerts}>GitHub's changelog</a>.
+    </dd>
+  </dl>
+
+  <h2 id="npm">The npm token changes</h2>
+  <p>
+    If you publish a package on npm: npm's classic tokens can no longer be made, and a granular token that can publish
+    expires within {t.npmWriteTokenDays} days and asks for two-factor authentication. Since 2026-07-31, a granular token
+    that bypasses two-factor authentication can no longer make tokens nor manage maintainers or organizations. Sources:
+    <a href={SOURCES.npmTokens}>npm's classic tokens</a>, <a href={SOURCES.npmBypass2fa}>bypass tokens</a>.
+  </p>
+
+  <h2 id="registry-tokens">{SITE_NAME}'s own tokens</h2>
+  <p>
+    {SITE_NAME} issues no git token and runs no git server. When you create or change a repository through
+    {" "}{SITE_NAME}, you authorize its GitHub App on GitHub for that one action; the token GitHub gives it is used once,
+    revoked, and never stored. {SITE_NAME}'s own API tokens come with its API, later; they will reach that API only.
+  </p>
+
+  <p><a href="/hosting/">The hosting guides</a></p>
 </Base>

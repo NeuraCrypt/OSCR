@@ -1,10 +1,43 @@
 ---
-// /hosting/large-files/: large files and data.
-//
-// STUB, created by the foundation (F) of phase 01 so that the site builds and every link resolves;
-// owned by E11, which builds the page. science.css only; the platform's name from src/config.ts.
+// /hosting/large-files/: D00-9, the order release assets → Zenodo → Hugging Face before Git LFS, then
+// LFS itself: support and client setup, file size and quotas, over quota, the integrity check, file
+// locking, moving files into and out of LFS, LFS objects in archives, and the binary and line-ending
+// attributes. A static page (0 requests), science.css only; the platform's name from src/config.ts;
+// every figure from src/lib/limits-text.ts.
 import Base from "../../layouts/Base.astro";
 import { SITE_NAME } from "../../config";
+import { DATA_HOMES, GIT_DOCS, hostingFacts, SOURCES } from "../../lib/limits-text";
+
+const t = hostingFacts();
+const setup = [
+  "git lfs install",
+  'git lfs track "*.nii.gz"',
+  "git add .gitattributes",
+  'git commit -m "Track NIfTI images with Git LFS"',
+];
+const integrity = ["git lfs push --all origin"];
+const locking = [
+  'git lfs track "*.fig" --lockable',
+  "git lfs lock figures/figure-a.fig",
+  "git lfs locks",
+  "git lfs unlock figures/figure-a.fig",
+  "git lfs unlock figures/figure-a.fig --force",
+];
+const moveIn = ['git lfs migrate import --include="*.h5" --everything', "git push --force-with-lease --all origin"];
+const moveOut = [
+  'git lfs untrack "*.h5"',
+  "git rm --cached data/results.h5",
+  "git add data/results.h5 .gitattributes",
+  'git commit -m "Keep results.h5 in git, not LFS"',
+];
+const attributes = [
+  "# .gitattributes",
+  "* text=auto",
+  "*.sh text eol=lf",
+  "*.bat text eol=crlf",
+  "*.mat binary",
+  "*.nii.gz binary",
+];
 ---
 <Base
   title="Large files"
@@ -12,7 +45,131 @@ import { SITE_NAME } from "../../config";
   breadcrumb={[{ text: "Hosting code", href: "/hosting/" }, { text: "Large files" }]}
 >
   <h1>Large files</h1>
-  <p class="summary">Large files and data: release assets, Zenodo, Hugging Face, then Git LFS.</p>
-  <p class="warning">This page is being built: it is not in service yet.</p>
-  <p>Where repositories live and what {SITE_NAME} keeps of them: <a href="/hosting/">the hosting guides</a>.</p>
+  <p class="summary">
+    Where large files and data go: release assets, a Zenodo record, a Hugging Face dataset, then Git LFS for small
+    binaries only.
+  </p>
+  <p>
+    GitHub blocks a file larger than {t.file} in git, and warns above {t.fileWarn}
+    (<a href="/hosting/limits/">the limits</a>). Data rarely belongs in git at all: it has its own homes, which cost you
+    nothing and give it a persistent identifier.
+  </p>
+
+  <h2 id="order">Where data goes, in this order</h2>
+  <ol>
+    <li>
+      <strong>Release assets.</strong> Attach the files to a release of your repository on GitHub: each file
+      {t.releaseAsset}, up to {t.releaseAssets} files a release, with no limit on their total size or on downloads.
+      Source: <a href={SOURCES.releases}>About releases</a>.
+    </li>
+    <li>
+      <strong>A Zenodo record</strong>, which you make on <a href={DATA_HOMES.zenodo}>Zenodo</a>: a DOI for the data,
+      cited by the paper and by the repository's README. Zenodo can also archive each release of a GitHub repository
+      (<a href={DATA_HOMES.zenodoGithub}>Zenodo and GitHub</a>).
+    </li>
+    <li>
+      <strong>A Hugging Face dataset</strong> in your own Hugging Face account, for data that is read in parts or
+      updated (<a href={DATA_HOMES.huggingFaceDatasets}>datasets</a>,
+      <a href={DATA_HOMES.huggingFaceStorage}>storage limits</a>).
+    </li>
+    <li>
+      <strong>Git LFS</strong>, for small binaries the code needs next to it: a figure's source file, a trained model
+      of modest size, a stimulus file. Its quotas are per account, so one popular dataset in LFS could spend a month's
+      downloads for all your repositories.
+    </li>
+  </ol>
+  <p>{SITE_NAME} never downloads your LFS objects or release assets itself: the downloads are counted on GitHub, as
+    anyone's.</p>
+
+  <h2 id="lfs">Git LFS support</h2>
+  <p>
+    GitHub supports Git LFS. Git keeps a small pointer file (a version line, the object's SHA-256 and its size) in
+    place of each large file, and the file itself goes to GitHub's LFS storage. Which files are LFS files is written in
+    the repository's <code>.gitattributes</code>. Sources: <a href={SOURCES.aboutLfs}>About Git LFS</a>,
+    <a href={GIT_DOCS.lfs}>Git LFS</a>.
+  </p>
+  <h3 id="lfs-setup">Client setup</h3>
+  <p>
+    Install Git LFS once on each computer (<a href={SOURCES.installingLfs}>installing Git LFS</a>), then in the
+    repository track a pattern and commit <code>.gitattributes</code>:
+  </p>
+  <pre class="commands">{setup.join("\n")}</pre>
+  <p>
+    Everyone who clones the repository needs Git LFS too: without it, they get the pointer files instead of the
+    content. Say so in the README. Sources: <a href={SOURCES.configuringLfs}>Configuring Git LFS</a>,
+    <a href={SOURCES.lfsCollaboration}>Collaboration with Git LFS</a>.
+  </p>
+
+  {t.lfs && (
+    <>
+      <h2 id="lfs-quotas">LFS file size and quotas</h2>
+      <p>
+        On GitHub Free, one LFS file is at most {t.lfsFile}; each account has {t.lfsStorage} of LFS storage and
+        {" "}{t.lfsBandwidth} of LFS downloads a month, for all its repositories. A fork's LFS objects count against the
+        parent repository's owner, and pushing a file again counts it in full. Sources:
+        <a href={SOURCES.aboutLfs}>About Git LFS</a>, <a href={SOURCES.lfsBilling}>Git LFS billing</a>.
+      </p>
+    </>
+  )}
+
+  <h2 id="over-quota">Over quota</h2>
+  <p>
+    Once a quota is spent on an account without a payment method, Git LFS is blocked for that account until the next
+    month: clones get the pointer files only, and new LFS pushes are refused. With a payment method on file, GitHub
+    bills the excess instead. {SITE_NAME} asks for no payment method and pays for nothing on your behalf.
+    Source: <a href={SOURCES.lfsBilling}>Git LFS billing</a>.
+  </p>
+
+  <h2 id="integrity">Integrity check</h2>
+  <p>
+    GitHub refuses a push whose commits point to LFS objects that were never uploaded. Upload every object the branches
+    point to, then push again:
+  </p>
+  <pre class="commands">{integrity.join("\n")}</pre>
+  <p>Source: <a href={SOURCES.lfsUploadFailures}>Resolving Git LFS upload failures</a>.</p>
+
+  <h2 id="locking">File locking</h2>
+  <p>
+    A binary file cannot be merged, so two people editing it at once lose one person's work. Git LFS can lock it: a
+    pattern marked lockable is read-only in each clone until you lock the file; GitHub refuses a push that changes a
+    file someone else has locked; an administrator can force an unlock.
+  </p>
+  <pre class="commands">{locking.join("\n")}</pre>
+  <p>Source: <a href={SOURCES.lfsLocking}>Git LFS's locking</a>.</p>
+
+  <h2 id="moving">Moving files into and out of LFS</h2>
+  <p>
+    Into LFS, for a file already committed: <code>git lfs migrate</code> rewrites the history so that every commit
+    holds the pointer. Rewriting history has consequences for tracing maps: read
+    <a href="/hosting/history/">rewriting history</a> first.
+  </p>
+  <pre class="commands">{moveIn.join("\n")}</pre>
+  <p>Out of LFS, from now on:</p>
+  <pre class="commands">{moveOut.join("\n")}</pre>
+  <p>
+    Objects removed from LFS still count against the storage quota: GitHub deletes them only with the repository, or
+    through GitHub Support. Sources: <a href={SOURCES.movingToLfs}>Moving a file to Git LFS</a>,
+    <a href={SOURCES.removingFromLfs}>Removing files from Git LFS</a>.
+  </p>
+
+  <h2 id="archives">LFS objects in archives</h2>
+  <p>
+    GitHub's "Download ZIP" and release archives hold the LFS pointer files unless the repository's setting "Include Git
+    LFS objects in archives" is on. When it is, the archives hold the files, and each download counts against the LFS
+    download quota. Source: <a href={SOURCES.lfsArchives}>Managing Git LFS objects in archives</a>.
+  </p>
+
+  <h2 id="attributes">The binary and line-ending attributes</h2>
+  <p>
+    <code>.gitattributes</code> also tells git how to treat text and binary files: <code>text=auto</code> lets git
+    normalise line endings, <code>eol=lf</code> or <code>eol=crlf</code> fixes them for a pattern, and
+    <code>binary</code> (the same as <code>-text -diff</code>) tells git never to change a file nor show it line by line.
+  </p>
+  <pre class="commands">{attributes.join("\n")}</pre>
+  <p>
+    Sources: <a href={SOURCES.lineEndings}>Configuring Git to handle line endings</a>,
+    <a href={GIT_DOCS.gitattributes}>gitattributes</a>.
+  </p>
+
+  <p><a href="/hosting/">The hosting guides</a></p>
 </Base>

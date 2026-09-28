@@ -1,10 +1,32 @@
 ---
-// /hosting/history/: rewriting history.
+// /hosting/history/: rewriting commits, removing large files and sensitive data from history
+// (git filter-repo), what it does to the commits tracing maps point to (D00-15: "no longer at the
+// source"; Software Heritage on request), and how to ask the registry to drop its own copies (the
+// removal request of Phase 6, docs/CONTRIBUTIONS.md).
 //
-// STUB, created by the foundation (F) of phase 01 so that the site builds and every link resolves;
-// owned by E11, which builds the page. science.css only; the platform's name from src/config.ts.
+// A static page (0 requests), science.css only; the platform's name from src/config.ts; every figure
+// from src/lib/limits-text.ts. External links: GitHub's documentation and git's.
 import Base from "../../layouts/Base.astro";
 import { SITE_NAME } from "../../config";
+import { cloneUrl } from "../../lib/forge";
+import { GIT_DOCS, hostingFacts, SOURCES } from "../../lib/limits-text";
+
+const t = hostingFacts();
+const amend = ['git commit --amend -m "A better message"', "git push --force-with-lease origin main"];
+const rebase = ["git rebase -i HEAD~3", "git push --force-with-lease origin main"];
+const lastCommit = ["git rm --cached data/recordings.h5", 'echo "data/recordings.h5" >> .gitignore', "git add .gitignore", "git commit --amend -C HEAD", "git push"];
+const olderCommits = [
+  "git clone --mirror " + cloneUrl({ owner: "OWNER", name: "NAME" }),
+  "cd NAME.git",
+  "git filter-repo --path data/recordings.h5 --invert-paths",
+  "git push --force --mirror origin",
+];
+const sensitive = [
+  "git filter-repo --sensitive-data-removal --invert-paths --path config/credentials.json",
+  "git filter-repo --sensitive-data-removal --replace-text ../expressions.txt",
+  "git push --force --mirror origin",
+];
+const afterRewrite = ["git fetch origin", "git reset --hard origin/main"];
 ---
 <Base
   title="Rewriting history"
@@ -12,7 +34,108 @@ import { SITE_NAME } from "../../config";
   breadcrumb={[{ text: "Hosting code", href: "/hosting/" }, { text: "Rewriting history" }]}
 >
   <h1>Rewriting history</h1>
-  <p class="summary">Rewriting commits, removing large files or sensitive data, and what it does to tracing maps.</p>
-  <p class="warning">This page is being built: it is not in service yet.</p>
-  <p>Where repositories live and what {SITE_NAME} keeps of them: <a href="/hosting/">the hosting guides</a>.</p>
+  <p class="summary">
+    Rewriting commits, removing large files or sensitive data from history, and what it does to the commits tracing maps
+    point to.
+  </p>
+  <p>
+    Your repository lives in your GitHub account, so its history is yours to rewrite: {SITE_NAME} neither blocks nor
+    reverses it. A rewrite gives new ids to the changed commit and to every commit after it. A tracing map points to one
+    commit by its id: read <a href="#maps">what it does to tracing maps</a> before you rewrite commits a paper cites.
+  </p>
+
+  <h2 id="rewriting">Rewriting commits</h2>
+  <p>
+    The last commit, not yet pushed, is amended. Older ones are reworded, squashed or dropped with an interactive
+    rebase. Once pushed, a rewrite needs a forced push; <code>--force-with-lease</code> refuses it when someone else has
+    pushed since you fetched. A ruleset or a branch protection may refuse forced pushes to the branch.
+  </p>
+  <pre class="commands">{amend.join("\n")}</pre>
+  <pre class="commands">{rebase.join("\n")}</pre>
+  <p>
+    Sources: <a href={SOURCES.changingCommitMessage}>Changing a commit message</a>,
+    <a href={GIT_DOCS.rebase}>git rebase</a>.
+  </p>
+
+  <h2 id="large-files">Removing large files from history</h2>
+  <p>
+    GitHub refuses a push with a file over {t.file}, even when a later commit deletes it: the file is still in the
+    history the push sends. When the file came in the last commit, remove it from that commit:
+  </p>
+  <pre class="commands">{lastCommit.join("\n")}</pre>
+  <p>
+    When it came in an older commit, rewrite the history with <code>git filter-repo</code>, in a fresh mirror clone, then
+    put the file where large files go (<a href="/hosting/large-files/">large files</a>):
+  </p>
+  <pre class="commands">{olderCommits.join("\n")}</pre>
+  <p>
+    Sources: <a href={SOURCES.largeFiles}>About large files on GitHub</a>,
+    <a href={SOURCES.filterRepo}>git filter-repo</a>.
+  </p>
+
+  <h2 id="sensitive-data">Removing sensitive data from history</h2>
+  <ol>
+    <li>
+      <strong>Revoke the secret first.</strong> A token, a key or a password that was pushed is exposed, whatever the
+      history says next: revoke it where it was made (a GitHub token: <a href="/hosting/tokens/#delete">delete it</a>),
+      and make a new one.
+    </li>
+    <li>
+      <strong>Rewrite the history</strong> with <code>git filter-repo --sensitive-data-removal</code>: remove the file, or
+      replace the text in every commit (one expression per line in a file kept outside the repository).
+    </li>
+    <li><strong>Force-push</strong> every branch and tag.</li>
+    <li>
+      <strong>Ask GitHub Support</strong> to remove the cached views and the pull request references that still hold
+      the old commits: GitHub's page gives the steps and what to send.
+    </li>
+    <li><strong>Every clone</strong>, yours and your collaborators', is replaced by a fresh clone, or reset:</li>
+  </ol>
+  <pre class="commands">{sensitive.join("\n")}</pre>
+  <pre class="commands">{afterRewrite.join("\n")}</pre>
+  <p>
+    Personal data in a repository, a participant's details for example, is removed the same way. Sources:
+    <a href={SOURCES.sensitiveData}>Removing sensitive data from a repository</a>,
+    <a href={SOURCES.filterRepo}>git filter-repo</a>.
+  </p>
+
+  <h2 id="maps">What it does to tracing maps</h2>
+  <p>
+    A tracing map joins a paper's paragraphs to lines of code at one commit. When a rewrite, or the deletion of the
+    repository, takes that commit away from GitHub:
+  </p>
+  <ul>
+    <li>
+      The map stays, and the paper's page shows the commit as <strong>no longer at the source</strong>, in words, with the
+      script copies {SITE_NAME} keeps where the repository's licence allows it.
+    </li>
+    <li>
+      Commits before the rewritten one keep their ids: a map pointing to them is untouched. Tag the commit a paper
+      cites (<a href="/hosting/git/#tags">tags</a>) and rewrite after it when you can.
+    </li>
+    <li>
+      To keep the cited commits readable whatever happens to the repository, ask for them to be archived by Software
+      Heritage when you validate a map. {SITE_NAME} sends that request only when you ask for it, never by default.
+    </li>
+    <li>
+      A map for the new history is a new map, which an author validates again; the old one stays citable with its own
+      commit.
+    </li>
+  </ul>
+
+  <h2 id="drop-copies">Asking {SITE_NAME} to drop its own copies</h2>
+  <p>
+    Rewriting your history does not change what {SITE_NAME} already copied: the record of the paper, its tracing maps
+    and, when the licence allowed it, the scripts' text. When something there must go (personal data, a secret, a
+    copyright question, an author's request), request its removal from the paper's page: its sidebar's "Request its
+    removal", or the removal section under Contribute, signed in. You say the reason in a few words; {SITE_NAME}'s owner
+    decides, and the answer is written on <a href="/account/#requests">your account page</a>. Accepted, the record
+    leaves every public output of {SITE_NAME} at the next nightly update: the site, the lookup, the search and the open
+    data.
+  </p>
+  <p>
+    Revoke an exposed secret yourself first: a removal request takes days, a revocation a minute.
+  </p>
+
+  <p><a href="/hosting/">The hosting guides</a></p>
 </Base>

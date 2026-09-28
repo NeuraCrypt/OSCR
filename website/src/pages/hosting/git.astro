@@ -1,10 +1,49 @@
 ---
-// /hosting/git/: git with GitHub's own credentials.
+// /hosting/git/: git straight to github.com (D00-3): clone, fetch, pull and push, HTTPS with GitHub's
+// tokens and the credential cache, SSH and the 2026 algorithm changes, SHA-1 removed from HTTPS,
+// partial and shallow clones, git's messages (clone errors, push rejections, push protection, the
+// email-privacy block, explained with no address shown), tags signed by default, command-line file
+// operations, the default branch name, remotes, and local clones after a rename.
 //
-// STUB, created by the foundation (F) of phase 01 so that the site builds and every link resolves;
-// owned by E11, which builds the page. science.css only; the platform's name from src/config.ts.
+// A static page (0 requests), science.css only; the platform's name from src/config.ts; every figure
+// from src/lib/limits-text.ts. No SSH address is printed: GitHub's has an at sign, and the site shows
+// nothing shaped like an email address (scripts/check.mjs); the page points to GitHub's Code button.
 import Base from "../../layouts/Base.astro";
 import { SITE_NAME } from "../../config";
+import { cloneCommands, cloneUrl } from "../../lib/forge";
+import { GIT_DOCS, hostingFacts, SOURCES } from "../../lib/limits-text";
+
+const t = hostingFacts();
+// Placeholders, in capitals, for the account and the repository.
+const REPO = { owner: "OWNER", name: "NAME" };
+const clone = cloneCommands(REPO);
+const daily = [clone.https, "cd NAME", "git fetch origin", "git pull", "git add analysis/", 'git commit -m "Describe the change"', "git push origin main"];
+const cache = ["git config --global credential.helper cache", "git config --global credential.helper osxkeychain"];
+const sshKey = ['ssh-keygen -t ed25519 -C "laptop"', "ssh -T github.com"];
+const clones = [clone.partial, "git clone --filter=tree:0 " + cloneUrl(REPO), clone.shallow, "git fetch --unshallow"];
+const tags = [
+  'git tag -a v1.0.0 -m "Code as described in the paper"',
+  "git push origin v1.0.0",
+  "git push origin --tags",
+];
+const signed = ["git config --global tag.gpgsign true", "git config --global gpg.format ssh", "git tag -v v1.0.0"];
+const files = [
+  "git mv old-name.py new-name.py",
+  "git rm unused.py",
+  "git add .",
+  'git commit -m "Rename and tidy"',
+  "git push",
+  "git reset --soft HEAD~1",
+];
+const defaultBranch = ["git config --global init.defaultBranch main"];
+const upstream = ["git remote add upstream " + cloneUrl({ owner: "UPSTREAM-OWNER", name: "NAME" }), "git remote -v", "git fetch upstream"];
+const remoteUrl = ["git remote set-url origin " + cloneUrl({ owner: "OWNER", name: "NEW-NAME" }), "git remote -v"];
+const afterRename = [
+  "git branch -m master main",
+  "git fetch origin",
+  "git branch -u origin/main main",
+  "git remote set-head origin -a",
+];
 ---
 <Base
   title="Git with GitHub"
@@ -12,7 +51,207 @@ import { SITE_NAME } from "../../config";
   breadcrumb={[{ text: "Hosting code", href: "/hosting/" }, { text: "Git with GitHub" }]}
 >
   <h1>Git with GitHub</h1>
-  <p class="summary">Clone, pull and push straight to GitHub, with GitHub's own credentials.</p>
-  <p class="warning">This page is being built: it is not in service yet.</p>
-  <p>Where repositories live and what {SITE_NAME} keeps of them: <a href="/hosting/">the hosting guides</a>.</p>
+  <p class="summary">
+    Clone, fetch, pull and push go straight to github.com, with GitHub's own credentials: {SITE_NAME} runs no git server
+    and no git proxy, and no git byte passes through it.
+  </p>
+  <p>In the commands below, OWNER is the GitHub account and NAME the repository.</p>
+
+  <h2 id="daily">Clone, fetch, pull and push</h2>
+  <p>
+    Every repository's address is on github.com, as GitHub's Code button shows it. The daily round:
+  </p>
+  <pre class="commands">{daily.join("\n")}</pre>
+  <p>
+    Sources: <a href={SOURCES.cloning}>Cloning a repository</a>, <a href={SOURCES.pushing}>Pushing commits to a remote
+    repository</a>, <a href={GIT_DOCS.clone}>git clone</a>, <a href={GIT_DOCS.push}>git push</a>.
+  </p>
+
+  <h2 id="https">HTTPS, with a GitHub token as the password</h2>
+  <p>
+    Over HTTPS, git asks for a user name and a password. The user name is your GitHub account; the password is a
+    personal access token you make on GitHub, never your GitHub password, which GitHub refuses for git. Make a token
+    that reaches one repository and expires: <a href="/hosting/tokens/">tokens for git</a>.
+  </p>
+  <h3 id="credential-cache">The credential cache</h3>
+  <p>
+    So that git does not ask each time, let a credential helper keep the token: <code>cache</code> keeps it in memory
+    for a while, <code>osxkeychain</code> in the macOS keychain; Git Credential Manager does the same on every system.
+  </p>
+  <pre class="commands">{cache.join("\n")}</pre>
+  <p>
+    Sources: <a href={SOURCES.credentialCache}>Caching your GitHub credentials in Git</a>,
+    <a href={GIT_DOCS.credentialCache}>git credential-cache</a>.
+  </p>
+
+  <h2 id="ssh">SSH, and the 2026 algorithm changes</h2>
+  <p>
+    Over SSH, git uses a key you add to your GitHub account instead of a token. The SSH address is on GitHub's Code
+    button, under SSH. Since 2026-09-22 GitHub no longer accepts <code>ssh-rsa</code> signatures made with SHA-1 nor
+    an old Diffie-Hellman key exchange, asks at least {t.sshRsaMinBits} bits of a new RSA key, and offers a
+    post-quantum key exchange (ML-KEM). An Ed25519 key avoids all of it:
+  </p>
+  <pre class="commands">{sshKey.join("\n")}</pre>
+  <p>
+    Sources: <a href={SOURCES.ssh}>Connecting to GitHub with SSH</a>, <a href={SOURCES.sshChanges}>GitHub's
+    changelog</a>.
+  </p>
+
+  <h2 id="sha1">SHA-1 removed from HTTPS</h2>
+  <p>
+    GitHub stopped accepting SHA-1 signatures in HTTPS connections: a brownout on 2026-07-14, then for good on
+    2026-09-15. A clone or push that now fails with a TLS or handshake error comes from an old git, operating system or
+    TLS library: update it. Sources: <a href={SOURCES.sha1Sunset}>the announcement</a>,
+    <a href={SOURCES.sha1Off}>the change</a>.
+  </p>
+
+  <h2 id="partial">Partial and shallow clones</h2>
+  <p>
+    A large repository can be cloned without all of it. A partial clone fetches every commit but a file's content only
+    when a command needs it (<code>blob:none</code>), or even the directories (<code>tree:0</code>). A shallow clone
+    fetches the last commit only; <code>git log</code> then sees little, and the history comes back with
+    <code>--unshallow</code>.
+  </p>
+  <pre class="commands">{clones.join("\n")}</pre>
+  <p>
+    Sources: <a href={GIT_DOCS.partialClone}>partial clone</a>, <a href={GIT_DOCS.clone}>git clone</a>.
+  </p>
+
+  <h2 id="clone-errors">Clone error messages</h2>
+  <dl>
+    <dt>Repository not found</dt>
+    <dd>
+      The address is wrong, the repository was renamed or deleted, or it is private and the token cannot reach it.
+      GitHub answers the same for a private repository as for an absent one.
+    </dd>
+    <dt>Authentication failed, or HTTP status <code>401</code> or <code>403</code></dt>
+    <dd>
+      The token is wrong, expired or revoked, or lacks the Contents permission on this repository: make a new one
+      (<a href="/hosting/tokens/">tokens for git</a>) and clear the old one from the credential helper.
+    </dd>
+    <dt>Remote HEAD refers to nonexistent ref</dt>
+    <dd>
+      The repository's default branch does not exist (an empty repository, or a branch renamed at the source): check
+      out a branch that exists, with <code>git switch</code>.
+    </dd>
+    <dt>A TLS or handshake error</dt>
+    <dd>An outdated git or TLS library: see <a href="#sha1">SHA-1 removed from HTTPS</a>.</dd>
+  </dl>
+  <p>Source: <a href={SOURCES.cloningErrors}>Troubleshooting cloning errors</a>.</p>
+
+  <h2 id="push-rejections">Push rejection messages</h2>
+  <dl>
+    <dt>Rejected: fetch first, or non-fast-forward</dt>
+    <dd>
+      The branch on GitHub has commits you do not have. Run <code>git pull</code>, then push again; never force a push
+      over someone else's commits.
+    </dd>
+    <dt>Repository rule violations, or a protected branch</dt>
+    <dd>
+      A ruleset or a branch protection refused the push; git's output names the rule and what to change. Fix the
+      commits locally (<a href="/hosting/history/">rewriting history</a>), or push to another branch and open a pull
+      request. Source: <a href={SOURCES.troubleshootingRules}>Troubleshooting rules</a>.
+    </dd>
+    <dt>Large files detected</dt>
+    <dd>
+      A file is over {t.file}: remove it from the commits (<a href="/hosting/history/#large-files">removing large
+      files</a>) and put it where large files go (<a href="/hosting/large-files/">large files</a>).
+    </dd>
+    <dt>Too many branch or tag updates</dt>
+    <dd>
+      The repository's push policy limits the branches and tags one push may update
+      (<a href="/hosting/limits/#push-policy">push policy</a>): push them in several pushes.
+    </dd>
+    <dt>Push declined due to email privacy restrictions</dt>
+    <dd>See <a href="#email-privacy">Block pushes that expose my email</a>, below.</dd>
+  </dl>
+  <h3 id="push-protection">Push protection warnings in the git push output</h3>
+  <p>
+    When push protection is on, GitHub refuses a push whose commits contain a secret it recognises (a token, a key),
+    and git's output shows the kind of secret, the commit and the file, a few at a time. Revoke the secret first, since
+    it is exposed on your computer and perhaps elsewhere; then remove it from the commits and push again. When it is a
+    test value, the output gives a link where you may allow it. Sources:
+    <a href={SOURCES.pushProtection}>Push protection on the command line</a>,
+    <a href={SOURCES.secretScanningScope}>what is scanned</a>.
+  </p>
+  <p>
+    A push can also print warnings that do not refuse it: GitHub lists the known vulnerabilities in the repository's
+    dependencies, with a link to the Dependabot alerts. Source:
+    <a href={SOURCES.dependabotNotifications}>Dependabot notifications</a>.
+  </p>
+  <h3 id="email-privacy">Block pushes that expose my email</h3>
+  <p>
+    Each commit records the author's email address as git is configured, and anyone who clones the repository can read
+    it. GitHub gives your account a private "noreply" address instead. With "Keep my email addresses private" and
+    "Block command line pushes that expose my email" on in your GitHub email settings, GitHub refuses a push whose
+    commit carries your private address. Set git to the noreply address those settings show you, then amend the
+    commit: <code>git config --global user.email</code> followed by that address, then
+    <code>git commit --amend --reset-author</code>. {SITE_NAME} never shows an email address, and masks those it finds
+    in commits. Source: <a href={SOURCES.blockEmailPushes}>Blocking command line pushes that expose your personal email
+    address</a>.
+  </p>
+
+  <h2 id="tags">Creating and pushing tags</h2>
+  <p>
+    Tag the commit a paper describes, with an annotated tag, and push the tag: it is the version readers will cite, and
+    a GitHub release can be made from it.
+  </p>
+  <pre class="commands">{tags.join("\n")}</pre>
+  <h3 id="signed-tags">Signed by default</h3>
+  <p>
+    A signed tag proves who made it. Tell git to sign every annotated tag, with your SSH key (or a GPG key), and add the
+    same key to your GitHub account as a signing key:
+  </p>
+  <pre class="commands">{signed.join("\n")}</pre>
+  <p>
+    Sources: <a href={SOURCES.signingTags}>Signing tags</a>, <a href={SOURCES.releasesAndTags}>Viewing releases and
+    tags</a>, <a href={GIT_DOCS.tag}>git tag</a>.
+  </p>
+
+  <h2 id="files">Command-line file operations</h2>
+  <p>
+    Moving, renaming and deleting files are commits like any other: make them with git, then push.
+    <code>git reset --soft</code> undoes the last commit before a push and keeps its changes.
+  </p>
+  <pre class="commands">{files.join("\n")}</pre>
+  <p>
+    Sources: <a href={SOURCES.movingFiles}>Moving a file</a>, <a href={SOURCES.renamingFiles}>Renaming a file</a>,
+    <a href={GIT_DOCS.mv}>git mv</a>.
+  </p>
+
+  <h2 id="default-branch">Default branch name</h2>
+  <p>
+    GitHub names the first branch of your new repositories <code>main</code> unless you change it in your repository
+    settings on GitHub; git's own setting does the same for the repositories you start on your computer.
+  </p>
+  <pre class="commands">{defaultBranch.join("\n")}</pre>
+  <p>
+    Sources: <a href={SOURCES.defaultBranchName}>Managing the default branch name for your repositories</a>,
+    <a href={GIT_DOCS.config}>git config</a>.
+  </p>
+
+  <h2 id="upstream">Configuring the upstream remote</h2>
+  <p>
+    A fork follows the repository it came from through a second remote, by custom called <code>upstream</code>:
+  </p>
+  <pre class="commands">{upstream.join("\n")}</pre>
+  <p>
+    Sources: <a href={SOURCES.upstreamRemote}>Configuring a remote repository for a fork</a>,
+    <a href={GIT_DOCS.remote}>git remote</a>.
+  </p>
+
+  <h2 id="remote-url">Changing the remote URL</h2>
+  <pre class="commands">{remoteUrl.join("\n")}</pre>
+  <p>Source: <a href={SOURCES.remotes}>Managing remote repositories</a>.</p>
+
+  <h2 id="after-rename">Updating local clones after a rename</h2>
+  <p>
+    After a repository is renamed or transferred, GitHub redirects its old address, but a new repository of the old name
+    would end the redirect: change the remote URL of each clone (above). After a branch is renamed, each clone renames
+    its own branch and follows the new one:
+  </p>
+  <pre class="commands">{afterRename.join("\n")}</pre>
+  <p>Source: <a href={SOURCES.renaming}>Renaming a repository</a>.</p>
+
+  <p><a href="/hosting/">The hosting guides</a></p>
 </Base>
