@@ -56,6 +56,9 @@ export type Article = {
   journal_id?: string;
   tools?: string[];
   datasets?: string[];
+  // Since Phase 4 (oscr/paperpage.py): the lot of src/data/papers/ that holds the sections
+  // of the paper's page.
+  page_lot?: number;
 };
 
 /** A file of a lot of scripts. `text` is null when the license of the repository

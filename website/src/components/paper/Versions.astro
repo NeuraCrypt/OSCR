@@ -1,0 +1,55 @@
+---
+// The Versions section of a paper's page: the history of its record, newest first — when
+// each version was stored, by whom, and what changed in its public facts. The texts (the
+// abstract, the availability statements) and the classification's raw values are not part
+// of it: the export keeps only VERSION_FIELDS (oscr/paperpage.py).
+import { dateInWords, plural } from "../../lib/catalog";
+import { fieldLabel, recorded, type Change, type PaperPage } from "../../lib/paper";
+
+interface Props {
+  p?: PaperPage;
+}
+const { p } = Astro.props;
+const versions = p?.versions ?? [];
+const value = (v: string | number | undefined) => (v === undefined || v === "" ? "—" : `${v}`);
+/** A list of items, and how many more there are. */
+const items = (shown: string[], n: number | undefined) =>
+  shown.join("; ") + ((n ?? 0) > shown.length ? `; and ${plural((n ?? 0) - shown.length, "other")}` : "");
+const change = (c: Change) => {
+  const label = fieldLabel(c.field);
+  if (c.reordered) return `${label}: the order changed`;
+  if (c.added || c.removed) {
+    const parts = [
+      c.added?.length ? `added ${items(c.added, c.n_added)}` : "",
+      c.removed?.length ? `removed ${items(c.removed, c.n_removed)}` : "",
+    ].filter(Boolean);
+    return `${label}: ${parts.join("; ")}`;
+  }
+  return `${label}: ${value(c.before)} → ${value(c.after)}`;
+};
+---
+<section id="versions">
+  <h2>Versions</h2>
+  <p class="summary">
+    The history of this record: each version stored by the harvester, and what changed in its facts. The texts of the
+    paper (its abstract, its availability statements) are not part of it; versions that changed only those are not
+    listed.
+  </p>
+  {versions.length === 0 ? (
+    <p>No version of this record has been stored yet.</p>
+  ) : (
+    versions.map((v) => (
+      <>
+        <h3>
+          Version {v.version}, {dateInWords(v.date)}{v.first ? ": the first record" : ""}
+          {v.by !== "harvester" && " (an edit)"}
+        </h3>
+        {v.first ? (
+          <p>Recorded: {recorded(v.changes).join(", ")}.</p>
+        ) : (
+          <ul>{v.changes.map((c) => <li>{change(c)}</li>)}</ul>
+        )}
+      </>
+    ))
+  )}
+</section>

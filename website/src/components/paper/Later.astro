@@ -1,0 +1,27 @@
+---
+// The sections that open with sign-in (Phases 5 and 7), kept quiet: one heading for the three,
+// and one muted line each saying what it will hold.
+const LATER = [
+  {
+    id: "discussion",
+    label: "Discussion",
+    text: "questions and error reports about this paper and its code, from signed-in readers and its authors.",
+  },
+  {
+    id: "reproductions",
+    label: "Reproductions",
+    text: "reports from readers who ran the authors' code: what they reproduced, with which environment, commit and data.",
+  },
+  {
+    id: "activity",
+    label: "Activity",
+    text: "what happens around this paper: new versions of its record, its map's validation, discussions and reproductions.",
+  },
+];
+---
+<h2>Discussion, reproductions, activity</h2>
+{LATER.map((s) => (
+  <section id={s.id}>
+    <p class="summary"><strong>{s.label}</strong>: {s.text} It opens with sign-in.</p>
+  </section>
+))}

@@ -11,6 +11,8 @@
 //   entities/*.json   → src/data/entities/*.json     (read at build time: authors, journals,
 //                                                     institutions, tools, datasets, categories)
 //   lookup/NNN.json   → public/lookup/NNN.json       (fetched by the DOI lookup page)
+//   papers/NN.json    → src/data/papers/NN.json      (read at build time: the sections of
+//                                                     each paper's page)
 import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 
 const source = process.env.CATALOG_DIR ?? "../data/public";
@@ -129,6 +131,52 @@ if (existsSync(`${source}/lookup`)) {
   }
 }
 
+// The sections of each paper's page (oscr/paperpage.py), read at build time. On top of the
+// export's own rules, three guards: only the known sections and fields; no email address;
+// and a paper's texts (its abstract, its availability statements) only under the licenses
+// of decision D1 (CC BY, CC0, CC BY-SA, CC BY-NC; never -ND), the same test as
+// catalog.statement_is_publishable. A version keeps only the facts VERSION_FIELDS names.
+const OPEN_LICENSES = ["cc by", "cc-by", "cc0", "cc by-sa", "cc-by-sa", "cc by-nc", "cc-by-nc"];
+const openLicense = (license) => {
+  const l = String(license ?? "").toLowerCase().replace(/_/g, "-").trim();
+  return !l.split(/[\s/.-]+/).includes("nd") && OPEN_LICENSES.some((o) => l.startsWith(o));
+};
+const SECTIONS = ["overview", "code", "availability", "data", "map", "versions", "cite", "similar"];
+const VERSION_FIELDS = new Set(["type", "language", "journal", "volume", "issue", "pages", "dates", "authors",
+  "keywords", "mesh", "funding", "references", "rrids", "integrity"]);
+rmSync("src/data/papers", { recursive: true, force: true });
+mkdirSync("src/data/papers", { recursive: true });
+let detailed = 0;
+let withheld = 0;
+if (existsSync(`${source}/papers`)) {
+  for (const name of readdirSync(`${source}/papers`).filter((n) => /^\d+\.json$/.test(n))) {
+    const clean = {};
+    for (const [id, entry] of Object.entries(JSON.parse(readFileSync(`${source}/papers/${name}`, "utf8")))) {
+      const e = scrub(Object.fromEntries(SECTIONS.map((k) => [k, entry?.[k]])));
+      const open = openLicense(e.overview?.license);
+      if (e.overview) {
+        if (!open && e.overview.abstract) withheld += 1;
+        e.overview.open = open;
+        if (!open) e.overview.abstract = "";
+      }
+      if (e.availability) {
+        e.availability.open = open;
+        e.availability.statements = (e.availability.statements ?? []).map((s) =>
+          open ? { kind: String(s.kind ?? ""), title: String(s.title ?? ""), text: String(s.text ?? "") } : { kind: String(s.kind ?? "") },
+        );
+      }
+      e.versions = (e.versions ?? []).map((v) => ({
+        ...v,
+        changes: (v.changes ?? []).filter((c) => VERSION_FIELDS.has(String(c.field ?? "").split(".")[0])),
+      }));
+      clean[id] = e;
+      detailed += 1;
+    }
+    writeFileSync(`src/data/papers/${name}`, JSON.stringify(clean));
+  }
+}
+if (withheld) console.warn(`${withheld} abstracts under a license that does not allow them were dropped (D1).`);
+
 const withCode = catalog.articles.filter((a) => a.code.length > 0).length;
 const withPage = catalog.articles.filter((a) => a.page === true || a.code.length > 0).length;
 const aligned = catalog.articles.filter((a) => a.alignment?.pairs > 0).length;
@@ -138,5 +186,5 @@ console.log(
 );
 console.log(
   `entities: ${Object.entries(entities).map(([k, n]) => `${n} ${k}`).join(", ")}; ` +
-    `DOI lookup: ${looked} papers in ${shards} shards`,
+    `DOI lookup: ${looked} papers in ${shards} shards; ${detailed} full paper pages`,
 );

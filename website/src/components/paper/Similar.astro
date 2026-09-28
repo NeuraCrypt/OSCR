@@ -1,0 +1,46 @@
+---
+// The Similar section of a paper's page: up to ten papers with a page that share the most
+// with it — the tools found in the code, categories, datasets, cited references, authors —,
+// ranked by the export (oscr/paperpage.py), each with its reasons in words. The listing is
+// the catalogue's (science.css: dl.listing).
+import { recordUrl, withPage, type Article } from "../../lib/catalog";
+import type { PaperPage } from "../../lib/paper";
+import Wrap from "./Wrap.astro";
+
+interface Props {
+  p?: PaperPage;
+}
+const { p } = Astro.props;
+const bySlug = new Map(withPage.map((a) => [a.slug, a]));
+const similar = (p?.similar ?? [])
+  .map((s) => ({ ...s, a: bySlug.get(s.slug) }))
+  .filter((s): s is typeof s & { a: Article } => s.a !== undefined);
+---
+<section id="similar">
+  <h2>Similar papers</h2>
+  {similar.length === 0 ? (
+    <p>No other paper with a page shares enough with this one yet: tools, categories, datasets, references or authors.</p>
+  ) : (
+    <>
+      <p class="summary">
+        The papers with a page that share the most with this one: the tools found in their code, their categories,
+        datasets, cited references and authors, the rarest counting most.
+      </p>
+      <dl class="listing">
+        {similar.map((s, i) => (
+          <>
+            <dt>
+              <span class="num">[{i + 1}]</span> <a href={recordUrl(s.a)}>doi:{s.a.doi}</a>
+              {s.a.code.length > 0 && <> [<a href={`${recordUrl(s.a)}#code`}>code</a>]</>}
+            </dt>
+            <dd>
+              <div class="title"><Wrap text={s.a.title} /></div>
+              <div class="line"><span class="label">Journal:</span> {s.a.journal || "—"}</div>
+              <div class="line"><span class="label">In common:</span> {s.reasons.replace(/^shares /, "")}</div>
+            </dd>
+          </>
+        ))}
+      </dl>
+    </>
+  )}
+</section>
