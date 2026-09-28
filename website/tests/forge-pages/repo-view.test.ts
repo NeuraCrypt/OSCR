@@ -163,12 +163,12 @@ describe("the status line, in words", () => {
 
 describe("the heading line and the tabs", () => {
   const info = { visibility: "public" as const, archived: false, disabled: false, isTemplate: false, parent: null };
-  test("owner / name, the owner as GitHub's login, then the facts in words", () => {
+  test("owner / name, the owner as GitHub's login (not a link: readers stay here), then the facts in words", () => {
     const head = repoHead({ ...EEG, info });
     assert.equal(head.attrs.class, "repo-head");
     assert.equal(textOf(head.children[0] as El), "oscr-fixture / eeg-analysis");
     assert.equal(textOf(head.children[1] as El), "public");
-    assert.deepEqual(hrefs(head), ["https://github.com/oscr-fixture"]);
+    assert.deepEqual(hrefs(head), []);
     const all = repoHead({
       ...EEG,
       info: { ...info, isTemplate: true, archived: true, parent: { forge: "github", owner: "lab", name: "base" } },
@@ -211,10 +211,12 @@ describe("the Code button and the quick setup: GitHub's addresses only", () => {
     assert.match(text, /never sees your code, your password or your token/);
   });
 
-  test("every link of the panel is GitHub's: ZIP, Desktop, Codespaces, the token template", () => {
+  test("every link of the panel is GitHub's: ZIP (at the source), Desktop, Codespaces, the token template", () => {
     const panel = codePanel(EEG, { defaultBranch: "main", site: SITE });
     const links = hrefs(panel);
-    assert.ok(links.length >= 5);
+    assert.ok(links.length >= 4);
+    assert.match(textOf(panel), /Download ZIP: GitHub builds the archive, so it comes from the source\. At the source\./);
+    assert.doesNotMatch(textOf(panel), /Browse its files on GitHub/, "the files are browsed here (the owner's rule, 2026-09-29)");
     for (const href of links) {
       assert.ok(
         href.startsWith("https://github.com/") || href.startsWith("https://codespaces.new/") || href.startsWith("x-github-client://openRepo/https://github.com/"),
@@ -408,13 +410,14 @@ describe("masking and links", () => {
 });
 
 describe("the shell's paths", () => {
-  test("parsing: the three views, and invalid owners or names refused (paths.ts rules)", () => {
+  test("parsing: the three views of phase 01, the code views of phase 02, and invalid owners or names refused (paths.ts rules)", () => {
     assert.deepEqual(shellTarget("/r/oscr-fixture/eeg-analysis/"), { ...EEG, view: "home" });
     assert.deepEqual(shellTarget("/r/oscr-fixture/eeg-analysis/settings/"), { ...EEG, view: "settings" });
     assert.deepEqual(shellTarget("/r/oscr-fixture/eeg-analysis/branches"), { ...EEG, view: "branches" });
+    assert.deepEqual(shellTarget("/r/oscr-fixture/eeg-analysis/tree/main/"), { ...EEG, view: "tree", rest: ["main"] });
     for (const path of [
       "/r/", "/r/ada/", "/r/ada/eeg.git/", "/r/../eeg/", "/r/ada/../", "/r/a%2Fb/eeg/", "/r/ada/e%20g/",
-      "/r/ada/eeg/issues/", "/r/ada/eeg/tree/main/", `/r/${"a".repeat(101)}/eeg/`, "/r/ada/e<script>/",
+      "/r/ada/eeg/issues/", "/r/ada/eeg/tree/", `/r/${"a".repeat(101)}/eeg/`, "/r/ada/e<script>/",
       "/r/ada@example.org/eeg/", "/r/ada/%E0%A4%A/", "/paper/x/",
     ]) {
       assert.equal(shellTarget(path), null, path);
@@ -540,15 +543,16 @@ describe("reading a repository in the reader's browser (fake GitHub, anonymous)"
     assert.equal(loaded.latest, null);
   });
 
-  test("GitHub's anonymous limit reached: said in words, with the link to GitHub", async () => {
+  test("GitHub's anonymous limit reached: said in words, the source a discreet last resort", async () => {
     const w = await world();
     w.double.limit("anonymous", 0, w.double.now() + 600);
     const loaded = await loadRepository({ owner: w.owner, name: "eeg-analysis", view: "home" }, { session: w.session, site: w.siteFetch, signedIn: false });
     assert.equal(loaded.info, null);
     assert.equal(loaded.error?.code, "rate_limited");
     const said = degradedBlock(loaded.repo, loaded.error);
-    assert.equal(said.attrs.class, "warning");
-    assert.match(textOf(said), /GitHub's limit for reading without signing in is reached from your connection .*resets in about 10 minutes\./);
+    assert.equal((said.children[0] as El).attrs.class, "warning");
+    assert.equal((said.children[1] as El).attrs.class, "at-source");
+    assert.match(textOf(said), /GitHub's limit for reading without signing in is reached from your connection .*resets in about 10 minutes\.Until then, it can only be read where it is hosted\. At the source\./);
     assert.deepEqual(hrefs(said), ["https://github.com/oscr-fixture/eeg-analysis"]);
   });
 
@@ -574,7 +578,7 @@ describe("reading a repository in the reader's browser (fake GitHub, anonymous)"
     assert.equal(loaded.layerUnknown, true);
     assert.equal(textOf(statusLine(loaded.layer, SITE, loaded.layerUnknown)), "Whether it is linked to OSCR could not be read just now.");
     const said = degradedBlock(loaded.repo, loaded.error);
-    assert.match(textOf(said), /GitHub did not answer: it may be down, or this device offline\. Try again in a moment\. The repository is on GitHub: oscr-fixture\/eeg-analysis\./);
+    assert.match(textOf(said), /GitHub did not answer: it may be down, or this device offline\. Try again in a moment\.Until then, it can only be read where it is hosted\. At the source\./);
     // The clone commands need no request: they stay.
     assert.match(textOf(codePanel(loaded.repo)), /git clone https:\/\/github\.com\/oscr-fixture\/eeg-analysis\.git/);
   });

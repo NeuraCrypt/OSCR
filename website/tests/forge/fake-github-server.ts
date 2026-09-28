@@ -19,6 +19,7 @@
 // FAKE_CLIENT_SECRET), never real ones.
 import { createServer } from "node:http";
 import { FakeGitHub } from "./fake-github.ts";
+import { seedCodeTour } from "./fake-github-seed.ts";
 import { MemoryBackend } from "./memory.ts";
 
 const port = Number(process.argv[2] ?? 9490);
@@ -50,6 +51,8 @@ await org.git.createCommit(eegRef, {
 const newest = await org.git.resolve(eegRef, "main");
 await org.git.createBranch(eegRef, "feature-epochs", newest);
 await org.git.createBranch(eegRef, "old-idea", head);
+// Phase 02: the files and history the code views show (tests/forge/fake-github-seed.ts).
+await seedCodeTour(org, eegRef);
 await org.repos.setTopics(eegRef, ["eeg", "neuroscience"]);
 const empty = await org.repos.create({ name: "empty-repo", visibility: "public" });
 await org.repos.transfer(empty.ref, { newOwner: "oscr-fixture" });

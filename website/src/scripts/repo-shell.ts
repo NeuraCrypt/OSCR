@@ -16,10 +16,9 @@
 // platform: the page hands its name in (data-site).
 
 import { githubBackend } from "../../worker/forge/github/index.ts";
-import { maskEmails } from "../../worker/forge/mask.ts";
-import { repoWebUrl } from "../lib/forge.ts";
+import { cachedSession, gitCache, tabStore } from "../lib/gitcache.ts";
+import { CODE_VIEWS, repoPath } from "../lib/forge.ts";
 import {
-  ATTRS,
   capital,
   dateOfIso,
   degradedBlock,
@@ -43,29 +42,15 @@ import {
   siteName,
   statusLine,
   swhUrl,
-  TAGS,
 } from "../lib/repo-view.ts";
+import { refSegments } from "../lib/code-nav.ts";
+import { toDom } from "./dom.ts";
+import { type CodeEnv, mountCode, mountTree, wireKeys } from "./repo-code.ts";
 import { codePanel, quickSetup, useTemplate, wireCopy } from "./repo-code-panel.ts";
 import { mountBranches } from "./repo-branches.ts";
 import { mountSettings } from "./repo-settings.ts";
 
 const HINT = "__Host-oscr_signed_in=1";
-
-/** A view tree as DOM nodes: allowed elements and attributes only, text as text nodes. */
-export function toDom(node: string | El): Node {
-  if (typeof node === "string") return document.createTextNode(maskEmails(node));
-  const tag = (TAGS as readonly string[]).includes(node.tag) ? node.tag : "span";
-  const el = document.createElement(tag);
-  for (const [k, v] of Object.entries(node.attrs)) {
-    if (!(ATTRS as readonly string[]).includes(k)) continue;
-    if (k === "href") {
-      const safe = safeHref(v);
-      if (safe) el.setAttribute("href", safe);
-    } else el.setAttribute(k, v);
-  }
-  for (const c of node.children) el.appendChild(toDom(c));
-  return el;
-}
 
 /** The page's body for the home view: the Code button or the quick setup, the latest commit, the
  *  README excerpt; the sidebar: the papers, the Pages site, the archive, about. */
@@ -80,14 +65,13 @@ function home(loaded: Loaded, site: string): El {
     body.push(codePanel(repo, options));
     if (info?.isTemplate) body.push(useTemplate(repo));
     if (loaded.latest) body.push(latestCommit(repo, loaded.latest));
-    if (loaded.readme) {
+    if (info) body.push(h("div", { id: "repo-files", "aria-live": "polite" }));
+    if (loaded.readme && info?.defaultBranch) {
       body.push(
         h("h2", null, "README"),
         loaded.readme.excerpt ? h("p", null, loaded.readme.excerpt) : null,
-        h("p", null, link(`${repoWebUrl(repo)}#readme`, "Read the whole README on GitHub"), " · ", link(repoWebUrl(repo), "Browse the files on GitHub")),
+        h("p", null, h("a", { href: repoPath(repo, "blob", refSegments(info.defaultBranch, loaded.readme.path)) }, "Read the whole README")),
       );
-    } else if (info) {
-      body.push(h("p", null, link(repoWebUrl(repo), "Browse the files on GitHub"), "."));
     }
   }
   return h("div", { class: "record" }, h("div", { class: "body" }, body), sidebar(loaded, site));
@@ -161,7 +145,8 @@ async function main(): Promise<void> {
     return;
   }
   const endpoints = githubEndpoints({ api: root.dataset.githubApi, raw: root.dataset.githubRaw, web: root.dataset.githubWeb });
-  const session = githubBackend(endpoints, { fetch: globalThis.fetch.bind(globalThis) }).session({ kind: "anonymous" });
+  // The reader's own quota: what never changes is asked once per tab (src/lib/gitcache.ts).
+  const session = cachedSession(githubBackend(endpoints, { fetch: globalThis.fetch.bind(globalThis) }).session({ kind: "anonymous" }), gitCache(tabStore()));
   const signedIn = document.cookie.split(/;\s*/).includes(HINT);
   const loaded = await loadRepository(target, {
     session,
@@ -169,17 +154,26 @@ async function main(): Promise<void> {
     site: (path) => fetch(path, { credentials: "same-origin", headers: { Accept: "application/json" } }),
   });
   const moved = renamedPath(loaded);
-  if (moved) history.replaceState(null, "", moved + location.search);
+  if (moved) history.replaceState(null, "", moved + location.search + location.hash);
   const tail = document.title.includes(" — ") ? document.title.slice(document.title.indexOf(" — ")) : "";
   document.title = `${loaded.repo.owner}/${loaded.repo.name}${tail}`;
   const view = loaded.target.view;
   root.replaceChildren(...page(loaded, site).map(toDom));
   wireCopy(root);
   const slot = document.getElementById("repo-view");
+  const env: CodeEnv | null = loaded.info
+    ? { repo: loaded.repo, info: loaded.info, session, endpoints, site, target: loaded.target, search: location.search }
+    : null;
   if (slot && loaded.info) {
     const repo = shellRepo(loaded, signedIn);
     if (view === "settings") mountSettings(slot, repo);
     else if (view === "branches") mountBranches(slot, repo, { session });
+    else if (env && (CODE_VIEWS as readonly string[]).includes(view)) await mountCode(slot, env);
+  }
+  const files = document.getElementById("repo-files");
+  if (files && env && !loaded.empty && loaded.info?.defaultBranch) {
+    wireKeys(env);
+    await mountTree(files, env, refSegments(loaded.info.defaultBranch), { home: true });
   }
 }
 

@@ -34,6 +34,7 @@ import {
   parseRepoPath,
   repoPath,
   repoWebUrl,
+  viewPath,
   type LayerMode,
   type RepoCoords,
   type RepoPath,
@@ -55,15 +56,45 @@ export interface El {
 
 export type Child = string | El | null | undefined | false;
 
-/** The elements a view may use: science.css's vocabulary, nothing else. */
-export const TAGS = [
-  "a", "button", "code", "details", "div", "h1", "h2", "h3", "li", "nav", "p", "pre", "section", "span",
-  "strong", "summary", "ul",
+/** The elements a view may use: science.css's vocabulary, nothing else. Phase 02 adds what a
+ *  rendered file needs (GitHub's own tag filter, less what runs or embeds: no script, style,
+ *  iframe, object, embed, form posting elsewhere, video or audio) and MathML for math. */
+export const HTML_TAGS = [
+  "a", "button", "code", "details", "div", "h1", "h2", "h3", "h4", "h5", "h6", "li", "nav", "p", "pre", "section", "span",
+  "strong", "summary", "ul", "ol", "em", "del", "ins", "sub", "sup", "kbd", "samp", "var", "q", "cite", "dfn", "abbr", "s",
+  "b", "i", "u", "blockquote", "hr", "br", "img", "table", "caption", "thead", "tbody", "tfoot", "tr", "th", "td",
+  "dl", "dt", "dd", "small", "mark", "figure", "figcaption", "time", "input", "label", "form", "header", "footer",
 ] as const;
+/** MathML Core's presentation elements (math is rendered by the browser: no script, no font). */
+export const MATH_TAGS = [
+  "math", "mrow", "mi", "mn", "mo", "ms", "mtext", "mspace", "msub", "msup", "msubsup", "mfrac", "msqrt", "mroot",
+  "mover", "munder", "munderover", "mtable", "mtr", "mtd", "mstyle", "mpadded", "mphantom", "semantics", "annotation",
+] as const;
+export const TAGS = [...HTML_TAGS, ...MATH_TAGS] as const;
 export type Tag = (typeof TAGS)[number];
 
-/** The attributes a view may set (no style, no event handler, no inline anything). */
-export const ATTRS = ["class", "href", "id", "aria-label", "aria-current", "aria-live", "type", "open", "hidden"] as const;
+/** The attributes a view may set (no style, no event handler, no inline anything). `src` takes
+ *  only an image the page made itself (safeSrc); `id`s from a repository's text carry
+ *  "user-content-" (the renderers add it), so none clobbers the page's own. */
+export const ATTRS = [
+  "class", "href", "id", "aria-label", "aria-current", "aria-live", "type", "open", "hidden",
+  "src", "alt", "title", "start", "checked", "disabled", "colspan", "rowspan", "name", "value", "placeholder",
+  "autocomplete", "spellcheck", "role", "tabindex", "aria-hidden", "aria-expanded", "aria-controls", "aria-describedby",
+  "for", "datetime", "rel", "lang", "maxlength",
+  "display", "mathvariant", "stretchy", "accent", "accentunder", "fence", "separator", "lspace", "rspace", "columnalign",
+  "linethickness", "encoding", "width", "depth", "height", "movablelimits", "largeop", "symmetric", "scriptlevel",
+] as const;
+
+/** An image source a view may carry: an object URL the page made from bytes it read (blob:), or
+ *  a data: URL of a raster or SVG image (a notebook's outputs). An <img> never runs a script, so an
+ *  SVG shown this way is inert. Anything else is null: no external image loads without the
+ *  reader's click (D02-6). */
+export function safeSrc(src: unknown): string | null {
+  if (typeof src !== "string" || src.length > 15_000_000) return null;
+  if (/^blob:(?:https?:\/\/[A-Za-z0-9.:-]+|null)\/[0-9a-fA-F-]{8,64}$/.test(src)) return src;
+  if (/^data:image\/(?:png|jpeg|gif|webp|bmp|svg\+xml);base64,[A-Za-z0-9+/=\s]+$/.test(src)) return src;
+  return null;
+}
 
 /** A link a view may carry: a path of this site, an https address without credentials or "@"
  *  (an email address never hides in a link either), or GitHub Desktop's own scheme on a GitHub
@@ -92,6 +123,9 @@ export function h(tag: Tag, attrs: Record<string, string | null | undefined | fa
     if (k === "href") {
       const safe = safeHref(v);
       if (safe) out.href = safe;
+    } else if (k === "src") {
+      const safe = safeSrc(v);
+      if (safe) out.src = safe;
     } else out[k] = String(v);
   }
   const kids: (string | El)[] = [];
@@ -288,7 +322,8 @@ export interface HeadFacts {
 }
 
 /** "owner / name", then what it is in words: public, a template, archived, a fork. The owner is
- *  GitHub's login (the registry has no handles of its own), linked to its GitHub page. */
+ *  GitHub's login (the registry has no handles of its own), not a link: readers are not sent to
+ *  GitHub (the owner's rule, 2026-09-29). */
 export function repoHead({ owner, name, info }: HeadFacts): El {
   const facts: Child[] = [];
   if (info) {
@@ -303,15 +338,17 @@ export function repoHead({ owner, name, info }: HeadFacts): El {
   return h(
     "div",
     { class: "repo-head" },
-    h("h1", null, h("span", { class: "owner" }, link(`${GITHUB}/${owner}`, owner)), " / ", name),
+    h("h1", null, h("span", { class: "owner" }, owner), " / ", name),
     facts.length ? h("span", { class: "facts" }, ...facts) : null,
   );
 }
 
 /** The bar of the shell's views, under the heading (nav.tabs, never pills). */
 export function repoTabs(repo: RepoCoords, view: RepoView): El {
+  // Every code view (tree, blob, commits, commit, compare, find, search) is under Code.
+  const shown: RepoView = view === "settings" || view === "branches" ? view : "home";
   const tab = (v: RepoView, label: string) =>
-    h("li", null, h("a", { href: repoPath(repo, v), "aria-current": v === view ? "page" : null }, label));
+    h("li", null, h("a", { href: repoPath(repo, v), "aria-current": v === shown ? "page" : null }, label));
   return h("nav", { class: "tabs", "aria-label": "Repository" }, h("ul", null, tab("home", "Code"), tab("branches", "Branches"), tab("settings", "Settings")));
 }
 
@@ -428,8 +465,8 @@ export function readmeExcerpt(source: string, max = 480): string {
   return `${maskEmails(space > max / 2 ? cut.slice(0, space) : cut)}…`;
 }
 
-/** The latest commit, in one line: its short id (GitHub's page), its day, its message's first
- *  line (masked). */
+/** The latest commit, in one line: its short id (its page in the registry's viewer), its day, its
+ *  message's first line (masked). */
 export function latestCommit(repo: RepoCoords, c: T.CommitSummary): El {
   const first = (c.message ?? "").split("\n")[0].trim().slice(0, 200);
   const day = dateOfIso(c.committedAt ?? c.authoredAt);
@@ -437,13 +474,15 @@ export function latestCommit(repo: RepoCoords, c: T.CommitSummary): El {
     "p",
     null,
     "Latest commit ",
-    h("code", null, link(`${repoWebUrl(repo)}/commit/${c.sha}`, c.sha.slice(0, 7))),
+    h("code", null, link(repoPath(repo, "commit", [c.sha]), c.sha.slice(0, 7))),
     day ? ` on ${day}` : null,
     first ? `: ${first}` : null,
   );
 }
 
-/** Why GitHub could not be read, in words, with the repository's page on GitHub. */
+/** Why GitHub could not be read, in words. The repository's page at the source only when the
+ *  source may still show it (the reader's limit, an outage), as a discreet last resort (the
+ *  owner's rule, 2026-09-29). */
 export function degradedBlock(repo: RepoCoords, error: GitBackendError): El {
   const web = repoWebUrl(repo);
   let said: string;
@@ -465,7 +504,8 @@ export function degradedBlock(repo: RepoCoords, error: GitBackendError): El {
     default:
       said = "GitHub did not answer: it may be down, or this device offline. Try again in a moment.";
   }
-  return h("p", { class: "warning" }, said, " ", error.code === "not_found" ? null : ["The repository is on GitHub: ", link(web, `${repo.owner}/${repo.name}`), "."]);
+  if (error.code === "not_found") return h("p", { class: "warning" }, said);
+  return h("div", null, h("p", { class: "warning" }, said), h("p", { class: "at-source" }, "Until then, it can only be read where it is hosted. ", link(web, "At the source"), "."));
 }
 
 // ─── reading: GitHub's anonymous API and OSCR's layer ────────────────────────
@@ -633,4 +673,4 @@ export function shellRepo(loaded: Loaded, signedIn: boolean): ShellRepo {
 export const shellTarget = (pathname: string): RepoPath | null => parseRepoPath(pathname);
 
 /** The same view of the repository at its new address, after GitHub's redirect. */
-export const renamedPath = (loaded: Loaded): string | null => (loaded.renamed ? repoPath(loaded.repo, loaded.target.view) : null);
+export const renamedPath = (loaded: Loaded): string | null => (loaded.renamed ? viewPath(loaded.repo, loaded.target) : null);

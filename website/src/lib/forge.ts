@@ -28,8 +28,17 @@ export const GITHUB = "https://github.com";
 
 // ─── the URL scheme of the repository pages ──────────────────────────────────
 
-export type RepoView = "home" | "settings" | "branches";
+/** The views of the /r/ shell. Phase 01: home, settings, branches. Phase 02 (code navigation,
+ *  D02-1) adds GitHub's own shapes after /r/<owner>/<name>/:
+ *  - tree/<ref>/<path…>, blob/<ref>/<path…>: a directory, a file (a branch's name may hold "/":
+ *    the page resolves the longest branch or tag that prefixes the segments, as GitHub does);
+ *  - commits/<ref>/<path…>: the history of a branch, or of a file; commit/<sha>: one commit;
+ *  - compare/<base>...<head>: a comparison (three dots; refs may hold "/");
+ *  - find/<ref>: the file finder; search: the search in the repository (?q=). */
+export type RepoView = "home" | "settings" | "branches" | "tree" | "blob" | "commits" | "commit" | "compare" | "find" | "search";
 export const REPO_VIEWS: readonly RepoView[] = ["home", "settings", "branches"];
+/** The views that carry segments after their name (a ref, a path, a commit, a comparison). */
+export const CODE_VIEWS: readonly RepoView[] = ["tree", "blob", "commits", "commit", "compare", "find", "search"];
 
 export interface RepoCoords {
   owner: string;
@@ -38,6 +47,9 @@ export interface RepoCoords {
 
 export interface RepoPath extends RepoCoords {
   view: RepoView;
+  /** The segments after a code view's name, decoded: the ref and the path, a commit, a comparison.
+   *  Present for the code views only. */
+  rest?: string[];
 }
 
 /** An account name as GitHub's addresses carry it (paths.ts SEGMENT). */
@@ -47,10 +59,26 @@ export const isOwner = (value: unknown): value is string => typeof value === "st
 export const isRepoName = (value: unknown): value is string =>
   typeof value === "string" && SEGMENT.test(value) && !/\.git$/i.test(value);
 
+/** One decoded segment of a ref or a path: not empty, not "." or "..", no "/" (an encoded "%2F"
+ *  would make a path ambiguous), no control character, at most 255 characters. */
+export const isPathSegment = (value: unknown): value is string =>
+  typeof value === "string" && value.length > 0 && value.length <= 255 && value !== "." && value !== ".." && !/[\/\u0000-\u001f\u007f]/.test(value);
+
+/** How many segments each code view takes: [at least, at most]. */
+const SEGMENTS: Partial<Record<RepoView, [number, number]>> = {
+  tree: [1, 64],
+  blob: [2, 64],
+  commits: [0, 64],
+  commit: [1, 1],
+  compare: [1, 64],
+  find: [0, 64],
+  search: [0, 0],
+};
+
 /** The repository and the view a path of the shell names, or null: /r/<owner>/<name>/ (the final
- *  "/" optional), then nothing, "settings/" or "branches/". */
+ *  "/" optional), then nothing, "settings/", "branches/", or a code view and its segments. */
 export function parseRepoPath(pathname: string): RepoPath | null {
-  if (typeof pathname !== "string" || !pathname.startsWith("/r/")) return null;
+  if (typeof pathname !== "string" || !pathname.startsWith("/r/") || pathname.length > 4200) return null;
   let parts: string[];
   try {
     parts = pathname.slice(3).split("/").map(decodeURIComponent);
@@ -58,19 +86,36 @@ export function parseRepoPath(pathname: string): RepoPath | null {
     return null;
   }
   if (parts.length && parts[parts.length - 1] === "") parts.pop();
-  if (parts.length < 2 || parts.length > 3) return null;
-  const [owner, name, view = "home"] = parts;
+  if (parts.length < 2) return null;
+  const [owner, name, view = "home", ...rest] = parts;
   if (!isOwner(owner) || !isRepoName(name)) return null;
-  if (view === "home" || !(REPO_VIEWS as readonly string[]).includes(view)) return parts.length === 2 ? { owner, name, view: "home" } : null;
+  if (parts.length === 2) return { owner, name, view: "home" };
+  const bounds = SEGMENTS[view as RepoView];
+  if (bounds) {
+    if (rest.length < bounds[0] || rest.length > bounds[1] || !rest.every(isPathSegment)) return null;
+    return { owner, name, view: view as RepoView, rest };
+  }
+  if (parts.length > 3 || view === "home" || !(REPO_VIEWS as readonly string[]).includes(view)) return null;
   return { owner, name, view: view as RepoView };
 }
 
-/** The shell's path of a repository's view: "/r/ada/eeg/", "/r/ada/eeg/settings/". */
-export function repoPath(repo: RepoCoords, view: RepoView = "home"): string {
+/** The shell's path of a repository's view: "/r/ada/eeg/", "/r/ada/eeg/settings/",
+ *  "/r/ada/eeg/blob/main/src/a.py" (a code view: its segments, each escaped; no final "/" after a
+ *  file, as GitHub writes it). */
+export function repoPath(repo: RepoCoords, view: RepoView = "home", rest: readonly string[] = []): string {
   if (!isOwner(repo.owner) || !isRepoName(repo.name)) throw new TypeError("not a repository");
   const base = `/r/${encodeURIComponent(repo.owner)}/${encodeURIComponent(repo.name)}/`;
-  return view === "home" ? base : `${base}${view}/`;
+  if (view === "home") return base;
+  if (!SEGMENTS[view]) return `${base}${view}/`;
+  const segs = rest.flatMap((s) => s.split("/")).filter((s) => s !== "");
+  if (!segs.every(isPathSegment)) throw new TypeError("not a path");
+  const tail = segs.map(encodeURIComponent).join("/");
+  if (view === "blob") return `${base}blob/${tail}`;
+  return tail ? `${base}${view}/${tail}/` : `${base}${view}/`;
 }
+
+/** The path of what a RepoPath names (its view and segments). */
+export const viewPath = (repo: RepoCoords, target: Pick<RepoPath, "view" | "rest">): string => repoPath(repo, target.view, target.rest ?? []);
 
 // ─── GitHub's own addresses: git, downloads, tokens ──────────────────────────
 

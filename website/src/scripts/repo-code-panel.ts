@@ -13,7 +13,6 @@ import {
   cloneUrl,
   codespacesUrl,
   desktopUrl,
-  repoWebUrl,
   tokenTemplateUrl,
   zipUrl,
   type RepoCoords,
@@ -77,7 +76,7 @@ export function codePanel(repo: RepoCoords, options: PanelOptions = {}): El {
     h(
       "ul",
       null,
-      h("li", null, link(zipUrl(repo, options.defaultBranch ? commandBranch(options.defaultBranch) : null), "Download ZIP"), ", from GitHub."),
+      h("li", null, "Download ZIP: GitHub builds the archive, so it comes from the source. ", link(zipUrl(repo, options.defaultBranch ? commandBranch(options.defaultBranch) : null), "At the source"), "."),
       h("li", null, link(desktopUrl(repo), "Open with GitHub Desktop"), ", GitHub's application for your computer."),
       h("li", null, link(codespacesUrl(repo), "Open in a codespace"), ": GitHub's, on your own Codespaces quota."),
     ),
@@ -96,7 +95,6 @@ export function codePanel(repo: RepoCoords, options: PanelOptions = {}): El {
     ...commands(remotes.setUrl),
     h("p", null, "Update a local clone after a rename of the repository or of its default branch:"),
     ...commands(remotes.afterRename),
-    h("p", null, "Browse its files on GitHub: ", link(repoWebUrl(repo), `${repo.owner}/${repo.name}`), "."),
   );
 }
 

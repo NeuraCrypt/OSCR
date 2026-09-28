@@ -255,6 +255,122 @@ details.panel > summary { cursor: pointer; font-weight: bold; }
 .confirm p { margin: .25em 0; }
 .confirm .sentence { font-weight: bold; }
 
+/* The code views of the GitHub side (night phase 02): a repository's files, a file's lines, its
+   history. Plain rules in the archive's spirit: words for what a file is, ruled tables, no pills,
+   no icons; the code's colours are muted and never the only way something is said. */
+
+/* The line above a code view: the branch or tag switcher, the path, the actions in words */
+.code-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: .3em 1.2em; margin: .6em 0 .4em; }
+.code-head .path-crumbs { margin: 0; font-family: var(--font-code); font-size: .92em; overflow-wrap: anywhere; }
+.code-head .file-actions { margin: 0; font-size: .92em; }
+p.file-info, p.latest, p.view-switch { margin: .3em 0; color: var(--muted); font-size: .92em; }
+p.latest a { color: var(--link); }
+
+/* A button that reads as a link (Copy, Download, the line menu's actions): the same words, no box */
+button.link {
+  font: inherit; color: var(--link); background: none; border: 0; padding: 0; cursor: pointer;
+}
+button.link:hover { text-decoration: underline; }
+
+/* The branch and tag switcher (key w): a <details>, its panel a ruled box under it */
+details.refs { position: relative; }
+details.refs > summary { cursor: pointer; padding: .1em .5em; border: 1px solid var(--rule); background: var(--bg-sidebar); }
+details.refs .refs-panel {
+  position: absolute; z-index: 3; top: 1.9em; left: 0; width: min(24em, 90vw); max-height: 26em; overflow: auto;
+  background: var(--bg); border: 1px solid var(--rule); padding: .5em .7em; box-shadow: 0 2px 6px rgba(0, 0, 0, .12);
+}
+details.refs .refs-panel h3 { font-size: .95em; margin: .6em 0 .2em; }
+details.refs .refs-panel label { display: block; font-size: .9em; color: var(--muted); }
+details.refs .refs-panel input { width: 100%; box-sizing: border-box; font: inherit; padding: .15em .35em; border: 1px solid #777; border-radius: 0; }
+ul.ref-list { margin: 0; padding: 0; list-style: none; font-family: var(--font-code); font-size: .88em; }
+ul.ref-list li { padding: .1em 0; overflow-wrap: anywhere; }
+
+/* A directory's files: one row each, its kind in words */
+table.files { width: 100%; border-collapse: collapse; margin: .4em 0 1em; font-size: .95em; }
+table.files caption { text-align: left; font-weight: bold; padding: 0 0 .3em; }
+table.files th, table.files td { text-align: left; vertical-align: baseline; padding: .25em .8em .25em 0; border-bottom: 1px solid var(--rule); }
+table.files th { border-bottom-color: var(--text); }
+table.files td.name { font-family: var(--font-code); font-size: .92em; overflow-wrap: anywhere; }
+table.files td.what { color: var(--muted); font-size: .9em; }
+table.files .num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+
+/* A file's lines: the numbers in a gutter of their own (not copied, not found by the browser's
+   search), a click on a number selects the line, shift-click a range. Each line keeps its exact
+   indentation (no wrapping: the block scrolls sideways). */
+ol.lines.code {
+  list-style: none; padding: 0; margin: .4em 0 1em; border: 1px solid var(--rule);
+  overflow-x: auto; tab-size: 4; background: var(--bg);
+}
+ol.lines.code li {
+  position: relative; box-sizing: border-box; width: max-content; min-width: 100%;
+  padding-left: 4.6em; padding-right: .8em; white-space: pre; overflow-wrap: normal;
+}
+ol.lines.code li::before {
+  content: counter(list-item); position: absolute; left: 0; top: 0; bottom: 0; width: 3.6em; padding-right: .5em;
+  text-align: right; color: var(--muted); background: var(--bg-sidebar); border-right: 1px solid var(--rule);
+  cursor: pointer; user-select: none;
+}
+ol.lines.code li:hover::before { color: var(--link); text-decoration: underline; }
+ol.lines.code li.highlight { background: var(--highlighter); }
+ol.lines.tab-2, ol.lines.tab-2 li { tab-size: 2; }
+ol.lines.tab-4, ol.lines.tab-4 li { tab-size: 4; }
+ol.lines.tab-8, ol.lines.tab-8 li { tab-size: 8; }
+/* A hidden or bidirectional character, shown as its code point, never applied */
+span.hidden-char { color: var(--warning); border: 1px dotted var(--warning); font-size: .85em; padding: 0 .1em; }
+/* A file as its plain text (?raw=1) */
+pre.raw { white-space: pre; tab-size: 4; font-size: .85em; line-height: 1.5; }
+
+/* The code's tokens: highlight.js's own classes (class-based output, no style attribute), a muted
+   palette in the archive's spirit; the paper reader's viewer uses the same classes */
+.hljs-comment, .hljs-quote { color: #6b6b6b; font-style: italic; }
+.hljs-doctag, .hljs-meta .hljs-keyword { color: #6f4b00; font-style: normal; }
+.hljs-keyword, .hljs-selector-tag, .hljs-template-tag { color: #7a1f5c; }
+.hljs-built_in, .hljs-type, .hljs-class .hljs-title, .hljs-title.class_ { color: #0b4f8a; }
+.hljs-literal, .hljs-number, .hljs-symbol, .hljs-bullet { color: #7a3e00; }
+.hljs-string, .hljs-regexp, .hljs-char.escape_, .hljs-template-variable { color: #0a5c2b; }
+.hljs-title, .hljs-title.function_, .hljs-section { color: #174ea6; }
+.hljs-meta, .hljs-meta .hljs-string { color: #6f4b00; }
+.hljs-attr, .hljs-attribute, .hljs-property, .hljs-variable, .hljs-params, .hljs-selector-attr, .hljs-selector-class,
+.hljs-selector-id, .hljs-name, .hljs-tag { color: #3d4f5c; }
+.hljs-section, .hljs-strong { font-weight: bold; }
+.hljs-emphasis { font-style: italic; }
+.hljs-link { text-decoration: underline; }
+.hljs-addition { color: #1a5c1a; background: #e8f5e8; }
+.hljs-deletion { color: #8a1b1b; background: #fbeaea; }
+.hljs-subst { color: inherit; }
+
+/* A code view beside the repository's file tree (a pane on the left; above the code on a phone) */
+.code-layout { display: flex; gap: 1.2em; align-items: flex-start; }
+.code-main { flex: 1; min-width: 0; }
+nav.file-tree {
+  flex: 0 0 15em; max-height: calc(100vh - 2em); overflow: auto; position: sticky; top: .5em;
+  font-size: .88em; border: 1px solid var(--rule); background: var(--bg-sidebar); padding: .3em .5em;
+}
+nav.file-tree summary { cursor: pointer; }
+nav.file-tree > details > summary { font-weight: bold; }
+nav.file-tree ul { list-style: none; margin: 0; padding-left: .9em; }
+nav.file-tree > details > ul { padding-left: 0; }
+nav.file-tree li { margin: .08em 0; overflow-wrap: anywhere; }
+nav.file-tree [aria-current="page"] { font-weight: bold; color: var(--text); }
+
+/* The discreet way to the source (GitHub), only for what the registry cannot show, after the
+   sentence that says why */
+p.at-source { font-size: .88em; color: var(--muted); margin: .6em 0; }
+p.at-source a, p.at-source a:visited { color: var(--muted); text-decoration: underline; }
+
+/* The line menu of a selection: sticky above the lines, its actions in words */
+.line-menu {
+  position: sticky; top: 0; z-index: 2; margin: .4em 0 0; padding: .3em .7em;
+  background: var(--bg-sidebar); border: 1px solid var(--masthead); font-size: .92em;
+}
+.line-menu p { margin: .15em 0; }
+form.jump { margin: .4em 0; font-size: .92em; }
+form.jump input { width: 8em; }
+
+/* An image of the repository, read as bytes and shown from an object URL */
+figure.file-image { margin: .6em 0 1em; padding: .6em; border: 1px solid var(--rule); text-align: center; }
+figure.file-image img { max-width: 100%; height: auto; }
+
 footer {
   max-width: var(--width); margin: 0 auto; padding: 1em;
   border-top: 1px solid var(--rule); font-size: .85em; color: var(--muted);
@@ -275,5 +391,13 @@ footer a { margin-right: 1em; }
   .masthead nav { flex-wrap: wrap; gap: .2em 1em; }
   .repo-head { display: block; }
   table.branches, .limits { display: block; overflow-x: auto; }
+  /* Phase 02: the code views take the column; the kind of a file gives way to its name */
+  .code-head { display: block; }
+  .code-head > * { margin: .3em 0; }
+  table.files td.what, table.files th:nth-child(2) { display: none; }
+  ol.lines.code li { padding-left: 3.6em; }
+  ol.lines.code li::before { width: 2.8em; }
+  .code-layout { flex-direction: column; align-items: stretch; }
+  nav.file-tree { order: 2; flex-basis: auto; position: static; max-height: 20em; margin: .6em 0 0; }
   section.danger, .setup, .panel { padding-left: .6em; padding-right: .6em; }
 }

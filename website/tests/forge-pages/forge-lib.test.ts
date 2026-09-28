@@ -19,7 +19,10 @@ import {
   LAYER_SHARDS,
   layerShard,
   layerUrl,
+  isPathSegment,
   parseRepoPath,
+  type RepoView,
+  viewPath,
   payloadText,
   repoPath,
   repoWebUrl,
@@ -48,10 +51,36 @@ describe("the URL scheme of the repository pages", () => {
     assert.deepEqual(parseRepoPath("/r/ada/eeg/settings"), { owner: "ada", name: "eeg", view: "settings" });
   });
 
+  test("the code views of phase 02 carry their segments (D02-1)", () => {
+    const cases: [string, RepoView, string[], string][] = [
+      ["/r/oscr-fixture/eeg-analysis/tree/main/", "tree", ["main"], "/r/oscr-fixture/eeg-analysis/tree/main/"],
+      ["/r/oscr-fixture/eeg-analysis/tree/feature/x/src/", "tree", ["feature", "x", "src"], "/r/oscr-fixture/eeg-analysis/tree/feature/x/src/"],
+      ["/r/oscr-fixture/eeg-analysis/blob/main/analysis/preprocess.py", "blob", ["main", "analysis", "preprocess.py"], "/r/oscr-fixture/eeg-analysis/blob/main/analysis/preprocess.py"],
+      ["/r/oscr-fixture/eeg-analysis/blob/main/a%20b%23c.txt", "blob", ["main", "a b#c.txt"], "/r/oscr-fixture/eeg-analysis/blob/main/a%20b%23c.txt"],
+      ["/r/oscr-fixture/eeg-analysis/commits/", "commits", [], "/r/oscr-fixture/eeg-analysis/commits/"],
+      ["/r/oscr-fixture/eeg-analysis/commits/main/README.md", "commits", ["main", "README.md"], "/r/oscr-fixture/eeg-analysis/commits/main/README.md/"],
+      ["/r/oscr-fixture/eeg-analysis/commit/0123456789abcdef0123456789abcdef01234567", "commit", ["0123456789abcdef0123456789abcdef01234567"], "/r/oscr-fixture/eeg-analysis/commit/0123456789abcdef0123456789abcdef01234567/"],
+      ["/r/oscr-fixture/eeg-analysis/compare/v1.0...main/", "compare", ["v1.0...main"], "/r/oscr-fixture/eeg-analysis/compare/v1.0...main/"],
+      ["/r/oscr-fixture/eeg-analysis/find/main/", "find", ["main"], "/r/oscr-fixture/eeg-analysis/find/main/"],
+      ["/r/oscr-fixture/eeg-analysis/search/", "search", [], "/r/oscr-fixture/eeg-analysis/search/"],
+    ];
+    for (const [path, view, rest, canonical] of cases) {
+      const parsed = parseRepoPath(path);
+      assert.deepEqual(parsed, { ...EEG, view, rest }, path);
+      assert.equal(viewPath(EEG, parsed!), canonical, path);
+      assert.deepEqual(parseRepoPath(canonical), parsed, canonical);
+    }
+    assert.throws(() => repoPath(EEG, "blob", ["main", ".."]));
+    assert.equal(isPathSegment("a/b"), false);
+    assert.equal(isPathSegment("..."), true);
+  });
+
   test("anything else is not a repository page", () => {
     for (const path of [
       "/r/", "/r/ada/", "/r/ada", "/repositories/", "/x/ada/eeg/", "r/ada/eeg/",
-      "/r/ada/eeg/tree/main/", "/r/ada/eeg/home/", "/r/ada/eeg/issues/", "/r/ada/eeg/settings/x/",
+      "/r/ada/eeg/home/", "/r/ada/eeg/issues/", "/r/ada/eeg/settings/x/", "/r/ada/eeg/tree/", "/r/ada/eeg/blob/main/",
+      "/r/ada/eeg/commit/", "/r/ada/eeg/commit/a/b/", "/r/ada/eeg/search/x/", "/r/ada/eeg/tree/main/../x/", "/r/ada/eeg/blob/main/a%2Fb",
+      "/r/ada/eeg/blob/main/a%00b", "/r/ada/eeg/tree/main/./x/",
       "/r/ada/eeg.git/", "/r/../eeg/", "/r/ada/../", "/r/a%2Fb/eeg/", "/r/ada/e%20g/", "/r/ada/%E0%A4%A/",
       `/r/${"a".repeat(101)}/eeg/`, "/r/ada/e<script>/",
     ]) {

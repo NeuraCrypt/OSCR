@@ -7,7 +7,9 @@
 # the pages that start an authorized action (/new/, /new/link/, /new/import/, /repositories/), the
 # callback page of GitHub's authorization (/forge/authorized/: no Referer at all, so the code in
 # its address never leaves), and the repository pages (/r/*), which also read GitHub's anonymous API
-# and raw files in the reader's browser, on the reader's own quota (D00-5).
+# and raw files in the reader's browser, on the reader's own quota (D00-5). Phase 02: the repository's
+# own images are read as bytes and shown from object URLs (img-src blob:); no image loads from
+# another host (D02-6), and nothing a repository holds runs (script-src 'self' only).
 /account/
   X-Frame-Options: DENY
   Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'; object-src 'none'
@@ -50,5 +52,5 @@
 
 /r/*
   X-Frame-Options: DENY
-  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self' https://api.github.com https://raw.githubusercontent.com; form-action 'self'; frame-ancestors 'none'; base-uri 'none'; object-src 'none'
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; connect-src 'self' https://api.github.com https://raw.githubusercontent.com; form-action 'self'; frame-ancestors 'none'; base-uri 'none'; object-src 'none'
   Referrer-Policy: same-origin
