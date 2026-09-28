@@ -33,6 +33,16 @@ Mis à jour au fil de la nuit. La mission est dans `docs/NIGHT_RUN.md`, le journ
 10. **Une fois l'App créée, tester** : si une personne déjà autorisée est renvoyée sans invite ; `POST /user/repos` avec le jeton utilisateur de l'App quand l'installation ne couvre que des dépôts choisis ; la plus grosse charge `createCommitOnBranch` que GitHub accepte, et son erreur pour une tête périmée ; la taille réelle des webhooks ; le blame d'un long fichier dans les 10 s de GraphQL.
 11. **Seulement si tu veux un jour qu'OSCR héberge lui-même les dépôts** (aucune option n'est à la fois gratuite et certaine) : Workers Paid plus R2 (environ 6,35 $ par mois à 100 Go) avec git-on-cloudflare ; Cloudflare Artifacts une fois disponible pour tous (environ 54,50 $ par mois) ; un Forgejo ou GitLab institutionnel sans carte, sous un accord signé ; ou la permission écrite de GitHub au titre de l'AUP §6 (déconseillé). Chacune ajouterait un backend derrière `GitBackend`.
 
+12. **Branche `openalex`** (hors mission de nuit, terminée et poussée, non fusionnée : la nuit interdit de fusionner dans `main`). Enrichissement par OpenAlex :
+    - schéma 7, 422 tests ;
+    - sur une copie de la base : 95 % des articles ont une institution ROR (contre 11 %), 96 % un thème ; coût 0,0001 $.
+    - À faire après fusion : `.venv/bin/python -m oscr enrich --openalex`, environ 4 heures, reprenable.
+13. **Urgent avant cette fusion : le budget de fichiers du site.**
+    - Avec les pages d'institutions, la construction sur les vraies données donne 16 905 fichiers, au-delà de la marge de 15 000 du contrôle (limite dure de Cloudflare : 20 000).
+    - Il faut générer les pages d'entités à la demande, ou baisser `STATIC_MAX`.
+14. **Décision prise, à relire** : un ORCID n'est repris d'OpenAlex que s'il a été déposé par l'éditeur. Les profils d'auteurs d'OpenAlex en ajouteraient 54 280, mais OpenAlex fusionne parfois deux personnes, et un ORCID fait d'une personne l'auteur vérifié d'un article.
+15. **Ménage** : `.worktrees/openalex/data/dev-copy` (6,4 Go, copie de travail) peut être supprimé. Bug ancien signalé : `IndexError` dans `_shell_word`, `oscr/repofeatures.py`.
+
 ## 3. Décisions prises
 
 Voir [`docs/DECISIONS.md`](DECISIONS.md) (entrées D00-1 à D00-16).
