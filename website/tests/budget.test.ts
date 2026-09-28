@@ -144,7 +144,11 @@ describe("the markup", () => {
     assert.equal(html.match(/<h2 class="day">/g)?.length, 2);
     assert.equal(html.match(/<dt>/g)?.length, 3);
     assert.equal(html.match(/class="reader-link"/g)?.length, 1);
-    assert.ok(html.includes(`<a class="reader-link" href="/paper/doi_10.5555_x.1/code/">Code ↔ Paper</a>`));
+    assert.ok(html.includes(`<a class="reader-link" href="/paper/doi_10.5555_x.1/#code">Code ↔ Paper</a>`));
+    // With the reader built, the code's name leads to it; without, to the source.
+    assert.ok(html.includes(`<a class="code" href="/paper/doi_10.5555_x.1/#code">lab/<wbr>x</a>`));
+    assert.ok(html.includes(`<a class="code" href="https://github.com/lab/x">lab/<wbr>x</a>`));
+    assert.ok(!html.includes("/code/"), "the reader's former address is linked nowhere");
     assert.ok(html.includes("A &lt;b&gt;bold&lt;/b&gt; study &amp; more"));
     assert.ok(html.includes(`<span class="ok">code verified</span>, 3 files readable, 2 matches`));
     assert.ok(html.includes(`<a href="/paper/doi_10.5555_x.3/#data">data</a>`));
@@ -310,10 +314,17 @@ describe("a page that no static file answers (worker/pages.ts)", () => {
     assert.deepEqual(declared, PAPER_HEADERS);
   });
 
-  it("sends the reader and the address without its slash to the page", async () => {
+  it("sends the reader's former address and the address without its slash to the page", async () => {
     const reader = await handlePage(get(`/paper/${PAPER.slug}/code/`), site());
-    assert.equal(reader.status, 302);
-    assert.equal(reader.headers.get("Location"), `https://oscr.example/paper/${PAPER.slug}/#code`);
+    assert.equal(reader.status, 301);
+    assert.equal(reader.headers.get("Location"), `https://oscr.example/paper/${PAPER.slug}/`);
+    // The file asked for stays in the address; the fragment (#pair-3, #L10) is the browser's to keep.
+    const file = await handlePage(get(`/paper/${PAPER.slug}/code/?repo=github.com%2Flab%2Fx&path=a.py`), site());
+    assert.equal(file.headers.get("Location"), `https://oscr.example/paper/${PAPER.slug}/?repo=github.com%2Flab%2Fx&path=a.py`);
+    // A static paper has no record: its former reader is sent to its page all the same.
+    const statics = await handlePage(get("/paper/doi_10.5555_oscr.fixture.1/code"), site());
+    assert.equal(statics.status, 301);
+    assert.equal(statics.headers.get("Location"), "https://oscr.example/paper/doi_10.5555_oscr.fixture.1/");
     const bare = await handlePage(get(`/paper/${PAPER.slug}`), site());
     assert.equal(bare.status, 301);
     assert.equal(bare.headers.get("Location"), `https://oscr.example/paper/${PAPER.slug}/`);

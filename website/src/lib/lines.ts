@@ -1,7 +1,6 @@
 // Code lines and pairs, shared by the build (the file prerendered in the reader)
 // and by the reader's browser (the files it loads on demand): both must number the
 // lines and place the pairs in exactly the same way.
-import { plural } from "./format";
 
 /** A match between a paragraph of the paper and a range of lines of a file. */
 export type Span = { pair: number; start: number; end: number };
@@ -42,22 +41,6 @@ export function decorate(lines: string[], spans: Span[]) {
 
 /** A piece of text, or a link. */
 export type Part = string | { href: string; text: string };
-
-/** The line under the file selector: what is shown, under which license, and where
- *  the source is. `block` is a whole repository whose files are read at the source. */
-export function fileInfo(
-  v: { block: boolean; language?: string; lines?: number | null; truncated?: boolean; text?: boolean; source?: string },
-  r: { name: string; url: string; license: string },
-): Part[] {
-  const license = r.license || "no license";
-  if (v.block) return [`${r.name} · ${license} · not republished here: `, { href: r.url, text: "open the repository" }];
-  const what = [v.language || "Text", v.lines ? plural(v.lines, "line") : "", r.name, license].filter(Boolean).join(" · ");
-  const source = v.source || r.url;
-  if (!v.text) return [`${what} · not republished here: `, { href: source, text: "read it at the source" }];
-  const parts: Part[] = [`${what} · `, { href: source, text: "at the source" }];
-  if (v.truncated) parts.push(" · shortened here: the full file is at the source");
-  return parts;
-}
 
 /** A link to the exact lines at the source, when the forge has a syntax for it. */
 export function sourceLines(url: string, start: number, end: number): string {

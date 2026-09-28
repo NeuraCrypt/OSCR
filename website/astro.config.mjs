@@ -35,5 +35,8 @@ export default defineConfig({
   // Every page script as a file of the site, never inline: the pages that ask the Worker for
   // a signed-in reader (the account, a paper's page, /submit/) forbid inline scripts in their
   // Content-Security-Policy (public/_headers).
-  vite: { build: { assetsInlineLimit: 0 } },
+  // The Code ↔ Paper reader's highlighter runs in a worker that loads each language as its own
+  // file when a file needs it: an ES module worker (Vite's default, a single classic script,
+  // cannot split).
+  vite: { build: { assetsInlineLimit: 0 }, worker: { format: "es" } },
 });

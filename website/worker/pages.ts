@@ -4,7 +4,10 @@
 //   GET /paper/<slug>/        a paper past STATIC_PAPERS (src/lib/shards.ts): its record, read
 //                             in /records/paper/NN.json, rendered into the paper's shell
 //                             (/paper/404.html) with lib/render.ts's markup, status 200
-//   GET /paper/<slug>/code/   its Code ↔ Paper reader is not built: 302 to /paper/<slug>/#code
+//   GET /paper/<slug>/code/   the Code ↔ Paper reader's former address: 301 to /paper/<slug>/,
+//                             its query kept (?path=…: the file shown), with no fragment so that
+//                             the browser keeps the one asked for (#pair-3, #L10-L20); the reader
+//                             is the first section of the page (static or rendered here)
 //   anything else             the site's 404 page, status 404
 //
 // Cost of one such page: one Worker request (out of the free plan's 100,000 a day), two reads
@@ -24,7 +27,7 @@ export interface Assets {
 export const PAPER_HEADERS: Readonly<Record<string, string>> = {
   "X-Frame-Options": "DENY",
   "Content-Security-Policy":
-    "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'; object-src 'none'",
+    "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self' https://www.ebi.ac.uk; form-action 'self'; frame-ancestors 'none'; base-uri 'none'; object-src 'none'",
   "Referrer-Policy": "same-origin",
 };
 
@@ -95,10 +98,12 @@ export async function handlePage(request: Request, assets: Assets | undefined): 
   if (request.method !== "GET" && !head) return new Response("Method not allowed", { status: 405, headers: { Allow: "GET, HEAD" } });
   const m = url.pathname.match(PAPER);
   const slug = m ? keyOf("paper", m[1]) : "";
+  // /paper/<slug>/code/: to the page itself, whether it is static or rendered here (which then
+  // says whether the registry has it). No file answers it any more.
+  if (m && slug && m[2]) return Response.redirect(new URL(`/paper/${slug}/${url.search}`, url).toString(), 301);
   const record = slug ? await paperRecord(assets, url, slug) : undefined;
   if (!m || !record) return notFound(assets, url, head);
-  // /paper/<slug>/code/, /paper/<slug>: to the page itself.
-  if (m[2]) return Response.redirect(new URL(`/paper/${slug}/#code`, url).toString(), 302);
+  // /paper/<slug>: to the page itself.
   if (!m[3] || m[1] !== slug) return Response.redirect(new URL(`/paper/${slug}/`, url).toString(), 301);
   const shell = await asset(assets, url, "/paper/404.html");
   const page = shell.ok ? fillShell(await shell.text(), paperView(record)) : null;

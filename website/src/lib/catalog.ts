@@ -115,9 +115,10 @@ export const withCode = catalog.articles.filter((a) => a.code.length > 0);
  *  does not say: its papers with code keep their page. */
 export const withPage = catalog.articles.filter((a) => a.page === true || a.code.length > 0);
 
-/** The papers whose page is built ahead of time: the STATIC_PAPERS most recent (lib/shards.ts).
- *  The others' pages are rendered on demand by the Worker (worker/pages.ts), from the records
- *  of src/pages/records/; they have no Code ↔ Paper reader. */
+/** The papers whose page is built ahead of time: the STATIC_PAPERS most recent (lib/shards.ts),
+ *  with the Code ↔ Paper reader on the page of those with code. The others' pages are rendered
+ *  on demand by the Worker (worker/pages.ts), from the records of src/pages/records/; they have
+ *  no reader. */
 const staticSlugs = staticSelection(withPage, staticCap());
 /** STATIC_PAPERS, or a smaller number set in OSCR_STATIC_PAPERS: for the tests and the
  *  screenshots, which build the fixture with papers rendered on demand. Never a larger one. */
@@ -128,12 +129,11 @@ function staticCap(): number {
 export const isStatic = (a: Pick<Article, "slug">) => staticSlugs.has(a.slug);
 export const staticPages = withPage.filter(isStatic);
 export const onDemand = withPage.filter((a) => !isStatic(a));
-/** The papers with a Code ↔ Paper reader: those with code and a static page. */
-export const withReader = withCode.filter(isStatic);
 
 export const recordUrl = (a: Article) => `/paper/${a.slug}/`;
-/** The paper's Code ↔ Paper reader, or "" when it has none (no code, or no static page). */
-export const readerUrl = (a: Article) => (a.code.length > 0 && isStatic(a) ? `/paper/${a.slug}/code/` : "");
+/** The paper's Code ↔ Paper reader, the first section of its page, or "" when it has none (no
+ *  code, or no static page). Its former address, /paper/<slug>/code/, leads there (worker/pages.ts). */
+export const readerUrl = (a: Article) => (a.code.length > 0 && isStatic(a) ? `/paper/${a.slug}/#code` : "");
 
 /** A paper as the catalogue's listing shows it (lib/render.ts). */
 export function rowOf(a: Article): Row {

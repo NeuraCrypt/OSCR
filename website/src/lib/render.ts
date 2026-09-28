@@ -71,8 +71,9 @@ const statusWords = (s: string) => {
 // ---------------------------------------------------------------------------------------
 // The catalogue's listing: one h2.day per day of publication, then a dl.listing.
 
-/** A paper in a listing. `reader`: its Code ↔ Paper reader is built (a static page). A code
- *  repository's `repo` (github.com/owner/name) serves only the home page's filter. */
+/** A paper in a listing. `reader`: its Code ↔ Paper reader is built (a static page, #code); its
+ *  code's names then lead there, not to the source. A code repository's `repo`
+ *  (github.com/owner/name) serves the home page's filter, and the reader's choice of repository. */
 export type Row = {
   slug: string;
   doi: string;
@@ -120,14 +121,17 @@ function rowHtml(r: Row, n: number, searchable: boolean): string {
       `</dd>`
     );
   }
-  const code = r.code.map((d) => `${a(d.name, d.url, "code")} (${esc(d.license || "no license")})`).join(", ");
+  // With the reader built, the code is read on the paper's page first; the source comes last.
+  const inReader = (d: Row["code"][number]) =>
+    r.code.length > 1 && d.repo ? `${page}?${new URLSearchParams({ repo: d.repo }).toString()}#code` : `${page}#code`;
+  const code = r.code.map((d) => `${a(d.name, r.reader ? inReader(d) : d.url, "code")} (${esc(d.license || "no license")})`).join(", ");
   const facts = [
     r.files > 0 ? `, ${esc(plural(r.files, "file"))} readable` : "",
     r.pairs > 0 ? `, ${esc(plural(r.pairs, "match", "matches"))}` : "",
     r.map ? `, map validated by an author (${a("DOI", doiUrl(r.map))})` : "",
   ].join("");
   return (
-    `<dt${keys}>${head}${r.reader ? `${a("Code ↔ Paper", `${page}code/`, "reader-link")} ` : ""}` +
+    `<dt${keys}>${head}${r.reader ? `${a("Code ↔ Paper", `${page}#code`, "reader-link")} ` : ""}` +
     `${a(`doi:${r.doi}`, page)} [${a("paper", doiUrl(r.doi))}, ${a("repository", `${page}#code`)}]</dt>` +
     `<dd><div class="title">${esc(r.title)}</div>${journal}` +
     line("Authors' code", code) +
@@ -540,15 +544,7 @@ export function paperView(p: PaperRecord): View {
         )
         .join("")
     : "";
-  const body = [
-    `<h1>${wrap(p.title)}</h1>`,
-    notices,
-    `<nav class="tabs" aria-label="Sections of this page"><ul><li><a href="#overview">Overview</a></li>` +
-      `<li><a href="#code">Code</a></li><li><a href="#data">Data</a></li><li><a href="#contribute">Contribute</a></li></ul></nav>`,
-    `<p class="summary">This page is built on request from the registry's record of the paper. The ` +
-      `${esc(number(STATIC_PAPERS))} most recent papers have a fuller page, built ahead of time, with the Code ↔ Paper reader, ` +
-      `the tracing map and its validation, the record's versions, how to cite it, similar papers and the README badge. ` +
-      `This paper is older: its record, its code, its data and the requests about it are below.</p>`,
+  const overview = [
     `<section id="overview"><h2>Overview</h2>`,
     authorsHtml,
     line("Journal", p.journal.text ? a(p.journal.text, p.journal.href) : "—"),
@@ -560,6 +556,8 @@ export function paperView(p: PaperRecord): View {
     p.institutions.length ? line("Institutions", links(p.institutions)) : "",
     p.categories.length ? line("Categories", links(p.categories)) : "",
     `</section>`,
+  ].join("");
+  const codeSection = [
     `<section id="code"><h2>Code</h2>`,
     hasCode
       ? `<p>${facts.length ? `${esc(facts.join("; "))}. ` : ""}The Code ↔ Paper reader is built for the ` +
@@ -569,6 +567,22 @@ export function paperView(p: PaperRecord): View {
     p.tools.length ? line("Tools found in the code", links(p.tools)) : "",
     p.map ? line("Tracing map", `validated by an author, ${a("its DOI", doiUrl(p.map))}`) : "",
     `</section>`,
+  ].join("");
+  // A paper with code opens on its code, as the static pages do (their reader); the others on
+  // their overview.
+  const tabs = hasCode
+    ? `<li><a href="#code">Code</a></li><li><a href="#overview">Overview</a></li>`
+    : `<li><a href="#overview">Overview</a></li><li><a href="#code">Code</a></li>`;
+  const body = [
+    `<h1>${wrap(p.title)}</h1>`,
+    notices,
+    `<nav class="tabs" aria-label="Sections of this page"><ul>${tabs}` +
+      `<li><a href="#data">Data</a></li><li><a href="#contribute">Contribute</a></li></ul></nav>`,
+    `<p class="summary">This page is built on request from the registry's record of the paper. The ` +
+      `${esc(number(STATIC_PAPERS))} most recent papers have a fuller page, built ahead of time, with the Code ↔ Paper reader, ` +
+      `the tracing map and its validation, the record's versions, how to cite it, similar papers and the README badge. ` +
+      `This paper is older: its record, its code, its data and the requests about it are below.</p>`,
+    hasCode ? codeSection + overview : overview + codeSection,
     `<section id="data"><h2>Data</h2>`,
     p.datasets.length ? `<h3>Datasets cited</h3><ul>${p.datasets.map((d) => `<li>${a(d.text, d.href)}</li>`).join("")}</ul>` : "",
     others.length

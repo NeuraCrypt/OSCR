@@ -3,7 +3,8 @@
 //   npm run check                    every page the data asks for exists (a page for each
 //                                    paper of decision D2: a file for the STATIC_PAPERS most
 //                                    recent, a record rendered on demand for the others, and
-//                                    none for the other papers), every internal link leads to a
+//                                    none for the other papers; the Code ↔ Paper reader on the
+//                                    page of each static paper with code), every internal link leads to a
 //                                    file, to an entity's record behind its shell, or to a paper's
 //                                    record (and every "#" link to an element of its page), each
 //                                    paper's page has its sections, the shards are where their
@@ -102,9 +103,12 @@ for (const [type, count] of Object.entries(SHARDS)) {
 }
 
 // 3. A page for each paper of decision D2, none for the others: a static one for the most recent,
-// a record for the others; a reader for each static paper with code; the lookup's shards.
+// a record for the others; the reader on the page of each static paper with code whose files were
+// read (its former address, /paper/<slug>/code/, is no file: the Worker sends it to the page);
+// the lookup's shards.
 const catalog = JSON.parse(readFileSync("src/data/catalog.json", "utf8"));
 const staticPapers = [];
+const withReader = [];
 const onDemand = [];
 for (const a of catalog.articles) {
   const page = a.page === true || a.code.length > 0;
@@ -116,8 +120,13 @@ for (const a of catalog.articles) {
   }
   if (file === record) problems.push(`${a.doi}: ${file ? "both a static page and a record" : "no page"}`);
   (file ? staticPapers : onDemand).push(a);
-  if (a.code.length > 0 && file !== exists(`/paper/${a.slug}/code/`)) {
-    problems.push(`${a.doi}: ${file ? "no Code ↔ Paper reader" : "a reader without its static page"}`);
+  if (exists(`/paper/${a.slug}/code/`)) problems.push(`${a.doi}: a file at /paper/${a.slug}/code/, the reader's former address`);
+  if (file && a.code.length > 0) {
+    const html = readFileSync(join(DIST, `paper/${a.slug}/index.html`), "utf8");
+    const read = a.code.some((r) => r.files_read > 0);
+    const reader = /<section id="code" class="reader"/.test(html) && html.includes('id="reader-data"');
+    if (read && !reader) problems.push(`${a.doi}: its code was read, but its page has no Code ↔ Paper reader`);
+    if (read && reader) withReader.push(a);
   }
 }
 if (staticPapers.length > STATIC_PAPERS) problems.push(`${n(staticPapers.length)} static paper pages, more than ${n(STATIC_PAPERS)}`);
@@ -166,9 +175,9 @@ for (const page of pages) {
   const html = readFileSync(join(DIST, page), "utf8");
   const ids = new Set([...html.matchAll(/\sid="([^"]+)"/g)].map((m) => m[1]));
   // The Code ↔ Paper reader's "#pair-N" is its script's state, not an element.
-  const reader = /^\/paper\/[^/]+\/code\//.test(page);
   for (const [, url] of html.matchAll(/\s(?:href|src)="([^"]*)"/g)) {
-    if (url.startsWith("#") && url.length > 1 && !reader) {
+    if (/^#pair-\d+$/.test(url)) continue;
+    if (url.startsWith("#") && url.length > 1) {
       links += 1;
       if (!ids.has(decodeURIComponent(url.slice(1)))) problems.push(`${page}: no element for the link ${url}`);
       continue;
@@ -179,7 +188,8 @@ for (const page of pages) {
     const missing = SECTIONS.filter((id) => !ids.has(id));
     if (missing.length) problems.push(`${page}: no section ${missing.map((id) => `#${id}`).join(", ")}`);
   }
-  if (/^\/(paper\/[^/]+|account|submit)\/index\.html$/.test(page) && /<script(?![^>]*\ssrc=)[^>]*>/.test(html)) {
+  // (The reader's data, a <script type="application/json">, is not run: it is allowed.)
+  if (/^\/(paper\/[^/]+|account|submit)\/index\.html$/.test(page) && /<script(?![^>]*\s(?:src=|type="application\/json"))[^>]*>/.test(html)) {
     problems.push(`${page}: an inline script, which its Content-Security-Policy forbids`);
   }
 }
@@ -200,24 +210,23 @@ for (const [type, map] of Object.entries(records)) {
     for (const slug of record.papers ?? []) if (!rows.has(slug)) problems.push(`/records/${type}/ ${k}: no row for ${slug}`);
   }
 }
-for (const [slug, r] of rows) {
-  follow(`a row of ${slug}`, `/paper/${slug}/`);
-  if (r.reader) follow(`a row of ${slug}`, `/paper/${slug}/code/`);
-}
+for (const slug of rows.keys()) follow(`a row of ${slug}`, `/paper/${slug}/`);
 
-// 5. No email address on a page of the site, in the lookup or in the records. (The Code ↔ Paper
-// reader and the script lots show the authors' own code, as they published it.)
+// 5. No email address on a page of the site, in the lookup or in the records. (The lines of code
+// of the Code ↔ Paper reader and the script lots show the authors' own code, as they published it,
+// their addresses masked by the export: catalog.mask_emails.)
 const EMAIL = /[\w.+-]+@[\w-]+(?:\.[\w-]+)*\.[a-z]{2,}/i;
 for (const f of files) {
-  if (!/\.(html|json)$/.test(f) || /^\/paper\/[^/]+\/code\//.test(f) || f.startsWith("/scripts/")) continue;
-  const m = readFileSync(join(DIST, f), "utf8").match(EMAIL);
+  if (!/\.(html|json)$/.test(f) || f.startsWith("/scripts/")) continue;
+  const text = readFileSync(join(DIST, f), "utf8").replace(/<ol class="lines[^"]*" id="lines"[^>]*>[\s\S]*?<\/ol>/, "");
+  const m = text.match(EMAIL);
   if (m) problems.push(`${f}: an email address (${m[0]})`);
 }
 
 // 6. With --every-route: each kind of page at least once.
 const kinds = {
   "/paper/<slug>/ (static)": staticPapers.length,
-  "/paper/<slug>/code/": files.filter((f) => /^\/paper\/[^/]+\/code\/index\.html$/.test(f)).length,
+  "/paper/<slug>/ with the reader": withReader.length,
   "/paper/<slug>/ (on demand)": onDemand.length,
   ...Object.fromEntries(ENTITY_TYPES.map((t) => [`/${t}/<key>/`, records[t].size])),
   "/browse/<facet>/<value>/": files.filter((f) => /^\/browse\/[^/]+\/[^/]+\/index\.html$/.test(f)).length,
@@ -245,7 +254,7 @@ console.log("Files by folder:");
 for (const [folder, count] of [...folders].sort((x, y) => y[1] - x[1] || x[0].localeCompare(y[0]))) {
   console.log(`  ${String(n(count)).padStart(7)}  ${folder}`);
 }
-console.log(`Papers: ${n(staticPapers.length)} static (at most ${n(STATIC_PAPERS)}, ${n(paperFiles)} files with their readers), ` +
+console.log(`Papers: ${n(staticPapers.length)} static (at most ${n(STATIC_PAPERS)}, ${n(paperFiles)} files, the readers on their pages), ` +
   `${n(onDemand.length)} rendered on demand; every other file: ${n(others)} (at most ${n(FIXED_FILES_MAX)}).`);
 console.log("Pages by kind:");
 console.log(Object.entries(kinds).map(([k, c]) => `  ${String(n(c)).padStart(7)}  ${k}`).join("\n"));

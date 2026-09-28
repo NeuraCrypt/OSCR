@@ -130,43 +130,208 @@ a.reader-link {
   text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: .2em;
 }
 
-/* The Code ↔ Paper reader: the paper and its authors' code side by side, over the
-   full height of the window and wider than the text column (code needs the width).
-   Each pane scrolls on its own, under a header that stays in place. */
+/* The Code ↔ Paper reader, the first section of a paper's page (#code): the paper and its
+   authors' code side by side, wider than the text column (code needs the width) and as high as
+   the window allows. Each pane scrolls on its own; the paper's can be hidden, and the code then
+   takes the whole width. Buttons are square and ruled, never pills. */
+.reader {
+  width: min(calc(100vw - 2em), 2400px);
+  margin: 0 0 1.5em calc(50% - min(calc(50vw - 1em), 1200px));
+  scroll-margin-top: .5em;
+}
+.reader-bar {
+  display: flex; flex-wrap: wrap; align-items: center; gap: .3em 1em;
+  margin: 0 0 .45em;
+}
+.reader-bar h2 { font-size: 1.1em; margin: 0; white-space: nowrap; }
+.reader-summary { flex: 1 1 24em; margin: 0; font-size: .88em; color: var(--muted); }
+.reader-tools { display: flex; flex-wrap: wrap; gap: .35em; }
+.reader button, .reader .menu > summary {
+  font: inherit; font-size: .84em; line-height: 1.4; padding: .12em .6em;
+  border: 1px solid #a9b3bc; border-radius: 0; background: #fff; color: var(--text);
+  cursor: pointer; white-space: nowrap;
+}
+.reader button:hover, .reader .menu > summary:hover { background: #eef1f4; }
+.reader button[aria-pressed="true"] { background: #dde5ec; border-color: #7d8b98; }
+.reader button:disabled { color: #9aa1a8; background: #fff; cursor: default; }
+#toggle-paper { font-weight: bold; }
+
+/* The legend: every match, folded; each entry opens it on both sides */
+.legend { margin: 0 0 .45em; font-size: .88em; }
+.legend > summary { cursor: pointer; color: var(--link); width: max-content; max-width: 100%; }
+.legend ol {
+  margin: .3em 0 0; padding: .35em .8em .35em 2.6em; max-height: 13em; overflow: auto;
+  border: 1px solid var(--rule); background: #fff;
+}
+.legend li { margin: .1em 0; }
+.legend a { color: var(--text); }
+.muted { color: var(--muted); }
+
 .compare {
-  display: flex; gap: 1em;
-  width: min(calc(100vw - 2em), 1600px);
-  margin: .8em 0 0 calc(50% - min(calc(50vw - 1em), 800px));
-  height: calc(100vh - 1.5em);
-  height: calc(100dvh - 1.5em);
-  min-height: 20em;
+  display: flex; gap: .7em;
+  height: max(26rem, calc(100vh - 13.5rem));
+  height: max(26rem, calc(100dvh - 13.5rem));
 }
 .pane {
-  flex: 1 1 0; min-width: 0; min-height: 0;
-  overflow: auto; overscroll-behavior: contain;
-  border: 1px solid var(--rule);
+  flex: 2 1 0; min-width: 0; min-height: 0;
+  display: flex; flex-direction: column;
+  border: 1px solid var(--rule); background: var(--bg);
 }
+.code-pane { flex: 3 1 0; }
+.pane[hidden] { display: none; }
 .pane > header {
-  position: sticky; top: 0; z-index: 1;
-  background: var(--bg-sidebar); border-bottom: 1px solid var(--rule);
-  padding: .35em .8em .45em;
+  flex: none; background: var(--bg-sidebar); border-bottom: 1px solid var(--rule);
+  padding: .3em .7em .35em;
 }
-.pane > header h2 { font-size: 1em; margin: 0; }
-.pane > header p { margin: .15em 0 0; font-size: .9em; color: var(--muted); }
-.pane select { font: inherit; max-width: 100%; border-radius: 0; }
-.pane > div { padding: 0 .8em 1.5em; overflow-wrap: break-word; }
+.pane > header h3 { font-size: 1em; margin: 0; }
+.pane > header p { margin: .1em 0 0; font-size: .86em; color: var(--muted); }
+.pane-body {
+  flex: 1; min-height: 0; overflow: auto; overscroll-behavior: contain;
+  padding: 0 1em 1.5em; overflow-wrap: break-word; line-height: 1.5;
+}
+.pane-body h4, .pane-body h5, .pane-body h6 { font-size: 1em; margin: 1.1em 0 .3em; }
+.pane-body h4 { font-size: 1.05em; }
+.pane-body p { margin: .5em 0; padding: .1em .25em; }
+.pane-body p.caption { color: var(--muted); font-size: .92em; }
+.pane-body p > a[data-pair] { font-weight: bold; }
 
-/* Numbered code lines: the list numbers are the line numbers of the file */
+/* The code pane: the file's header, then the list of files beside the viewer */
+.file-head { display: flex; flex-wrap: wrap; align-items: center; gap: .25em .6em; min-width: 0; }
+.file-head + .file-head { margin-top: .2em; }
+.file-path {
+  flex: 1 1 12em; min-width: 0; overflow-wrap: anywhere;
+  font-family: var(--font-code); font-size: .84em;
+}
+.file-path .repo { color: var(--muted); }
+.file-path .sep { color: #8b949e; margin: 0 .2em; }
+.pane > header p.file-facts { flex: 1 1 14em; margin: 0; font-size: .82em; }
+.file-actions { display: flex; flex-wrap: wrap; gap: .3em; align-items: center; }
+.code-body { flex: 1; min-height: 0; display: flex; }
+
+/* The list of the files: the matched ones first, then the folders */
+.files {
+  flex: 0 0 15em; min-width: 0; overflow: auto; overscroll-behavior: contain;
+  border-right: 1px solid var(--rule); background: #fafbfc;
+  font-size: .82em; line-height: 1.35; padding: .2em 0 1em;
+}
+.files[hidden] { display: none; }
+.files h4 { font-size: 1em; margin: .7em .6em .2em; color: var(--muted); }
+.files ul { list-style: none; margin: 0; padding: 0 0 0 .85em; }
+.files > div > ul, .files > ul, .files details.repo > ul { padding-left: .2em; }
+.files a {
+  display: flex; gap: .5em; justify-content: space-between; align-items: baseline;
+  padding: .1em .5em .1em .4em; color: var(--text);
+}
+.files a:visited { color: var(--text); }
+.files a:hover { background: #e9eef3; text-decoration: none; }
+.files a .name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.files a.elsewhere .name { color: var(--muted); font-style: italic; }
+.files a[aria-current="true"] { background: #dce5ed; font-weight: bold; box-shadow: inset 3px 0 0 var(--masthead); }
+.files .count { flex: none; color: var(--masthead); font-weight: bold; font-size: .92em; }
+.files summary { padding: .1em .4em; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.files summary:hover { background: #e9eef3; }
+.files details.repo { border-top: 1px solid var(--rule); padding-top: .15em; }
+.files details.repo > summary { white-space: normal; }
+.files p { margin: .3em .6em; }
+.files .filter { margin: .35em .5em .2em; }
+.files input[type="search"] {
+  font: inherit; width: 100%; box-sizing: border-box; padding: .15em .35em;
+  border: 1px solid #a9b3bc; border-radius: 0;
+}
+.files-button[aria-expanded="true"] { background: #dde5ec; border-color: #7d8b98; }
+
+/* The source, discreetly: a menu at the end of the file's header */
+.menu { position: relative; }
+.menu > summary { list-style: none; padding: .12em .5em; }
+.menu > summary::-webkit-details-marker { display: none; }
+.menu > ul {
+  position: absolute; right: 0; top: calc(100% + 2px); z-index: 5;
+  min-width: 17em; margin: 0; padding: .3em 0; list-style: none;
+  background: #fff; border: 1px solid #a9b3bc; box-shadow: 0 2px 8px rgba(0, 0, 0, .14);
+  font-size: .86em;
+}
+.menu > ul li { padding: .25em .9em; white-space: nowrap; color: var(--muted); }
+
+/* The viewer: one file, its lines numbered in a gutter that stays in place when a long line
+   scrolls sideways. Tabs are 4 columns wide. */
+.viewer {
+  flex: 1; min-width: 0; overflow: auto; overscroll-behavior: contain;
+  background: var(--bg); container-type: inline-size;
+}
+.file-note {
+  position: sticky; left: 0; margin: 0; padding: .3em 1em;
+  background: #fff8e1; border-bottom: 1px solid #efdca0; color: var(--warning); font-size: .84em;
+}
+.unavailable { padding: 1em 1.4em; max-width: 48em; line-height: 1.5; }
+.unavailable ul { padding-left: 1.2em; }
+.unavailable li { margin: .2em 0; padding: .1em .3em; }
+.file-end {
+  position: sticky; left: 0; margin: 0; padding: .6em 1em 1.2em;
+  color: var(--muted); font-size: .8em; border-top: 1px solid #eef0f2;
+}
+
 ol.lines {
-  margin: .6em 0 0; padding: 0 0 0 4.6em;
-  font-family: var(--font-code); font-size: .85em; line-height: 1.5;
+  --gutter: 4ch;
+  counter-reset: line; list-style: none;
+  margin: 0; padding: .45em 0 .6em;
+  min-width: 100%; width: max-content; box-sizing: border-box;
+  font-family: var(--font-code); font-size: .8rem; line-height: 1.6;
+  tab-size: 4; -moz-tab-size: 4; color: #1f2328;
 }
+ol.lines.digits-4 { --gutter: 5ch; }
+ol.lines.digits-5 { --gutter: 6ch; }
 ol.lines li {
-  min-height: 1.5em; padding-left: .5em;
-  white-space: pre-wrap; overflow-wrap: anywhere; tab-size: 4;
+  counter-increment: line;
+  min-height: 1.6em; padding-right: 1.5em; white-space: pre;
 }
-ol.lines li::marker { color: var(--muted); }
+:where(ol.lines li) { background-color: var(--bg); }
+/* The number of each line, in the gutter: not part of the text (a copy leaves it out) */
+ol.lines li::before {
+  content: counter(line);
+  position: sticky; left: 0; z-index: 1;
+  display: inline-block; box-sizing: content-box; width: var(--gutter);
+  margin-right: .9em; padding: 0 .7em 0 .3em;
+  text-align: right; text-indent: 0; color: #5f6770; background: inherit;
+  border-right: 1px solid #e3e6e9; user-select: none; -webkit-user-select: none; cursor: pointer;
+}
+ol.lines li:hover::before { color: var(--text); }
 ol.lines a { color: inherit; }
+ol.lines a:hover { text-decoration: none; }
+.viewer.is-wrapped ol.lines { width: auto; }
+.viewer.is-wrapped ol.lines li {
+  white-space: pre-wrap; overflow-wrap: anywhere;
+  padding-left: calc(var(--gutter) + 1.9em); text-indent: calc(-1 * (var(--gutter) + 1.9em));
+}
+/* The lines one links to (#L10-L20): a light overlay that keeps the pairs' colors */
+ol.lines li.is-selected { background-image: linear-gradient(rgba(255, 196, 0, .22), rgba(255, 196, 0, .22)); }
+ol.lines li.is-selected::before { color: var(--text); font-weight: bold; }
+/* A notebook: its cells' headers, and its Markdown as prose. R Markdown's text, likewise. */
+ol.lines li.cell {
+  margin-top: .5em; border-top: 1px solid #d0d7de;
+  font-family: var(--font); font-size: .78rem; color: var(--muted);
+}
+ol.lines li.cell:first-child { margin-top: 0; border-top: 0; }
+ol.lines li.prose {
+  font-family: var(--font); font-size: .86rem; white-space: pre-wrap; overflow-wrap: anywhere;
+  max-width: calc(100cqi - 1em);
+}
+
+/* The syntax, by highlight.js's classes (hljs-…): a light palette, dark enough on the pairs'
+   colors (a contrast of 4.5 at least on each). Colors only: the pairs' backgrounds stay. */
+.hljs-comment, .hljs-quote { color: #525a62; font-style: italic; }
+.hljs-keyword, .hljs-selector-tag, .hljs-meta .hljs-keyword, .hljs-doctag { color: #8b1a5c; }
+.hljs-built_in, .hljs-variable.language_ { color: #0b5d73; }
+.hljs-title, .hljs-title.function_, .hljs-title.class_, .hljs-section { color: #5a32a3; }
+.hljs-string, .hljs-meta .hljs-string, .hljs-addition, .hljs-code { color: #0a5a31; }
+.hljs-number, .hljs-literal, .hljs-attribute, .hljs-selector-id, .hljs-selector-class, .hljs-link { color: #0b4fa3; }
+.hljs-type, .hljs-symbol, .hljs-bullet, .hljs-template-tag, .hljs-template-variable { color: #8a3a00; }
+.hljs-meta, .hljs-selector-pseudo { color: #6e4f00; }
+.hljs-regexp, .hljs-char.escape_, .hljs-subst { color: #9a2c00; }
+.hljs-variable, .hljs-params, .hljs-attr, .hljs-property, .hljs-name, .hljs-tag { color: #1f3f5f; }
+.hljs-deletion { color: #86181d; }
+.hljs-section, .hljs-strong, .hljs-doctag { font-weight: bold; }
+.hljs-emphasis { font-style: italic; }
+.hljs-link { text-decoration: underline; }
 
 /* A match: the paragraph and the code lines of the same pair share one soft color */
 .pair-1 { background: #fff0a3; }
@@ -178,7 +343,25 @@ ol.lines a { color: inherit; }
 .pair-1, .pair-2, .pair-3, .pair-4, .pair-5, .pair-6 { cursor: pointer; }
 /* The pair being read */
 .is-active { outline: 2px solid var(--masthead); outline-offset: 1px; }
-ol.lines li.is-active { outline: 0; box-shadow: inset 3px 0 0 var(--masthead); }
+ol.lines li.is-active { outline: 0; }
+ol.lines li.is-active::before { box-shadow: inset -3px 0 0 var(--masthead); color: var(--text); }
+
+/* Hidden from the eye, not from a screen reader (a status, a heading the buttons stand for) */
+.clip {
+  position: absolute; width: 1px; height: 1px; overflow: hidden;
+  clip-path: inset(50%); white-space: nowrap;
+}
+
+/* A narrow window: the panes one above the other, the code first; the list of files, when
+   opened, above the code. Long lines scroll inside the code pane, never the page. */
+@media (max-width: 900px) {
+  .compare { flex-direction: column; height: auto; }
+  .pane { flex: none; height: 60vh; height: 60dvh; }
+  .code-pane { order: -1; height: 78vh; height: 78dvh; }
+  .code-body { flex-direction: column; }
+  .files { flex: 0 1 auto; max-height: 45%; border-right: 0; border-bottom: 1px solid var(--rule); }
+  .reader-summary { flex-basis: 100%; }
+}
 
 footer {
   max-width: var(--width); margin: 0 auto; padding: 1em;
@@ -191,7 +374,6 @@ footer a { margin-right: 1em; }
   .masthead input[type="search"] { width: 10em; }
   .record { flex-direction: column; }
   .sidebar { flex-basis: auto; width: 100%; box-sizing: border-box; }
-  .compare { flex-direction: column; }
   /* The body of a record takes the column's width: a long word or a <pre> no longer widens it. */
   .record .body { width: 100%; }
   nav.tabs a { padding: .25em .5em; }

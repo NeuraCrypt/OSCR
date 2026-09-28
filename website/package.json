@@ -15,7 +15,8 @@
     "deploy": "npm run build && wrangler deploy"
   },
   "dependencies": {
-    "astro": "^7.3.5"
+    "astro": "^7.3.5",
+    "highlight.js": "^11.12.0"
   },
   "engines": {
     "node": ">=22.12.0"

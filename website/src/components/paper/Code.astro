@@ -1,28 +1,35 @@
 ---
-// The Code section of a paper's page: each repository of its authors' code — state,
-// license, commit, languages, files, Software Heritage, what it holds (README, CITATION.cff,
-// environment, tests, CI, notebooks), the tools found in it and the history of its
-// availability checks —, the way into the Code ↔ Paper reader, and the code availability
-// statement (decision D1).
+// Each repository of a paper's authors' code — state, license, commit, languages, files,
+// Software Heritage, what it holds (README, CITATION.cff, environment, tests, CI, notebooks),
+// the tools found in it and the history of its availability checks —, and the code
+// availability statement (decision D1). On the page of a paper whose code was read, the
+// section is "Repositories" (#repositories), under the Code ↔ Paper reader (#code), and each
+// file links into the reader; otherwise it is the page's Code section (#code). The source
+// comes last, in one line per repository.
 import {
-  alignmentOf, dateInWords, LEVELS, lotEntry, plural, readerUrl, shortName, STATES, type Article,
+  alignmentOf, dateInWords, LEVELS, lotEntry, plural, shortName, STATES, type Article,
 } from "../../lib/catalog";
 import { toolOf, toolUrl } from "../../lib/entities";
 import { featureWords, type PaperPage } from "../../lib/paper";
+import { fileHref } from "../../lib/reader";
 import Statements from "./Statements.astro";
 import Wrap from "./Wrap.astro";
 
 interface Props {
   a: Article;
   p?: PaperPage;
+  /** The section's id: "code", or "repositories" under the reader. */
+  id: "code" | "repositories";
+  /** The reader is on the page (#code). */
+  reader: boolean;
 }
-const { a, p } = Astro.props;
+const { a, p, id, reader } = Astro.props;
 const hasCode = a.code.length > 0;
-const reader = readerUrl(a);
+const multi = a.code.length > 1;
 const pairs = alignmentOf(a)?.pairs ?? [];
 const matches = (repo: string, path: string) => pairs.filter((x) => x.repo === repo && x.path === path).length;
-/** The reader, opened on one file. */
-const readHere = (repo: string, path: string) => `${reader}?${new URLSearchParams({ repo, path })}`;
+/** The reader, on one file of this page. */
+const readHere = (repo: string, path: string) => fileHref(`/paper/${a.slug}/`, repo, path, multi, "code");
 /** Why a paper without code has a page, in words. */
 const WITHOUT: Record<string, string> = {
   on_request: "The paper says that its authors' code is available on request: it was not published with the paper, so there is nothing to verify.",
@@ -33,13 +40,15 @@ const checkWords = (c: { state: string; http: number | null }) =>
   `${STATES[c.state] ?? c.state}${c.http ? ` (HTTP ${c.http})` : ""}`;
 const kinds = new Set(p?.availability.statements.map((s) => s.kind) ?? []);
 ---
-<section id="code">
-  <h2>Code</h2>
-  {hasCode ? (
+<section id={id}>
+  <h2>{id === "code" ? "Code" : multi ? "Repositories" : "Repository"}</h2>
+  {reader ? (
     <p>
-      <a class="reader-link" href={reader}>Code ↔ Paper</a>: the paper and its authors' code side by side
+      Its files are read in the <a href="#code">Code ↔ Paper</a> reader above
       {pairs.length > 0 ? `, with ${plural(pairs.length, "match", "matches")} between paragraphs and lines of code.` : "."}
     </p>
+  ) : hasCode ? (
+    <p>No file of the authors' code could be read here: it is described below, and read at its source.</p>
   ) : (
     <p>{WITHOUT[a.status] ?? "No code of the authors was found in the paper."}</p>
   )}
@@ -56,7 +65,7 @@ const kinds = new Set(p?.availability.statements.map((s) => s.kind) ?? []);
     const sizes = [f?.files != null && plural(f.files, "file"), r.scripts != null && plural(r.scripts, "script")].filter(Boolean);
     return (
       <section>
-        <h3><a class="code" href={r.url}><Wrap text={shortName(r)} /></a></h3>
+        <h3 class="code"><Wrap text={shortName(r)} /></h3>
         <div class="line"><span class="label">License:</span> {r.license || "none: the authors keep all their rights"}</div>
         <div class="line">
           <span class="label">State:</span>{" "}
@@ -106,18 +115,24 @@ const kinds = new Set(p?.availability.statements.map((s) => s.kind) ?? []);
               {files.map((x) =>
                 x.kind === "note" ? (
                   <li>{x.note}</li>
+                ) : reader ? (
+                  <li>
+                    <a class="code" href={readHere(r.repo, x.path)}><Wrap text={x.path} /></a> — {x.language || "text"}
+                    {x.lines ? `, ${plural(x.lines, "line")}` : ""}
+                    {matches(r.repo, x.path) > 0 && `, ${plural(matches(r.repo, x.path), "match", "matches")}`}
+                    {x.text === null && ", not shown here"}
+                  </li>
                 ) : (
                   <li>
                     <a class="code" href={x.source_url || r.url}><Wrap text={x.path} /></a> — {x.language || "text"}
                     {x.lines ? `, ${plural(x.lines, "line")}` : ""}
-                    {matches(r.repo, x.path) > 0 && `, ${plural(matches(r.repo, x.path), "match", "matches")}`}
-                    {x.text !== null && <> [<a href={readHere(r.repo, x.path)}>read</a>]</>}
                   </li>
                 ),
               )}
             </ul>
           </details>
         )}
+        <div class="line"><span class="label">At the source:</span> <a class="code" href={r.url}><Wrap text={r.url.replace(/^https?:\/\/(www\.)?/, "")} /></a></div>
       </section>
     );
   })}

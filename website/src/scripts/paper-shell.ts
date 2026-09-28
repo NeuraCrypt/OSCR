@@ -46,10 +46,13 @@ function fail(why: string) {
 }
 
 async function render() {
-  // /paper/<slug>/ or, for a reader that is not built, /paper/<slug>/code/
+  // /paper/<slug>/ or /paper/<slug>/code/, the Code ↔ Paper reader's former address: the reader is
+  // the first section of the paper's page since 2026-09-28 (the Worker sends that address there
+  // itself; this is for the assets' 404 page, when the Worker is not asked).
   const [first, raw = "", ...rest] = location.pathname.split("/").filter(Boolean);
   const slug = first === "paper" && (rest.length === 0 || (rest.length === 1 && rest[0] === "code")) ? keyOf("paper", raw) : "";
   if (!slug) return show(missingPaper(raw), false);
+  if (rest.length === 1) return location.replace(`/paper/${slug}/${location.search}${location.hash}`);
   let name: string;
   try {
     name = await shardOf(slug, SHARDS.paper);
@@ -67,7 +70,6 @@ async function render() {
   }
   const record = Object.hasOwn(shard, slug) ? shard[slug] : undefined;
   if (!record) return show(missingPaper(slug), false);
-  if (rest.length === 1) history.replaceState(null, "", `/paper/${slug}/#code`);
   show(paperView(record), true);
 }
 
