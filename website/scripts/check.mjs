@@ -12,7 +12,8 @@
 //
 // The GitHub side (night phase 01): its fixed pages are in FIXED; every /r/<owner>/<name>/… link is
 // served by the one shell /r/index.html (public/_redirects: "/r/* /r/ 200"); OSCR's static layer,
-// when the export has one, is at most 64 shards /forge/layer/NN.json, each a JSON object.
+// when the export has one, is at most 64 shards /forge/layer/NN.json, each a JSON object. Phase 02:
+// the tracing maps, exactly 64 shards /forge/traced/NN.json.
 //
 // It prints the number of files: a Worker's static assets stop at 20,000 per version.
 import { existsSync, readdirSync, readFileSync } from "node:fs";
@@ -80,6 +81,37 @@ for (const name of layer) {
   }
   if (!entries || typeof entries !== "object" || Array.isArray(entries)) problems.push(`public/forge/layer/${name}: not an object`);
   else for (const key of Object.keys(entries)) if (key !== key.toLowerCase() || key.split("/").length !== 2) problems.push(`public/forge/layer/${name}: key ${key}`);
+}
+
+// The tracing maps of the repository pages (night phase 02, E4): exactly 64 shards built from the
+// catalogue, /forge/traced/00.json to 63.json, each an object keyed by "owner/name" in lower case,
+// holding maps (paper, commit, pairs) and no paper text.
+const traced = existsSync(join(DIST, "forge/traced")) ? readdirSync(join(DIST, "forge/traced")) : [];
+if (traced.length !== 64) problems.push(`${traced.length} tracing-map shards: 64 expected`);
+for (const name of traced) {
+  const m = /^(\d{2})\.json$/.exec(name);
+  if (!m || Number(m[1]) > 63) {
+    problems.push(`/forge/traced/${name}: not a shard (00.json to 63.json)`);
+    continue;
+  }
+  let entries;
+  try {
+    entries = JSON.parse(readFileSync(join(DIST, "forge/traced", name), "utf8"));
+  } catch {
+    problems.push(`/forge/traced/${name}: not JSON`);
+    continue;
+  }
+  if (!entries || typeof entries !== "object" || Array.isArray(entries)) {
+    problems.push(`/forge/traced/${name}: not an object`);
+    continue;
+  }
+  for (const [key, maps] of Object.entries(entries)) {
+    if (key !== key.toLowerCase() || key.split("/").length !== 2) problems.push(`/forge/traced/${name}: key ${key}`);
+    for (const map of Array.isArray(maps) ? maps : [null]) {
+      if (!map || !/^[0-9a-f]{40}$/.test(map.commit ?? "") || !Array.isArray(map.pairs)) problems.push(`/forge/traced/${name}: a map of ${key} without its commit or pairs`);
+      else for (const p of map.pairs) if (Object.keys(p).some((k) => !["pair", "path", "start", "end", "section", "paragraph", "symbol"].includes(k))) problems.push(`/forge/traced/${name}: a pair of ${key} carries more than its link`);
+    }
+  }
 }
 
 // 3. Every internal link and resource of every page leads to a file, and every link within

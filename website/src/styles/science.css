@@ -312,6 +312,8 @@ ol.lines.code li::before {
 }
 ol.lines.code li:hover::before { color: var(--link); text-decoration: underline; }
 ol.lines.code li.highlight { background: var(--highlighter); }
+/* The selected lines' numbers stand out too (a traced line's colour is close to the highlighter) */
+ol.lines.code li.highlight::before { color: var(--text); font-weight: bold; background: var(--highlighter); }
 ol.lines.tab-2, ol.lines.tab-2 li { tab-size: 2; }
 ol.lines.tab-4, ol.lines.tab-4 li { tab-size: 4; }
 ol.lines.tab-8, ol.lines.tab-8 li { tab-size: 8; }
@@ -499,6 +501,18 @@ details.outline li.level-4, details.outline li.level-5, details.outline li.level
 section.readme { margin: 1.2em 0; border: 1px solid var(--rule); padding: .2em 1em 1em; }
 section.readme h2.readme-name { font-size: .95em; font-family: var(--font-code); border-bottom: 1px solid var(--rule); margin: .3em -1em .9em; padding: 0 1em .4em; }
 pre.readme-text { white-space: pre-wrap; overflow-wrap: anywhere; background: none; border: 0; padding: 0; }
+
+/* Tracing maps in the code view (night phase 02, E4): the traced lines in the reader's colours
+   (.pair-N), a bar in the gutter; the note that says which paragraphs they carry out, each range
+   in its colour; "explain these lines" in the line menu */
+ol.lines.code li.traced { cursor: auto; }
+ol.lines.code li.traced::before { box-shadow: inset -3px 0 0 var(--masthead); color: var(--text); }
+.traced-note { margin: .5em 0 .8em; padding: .3em .8em; border: 1px solid var(--rule); border-left: 3px solid var(--masthead); font-size: .93em; }
+.traced-note p { margin: .3em 0; }
+.traced-note p.traced-title { font-weight: bold; }
+.traced-note ul { margin: .2em 0 .5em; padding-left: 1.2em; }
+.traced-note li { margin: .15em 0; padding: 0 .3em; cursor: auto; }
+p.traced-explain { margin: .3em 0; }
 
 footer {
   max-width: var(--width); margin: 0 auto; padding: 1em;

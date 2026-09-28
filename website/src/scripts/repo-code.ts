@@ -326,8 +326,11 @@ let current: FileState | null = null;
 /** Extra lines under the line menu for a selection (E4: what a tracing map links to the lines). */
 export const lineMenuExtras: ((state: { env: CodeEnv; opened: Opened; path: string; selection: LineRange }) => El | null)[] = [];
 
-/** Line classes (E4: a tracing map's .pair-N) for a file. */
-export const lineMarkers: ((env: CodeEnv, opened: Opened, path: string) => Promise<Map<number, string>>)[] = [];
+/** Line classes (E4: a tracing map's .pair-N) for a file, from its lines as shown. */
+export const lineMarkers: ((env: CodeEnv, opened: Opened, path: string, lines: readonly string[]) => Promise<Map<number, string>>)[] = [];
+
+/** Notes above a file's lines (E4: which lines the tracing maps link). */
+export const blobNotes: ((env: CodeEnv, opened: Opened, path: string, lines: readonly string[]) => Promise<El | null>)[] = [];
 
 /** The lines of a text as the viewer shows them: masked, highlighted within the limits. */
 export async function viewLines(text: string, language: string | null): Promise<{ lines: string[]; nodes: LineNodes[]; plain: boolean }> {
@@ -493,11 +496,12 @@ export async function mountBlob(slot: HTMLElement, env: CodeEnv, segments: reado
       let marks = new Map<number, string>();
       for (const m of lineMarkers) {
         try {
-          marks = new Map([...marks, ...(await m(env, opened, path))]);
+          marks = new Map([...marks, ...(await m(env, opened, path, shown.lines))]);
         } catch {
           // a marker is a nicety
         }
       }
+      for (const note of blobNotes) body.push(await note(env, opened, path, shown.lines).catch(() => null));
       body.push(
         h("div", { class: "line-menu", id: "line-menu", hidden: "hidden", "aria-live": "polite" }),
         h("form", { class: "jump", id: "jump-form", hidden: "hidden" }, h("label", { for: "jump-line" }, "Go to line"), " ", h("input", { type: "text", id: "jump-line", name: "line", autocomplete: "off", maxlength: "15", placeholder: "12 or 12-20" }), " ", h("button", { type: "submit" }, "Go")),

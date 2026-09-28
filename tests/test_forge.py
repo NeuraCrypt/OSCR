@@ -242,3 +242,23 @@ def test_mask_emails_is_the_same_on_the_mac_and_on_the_website():
     assert len(cases) >= 20
     for case in cases:
         assert catalog.mask_emails(case["input"]) == case["expected"], case["input"]
+
+
+# ─── trace points: permalinks (night phase 02, E4) ───────────────────────
+
+def test_parse_permalink_matches_the_website():
+    """The same trace points as website/src/lib/traced.ts parsePermalink, case by case."""
+    fixture = json.loads((FIXTURES / "permalinks.json").read_text())
+    assert len(fixture["cases"]) >= 30
+    for case in fixture["cases"]:
+        point = forge.parse_permalink(case["url"], web=fixture["web"], sites=tuple(fixture["sites"]))
+        assert (point.as_dict() if point else None) == case["point"], case["url"]
+
+
+def test_parse_permalink_needs_a_commit_id():
+    sha = "a" * 40
+    assert forge.parse_permalink(f"https://github.com/o/r/blob/{sha}/x.py#L2") == \
+        forge.TracePoint("github", "o", "r", sha, "x.py", (2, 2))
+    assert forge.parse_permalink("https://github.com/o/r/blob/main/x.py#L2") is None
+    assert forge.parse_permalink(f"/r/o/r/blob/{sha}/x.py") == forge.TracePoint("github", "o", "r", sha, "x.py", None)
+    assert forge.parse_permalink(None) is None  # type: ignore[arg-type]

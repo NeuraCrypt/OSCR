@@ -38,7 +38,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Protocol
-from urllib.parse import quote
+from urllib.parse import quote, unquote, urlsplit
 
 from . import net
 from .repos import _auth_github
@@ -470,3 +470,82 @@ def reader(forge: str) -> ForgeReader:
     if forge == "memory":
         return MemoryReader()
     raise ForgeError("unsupported", f"no reader for {forge!r}")
+
+
+# ─── trace points: permalinks (night phase 02, E4) ───────────────────────
+
+#: GitHub's line anchors: #L3, #L3-L7 (either order); columns (#L3C1-L7C9) are ignored.
+_LINE_ANCHOR = re.compile(r"^L(\d{1,7})(?:C\d{1,5})?(?:-L(\d{1,7})(?:C\d{1,5})?)?$")
+_UNSAFE_URL = re.compile(r"[\s\x00-\x1f\x7f\\]|%(?![0-9A-Fa-f]{2})|%2f", re.IGNORECASE)
+_DOT_SEGMENT = re.compile(r"/(?:\.|%2e){1,2}(?=/|$|[?#])", re.IGNORECASE)
+
+
+@dataclass(frozen=True)
+class TracePoint:
+    """A place in a repository's history: a file at a commit id, and its lines if any."""
+    forge: str
+    owner: str
+    name: str
+    commit: str
+    path: str
+    lines: tuple[int, int] | None
+
+    def as_dict(self) -> dict[str, Any]:
+        return {"forge": self.forge, "owner": self.owner, "name": self.name, "commit": self.commit,
+                "path": self.path,
+                "lines": None if self.lines is None else {"start": self.lines[0], "end": self.lines[1]}}
+
+
+def parse_permalink(url: str, *, web: str = "https://github.com",
+                    sites: tuple[str, ...] = ()) -> TracePoint | None:
+    """A permalink → its trace point, or None: GitHub's ``https://github.com/<o>/<r>/blob/<sha>/
+    <path>#L1-L5`` and the registry's own ``/r/<o>/<r>/blob/<sha>/<path>#L1-L5`` (relative, or on
+    one of ``sites``). An address at a branch is none (it moves). The website reads them the same
+    way (website/src/lib/traced.ts ``parsePermalink``; both checked against
+    tests/fixtures/permalinks.json)."""
+    if not isinstance(url, str) or not url or len(url) > 4096 or _UNSAFE_URL.search(url) \
+            or _DOT_SEGMENT.search(url):
+        return None
+    relative = url.startswith("/") and not url.startswith("//")
+    if not relative and not re.match(r"^https?://", url, re.IGNORECASE):
+        return None
+    try:
+        u = urlsplit(url)
+        w = urlsplit(web)
+    except ValueError:
+        return None
+    try:
+        parts = [unquote(p, errors="strict") for p in u.path.split("/")]
+    except UnicodeDecodeError:
+        return None
+    if parts[0] != "":
+        return None
+    parts = parts[1:]
+    host = (u.hostname or "").lower()
+    site_hosts = {(urlsplit(s).hostname or "").lower() for s in sites}
+    if relative or host in site_hosts:
+        if not parts or parts[0] != "r":
+            return None
+        parts = parts[1:]
+    elif host == (w.hostname or "").lower():
+        if u.scheme.lower() != w.scheme.lower():
+            return None
+    else:
+        return None
+    if len(parts) < 5:
+        return None
+    owner, name, kind, commit, *rest = parts
+    if kind != "blob" or not OBJECT_ID.match(commit) or not SEGMENT.match(owner) or not SEGMENT.match(name):
+        return None
+    if not rest or any(s in ("", ".", "..") or re.search(r"[\x00-\x1f]", s) for s in rest):
+        return None
+    lines: tuple[int, int] | None = None
+    if u.fragment:
+        m = _LINE_ANCHOR.match(u.fragment)
+        a = int(m.group(1)) if m else 0
+        b = int(m.group(2) or m.group(1)) if m else 0
+        if not m or a < 1 or b < 1:
+            return None
+        lines = (min(a, b), max(a, b))
+    return TracePoint("github", owner, re.sub(r"\.git$", "", name, flags=re.IGNORECASE), commit,
+                      "/".join(rest), lines)
