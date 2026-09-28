@@ -864,3 +864,16 @@ archived, or waiting for its deletion): its papers change with the `papers` acti
 hidden, deleted or gone is linked again on its own row, brought up to date.
 
 **Why.** One row per repository id, and no silent change of who linked it.
+
+### D01-27. Settings act on the repository GitHub names by its id; the final deletion after a request only
+
+**Decision.** Every settings, branch and deletion action first asks GitHub for the repository by
+its durable id (GitHub follows renames and transfers), acts on the path GitHub gives, and `check`
+compares the id. `delete_final` is accepted once a deletion was asked: during the grace period, or
+after it, when the Mac's `delete_due` job has hidden the repository; it is the only caller of
+`repos.delete` in the service (a test greps for it), and the Mac never deletes on a forge. The
+Software Heritage request needs a person who may push to the repository (anyone else can ask
+Software Heritage directly); it writes one job and nothing on GitHub.
+
+**Why.** D00-10 and D00-15: no deletion without the person's fresh authorization, no archive
+request the registry makes on its own; the id, not a stale path, decides which repository changes.
