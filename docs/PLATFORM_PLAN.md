@@ -1,8 +1,8 @@
 # Platform plan — Phase 0: audit and plan
 
-Status: **Phase 0 validated by the owner on 2026-09-27, with the decisions of §13. Phase 1 built
-(awaiting the owner's approval to run on the Mac). Phase 2 (navigation) built on its branch,
-awaiting the owner's review (§6, §12). Phase 3 in progress.**
+Status: **Phase 0 validated by the owner on 2026-09-27, with the decisions of §13. Phases 1 and 2 are
+deployed; Phase 3 (search) is built and awaits the owner's approval for its remote setup
+(docs/SEARCH.md §7); Phases 4 and 5 are in progress.**
 Date: 2026-09-26. Scope: turn the catalogue into a full platform (arXiv + SSRN + PubMed +
 a Kaggle dataset page), at zero cost, following `CLAUDE.md`. The platform's name lives in
 one configuration variable, `SITE_NAME` (current value: `OSCR`).
@@ -221,7 +221,7 @@ applied with `wrangler d1 migrations apply` on Cloudflare and by `oscr` on the M
 | `statements` | `paper_id`✱, `kind` (code, data), `text`, `license_gate` | M (C: see decision D1) |
 | `field_provenance` | `entity`, `entity_id`✱, `field`, `source` (openalex, crossref, epmc, jats, pubmed, unpaywall, github, git, zenodo, rule, model), `source_ref`, `fetched_at` | M (C: compact map inside `doc`) |
 | `versions` | `entity`, `entity_id`✱, `version`, `created_at`, `actor` (harvester or user id), `snapshot` (JSON), `diff` (JSON) | M, C |
-| `paper_fts` | FTS5 over title, abstract, authors, keywords, MeSH, journal, repository names, README first lines, tools, identifiers | C |
+| `paper_fts` | FTS5 over title, abstract (open licenses only), authors, keywords, MeSH, journal, repository names, tools, identifiers, plus the filters as tokens; in its own database, `oscr_search` (Phase 3, `migrations/d1/`) | C |
 
 ### Community [U]
 
@@ -405,6 +405,32 @@ whole site).
 
 The justification is in `docs/ARCHITECTURE.md` ("Search engine").
 
+### Built (Phase 3, branch `phase-3`), awaiting the owner's review
+
+The choice above, built and measured on a local D1 (wrangler 4.141); the contract, the figures
+and the remote steps awaiting approval are in `docs/SEARCH.md`.
+- **Two databases**, as proposed: `oscr_catalog` (`papers` with the filter columns and the result
+  row's `doc`, one secondary index for "most cited", `facet_counts`, `meta`) and `oscr_search`
+  (`paper_fts`, FTS5, contentless: abstracts indexed only under an open license, never stored nor
+  returned).
+- **Three changes from the proposal, measured first:**
+  - the filters are **tokens of the index** (its `facets` column), not a `paper_facet` table:
+    such a table costs ~8 rows written per paper (31,000 for 3,700 papers) and 20,000–32,000 rows
+    read to count the facets of 1,000 results, where the tokens cost no row written and the counts
+    come from the rows the index returns anyway;
+  - the facet counts are **exact over the results up to 500**; past 500, they are the first 500
+    results' (and the page says so); the empty query shows the precomputed counts;
+  - the key is **the publication date** (YYYYMMDD × 100,000 + n): "newest first" and date ranges
+    cost no index.
+- `ORDER BY rank` with the column weights configured in the table: D1 counts only the rows
+  returned (19 rows read for the top 20 of 48,000 matches), where `ORDER BY bm25(…)` reads every
+  match twice. A search reads ~40–120 rows when it is narrow and ~540 at most (the pages stop at
+  the first 500 results); an export ~1,500; the empty query ~150. The Worker's CPU: under ~3 ms
+  per search, measured in V8 at a simulated full stock of 91,500 papers.
+- The Mac pushes deltas (`oscr d1 push`): ~3 rows written per paper (measured), ~270k for 90k
+  papers, so a first full load takes 2–4 days within the 80,000-row daily budget, and then a
+  day's new papers and changes a few thousand rows.
+
 ---
 
 ## 8. Accounts, roles, sessions
@@ -449,7 +475,7 @@ nightly to Hugging Face as JSON and Parquet (deltas only, to fit the uplink).
 |---|---|---|
 | 1 — harvester enrichment | the J, E and G fields first (no new request), the article type and the rates on research articles, then OpenAlex, Crossref integrity, GitHub metadata, git history, tool detection, RRIDs, datasets, classification (rules, then local model), provenance, versions; migrations; backfill of the papers already read | decisions D1, D6 |
 | 2 — navigation | categories, journals, institutions, authors, tools, datasets pages; the DOI lookup; pages for "on request" and "data only" (D2). **Built on branch `phase-2`, awaiting review, not deployed**; institutions await ROR ids from OpenAlex | 1 |
-| 3 — search | D1 projection + FTS5, facets, advanced search, export | 1, D3 |
+| 3 — search | D1 projection + FTS5, facets, advanced search, export. **Built on branch `phase-3`, awaiting review, not deployed; the remote D1 databases await approval** (`docs/SEARCH.md`) | 1, D3 |
 | 4 — full paper page | all tabs, Versions with diff | 1–3 |
 | 5 — accounts | ORCID, GitHub, Google, roles, author and maintainer verification | D4 (OAuth apps) |
 | 6 — submission, claims, edition, validation, Zenodo sandbox, badge | | 5 |

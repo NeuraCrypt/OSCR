@@ -34,7 +34,7 @@ const exists = (route) =>
 
 // 1. The fixed pages.
 const FIXED = ["/", "/about/", "/browse/", "/authors/", "/journals/", "/institutions/", "/tools/", "/datasets/",
-  "/lookup/", "/404.html"];
+  "/lookup/", "/search/", "/404.html"];
 for (const route of FIXED) if (!exists(route)) problems.push(`missing page ${route}`);
 
 // 2. A page for each paper of decision D2, none for the others; a reader for each paper

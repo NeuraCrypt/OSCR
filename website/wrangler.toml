@@ -1,12 +1,55 @@
-# Cloudflare Workers, free plan: the static site served as the Worker's assets (no server
-# code yet; asset requests are free and unlimited). Deploy with `npm run deploy`, after
-# `npx wrangler login` (once, in the owner's browser). Pages is no longer used (owner's
-# decision D9, 2026-09-26).
+# Cloudflare Workers, free plan: the static site is the Worker's assets, served first, free and
+# unlimited. Deploy with `npm run deploy`, after `npx wrangler login` (once, in the owner's
+# browser). Pages is no longer used (owner's decision D9, 2026-09-26).
 name = "oscr"
 compatibility_date = "2026-09-01"
 workers_dev = true
+# The Worker's own code: /api/search (Phase 3, docs/SEARCH.md).
+main = "worker/index.ts"
 
 [assets]
 directory = "./dist"
 not_found_handling = "404-page"
 html_handling = "auto-trailing-slash"
+# Only /api/* runs the Worker's code, and counts against the free plan's 100,000 requests a
+# day; every other request is a static asset. When that quota is spent, /api/* answers 429
+# and the pages stay up.
+run_worker_first = ["/api/*"]
+
+# Workers Caching (`[cache] enabled = true`) stays OFF: with it, every request served from the
+# cache, static assets included, is billed as a Worker request (developers.cloudflare.com,
+# Workers pricing, note 4). The search sets Cache-Control and uses the Cache API instead.
+
+# The search's databases are bound once the owner has created them (docs/SEARCH.md, "Remote
+# setup", awaiting approval). Until then /api/search answers 503 "not_configured", the search
+# page says so, and the site deploys as before. The two blocks to add, with the ids that
+# `npx wrangler d1 create` prints:
+#
+# [[d1_databases]]
+# binding = "CATALOG"
+# database_name = "oscr_catalog"
+# database_id = "<id of oscr_catalog>"
+# migrations_dir = "../migrations/d1/catalog"
+#
+# [[d1_databases]]
+# binding = "SEARCH"
+# database_name = "oscr_search"
+# database_id = "<id of oscr_search>"
+# migrations_dir = "../migrations/d1/search"
+
+# Local development only, never deployed: `npx wrangler dev --env local`, `oscr d1 push --local`.
+# The databases live in .wrangler/state; their ids name the local files, nothing remote.
+[env.local]
+name = "oscr-local"
+
+[[env.local.d1_databases]]
+binding = "CATALOG"
+database_name = "oscr_catalog"
+database_id = "00000000-0000-4000-8000-00000000ca7a"
+migrations_dir = "../migrations/d1/catalog"
+
+[[env.local.d1_databases]]
+binding = "SEARCH"
+database_name = "oscr_search"
+database_id = "00000000-0000-4000-8000-000000005ea7"
+migrations_dir = "../migrations/d1/search"
