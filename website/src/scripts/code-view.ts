@@ -98,7 +98,7 @@ export function codeView(data: ReaderData, hooks: { url(file: number, range: Ran
       f.lines !== null ? plural(f.lines, "line") : "",
       f.bytes !== null ? sizeInWords(f.bytes) : "",
       r.license || "no license",
-      f.pairs.length ? plural(f.pairs.length, "match", "matches") : "",
+      f.pairs.length ? plural(f.pairs.length, "match", "matches") : data.pairs.length ? "no match with the paper" : "",
     ]
       .filter(Boolean)
       .join(" · ");
@@ -284,7 +284,12 @@ export function codeView(data: ReaderData, hooks: { url(file: number, range: Ran
         const pr = data.pairs.find((x) => x.pair === k)!;
         const li = el("li", pairClass(k));
         li.dataset.pairs = String(k);
-        li.append(pairLink(k, `[${k}]`, "paragraph"), " ", link(pr.source || at, `lines ${pr.start}–${pr.end}`), ` ↔ ${pr.label}`);
+        li.append(
+          pairLink(k, `[${k}]`, "paragraph"),
+          " ",
+          link(pr.source || at, pr.whole ? "the whole file" : `lines ${pr.start}–${pr.end}`),
+          ` ↔ ${pr.label}${pr.whole ? " · a weak match" : ""}`,
+        );
         ul.append(li);
       }
       away.append(intro, ul);

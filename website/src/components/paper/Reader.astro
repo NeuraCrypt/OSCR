@@ -46,7 +46,7 @@ const facts = f && r
       f.lines !== null ? plural(f.lines, "line") : "",
       f.bytes !== null ? sizeInWords(f.bytes) : "",
       r.license || "no license",
-      f.pairs.length ? plural(f.pairs.length, "match", "matches") : "",
+      f.pairs.length ? plural(f.pairs.length, "match", "matches") : pairs.length ? "no match with the paper" : "",
     ].filter(Boolean).join(" · ")
   : "";
 const parts = f ? f.path.split("/") : [];
