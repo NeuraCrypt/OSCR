@@ -27,7 +27,7 @@ export const FILE_MARGIN = 15_000;
 export const STATIC_PAPERS = 6_000;
 
 /** What every other kind of file may take at most, whatever the catalogue's size: the shards
- *  below and the lookup's (2,560 in all), 128 lots of scripts (oscr/catalog.py N_LOTS), the
+ *  below and the lookup's (2,560 in all), 256 lots of scripts (oscr/catalog.py N_LOTS), the
  *  category pages (the classification's vocabulary, about 60 values: MAX_CATEGORIES at most),
  *  27 pages of the authors' list, and the fixed pages and bundles. With the papers' 12,000, the
  *  margin exactly: 2 × STATIC_PAPERS + FIXED_FILES_MAX = FILE_MARGIN. The check holds the build

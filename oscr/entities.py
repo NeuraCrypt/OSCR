@@ -245,11 +245,15 @@ class _Papers:
         self.when = {i: (r["published"] or "", r["scanned_at"] or 0.0, i) for i, r in self.rows.items()}
 
     def slugs(self, ids: set[str] | list[str]) -> list[str]:
-        """The pages of these papers, the most recent first."""
-        return [self.slug[i] for i in sorted(set(ids), key=lambda i: self.when[i], reverse=True)]
+        """The pages of these papers, the most recent first. A paper the harvester brought into
+        scope after this index was read (it keeps writing during the nightly export) waits for
+        the next export."""
+        known = {i for i in ids if i in self.slug}
+        return [self.slug[i] for i in sorted(known, key=lambda i: self.when[i], reverse=True)]
 
     def counts(self, ids: set[str]) -> dict[str, int]:
-        return {"papers": len(ids), "with_code": len(ids & self.with_code)}
+        known = {i for i in ids if i in self.slug}
+        return {"papers": len(known), "with_code": len(known & self.with_code)}
 
 
 def _by_count(entries: list[dict[str, Any]], name: str, key: str = "id") -> list[dict[str, Any]]:

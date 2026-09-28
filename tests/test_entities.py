@@ -358,3 +358,11 @@ def test_identifiers():
     assert entities.url_slug("issn:1234-567X", taken) == "issn-1234-567x"
     assert entities.url_slug("ISSN 1234 567X", taken).startswith("issn-1234-567x-")    # never twice the same
     assert entities.url_slug("..", taken) not in ("", ".", "..")
+
+
+def test_a_paper_that_entered_the_scope_during_the_export_waits_for_the_next(tmp_path):
+    from oscr import entities
+    p = entities._Papers.__new__(entities._Papers)
+    p.slug, p.when, p.with_code = {"a": "a-slug"}, {"a": ("2026-09-01", 0.0, "a")}, {"a"}
+    assert p.slugs({"a", "late"}) == ["a-slug"]
+    assert p.counts({"a", "late"}) == {"papers": 1, "with_code": 1}

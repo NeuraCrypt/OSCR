@@ -39,12 +39,17 @@ from . import methods
 #: Script texts and matches are served in LOTS, loaded on demand: the pages stay light,
 #: and a static host serves them as they are.
 #: Lots of the scripts' text and of the matches: a Workers static asset may not exceed
-#: 25 MiB. 32 lots reached 30 MiB with 4,226 papers (2026-09-27); 128 keep them small.
-N_LOTS: int = 128
+#: 25 MiB. 32 lots reached 30 MiB with 4,226 papers (2026-09-27); 128 reached 25.5 MiB on
+#: 2026-09-29, so 256, and a text budget per lot (below) that holds whatever the stock.
+N_LOTS: int = 256
 #: At most this much text per repository on the site: beyond it, files are listed with a
 #: link to the source. One toolbox (1,714 files, 23.6 MB of text) filled a lot by itself.
 #: The Hugging Face copy of the scripts keeps everything.
 MAX_SITE_TEXT_PER_REPO: int = 8_000_000
+#: At most this much text in one lot of the site: past it, the lot's further files are listed
+#: with a link to the source, like a repository past its own budget. Characters, not bytes: 16
+#: million keep a lot under the 25 MiB limit with JSON's overhead and multi-byte characters.
+MAX_SITE_TEXT_PER_LOT: int = 16_000_000
 
 #: The licenses under which a script's text is republished. Without a license, code is
 #: "all rights reserved": it is shown at the source, not here.
@@ -354,6 +359,7 @@ def script_lots(con: sqlite3.Connection, public: bool) -> dict[int, dict[str, An
     the source, at the verified commit.
     """
     lots: dict[int, dict[str, Any]] = defaultdict(dict)
+    lot_shown: dict[int, int] = defaultdict(int)
     repos = {r["repo"]: r for r in con.execute("SELECT * FROM repository")}
     for repo in [r["repo"] for r in con.execute(f"SELECT DISTINCT repo FROM file WHERE repo IN ({PUBLIC_REPOS})")]:
         d = repos.get(repo)
@@ -363,12 +369,17 @@ def script_lots(con: sqlite3.Connection, public: bool) -> dict[int, dict[str, An
         withdrawn_note = NOTE_NO_LICENSE if not d["license"] else NOTE_LICENSE
         files = []
         shown = 0
+        lot = lot_of(repo)
         for f in con.execute("SELECT * FROM file WHERE repo = ? ORDER BY kind DESC, path", (repo,)):
             text, note = (f["text"], f["note"]) if published else (None, withdrawn_note)
             if public and text:
                 shown += len(text)
                 if shown > MAX_SITE_TEXT_PER_REPO:
                     text, note = None, "too large a repository to show every file here: read it at the source"
+                elif lot_shown[lot] + len(text) > MAX_SITE_TEXT_PER_LOT:
+                    text, note = None, "too much text in this part of the site to show every file here: read it at the source"
+                else:
+                    lot_shown[lot] += len(text)
             if text and "�" in text:
                 # The replacement character is already in the ORIGINAL ("S�ren" in
                 # legendflex.m): the database keeps it as is, the export says so.
@@ -383,7 +394,7 @@ def script_lots(con: sqlite3.Connection, public: bool) -> dict[int, dict[str, An
                 "path": f["path"], "language": f["language"], "kind": f["kind"], "lines": f["lines"],
                 "text": text, "truncated": bool(f["truncated"]), "note": note,
                 "source_url": file_url(d, f["path"]) if f["kind"] != "note" else ""})
-        lots[lot_of(repo)][repo] = {"repo": repo, "commit": d["commit_id"] or "", "license": d["license"] or "",
+        lots[lot][repo] = {"repo": repo, "commit": d["commit_id"] or "", "license": d["license"] or "",
                                     "published": published, "files": files}
     return lots
 
