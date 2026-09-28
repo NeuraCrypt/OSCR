@@ -14,7 +14,7 @@ The rules that govern everything below are in [CLAUDE.md](../CLAUDE.md):
 | **The public catalogue** (`oscr nightly`) | the Mac, at 04:17 | `data/public/` in public mode, then the Hugging Face dataset, then the website | $0 |
 | **The website** (`website/`, Astro) | Cloudflare Workers (static assets) | the public site, built from the public catalogue, with the Code ↔ Paper reader | $0 |
 | **The search index** (`oscr d1 push`, Phase 3) | the Mac → Cloudflare D1 | the papers with a page, projected into two D1 databases (`oscr_catalog`, `oscr_search`), pushed as deltas within 80,000 rows written a day ([SEARCH.md](SEARCH.md)) | $0 |
-| **The Worker's code** (`website/worker/`, Phase 3) | Cloudflare Workers: `/api/*`, and the requests no static file answers | `/api/search`: FTS5 in D1, facets, sorts, CSV and JSON exports; the pages of the papers past the 6,500 most recent, from their records (no D1), and the 404 page | $0 (100,000 requests a day) |
+| **The Worker's code** (`website/worker/`, Phase 3) | Cloudflare Workers: `/api/*`, and the requests no static file answers | `/api/search`: FTS5 in D1, facets, sorts, CSV and JSON exports; the pages of the papers past the 6,000 most recent, from their records (no D1), and the 404 page | $0 (100,000 requests a day) |
 | **The map DOIs** (`oscr zenodo`) | Zenodo (CERN) | a map validated by an author receives a DOI in the community | $0 |
 | **The accounts** (`website/worker/account/`, Phase 5) | the Worker's code, `/api/auth/*` and `/api/account/*`, with the D1 database `oscr_community` | sign-in with ORCID, GitHub or Google; sessions; the verified authors and maintainers ([ACCOUNTS.md](ACCOUNTS.md)) | $0 |
 | **The accounts' facts** (`oscr community`) | the Mac | the ORCID iDs of the papers with a page, the owners of their repositories and which paper each is the code of, pushed to `oscr_community` as deltas (locally, or to Cloudflare: nightly with `OSCR_COMMUNITY_PUSH=remote`) | $0 |
@@ -126,11 +126,11 @@ the number of files must not grow with the catalogue: how each kind of page is r
 | route | what it shows | from the export | rendered |
 |---|---|---|---|
 | `/` | the papers with their authors' code, by day of publication | `catalog.json` | static |
-| `/paper/<slug>/` | a paper with code, code on request or data only (decision D2), in sections: Overview, Code, Map, Data, Versions, Cite, Similar (and Discussion, Reproductions, Activity, which open with sign-in); see "The paper's page" below | `catalog.json`, `entities/`, `papers/` | static for the 6,500 most recent (`STATIC_PAPERS`); the others by the Worker, a reduced page |
+| `/paper/<slug>/` | a paper with code, code on request or data only (decision D2), in sections: Overview, Code, Map, Data, Versions, Cite, Similar (and Discussion, Reproductions, Activity, which open with sign-in); see "The paper's page" below | `catalog.json`, `entities/`, `papers/` | static for the 6,000 most recent (`STATIC_PAPERS`); the others by the Worker, a reduced page |
 | `/paper/<slug>/code/` | the Code ↔ Paper reader, for the papers with code | `catalog.json`, `alignments/`, `scripts/` | static with its paper; past them, the Worker sends it to `/paper/<slug>/#code` |
 | `/browse/` | the categories by facet, with their counts; the other ways in | `entities/categories.json` | static |
-| `/browse/<facet>/<value>/` | the papers of a category, by day | `entities/categories.json` | static (the vocabulary's ~60 values; 300 at most) |
-| `/authors/`, `/author/<orcid>/` | the authors with an ORCID iD: latest affiliations, institutions, tools, papers | `entities/authors.json` | the list static; each author in the browser, from `/records/author/NN.json` |
+| `/browse/<facet>/<value>/` | the papers of a category, by day | `entities/categories.json` | static (the vocabulary's ~60 values; 200 at most) |
+| `/authors/`, `/authors/<letter>/`, `/author/<orcid>/` | the authors with an ORCID iD, by family name: latest affiliations, institutions, tools, papers | `entities/authors.json` | the lists static; each author in the browser, from `/records/author/NN.json` |
 | `/journals/`, `/journal/<id>/` | ISSN, publisher, papers with code out of papers read | `entities/journals.json` | idem, `/records/journal/` |
 | `/institutions/`, `/institution/<ror>/` | the authors' institutions, by ROR id | `entities/institutions.json` | idem, `/records/institution/` |
 | `/tools/`, `/tool/<id>/` | the tools found in the authors' code: repositories, papers | `entities/tools.json` | idem, `/records/tool/` |
@@ -161,26 +161,34 @@ Decided on 2026-09-28 (the measurements and the alternatives: [PLATFORM_PLAN.md]
 and the check; the pages rendered on demand share one markup, `website/src/lib/render.ts` (the
 catalogue's listing of the static pages is its too).
 
-| kind | files | how a reader gets it | cost of a view |
+| kind | files | how a reader gets it | Worker requests a view |
 |---|---|---|---|
-| a paper among the `STATIC_PAPERS` (6,500) most recent, and its reader | 1, and 1 for the reader | a static file | nothing |
-| an older paper | none: its record in one of 256 `/records/paper/NN.json` | no file answers, so the Worker runs (`not_found_handling = "none"`): it reads the record and the shell `/paper/404.html` through its `ASSETS` binding and returns the page, status 200 (`worker/pages.ts`) | 1 Worker request, 0 D1 row, < 1 ms of CPU |
-| an author, journal, institution, tool or dataset | none: one shell per type (`/author/`, …) and 64 `/records/<type>/NN.json` per type | `public/_redirects` rewrites `/author/<orcid>/` to the shell (status 200, the address kept), whose script fetches the shard and renders the entity (`src/scripts/entity.ts`) | 1 static fetch of one shard, no Worker request |
-| the DOI lookup | 256 `/lookup/NN.json` | the page's script fetches one shard | 1 static fetch |
-| an address no file answers | — | the Worker serves `404.html` with the status 404 | 1 Worker request |
+| a paper among the `STATIC_PAPERS` (6,000) most recent, and its reader | 1, and 1 for the reader | a static file | 0 |
+| an older paper | none: its record in one of 256 `/records/paper/NN.json` | no file answers, so the Worker runs (`not_found_handling = "none"`): it reads the record and the shell `/paper/404.html` through its `ASSETS` binding and returns the page, status 200 (`worker/pages.ts`); `/paper/<slug>/code/` is sent to `#code` | 1 (2 through `/code/`), 0 D1 row, 0.3 ms of CPU measured |
+| an author, journal, institution, tool or dataset | none: one shell per type (`/author/`, …) and a fixed number of `/records/<type>/NN.json` per type (`SHARDS`: 1,024 for the authors, 512 institutions, 256 tools, 128 journals, 128 datasets) | `public/_redirects` rewrites `/author/<orcid>/` to the shell (status 200, the address kept), whose script fetches the shard and renders the entity (`src/scripts/entity.ts`) | 0 (1 for a key whose shard does not exist: its 404) |
+| the lists of the entities (`/authors/` and a page a letter, `/journals/`, `/institutions/`, `/tools/`, `/datasets/`) | 1 each, 27 for the authors' letters | static, a link to every entity, no cap | 0 |
+| the DOI lookup | 256 `/lookup/NN.json` | the page's script fetches one shard | 0 |
+| an address no file answers | — | the Worker serves `404.html` with the status 404 | 1 |
 
-- **The budget holds whatever the catalogue's size**: at most 2 × 6,500 files of papers, and
-  `FIXED_FILES_MAX` (2,000) for everything else — the 576 shards, 256 lookup shards, 128 lots of
-  scripts, the category pages (300 at most) and the fixed pages and bundles. The two add up to the
-  check's margin, 15,000, under the 20,000 limit.
+- **The budget holds whatever the catalogue's size**: at most 2 × 6,000 files of papers, and
+  `FIXED_FILES_MAX` (3,000) for everything else — the 2,304 record shards, 256 lookup shards, 128
+  lots of scripts, the category pages (`MAX_CATEGORIES`, 200) and the fixed pages and bundles. The
+  two add up to the check's margin, 15,000, under the 20,000 limit. `npm run check` prints the
+  files folder by folder and fails past either; `npm run check:growth` (in CI) builds the fixture,
+  then the fixture grown with 40,000 authors, 15,000 institutions, 12,000 papers and 150,000 DOIs:
+  67 files, then 2,628, only the shards differing.
 - **What an older paper's page leaves out**, and says so at its top: the Code ↔ Paper reader, the
-  tracing map, the versions, the citation formats, the similar papers and the Contribute section
-  (claim, correct, validate), whose data are in the build's lots. It shows the record: title,
-  integrity notices, authors (their pages), journal, date, type, status, DOI, license,
-  institutions, categories, each repository of the code with its license and state, the tools,
-  the datasets, and the links to the paper and to Europe PMC.
-- **An entity's page lists its 500 most recent papers** (`ENTITY_ROWS_MAX`); past that (a tool
+  tracing map and its validation, the versions, the citation formats, the similar papers and the
+  README badge, whose data are in the build's lots. It shows the record: title, integrity notices,
+  authors (their pages), journal, date, type, status, DOI, license, institutions, categories, each
+  repository of the code with its license and state, the tools, the datasets and data links, the
+  links to the paper and to Europe PMC, and the Contribute section of the static pages — claim,
+  correction of its links, removal request — run by the same script (`paper-actions.ts`).
+- **An entity's page lists its 200 most recent papers** (`ENTITY_ROWS_MAX`) and at most 300 links
+  of each kind (`LINKS_MAX`: a tool's repositories, an institution's authors); past that (a tool
   such as NumPy), it says how many more there are and links to the search.
+- **Without JavaScript**, an entity's shell says that it needs it and links to the list, which is
+  static; an older paper's page is whole HTML from the Worker.
 - **The owner's switch** (wrangler.toml): with `not_found_handling = "404-page"`, no page costs a
   Worker request — the assets serve `/paper/404.html` for a missing `/paper/…`, and its script
   renders the older paper in the browser — but with the status 404, which search engines do not
@@ -294,8 +302,8 @@ Checked on 2026-09-26 in Cloudflare's documentation; the full table, with source
 
 | Service | Limit | Consequence |
 |---|---|---|
-| Workers static assets | 20,000 files per version; 25 MiB per file; asset requests free and unlimited; `_redirects`: 2,000 static and 100 dynamic rules | the site stays under 15,000 files whatever the catalogue ("How pages are rendered, and the file budget"): 6,500 papers static, the others rendered by the Worker; entities in shards behind one shell per type |
-| Workers | 100,000 requests per day for all dynamic routes, cached or not; 10 ms of CPU per request; 64 MiB per Worker | kept for actions (sign-in, contributions, search, API) and for the pages of the papers past the 6,500 most recent (one request a view, < 1 ms); a static page asks nothing |
+| Workers static assets | 20,000 files per version; 25 MiB per file; asset requests free and unlimited; `_redirects`: 2,000 static and 100 dynamic rules | the site stays under 15,000 files whatever the catalogue ("How pages are rendered, and the file budget"): 6,000 papers static, the others rendered by the Worker; entities in shards behind one shell per type. The largest lot of scripts is 22.9 MB (2026-09-28): close to the 25 MiB |
+| Workers | 100,000 requests per day for all dynamic routes, cached or not; 10 ms of CPU per request; 64 MiB per Worker | kept for actions (sign-in, contributions, search, API), for the pages of the papers past the 6,000 most recent (one request a view, 0.3 ms of CPU) and for the 404s; a static page asks nothing |
 | D1 | 500 MB per database, 10 databases; 5 M rows read and 100,000 written per day | the catalogue projection, the script index and the community, pushed as deltas |
 | Hugging Face | public datasets free ("best-effort"); byte ranges with CORS | the open data, and the script blocks |
 | Zenodo | 50 GB per record; 60 requests per minute without a token | a map weighs a few KB |

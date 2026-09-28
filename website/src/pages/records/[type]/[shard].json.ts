@@ -6,8 +6,9 @@
 //   /records/paper/NN.json                               a paper past STATIC_PAPERS, rendered
 //                                                        by the Worker (worker/pages.ts)
 //
-// NN: the first byte of the SHA-1 of the key (an ORCID iD, a ROR id, a page's name), modulo the
-// number of shards, in hexadecimal. Only the shards that hold something are written.
+// NN: the leading bits of the SHA-1 of the key (an ORCID iD, a ROR id, a page's name), as many as
+// the type's number of shards needs, in hexadecimal (lib/shards.ts, shardOf). Only the shards that
+// hold something are written.
 import type { APIRoute } from "astro";
 import { recordFiles } from "../../../lib/records";
 

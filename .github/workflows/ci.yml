@@ -41,7 +41,7 @@ jobs:
   #   scripts/NN.json     the script lots named by the catalogue's repositories;
   #   alignments/NN.json  optional, the Code ↔ Paper pairs;
   #   entities/*.json     authors, journals, institutions, tools, datasets, categories;
-  #   lookup/NNN.json     the DOI lookup's shards;
+  #   lookup/NN.json      the DOI lookup's shards (2 hex characters, 256 at most);
   #   papers/NN.json      the sections of each paper's page (overview, code, data, map,
   #                       versions, citations, similar papers).
   # Without it, the job says so and skips the build instead of failing.

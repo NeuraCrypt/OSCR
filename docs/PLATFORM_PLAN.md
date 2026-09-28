@@ -344,42 +344,119 @@ within 5,000/h. Git history: local, no quota.
 | `/` | search bar, key figures, new today / this week, categories with counts, top journals and tools | static, rebuilt nightly |
 | `/search` | simple and advanced search, facets with counts, sorts, export | static shell + Svelte island + search API |
 | `/browse/`, `/browse/<facet>/<value>/` (built, Phase 2); `/browse/<category>/<year>/` | category tree by facet with counts; a category's papers by day; later by year, paginated like arXiv lists | static (bounded) |
-| `/paper/<id>/` + tabs (`code`, `map`, `data`, `versions`, `discussion`, `reproductions`, `cite`, `activity`, `similar`) | the central page; since Phase 2 also for "on request" and "data only" (D2), linking to its authors, journal, tools, datasets and categories. Since Phase 4 the tabs are sections of the one page (`#overview`, `#code`, …), not routes: no file added | static while under the file budget, then on demand (SSR from `papers.doc`); tabs with live data are islands |
-| `/paper/<id>/read/` | Code ↔ Paper reader | same shell as the paper; texts fetched by the browser |
-| `/authors/`, `/author/<orcid>/`, `/journals/`, `/journal/<id>/`, `/institutions/`, `/institution/<ror>/`, `/tools/`, `/tool/<id>/`, `/datasets/`, `/dataset/<id>/` (built, Phase 2) | entity indexes and pages | static for the top `STATIC_MAX` (2,000) of each type by papers, on demand for the long tail (Phase 3) |
-| `/lookup/` (built, Phase 2) | the DOI lookup: any in-scope paper read, with or without a page (D2) | static page; the browser fetches one of ≤ 4,096 shards `/lookup/NNN.json` (first 3 hex characters of sha1(DOI)) |
+| `/paper/<id>/` + tabs (`code`, `map`, `data`, `versions`, `discussion`, `reproductions`, `cite`, `activity`, `similar`) | the central page; since Phase 2 also for "on request" and "data only" (D2), linking to its authors, journal, tools, datasets and categories. Since Phase 4 the tabs are sections of the one page (`#overview`, `#code`, …), not routes: no file added | static for the `STATIC_PAPERS` (6,000) most recent; the others rendered by the Worker from `/records/paper/NN.json`, a reduced page (below, "The file budget") |
+| `/paper/<id>/code/` | Code ↔ Paper reader | static with its paper's static page; past `STATIC_PAPERS`, the Worker sends it to `/paper/<id>/#code` |
+| `/authors/`, `/author/<orcid>/`, `/journals/`, `/journal/<id>/`, `/institutions/`, `/institution/<ror>/`, `/tools/`, `/tool/<id>/`, `/datasets/`, `/dataset/<id>/` (built, Phase 2) | entity indexes and pages | the indexes static, linking to every entity (the authors: a page a letter); each entity's page one shell per type, rendered in the browser from `/records/<type>/NN.json` (since 2026-09-28; before, a static page each, 2,000 at most a type) |
+| `/lookup/` (built, Phase 2) | the DOI lookup: any in-scope paper read, with or without a page (D2) | static page; the browser fetches one of ≤ 256 shards `/lookup/NN.json` (first 2 hex characters of sha1(DOI); 4,096 of 3 characters until 2026-09-28) |
 | `/observatory/` | reserved for statistics and reports | static placeholder |
 | `/account/…`, `/submit/`, `/admin/…`, `/moderation/…` | accounts, submission, administration | on demand (Functions), never cached |
 | `/about/`, `/governance/`, `/cite/`, `/data-license/`, `/takedown/`, `/privacy/`, `/terms/`, `/help/`, `/api/` | institutional pages | static |
 | `/feeds/…`, `/api/v1/…` | RSS/Atom, public JSON API | static files for entities and feeds; Functions for search |
 
-Every route is written so that switching one entity type from prerendered to on-demand is a
-configuration change (`prerender` per route, same component, data from `papers.doc`).
+How each kind of page is rendered, and why, is in "The file budget" below.
 
 **Built in Phase 2.** `oscr/entities.py` writes `entities/*.json` (authors with an ORCID iD,
-journals, institutions by ROR id, tools, datasets, categories) and `lookup/NNN.json` into the
+journals, institutions by ROR id, tools, datasets, categories) and `lookup/NN.json` into the
 public export; only the papers with a page count, and off-topic papers appear nowhere, the
 lookup included (D7). A category is shown when the owner or a model set it, or the rules did
 with a confidence of at least 0.6 and no ambiguity. Measured on a synthetic export at today's
 scale (2,380 papers read, 471 with a page, 548 authors with an ORCID iD): 3,736 files, of which
-1,949 pages and 1,782 lookup shards. At the full stock the lookup takes 4,096 files and the
-entities at most 2,000 per type: the paper pages must go on demand first (Phase 3).
+1,949 pages and 1,782 lookup shards. At the full stock the lookup took 4,096 files and the
+entities at most 2,000 per type: that is what "The file budget" below replaced.
 
 ### Page counts
 
-| entity | now | full neuro stock | strategy |
+| entity | 2026-09-28 (real data, with OpenAlex) | full neuro stock | rendering (files) |
 |---|---|---|---|
-| papers with code (+ on request, data only) | ~500 | 50–90k | static now; on demand beyond ~12k |
-| authors with ORCID (on those papers) | ~1k | ~100k | top 2k static, rest on demand |
-| journals | ~300 | ~5k | static |
-| institutions | ~800 | 20–30k | top 2k static, rest on demand |
-| tools | ~100 | 300–1,000 | static |
-| datasets | ~150 | 10–30k | top 2k static, rest on demand |
-| categories × lists | ~100 | ~3k | static |
-| institutional, help, API docs | ~15 | ~15 | static |
+| papers with a page (code, on request, data only) | 3,683 (2,152 with a reader) | 50–90k | static for the 6,000 most recent (≤ 12,000 files with their readers); the others by the Worker (256 record shards) |
+| authors with an ORCID iD (on those papers) | 11,801 | ~100k+ | in the browser: 1 shell, 1,024 shards; the list, 27 letter pages |
+| journals | 626 | ~5k | 1 shell, 128 shards |
+| institutions (ROR) | 4,688 (13,961 known to OpenAlex) | 20–30k | 1 shell, 512 shards |
+| tools | 226 | 300–1,000 | 1 shell, 256 shards |
+| datasets | 2,457 | 10–30k | 1 shell, 128 shards |
+| DOIs read (the lookup) | 16,623 | ~610,000 | 256 shards |
+| categories | 46 | the vocabulary, ~60 | static, 200 at most |
+| institutional, help, lists | ~20 | ~20 | static |
 
-Static budget kept under ~15,000 files (margin under the 20,000 limit); everything else on
-demand, with the Workers budget reserved first for accounts and writes.
+### The file budget (decided 2026-09-28)
+
+A Worker serves at most 20,000 static files per version. On 2026-09-28 the live site had 15,962
+files (5,689 of papers and readers, 4,009 lookup shards, 2,000 authors and 2,000 datasets — both
+capped —, 1,217 institutions, 619 journals, 226 tools, 128 lots of scripts), and a build of the
+real catalogue with OpenAlex reached 16,905, past `website/scripts/check.mjs`'s margin of 15,000:
+13,961 institutions were on their way. The number of files now depends on constants, not on the
+catalogue (`website/src/lib/shards.ts`):
+
+| kind | before | now |
+|---|---|---|
+| the DOI lookup | a shard per 3 hex characters of sha1(DOI): 4,096 | 2 characters: 256; ~57 bytes a DOI, 5 KB a shard today, ~135 KB at 610,000 DOIs |
+| an entity (author, journal, institution, tool, dataset) | a static page each, the 2,000 with the most papers a type (the rest without a page) | no file: `public/_redirects` rewrites `/author/<orcid>/` to the type's shell `/author/` (status 200, free, no Worker request); its script fetches `/records/author/NN.json` and renders the entity with `src/lib/render.ts`. Every entity has its page; the lists link to all of them |
+| a paper | a static page and a reader each | a static page and reader for the 6,000 most recent (`STATIC_PAPERS`); the others rendered by the Worker |
+
+**The papers past `STATIC_PAPERS`.** Three ways were weighed:
+
+1. *The Worker from D1 `oscr_catalog`*: a page costs a Worker request and D1 rows read (5 million a
+   day, shared with the search), and the catalogue projection in D1 would have to carry every
+   section's data, pushed within the 100,000 rows written a day.
+2. *The same shell as the entities, in the browser*: no Worker request at all
+   (`not_found_handling = "404-page"`: the assets serve `/paper/404.html` for any missing
+   `/paper/…`), but the page answers with the status 404, which search engines do not index, and
+   needs JavaScript.
+3. **Chosen**: *the Worker from the build's own records*. `not_found_handling = "none"` hands a
+   request no file answers to the Worker (`worker/pages.ts`): it reads the paper's record in
+   `/records/paper/NN.json` and the shell `/paper/404.html` through its `ASSETS` binding (static
+   assets: not billed) and returns the whole page, status 200, the static pages' headers. No D1
+   row; no JavaScript needed to read it. Switch 2 stays one line of `wrangler.toml` away.
+
+The page it renders says what it leaves out (the Code ↔ Paper reader, the tracing map and its
+validation, the versions, the citation formats, the similar papers, the README badge, whose data
+live in the build's lots) and keeps the record, the code, the data, and the Contribute section
+(claim, correction of the links, removal request), run by the static pages' own script.
+
+**Cost of a visit, in Worker requests** (the free plan: 100,000 a day, 10 ms of CPU each):
+
+| visit | requests |
+|---|---|
+| a static page (a paper among the 6,000, a list, the home page, a category), an entity's page, a DOI lookup | 0 (the shell, the shard, the scripts are static files) |
+| a paper past `STATIC_PAPERS` | 1 (2 through its `/code/` address, sent to `#code`) |
+| an address no file answers (a mistyped one, a robot) | 1: the Worker serves `404.html` |
+| a signed-in reader on any paper's page | 1 more, as before (`/api/contributions/paper`) |
+
+Measured on the real catalogue built with only 1,000 papers static (2,683 rendered on demand, 256
+shards, median 21 KB, largest 46 KB): 0.31 ms of CPU for a page from the largest shard (parse
+the shard, render, fill the shell), 1.5 ms from a shard of 240 records, the full stock's size
+(`node --experimental-strip-types scripts/measure-pages.mjs`). The entities' shards, fetched by
+the browser: authors 14.5 KB median (34 KB largest), institutions 15.6 KB (89 KB), tools 20 KB
+(200 KB: NumPy's 200 rows), journals 8.7 KB (134 KB), datasets 14.5 KB (22 KB).
+
+**Files, before → after, the same exports built by the old and the new code**:
+
+| build | before | after |
+|---|---|---|
+| the real catalogue with OpenAlex (`data/dev-copy/oa-public`) | 16,905 | 8,272 (5,836 papers and readers, 2,304 record shards at most — 1,940 written —, 257 lookup) |
+| the real catalogue without OpenAlex (`data/dev-copy/public`) | 16,797 | 8,725 |
+| the fixture (`tests/fixtures/public-catalog`, 4 papers) | 55 | 68 (the shells, the shards and the letter pages are a fixed cost) |
+| the fixture grown with 40,000 authors, 15,000 institutions, 12,000 papers, 150,000 DOIs (`npm run check:growth`, 2 papers static) | — | 2,628 |
+
+**The budget**: 2 × `STATIC_PAPERS` = 12,000 files of papers at most, and `FIXED_FILES_MAX` = 3,000
+for the rest (2,304 record shards, 256 lookup shards, 128 lots of scripts, 200 categories at most,
+the fixed pages and bundles): 15,000, the check's margin. `npm run check` fails past either, and
+prints the files folder by folder; `npm run check:growth` (CI) shows that only the shards change
+when the catalogue grows.
+
+**Limits.**
+
+- Every miss runs the Worker: robots probing addresses spend requests that were free before. The
+  quota spent, the older papers' pages and the 404s answer an error while the static pages stay up.
+- The entities' pages need JavaScript (their shell says so and links to the static list), and
+  search engines see them only if they run it.
+- The lists are one page each (the institutions' is 530 KB for 4,688 today, some 3 MB at 30,000;
+  the authors' is split by letter, ~100 KB a letter today).
+- A paper crossing the cap loses its reader's address (`/paper/<id>/code/` is sent to `#code`),
+  and the pages' number in "the 6,000 most recent" is the constant, whatever
+  `OSCR_STATIC_PAPERS` a test build uses.
+- The lots of scripts are 128 files whatever the catalogue, but the largest is 22.9 MB, close to
+  the 25 MiB a file may weigh: the lots need splitting or bounding before the stock doubles.
 
 ---
 
