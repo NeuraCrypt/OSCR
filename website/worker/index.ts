@@ -9,15 +9,20 @@
 //   /api/contributions, /api/submissions, /api/claims, /api/edits, /api/validations,
 //   /api/reports         what a signed-in reader asks of the registry (contributions/;
 //                        docs/CONTRIBUTIONS.md)
+//   /api/forge/*         the GitHub side (night phase 01): one authorized action (start, act),
+//                        GitHub's webhooks, OSCR's layer over a repository (forge/service/;
+//                        docs/FORGE.md). The repository pages themselves are static (/r/*).
 //
-// The search's answers are public and cached (Cache-Control: public, api.ts); the accounts' and
-// the contributions' depend on the reader (a session cookie) and all say `Cache-Control: no-store`.
+// The search's answers are public and cached (Cache-Control: public, api.ts); the accounts', the
+// contributions' and the forge's depend on the reader (a session cookie) or change the registry,
+// and all say `Cache-Control: no-store`.
 //
 // Only the default export: the runtime takes every export of the main module for an entry point.
 import { handleAccount } from "./account/index.ts";
 import { error, handleSearch } from "./api.ts";
 import { handleContributions } from "./contributions/index.ts";
 import type { Context, Env, Handler } from "./env.ts";
+import { handleForge } from "./forge/service/index.ts";
 
 type Route = { path: string; handle: Handler } | { prefix: string; handle: Handler };
 
@@ -27,6 +32,9 @@ const account: Handler = async (request, env, ctx) =>
 /** The contributions (Phase 6), likewise. */
 const contributions: Handler = async (request, env, ctx) =>
   (await handleContributions(request, env, ctx)) ?? error(404, "not_found", "No such route.");
+/** The forge service (night phase 01), likewise: GitHub's backend, built from the environment. */
+const forge: Handler = async (request, env, ctx) =>
+  (await handleForge(request, env, ctx)) ?? error(404, "not_found", "No such route.");
 
 const ROUTES: Route[] = [
   { path: "/api/search", handle: handleSearch },
@@ -40,6 +48,7 @@ const ROUTES: Route[] = [
   { path: "/api/edits", handle: contributions },
   { path: "/api/validations", handle: contributions },
   { path: "/api/reports", handle: contributions },
+  { prefix: "/api/forge/", handle: forge },
 ];
 
 function route(pathname: string): Handler | undefined {

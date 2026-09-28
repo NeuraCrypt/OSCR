@@ -180,6 +180,81 @@ ol.lines a { color: inherit; }
 .is-active { outline: 2px solid var(--masthead); outline-offset: 1px; }
 ol.lines li.is-active { outline: 0; box-shadow: inset 3px 0 0 var(--masthead); }
 
+/* The GitHub side (night phase 01): repository pages, their settings, the creation and link forms,
+   the hosting guides. Added in the archive's spirit: ruled blocks and plain words, no pills, no
+   decorative uppercase; a mode or a state is a sentence, colored at most with .ok or .warning. */
+
+/* A repository's heading line: "owner / name", then what it is in words (public, template,
+   archived, linked to the registry…) */
+.repo-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: .15em .9em; margin: .8em 0 .2em; }
+.repo-head h1 { margin: 0; font-size: 1.5em; overflow-wrap: anywhere; }
+.repo-head h1 .owner { font-weight: normal; }
+.repo-head .facts { color: var(--muted); font-size: .92em; }
+.repo-head .facts > * + *::before { content: " · "; }
+
+/* The mirror status sentence under it: how the registry follows the repository, and when it last
+   saw it */
+p.status-line {
+  margin: .3em 0 1em; padding: .3em .7em;
+  background: var(--bg-sidebar); border-left: 3px solid var(--rule);
+}
+
+/* Quick setup of an empty repository, and every block of commands to copy: the commands as they are
+   typed, a plain "Copy" button under each */
+.setup { margin: 1em 0; padding: .4em .9em .8em; border: 1px solid var(--rule); }
+.setup h2, .setup h3 { font-size: 1em; margin: .6em 0 .3em; }
+.setup p { margin: .3em 0; }
+pre.commands { margin: .3em 0 .2em; white-space: pre-wrap; overflow-wrap: anywhere; }
+pre.commands + button.copy, button.copy { font-size: .85em; padding: .05em .6em; margin: 0 0 .8em; }
+
+/* A choice among options, each explained in a sentence (the licence, the .gitignore template, the
+   template to start from) */
+fieldset.choices label { display: block; margin: .45em 0 0; }
+fieldset.choices .explain { display: block; margin: .05em 0 0 1.7em; color: var(--muted); font-size: .92em; }
+
+/* A compact table of limits (file, push and repository sizes, the registry's own caps) */
+.limits { border-collapse: collapse; margin: .5em 0 1.2em; font-size: .93em; }
+.limits caption { text-align: left; font-weight: bold; padding: 0 0 .3em; }
+.limits th, .limits td { text-align: left; vertical-align: top; padding: .25em 1em .25em 0; border-bottom: 1px solid var(--rule); }
+.limits th { font-weight: bold; }
+.limits td.num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+
+/* Archive, transfer, delete: a bordered block that says the consequences in words before anything
+   is done */
+section.danger { margin: 1.6em 0; padding: .3em .9em .8em; border: 1px solid var(--warning); }
+section.danger h2 { font-size: 1.1em; margin: .4em 0 .3em; color: var(--warning); }
+section.danger h3 { font-size: 1em; margin: .9em 0 .2em; }
+section.danger ul { margin: .3em 0; padding-left: 1.3em; }
+
+/* The branches of a repository: one row each, the default one said in words */
+table.branches { width: 100%; border-collapse: collapse; margin: .5em 0 1em; font-size: .95em; }
+table.branches th, table.branches td { text-align: left; vertical-align: baseline; padding: .3em .8em .3em 0; border-bottom: 1px solid var(--rule); }
+table.branches th { font-weight: bold; border-bottom-color: var(--text); }
+table.branches td.name { font-family: var(--font-code); font-size: .9em; overflow-wrap: anywhere; }
+table.branches td.actions { white-space: nowrap; text-align: right; }
+
+/* A repository's settings: the name of each setting, then its value and what changing it does */
+dl.settings { margin: .5em 0 1em; }
+dl.settings dt { font-weight: bold; margin: 1em 0 .2em; }
+dl.settings dd { margin: 0; }
+dl.settings dd p { margin: .2em 0; }
+@media (min-width: 641px) {
+  dl.settings { display: grid; grid-template-columns: 13em 1fr; gap: .8em 1.4em; }
+  dl.settings dt { margin: 0; }
+}
+
+/* The Code button's panel: clone addresses, downloads, GitHub Desktop, Codespaces, the token page.
+   A <details class="panel"> opens without a script. */
+.panel { margin: .4em 0 1em; padding: .4em .9em .6em; border: 1px solid var(--rule); max-width: 40em; }
+details.panel > summary { cursor: pointer; font-weight: bold; }
+.panel h3 { font-size: 1em; margin: .7em 0 .2em; }
+.panel ul { margin: .2em 0; padding-left: 1.2em; }
+
+/* The sentence a person confirms before an authorized action goes to GitHub, and its buttons */
+.confirm { margin: .8em 0; padding: .5em .9em; background: var(--bg-sidebar); border: 1px solid var(--masthead); }
+.confirm p { margin: .25em 0; }
+.confirm .sentence { font-weight: bold; }
+
 footer {
   max-width: var(--width); margin: 0 auto; padding: 1em;
   border-top: 1px solid var(--rule); font-size: .85em; color: var(--muted);
@@ -195,4 +270,10 @@ footer a { margin-right: 1em; }
   /* The body of a record takes the column's width: a long word or a <pre> no longer widens it. */
   .record .body { width: 100%; }
   nav.tabs a { padding: .25em .5em; }
+  /* The GitHub side (night phase 01): the masthead's links wrap; tables and the repository's
+     heading take the column's width */
+  .masthead nav { flex-wrap: wrap; gap: .2em 1em; }
+  .repo-head { display: block; }
+  table.branches, .limits { display: block; overflow-x: auto; }
+  section.danger, .setup, .panel { padding-left: .6em; padding-right: .6em; }
 }

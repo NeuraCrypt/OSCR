@@ -1,0 +1,18 @@
+---
+// /hosting/import/: the import guide (D00-8).
+//
+// STUB, created by the foundation (F) of phase 01 so that the site builds and every link resolves;
+// owned by E12, which builds the page. science.css only; the platform's name from src/config.ts.
+import Base from "../../layouts/Base.astro";
+import { SITE_NAME } from "../../config";
+---
+<Base
+  title="Importing a repository"
+  description="Planning an import, from GitLab, Subversion, Mercurial and others, keeping commit ids."
+  breadcrumb={[{ text: "Hosting code", href: "/hosting/" }, { text: "Importing a repository" }]}
+>
+  <h1>Importing a repository</h1>
+  <p class="summary">How to move a repository from another host or version control system to GitHub, keeping its commit ids.</p>
+  <p class="warning">This page is being built: it is not in service yet.</p>
+  <p>Where repositories live and what {SITE_NAME} keeps of them: <a href="/hosting/">the hosting guides</a>.</p>
+</Base>

@@ -1,0 +1,19 @@
+---
+// /new/link/: the mirror mode, linking an existing public repository the person administers or maintains,
+// with or without the App installed.
+//
+// STUB, created by the foundation (F) of phase 01 so that the site builds and every link resolves;
+// owned by E3, which builds the page. science.css only; the platform's name from src/config.ts.
+import Base from "../../layouts/Base.astro";
+import { SITE_NAME } from "../../config";
+---
+<Base
+  title="Link a repository"
+  description="Link a GitHub repository you already have to your paper: the mirror mode."
+  breadcrumb={[{ text: "Repositories", href: "/repositories/" }, { text: "Link a repository" }]}
+>
+  <h1>Link a repository</h1>
+  <p class="summary">A repository you already have on GitHub, linked to your paper: with the App installed, its pushes are followed as they happen; without it, it is read every night.</p>
+  <p class="warning">This page is being built: it is not in service yet.</p>
+  <p>Where repositories live and what {SITE_NAME} keeps of them: <a href="/hosting/">the hosting guides</a>.</p>
+</Base>

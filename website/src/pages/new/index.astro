@@ -1,0 +1,19 @@
+---
+// /new/: creating a repository in the person's own GitHub account (empty, from a template, pre-filled
+// from URL parameters), in one authorized action.
+//
+// STUB, created by the foundation (F) of phase 01 so that the site builds and every link resolves;
+// owned by E2, which builds the page. science.css only; the platform's name from src/config.ts.
+import Base from "../../layouts/Base.astro";
+import { SITE_NAME } from "../../config";
+---
+<Base
+  title="Create a repository"
+  description="Create a repository in your own GitHub account, attached to your paper."
+  breadcrumb={[{ text: "Repositories", href: "/repositories/" }, { text: "Create a repository" }]}
+>
+  <h1>Create a repository</h1>
+  <p class="summary">A new repository in your own GitHub account: empty or from a template, with a README, a .gitignore and a licence, attached to your paper's DOI.</p>
+  <p class="warning">This page is being built: it is not in service yet.</p>
+  <p>Where repositories live and what {SITE_NAME} keeps of them: <a href="/hosting/">the hosting guides</a>.</p>
+</Base>

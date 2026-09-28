@@ -13,6 +13,10 @@
 //   lookup/NNN.json   → public/lookup/NNN.json       (fetched by the DOI lookup page)
 //   papers/NN.json    → src/data/papers/NN.json      (read at build time: the sections of
 //                                                     each paper's page)
+//   forge/layer/NN.json → public/forge/layer/NN.json (fetched by the repository pages, /r/*:
+//                                                     OSCR's layer for signed-out readers,
+//                                                     oscr/forgelayer.py; absent: none)
+import { createHash } from "node:crypto";
 import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 
 const source = process.env.CATALOG_DIR ?? "../data/public";
@@ -177,6 +181,39 @@ if (existsSync(`${source}/papers`)) {
 }
 if (withheld) console.warn(`${withheld} abstracts under a license that does not allow them were dropped (D1).`);
 
+// OSCR's layer over the repositories (the GitHub side, night phase 01): at most 64 shards, fetched
+// by the repository pages for signed-out readers. An entry is keyed by "owner/name" in lower case
+// and sits in the shard the first byte of its key's SHA-256 names, mod 64 (src/lib/forge.ts
+// layerShard). On top of the export's own rules: only well-formed keys in their own shard, never a
+// repository that is hidden, waiting for deletion or deleted, and no email address.
+const LAYER_MODES = new Set(["catalogue", "created", "installed", "public"]);
+const LAYER_HIDDEN = new Set(["hidden", "pending_deletion", "deleted"]);
+const SEGMENT = /^(?!\.+$)[a-z0-9._-]{1,100}$/;
+rmSync("public/forge/layer", { recursive: true, force: true });
+let layerShards = 0;
+let layered = 0;
+let misplaced = 0;
+if (existsSync(`${source}/forge/layer`)) {
+  mkdirSync("public/forge/layer", { recursive: true });
+  for (const name of readdirSync(`${source}/forge/layer`).filter((n) => /^\d{2}\.json$/.test(n) && Number(n.slice(0, 2)) < 64)) {
+    const clean = {};
+    for (const [key, e] of Object.entries(JSON.parse(readFileSync(`${source}/forge/layer/${name}`, "utf8")))) {
+      const [owner, repo, ...rest] = key.split("/");
+      const shard = String(createHash("sha256").update(key).digest()[0] % 64).padStart(2, "0");
+      if (rest.length || !SEGMENT.test(owner ?? "") || !SEGMENT.test(repo ?? "") || `${shard}.json` !== name) {
+        misplaced += 1;
+        continue;
+      }
+      if (!e || typeof e !== "object" || !LAYER_MODES.has(e.mode) || LAYER_HIDDEN.has(e.state)) continue;
+      clean[key] = scrub(e);
+      layered += 1;
+    }
+    writeFileSync(`public/forge/layer/${name}`, JSON.stringify(clean));
+    layerShards += 1;
+  }
+}
+if (misplaced) console.warn(`${misplaced} entries of OSCR's forge layer were not in their shard, or not a repository: dropped.`);
+
 const withCode = catalog.articles.filter((a) => a.code.length > 0).length;
 const withPage = catalog.articles.filter((a) => a.page === true || a.code.length > 0).length;
 const aligned = catalog.articles.filter((a) => a.alignment?.pairs > 0).length;
@@ -186,5 +223,6 @@ console.log(
 );
 console.log(
   `entities: ${Object.entries(entities).map(([k, n]) => `${n} ${k}`).join(", ")}; ` +
-    `DOI lookup: ${looked} papers in ${shards} shards; ${detailed} full paper pages`,
+    `DOI lookup: ${looked} papers in ${shards} shards; ${detailed} full paper pages; ` +
+    `forge layer: ${layered} repositories in ${layerShards} shards`,
 );

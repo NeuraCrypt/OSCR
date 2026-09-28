@@ -137,6 +137,33 @@ What signed-in readers ask of the registry (`website/worker/contributions/`, `os
   daily limits are counted from the rows; a signed-out reader's page view asks the Worker nothing
   (the `__Host-oscr_signed_in` hint cookie). No email address in any form: the texts lose theirs.
 
+## Git hosting (night phase 01)
+
+The GitHub side (`website/worker/forge/`, D1 `oscr_forge`, `oscr/forgejobs.py`,
+`oscr/forgelayer.py`; the contract: `docs/FORGE.md`; decisions D00-*, D01-* in `docs/DECISIONS.md`):
+
+- **OSCR hosts no Git repository**: repositories live in the researcher's own GitHub account. Git
+  goes straight to github.com with GitHub's own credentials: no git proxy, no git token issued by
+  OSCR.
+- **Every write is the person's own**, one authorized action at a time (`/api/forge/start`, GitHub,
+  `/api/forge/act`): the user token is used for that action, revoked, and never stored, logged or
+  answered. The App's installation token only posts OSCR's check runs and reads after a webhook.
+- **`FORGE_OPEN` stays unset until phase 16's content rules are merged**: the write routes then
+  answer only to `FORGE_OWNER_GITHUB_ID`. Never set it without the owner.
+- **`oscr_forge` holds public repositories only**, and no email address, token or Git object; a
+  repository made private leaves OSCR (hidden, its name blanked). Its writes are capped in code
+  (5,000 rows a day; 100 actions, 10 creations, 20 links per account a day), counted from the rows,
+  with no counter row; every read goes by key or index, never a scan.
+- **Deletion**: 30 days of grace in OSCR; the deletion on GitHub is only the researcher's own fresh
+  authorization, never a timer or OSCR's token. **Software Heritage** only on a person's request.
+- The App's secrets are **Cloudflare secrets** set by `tools/setup_cloudflare.sh` (the private key
+  read from GitHub's `.pem` file). The Mac never writes to a forge and never runs users' code.
+- Repository pages are static (`/r/*`, one shell): signed out, they ask the Worker nothing.
+  Webhooks: ≤ 1 MiB, the signature checked in constant time, allowlisted events, ≤ 2 rows each.
+- Their styles are in `science.css`: `.repo-head`, `p.status-line`, `.setup`, `pre.commands`,
+  `fieldset.choices`, `.limits`, `section.danger`, `table.branches`, `dl.settings`, `.panel`,
+  `.confirm`.
+
 ## The website's style (website/)
 
 - `website/src/styles/science.css` is the **only** source of style of the site. It is

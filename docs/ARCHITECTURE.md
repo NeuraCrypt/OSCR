@@ -488,9 +488,45 @@ written.
 2. **Give its values to `tools/setup_cloudflare.sh`**, which gains these questions in phase 01:
    `GITHUB_APP_ID`, `GITHUB_APP_CLIENT_ID`, `GITHUB_APP_CLIENT_SECRET`, `GITHUB_APP_PRIVATE_KEY`
    (GitHub's file as it is) and `GITHUB_APP_WEBHOOK_SECRET`, plus the variable
-   `GITHUB_APP_SLUG`. The same script creates the D1 database `oscr_forge`.
+   `GITHUB_APP_SLUG`. The same script creates the D1 database `oscr_forge`. (Phase 01 stores the
+   slug, and the owner's numeric GitHub id `FORGE_OWNER_GITHUB_ID`, as secrets too, so that a
+   deployment never wipes them: D01-2.)
 3. **Decide**:
    - C3: 20,000 D1 rows a day for the GitHub side;
    - whether a user token may stay, encrypted, in the session cookie for its 8 hours;
    - whether to switch on the clone alias;
    - whether OSCR may ask Software Heritage to archive the commits of validated maps by default.
+
+### Git hosting (phase 01): the forge service, the pages, the Mac
+
+Built on the night of 2026-09-29, on the design above; the contract (routes, action kinds and
+their payloads, rows, caps, pages, jobs) is [FORGE.md](FORGE.md), the decisions D01-1 onwards in
+[DECISIONS.md](DECISIONS.md).
+
+- **The Worker** answers `/api/forge/*` (`website/worker/forge/service/`): `POST start` and
+  `POST act`, one authorized action in two requests (D00-4); `POST webhook`, GitHub's deliveries;
+  `GET repo` and `GET mine`, OSCR's layer for a signed-in reader. Every route needs the binding
+  `FORGE` (D1 `oscr_forge`), and the signed-in ones the accounts; without them, 503
+  `not_configured`.
+- **Who may write**: `FORGE_OPEN` unset (the default) closes the write routes to everyone but the
+  owner, the GitHub account `FORGE_OWNER_GITHUB_ID` names (D01-1). Phase 16's content rules open
+  them.
+- **An action** is a spec in a registry (`actions.ts`): it validates its payload, performs as the
+  person through `GitBackend`, checks GitHub's answer, and returns its D1 rows as statements,
+  written in one batch with the action row (`store.ts`).
+- **The caps** are counted from the rows, with no counter row: 100 actions, 10 creations and 20
+  links per account in 24 hours; 5,000 rows a UTC day for the whole service. The keys of `actions`
+  and `deliveries` start with the UTC day, so each count is a key range (D01-11, D01-12).
+- **The pages** are static: `/new/`, `/new/link/`, `/new/import/`, `/repositories/`,
+  `/forge/authorized/`, the guides under `/hosting/`, and ONE shell for every repository page,
+  `/r/<owner>/<name>/[settings/|branches/]` (`public/_redirects`: `/r/* /r/ 200`). Signed out, a
+  repository page asks the Worker nothing: GitHub's anonymous API on the reader's quota, and OSCR's
+  layer from at most 64 static shards (`/forge/layer/NN.json`).
+- **The Mac** (`oscr forge …`, `oscr/forgejobs.py`, `oscr/forgelayer.py`) polls the jobs
+  (`link`, `push`, `archive`, `delete_due`, `reconcile`) and the public mirrors' heads, pushes the
+  traced paths, and writes the static layer before the nightly deployment
+  (`OSCR_FORGE_PUSH=remote`). It reaches `oscr_forge` as it reaches `oscr_community`
+  (`community.open_d1(target, database="oscr_forge")`).
+- **The owner's setup** is the same script: `tools/setup_cloudflare.sh` creates, binds and
+  migrates `oscr_forge`, and stores the App's values as Cloudflare secrets, the private key read
+  from GitHub's `.pem` file; it never sets `FORGE_OPEN`.

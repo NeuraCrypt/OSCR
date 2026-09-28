@@ -4,7 +4,11 @@
 name = "oscr"
 compatibility_date = "2026-09-01"
 workers_dev = true
-# The Worker's own code: /api/search (Phase 3, docs/SEARCH.md).
+# The Worker's own code: /api/search (Phase 3, docs/SEARCH.md), the accounts and the contributions
+# (docs/ACCOUNTS.md, docs/CONTRIBUTIONS.md), the GitHub side's /api/forge/* (night phase 01,
+# docs/FORGE.md). The forge's database, oscr_forge (FORGE), is bound below by
+# tools/setup_cloudflare.sh once the owner has created it; until then /api/forge/* answers 503
+# not_configured. Its switch FORGE_OPEN is never set here (closed until phase 16).
 main = "worker/index.ts"
 
 [assets]
@@ -63,3 +67,9 @@ binding = "COMMUNITY"
 database_name = "oscr_community"
 database_id = "00000000-0000-4000-8000-00000000c0de"
 migrations_dir = "../migrations/d1-community"
+
+[[env.local.d1_databases]]
+binding = "FORGE"
+database_name = "oscr_forge"
+database_id = "00000000-0000-4000-8000-00000000f09e"
+migrations_dir = "../migrations/d1-forge"

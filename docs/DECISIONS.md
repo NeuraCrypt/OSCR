@@ -595,3 +595,197 @@ of validated maps.
 | Other forges | O1, O2 reject; O3 neutral interface; O4 Software Heritage | D00-1, D00-13, D00-15 |
 | User-owned | U1 → D00-2; U2 → D00-3; U3 → D00-4; U4 → D00-6; U5 → D00-9; U6 → D00-16; U7, U8 → D00-14 | as listed |
 | Cloudflare capacity | C1–C6 (C3 proposed, not applied) | D00-12 |
+
+## Phase 01: Git hosting and the mirror mode (2026-09-29)
+
+Taken while laying the foundation of phase 01 (the schema, the forge service's skeleton, the
+setup script), by the same criteria. D01-1 to D01-10 are the phase plan's decisions
+(`data/night/phase-01/plan.json`, not committed); D01-11 onwards were taken while building. The
+contract they shape: [FORGE.md](FORGE.md).
+
+### D01-1. FORGE_OPEN: the write routes answer only to the owner until phase 16
+
+**Decision.**
+- `FORGE_OPEN` unset (the default) closes `POST /api/forge/start` and `POST /api/forge/act` to every
+  account but the owner's: the GitHub account whose public numeric id is `FORGE_OWNER_GITHUB_ID`.
+  Everyone else gets 403 `forge_closed`, in words. `FORGE_OWNER_GITHUB_ID` unset: closed to all.
+- Checked at start (the GitHub identity linked to the signed-in account) and again at act (the
+  account GitHub says authorized the action).
+- Webhooks and the signed-in reads are not gated.
+- `FORGE_OPEN=true` opens them; the setup script never sets it.
+
+**Reasons.** Security: the mission makes phase 16's content rules indispensable before any public
+opening (`PLATFORM_PLAN.md` §15.5, plan decision 3), and merging an earlier branch then opens
+nothing. The switch costs one comparison per request.
+
+**What would change it.** Phase 16 merged, and the owner's word.
+
+### D01-2. The App's slug and the owner's GitHub id are secrets; the private key comes from its file
+
+**Decision.** `tools/setup_cloudflare.sh` stores `GITHUB_APP_SLUG` and `FORGE_OWNER_GITHUB_ID` as
+Cloudflare secrets, like the App's id, client id, client secret and webhook secret, not as
+`[vars]` of `wrangler.toml`. `GITHUB_APP_PRIVATE_KEY` is read from the path of GitHub's `.pem`
+file (PKCS#1, as it is) and piped to `wrangler secret put`: it is never pasted or shown. Every
+pasted value is hidden, the public ones included (one rule for all).
+
+**Reasons.** A deployment replaces the `[vars]` of the Worker with those of `wrangler.toml`;
+secrets survive it. A multi-line key pasted into a terminal is error-prone and would show.
+
+**What would change it.** The owner preferring the slug in `wrangler.toml` (it is public).
+
+### D01-3. One more read route: GET /api/forge/mine
+
+**Decision.** Besides the four routes of the plan, `GET /api/forge/mine` answers "Your
+repositories" in one request, by a key range.
+
+**Reasons.** The dashboard would otherwise need one request per repository.
+
+### D01-4. A table of webhook deliveries
+
+**Decision.** `deliveries` keeps one row per delivery handled (its id, when, the rows it wrote):
+a redelivery writes nothing, and with `actions.rows` it counts the global 5,000 rows a day without
+a counter row. A webhook then costs 1–2 rows, the delivery's own included.
+
+**Reasons.** Idempotency, and the cap, within the budget of §15.6.
+
+### D01-5. The URL scheme
+
+**Decision.** `/new/`, `/new/link/`, `/new/import/`, `/repositories/`,
+`/r/<owner>/<name>/[settings/|branches/]`, `/forge/authorized/`, `/hosting/…`. Phase 02 may add
+views under `/r/` and keeps these. One static shell serves every `/r/*` path.
+
+**Reasons.** GitHub's own shape (owner, name), readable, and no file per repository (C5).
+
+### D01-6. The catalogue's GitHub repositories enter OSCR's layer through the static shards
+
+**Decision.** The repositories the catalogue already links (318 of 463 are on GitHub) appear in
+the Mac's static layer with the mode `catalogue` (read only), at 0 D1 rows. Linking one in D1
+stays the person's own action.
+
+**Reasons.** The mirror mode brings in the catalogue's code at no cost; nobody's consent is
+assumed. It follows plan decision 4 (OSCR-native objects as nightly static shards for signed-out
+readers).
+
+### D01-7. One write path: paper links and Software Heritage requests are authorized actions too
+
+**Decision.** Adding or removing a repository's papers (`papers`) and asking Software Heritage to
+archive it (`software_heritage`) go through the same start/act flow, with a permission check as the
+person on GitHub.
+
+**Reasons.** One write path to secure, audit and cap.
+
+### D01-8. The end of a grace period hides; the deletion stays the researcher's
+
+**Decision.** The Mac's `delete_due` job hides a repository whose 30 days ended without a restore.
+The deletion on GitHub is only `delete_final`, the researcher's own fresh authorization (D00-10).
+
+### D01-9. The research-compendium template is a build-time variable
+
+**Decision.** `COMPENDIUM_TEMPLATE` ("owner/name") at build time; without it, the option is not
+shown.
+
+**Reasons.** The owner has not made the template yet (optional, ARCHITECTURE.md "The owner's
+steps").
+
+### D01-10. science.css gets all of phase 01's rules from the foundation
+
+**Decision.** The foundation adds every rule the pages of phase 01 need (`.repo-head`,
+`p.status-line`, `.setup`, `pre.commands` and `button.copy`, `fieldset.choices` and `.explain`,
+`.limits`, `section.danger`, `table.branches`, `dl.settings`, `.panel`, `.confirm`, and the phone
+layout of the masthead's links and the tables), so that no two elements edit it.
+
+### D01-11. The daily counts are key ranges: the keys of actions and deliveries start with the UTC day
+
+**Decision.**
+- `actions` is keyed (day, user_id, at, nonce), `deliveries` (day, delivery), `day` being
+  `at / 86400` (a CHECK keeps them equal). No index on either.
+- An account's last 24 hours are two key ranges, (yesterday, user) and (today, user); today's rows
+  of every account and every webhook one range of each table.
+- A redelivery is found by four key probes, (day, delivery) for today and the three days before:
+  GitHub lets a delivery be redelivered for 3 days.
+
+**Options compared.**
+- **The design's sketch**, `actions` keyed (user_id, at, nonce) and `deliveries` by the delivery
+  id: an account's day is a range, but "today's rows" of everyone has no key order at all, and the
+  global cap would read both tables whole.
+- **A second order through an index** (or a rowid table with an index): +1 row written for every
+  action or every delivery, over the budgets of W1, the link and H1.
+- **A counter row per day**: +1 row written per write; ruled out ("no counter row").
+- **The day first**, which is chosen: 1 row per action and per delivery, every count a key range.
+
+**Reasons.** Zero extra writes; every read by key.
+
+**What would change it.** Measured reads (D01-12).
+
+### D01-12. The global cap is asked once per action, at act; webhooks are not asked
+
+**Decision.** `globalCap` sums the `rows` of today's action and delivery rows (at most 5,000 of
+each: every row counts itself at least) once per authorized action, at act, just before anything
+is written. A webhook writes at most 2 rows and does not ask; its rows count in the total the next
+action sees. Over the cap: 503 `quota` until 00:00 UTC.
+
+**Reasons.** Reading today's rows costs about as many rows read as rows were logged today (~750 on
+average at the design's plausible day, ~375,000 reads a day for 500 actions: within the GitHub
+side's 1,000,000 reads, well within D1's 5,000,000); asking at every webhook would double it for
+rows GitHub sends anyway (a refused delivery is redone by the Mac's polling, not saved).
+
+**What would change it.** Measured reads over the share: then one counter row per day (1 more
+row written per action, the owner's call against "no counter row"), or the check sampled.
+
+### D01-13. "Your repositories" lists the reader's own GitHub account
+
+**Decision.** `/api/forge/mine` reads the repositories OSCR knows under the reader's GitHub login
+(the login of the GitHub identity linked to their account), by the prefix (forge, owner_login) of
+`repos_path`, paged by name, filtered by mode and template. An organization's repositories are
+listed by the same query under the organization's login.
+
+**Options compared.** Listing by `linked_by` needs a second index on `repos` (+1 row per creation
+and link, over their budgets) or a scan.
+
+**Reasons.** The only index serves both the path lookups and the lists; it is GitHub's own notion
+of "your repositories".
+
+### D01-14. `oscr_forge` admits the test double's forge
+
+**Decision.** The CHECKs on `forge` accept `github` and `memory` (the test double's), as
+`oscr/forge.py` `FORGES` does. The Worker's production backend is GitHub's (`service/backend.ts`),
+so no production row can say `memory`; `store.ts` refuses any other forge.
+
+**Reasons.** The service's tests run on the real migration with MemoryBackend.
+
+### D01-15. An action's rows are statements with their cost
+
+**Decision.** A spec's `perform` returns its D1 rows as `Write`s, `{stmt, rows}`, `rows` being what
+D1 bills (the row and its index entries): act writes them in one batch with the action row, whose
+`rows` is their sum plus one. The tests' fake D1 bills the same way and records any scan.
+
+**Reasons.** The caps and the budgets are counted exactly, without asking D1 after the fact.
+
+### D01-16. The Mac answers a forge job in its own row
+
+**Decision.** `jobs` gains `done_at`, `outcome` and `message` (plain text, no at sign). A
+repository's page reads the jobs still pending from the table's last 50 rows (a bounded tail of
+the rowid).
+
+**Reasons.** `oscr_community`'s jobs answer into the request's row; a forge job has none, and the
+dashboard says what is pending.
+
+### D01-17. `repos` keeps the template flag; `installations` are keyed by forge and id
+
+**Decision.** `repos.template` (0 or 1), kept by creations and the `template` action, lets the
+dashboard filter templates without a request to GitHub. `installations` is keyed (forge, id), like
+every other table.
+
+### D01-18. The token template link, and OSCR's own tokens later
+
+**Decision.** The Code button and the tokens guide link to GitHub's pre-filled fine-grained token
+page (`src/lib/forge.ts` `tokenTemplateUrl`: the owner as resource owner, Contents write, 30 days, a
+name from the repository). GitHub's page has no parameter for the one repository: its description
+tells the person to pick it. OSCR's own tokens, for its API only and never for git, come with
+phase 10 (plan decision 8).
+
+### D01-19. The parts not built yet answer 501
+
+**Decision.** The foundation creates every file the elements fill: the routes answer 501
+`not_built`, the action arrays are empty, the pages are placeholders that say so, the Mac's
+commands exit with "not built yet". Nothing half-built pretends to work.

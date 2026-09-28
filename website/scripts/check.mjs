@@ -10,6 +10,10 @@
 //                                    builds from tests/fixtures/public-catalog, which
 //                                    exercises them all
 //
+// The GitHub side (night phase 01): its fixed pages are in FIXED; every /r/<owner>/<name>/… link is
+// served by the one shell /r/index.html (public/_redirects: "/r/* /r/ 200"); OSCR's static layer,
+// when the export has one, is at most 64 shards /forge/layer/NN.json, each a JSON object.
+//
 // It prints the number of files: a Worker's static assets stop at 20,000 per version.
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -30,13 +34,19 @@ if (!existsSync(DIST)) {
 }
 const files = walk(DIST).map((f) => f.slice(DIST.length).split("\\").join("/"));
 const all = new Set(files);
-/** A route ("/browse/", "/lookup/6c6.json") is served by a file of dist/. */
+/** A route ("/browse/", "/lookup/6c6.json") is served by a file of dist/. Every repository page
+ *  (/r/<owner>/<name>/…) is served by the shell /r/index.html (public/_redirects). */
 const exists = (route) =>
-  route.endsWith("/") ? all.has(`${route}index.html`) : all.has(route) || all.has(`${route}/index.html`);
+  route.startsWith("/r/")
+    ? all.has("/r/index.html")
+    : route.endsWith("/") ? all.has(`${route}index.html`) : all.has(route) || all.has(`${route}/index.html`);
 
 // 1. The fixed pages.
 const FIXED = ["/", "/about/", "/browse/", "/authors/", "/journals/", "/institutions/", "/tools/", "/datasets/",
-  "/lookup/", "/search/", "/404.html", "/account/", "/submit/", "/badge.svg"];
+  "/lookup/", "/search/", "/404.html", "/account/", "/submit/", "/badge.svg",
+  // The GitHub side (night phase 01).
+  "/new/", "/new/link/", "/new/import/", "/repositories/", "/forge/authorized/", "/r/", "/hosting/", "/hosting/limits/",
+  "/hosting/large-files/", "/hosting/git/", "/hosting/history/", "/hosting/tokens/", "/hosting/import/", "/hosting/leave/"];
 for (const route of FIXED) if (!exists(route)) problems.push(`missing page ${route}`);
 
 // 2. A page for each paper of decision D2, none for the others; a reader for each paper
@@ -49,6 +59,28 @@ for (const a of catalog.articles) {
 }
 const shards = existsSync("public/lookup") ? readdirSync("public/lookup").filter((n) => n.endsWith(".json")) : [];
 for (const name of shards) if (!exists(`/lookup/${name}`)) problems.push(`missing lookup shard ${name}`);
+
+// OSCR's static layer for the repository pages (scripts/data.mjs copies it when the export has one):
+// at most 64 shards, 00.json to 63.json, each an object keyed by "owner/name" in lower case.
+const layer = existsSync("public/forge/layer") ? readdirSync("public/forge/layer") : [];
+if (layer.length > 64) problems.push(`${layer.length} forge layer shards: 64 at most`);
+for (const name of layer) {
+  const m = /^(\d{2})\.json$/.exec(name);
+  if (!m || Number(m[1]) > 63) {
+    problems.push(`public/forge/layer/${name}: not a shard (00.json to 63.json)`);
+    continue;
+  }
+  if (!exists(`/forge/layer/${name}`)) problems.push(`missing forge layer shard ${name}`);
+  let entries;
+  try {
+    entries = JSON.parse(readFileSync(`public/forge/layer/${name}`, "utf8"));
+  } catch {
+    problems.push(`public/forge/layer/${name}: not JSON`);
+    continue;
+  }
+  if (!entries || typeof entries !== "object" || Array.isArray(entries)) problems.push(`public/forge/layer/${name}: not an object`);
+  else for (const key of Object.keys(entries)) if (key !== key.toLowerCase() || key.split("/").length !== 2) problems.push(`public/forge/layer/${name}: key ${key}`);
+}
 
 // 3. Every internal link and resource of every page leads to a file, and every link within
 // a page ("#code") to an element of that page. A paper's page has its sections, the Contribute
@@ -79,7 +111,8 @@ for (const page of pages) {
     const missing = SECTIONS.filter((id) => !ids.has(id));
     if (missing.length) problems.push(`${page}: no section ${missing.map((id) => `#${id}`).join(", ")}`);
   }
-  if (/^\/(paper\/[^/]+|account|submit)\/index\.html$/.test(page) && /<script(?![^>]*\ssrc=)[^>]*>/.test(html)) {
+  if (/^\/(paper\/[^/]+|account|submit|new|new\/link|new\/import|repositories|forge\/authorized|r)\/index\.html$/.test(page) &&
+      /<script(?![^>]*\ssrc=)[^>]*>/.test(html)) {
     problems.push(`${page}: an inline script, which its Content-Security-Policy forbids`);
   }
 }
@@ -111,7 +144,7 @@ if (everyRoute) {
   }
 }
 
-console.log(`${files.length} files in dist/ (${pages.length} pages, ${shards.length} lookup shards), ` +
+console.log(`${files.length} files in dist/ (${pages.length} pages, ${shards.length} lookup shards, ${layer.length} forge layer shards), ` +
   `${links} internal links checked; the limit is ${LIMIT.toLocaleString("en-GB")}.`);
 console.log(Object.entries(counts).map(([k, n]) => `  ${k}: ${n}`).join("\n"));
 if (files.length > MARGIN) {

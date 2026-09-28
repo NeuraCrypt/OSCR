@@ -19,11 +19,13 @@ const {
   breadcrumb = [],
 } = Astro.props;
 const fullTitle = title ? `${title} — ${SITE_NAME}` : SITE_TAGLINE === SITE_NAME ? SITE_NAME : `${SITE_NAME} — ${SITE_TAGLINE}`;
-// The ways in besides the catalogue, in the masthead (science.css `.masthead nav`).
+// The ways in besides the catalogue, in the masthead (science.css `.masthead nav`). Repositories:
+// the GitHub side (night phase 01), the reader's own repositories and how to create or link one.
 const sections = [
   { text: "Search", href: "/search/" },
   { text: "Browse", href: "/browse/" },
   { text: "DOI lookup", href: "/lookup/" },
+  { text: "Repositories", href: "/repositories/" },
   { text: "Account", href: "/account/" },
 ];
 ---

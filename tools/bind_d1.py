@@ -1,8 +1,10 @@
 """The helper of tools/setup_cloudflare.sh.
 
     npx wrangler d1 list --json | python tools/bind_d1.py website/wrangler.toml
-        binds the three D1 databases at the top of wrangler.toml, with the ids Cloudflare gave
+        binds the four D1 databases at the top of wrangler.toml, with the ids Cloudflare gave
         them (identifiers, not secrets), in place of the commented template; runs again safely.
+        The fourth, oscr_forge (FORGE), is the GitHub side's (night phase 01, docs/FORGE.md): until
+        the owner has created it, the Worker's /api/forge/* answer 503 not_configured.
     python tools/bind_d1.py --settings KEY=value
         sets one line of the Mac's settings (~/.config/oscr/settings), keeping the others.
 """
@@ -17,7 +19,8 @@ from pathlib import Path
 #: binding, database name, migrations folder (from website/).
 DATABASES = (("CATALOG", "oscr_catalog", "../migrations/d1/catalog"),
              ("SEARCH", "oscr_search", "../migrations/d1/search"),
-             ("COMMUNITY", "oscr_community", "../migrations/d1-community"))
+             ("COMMUNITY", "oscr_community", "../migrations/d1-community"),
+             ("FORGE", "oscr_forge", "../migrations/d1-forge"))
 SETTINGS = Path.home() / ".config" / "oscr" / "settings"
 TEMPLATE_START = "# The search's databases are bound once the owner has created them"
 LOCAL_START = "# Local development only"
@@ -33,7 +36,7 @@ def ids_from_listing(listing: str) -> dict[str, str]:
 
 
 def blocks(ids: dict[str, str]) -> str:
-    lines = ["# The databases of the search (docs/SEARCH.md) and of the accounts (docs/ACCOUNTS.md),",
+    lines = ["# The databases of the search (docs/SEARCH.md), of the accounts (docs/ACCOUNTS.md) and of the forge (docs/FORGE.md),",
              "# created by tools/setup_cloudflare.sh. Their ids are identifiers, not secrets.", ""]
     for binding, name, migrations in DATABASES:
         lines += ["[[d1_databases]]", f'binding = "{binding}"', f'database_name = "{name}"',

@@ -1,0 +1,66 @@
+// OSCR's own caps on the forge service (the design's §10.4; docs/FORGE.md "Caps"). They are not the
+// forge's limits (those are ../limits.ts, GITHUB_LIMITS): they keep what passes through the Worker
+// within its 10 ms of CPU and the forge service within its share of D1's free plan.
+//
+// - The Worker parses and rebuilds an action's JSON: 1 MiB costs 0.6 to 2.8 ms (V8 on the Mac,
+//   ../limits.ts), 5 MiB does not fit. Above it, GitHub's own pages or `git push`.
+// - D1: 100,000 rows written a day for the whole account; the Worker's share is 10,000, and the
+//   forge service's 5,000 until the owner confirms C3 (D00-12). Counted from the rows written
+//   today (actions.rows, deliveries.rows: gate.ts), with no counter row.
+
+import type { ActionKind } from "./types.ts";
+
+const MiB = 2 ** 20;
+
+/** An authorized action's payload (a web commit's files, a body). */
+export const ACTION_PAYLOAD_BYTES = 1 * MiB;
+/** A release asset streamed through the Worker, raw (no parse, no base64). Larger: GitHub's page. */
+export const ASSET_UPLOAD_BYTES = 25 * MiB;
+/** A webhook delivery: larger ones get 413 before any hashing, and the Mac's polling catches up. */
+export const WEBHOOK_BYTES = 1 * MiB;
+/** Files in one web commit. */
+export const COMMIT_FILES = 100;
+/** Changed files OSCR's pull-request check reads (3 pages); beyond, it says so. */
+export const PR_FILES_CHECKED = 300;
+/** Rows the forge service writes in D1 in a UTC day, every account and every webhook together. */
+export const FORGE_ROWS_PER_DAY = 5_000;
+/** What one account may do in 24 hours: authorized actions of every kind, repositories created
+ *  (create, generate), repositories linked (link). */
+export const PER_ACCOUNT_DAY = { actions: 100, creations: 10, links: 20 } as const;
+export type Cap = keyof typeof PER_ACCOUNT_DAY;
+/** OSCR's grace period before a repository asked for deletion may be deleted (D00-10). */
+export const GRACE_SECONDS = 30 * 86_400;
+/** The flow cookie of one authorized action (start → GitHub → act). */
+export const FLOW_SECONDS = 600;
+/** The body of POST /api/forge/start: the declared action, never its payload. */
+export const START_BODY_BYTES = 8 * 1024;
+/** GitHub lets a delivery be redelivered for 3 days: the redelivery check reads that far back. */
+export const REDELIVERY_DAYS = 3;
+
+export const DAY_SECONDS = 86_400;
+
+/** The UTC day of a time (D1's own day, and the key's first column of actions and deliveries). */
+export const utcDay = (t: number): number => Math.floor(t / DAY_SECONDS);
+
+/** Seconds until the next 00:00 UTC, when the day's caps start again (Retry-After). */
+export const untilNextDay = (t: number): number => Math.max(60, (utcDay(t) + 1) * DAY_SECONDS - Math.floor(t));
+
+/** The cap each kind counts toward besides `actions`. */
+export const CAP_OF: Readonly<Partial<Record<ActionKind, Exclude<Cap, "actions">>>> = {
+  create: "creations",
+  generate: "creations",
+  link: "links",
+};
+
+/** The kinds each cap counts. */
+export const KINDS_OF: Readonly<Record<Exclude<Cap, "actions">, readonly ActionKind[]>> = {
+  creations: ["create", "generate"],
+  links: ["link"],
+};
+
+/** A cap in words, for the answers ("10 repositories created"). */
+export const CAP_WORDS: Readonly<Record<Cap, (n: number) => string>> = {
+  actions: (n) => `${n} authorized ${n === 1 ? "action" : "actions"}`,
+  creations: (n) => `${n} ${n === 1 ? "repository" : "repositories"} created`,
+  links: (n) => `${n} ${n === 1 ? "repository" : "repositories"} linked`,
+};

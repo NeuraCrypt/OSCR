@@ -1,0 +1,18 @@
+---
+// /hosting/leave/: the exit path.
+//
+// STUB, created by the foundation (F) of phase 01 so that the site builds and every link resolves;
+// owned by E12, which builds the page. science.css only; the platform's name from src/config.ts.
+import Base from "../../layouts/Base.astro";
+import { SITE_NAME } from "../../config";
+---
+<Base
+  title="Leaving the registry"
+  description="Your repository stays yours: unlink it, back it up, take the registry's layer with you."
+  breadcrumb={[{ text: "Hosting code", href: "/hosting/" }, { text: "Leaving the registry" }]}
+>
+  <h1>Leaving the registry</h1>
+  <p class="summary">Your repository is already in your own GitHub account: how to unlink it, back it up, and export what the registry keeps about it.</p>
+  <p class="warning">This page is being built: it is not in service yet.</p>
+  <p>Where repositories live and what {SITE_NAME} keeps of them: <a href="/hosting/">the hosting guides</a>.</p>
+</Base>

@@ -20,6 +20,11 @@
     oscr community build|push --local    the sign-in's facts (ORCID iDs, repository owners) for D1 (--remote too)
     oscr jobs poll --local|--remote      Phase 6: the site's requests (submissions, corrections, validations…)
     oscr claims|reports|submissions list|accept|refuse   the owner's decisions (docs/CONTRIBUTIONS.md)
+    oscr forge poll|mirrors|layer|status --local|--remote   the GitHub side (night phase 01, docs/FORGE.md):
+                                         the forge jobs, the public mirrors' heads, OSCR's static layer.
+                                         With OSCR_FORGE_PUSH=<target> in the settings, `oscr jobs poll`
+                                         also polls the forge jobs there, and with OSCR_FORGE_PUSH=remote
+                                         `oscr nightly` also reads the mirrors and writes the layer.
 """
 from __future__ import annotations
 
@@ -108,7 +113,19 @@ def _jobs(con, a: argparse.Namespace, cfg: dict[str, str], client: Client, opts:
                              budget=a.budget, report=lambda m: print(m, flush=True))
         try:
             if a.command == "jobs":
-                return jobs.poll(runner).describe(target)
+                out = jobs.poll(runner).describe(target)
+                if cfg.get("OSCR_FORGE_PUSH") == target:
+                    # The GitHub side's jobs (night phase 01), in the same state and budget; a failure is
+                    # said, and the community's answers stand.
+                    from . import forgejobs
+                    try:
+                        out += "\n" + forgejobs.command(
+                            con, "poll", target=target, folder=Path(a.folder), budget=a.budget, settings=cfg,
+                            persist_to=Path(a.persist_to) if a.persist_to else None, client=client,
+                            report=lambda m: print(m, flush=True))
+                    except (Exception, SystemExit) as e:
+                        out += f"\nforge jobs: {e}"
+                return out
             if a.id is None:
                 raise SystemExit(f"{a.command} {a.action}: which one? (its number, from `oscr {a.command} list`)")
             accept = a.action == "accept"
@@ -121,6 +138,25 @@ def _jobs(con, a: argparse.Namespace, cfg: dict[str, str], client: Client, opts:
             raise SystemExit(f"D1 ({target}): {e}") from None
     finally:
         state.close()
+
+
+def _forge(con, a: argparse.Namespace, cfg: dict[str, str], client: Client) -> str:
+    """The GitHub side (night phase 01): `oscr forge poll|mirrors|layer|status` (oscr/forgejobs.py,
+    oscr/forgelayer.py; docs/FORGE.md)."""
+    from . import forgejobs, forgelayer
+    target = "remote" if a.remote else "local" if a.local else None
+    if target is None and a.action != "status":
+        raise SystemExit(f"forge {a.action}: add --local (the local D1 of `wrangler dev`) or --remote "
+                         f"(the Cloudflare database oscr_forge)")
+    common = {"target": target, "folder": Path(a.folder), "budget": a.budget, "settings": cfg,
+              "persist_to": Path(a.persist_to) if a.persist_to else None,
+              "report": lambda m: print(m, flush=True)}
+    if a.action == "layer":
+        return forgelayer.command(con, "layer", out=Path(a.export), **common)
+    if a.action == "status":
+        return "\n".join([forgejobs.command(con, "status", client=client, **common),
+                          forgelayer.command(con, "status", out=Path(a.export), **common)])
+    return forgejobs.command(con, a.action, client=client, **common)
 
 
 def _zenodo(con, a: argparse.Namespace) -> None:
@@ -324,6 +360,21 @@ def main(argv: list[str] | None = None) -> int:
         dp.add_argument("--message", default="", help="your words for the person who asked (shown on their account page)")
         community_target(dp)
 
+    fg = sp.add_parser("forge", help="the GitHub side (night phase 01): the forge jobs, the public mirrors' heads, "
+                                     "OSCR's static layer (docs/FORGE.md)")
+    fg.add_argument("action", choices=["poll", "mirrors", "layer", "status"])
+    fg_where = fg.add_mutually_exclusive_group()
+    fg_where.add_argument("--local", action="store_true", help="the local D1 of `wrangler dev --env local`")
+    fg_where.add_argument("--remote", action="store_true",
+                          help="the Cloudflare database oscr_forge: the REST API with OSCR_D1_ACCOUNT_ID, "
+                               "OSCR_D1_FORGE_ID and the keychain's token, else wrangler's own login")
+    fg.add_argument("--folder", default="data/community", help="the state (shared with `oscr community` and `oscr jobs`)")
+    fg.add_argument("--persist-to", default="", help="the local D1's state folder, when not website/.wrangler/state")
+    fg.add_argument("--budget", type=int, default=int(cfg.get("OSCR_COMMUNITY_BUDGET", "10000")),
+                    help="rows written a day, the facts push's included (default 10,000)")
+    fg.add_argument("--export", default="data/public",
+                    help="layer: the public export, whose forge/layer/ the shards go to")
+
     n = sp.add_parser("nightly", help="the publication: public catalogue, then Hugging Face and the website")
     n.add_argument("--out", default="data/public", help="a separate folder, only ever generated in public mode")
     n.add_argument("--dataset", default=cfg.get("OSCR_HF_DATASET", ""), help="Hugging Face user/dataset (empty: send nothing)")
@@ -399,6 +450,22 @@ def main(argv: list[str] | None = None) -> int:
             # Each upload is attempted on its own: Hugging Face being down does not keep
             # the website from updating, and vice versa.
             errors = []
+            if cfg.get("OSCR_FORGE_PUSH") == "remote":
+                # The GitHub side (night phase 01, docs/FORGE.md), between the public export and the
+                # deployment: the public mirrors' heads, then OSCR's static layer into the export.
+                from . import community, forgejobs, forgelayer
+                try:
+                    print(f"{now()} forge mirrors: " + forgejobs.mirrors(
+                        con, target="remote", folder=Path("data/community"),
+                        budget=int(cfg.get("OSCR_COMMUNITY_BUDGET", "10000")), settings=cfg, client=client,
+                        report=lambda m: print(m, flush=True)), flush=True)
+                except (Exception, SystemExit) as e:
+                    errors.append(f"Forge mirrors: {e}")
+                try:
+                    forge_d1 = community.open_d1("remote", settings=cfg, database="oscr_forge")
+                    print(f"{now()} forge layer: " + forgelayer.write(con, forge_d1, out), flush=True)
+                except (Exception, SystemExit) as e:
+                    errors.append(f"Forge layer: {e}")
             if a.dataset:
                 try:
                     print(f"{now()} {publish.publish_hf(out, a.dataset)}", flush=True)
@@ -467,6 +534,8 @@ def main(argv: list[str] | None = None) -> int:
                                     folder=Path(a.folder), budget=a.budget, settings=cfg))
         elif a.command in ("jobs", "claims", "reports", "submissions"):
             print(_jobs(con, a, cfg, client, opts))
+        elif a.command == "forge":
+            print(_forge(con, a, cfg, client))
         elif a.command == "zenodo":
             _zenodo(con, a)
         elif a.command == "d1":

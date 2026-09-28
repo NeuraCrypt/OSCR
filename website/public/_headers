@@ -3,7 +3,11 @@
 # site may frame them, and they run this site's own files only (no inline script or style: Astro
 # writes every script as a file, astro.config.mjs). The account page (Phase 5); /submit/ and a
 # paper's page (Phase 6) — `:slug` is one segment, so the Code ↔ Paper reader (/paper/<slug>/code/),
-# which reads Europe PMC and Hugging Face, keeps its own rules.
+# which reads Europe PMC and Hugging Face, keeps its own rules. The GitHub side (night phase 01):
+# the pages that start an authorized action (/new/, /new/link/, /new/import/, /repositories/), the
+# callback page of GitHub's authorization (/forge/authorized/: no Referer at all, so the code in
+# its address never leaves), and the repository pages (/r/*), which also read GitHub's anonymous API
+# and raw files in the reader's browser, on the reader's own quota (D00-5).
 /account/
   X-Frame-Options: DENY
   Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'; object-src 'none'
@@ -17,4 +21,34 @@
 /paper/:slug/
   X-Frame-Options: DENY
   Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'; object-src 'none'
+  Referrer-Policy: same-origin
+
+/new/
+  X-Frame-Options: DENY
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'; object-src 'none'
+  Referrer-Policy: same-origin
+
+/new/link/
+  X-Frame-Options: DENY
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'; object-src 'none'
+  Referrer-Policy: same-origin
+
+/new/import/
+  X-Frame-Options: DENY
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'; object-src 'none'
+  Referrer-Policy: same-origin
+
+/repositories/
+  X-Frame-Options: DENY
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'; object-src 'none'
+  Referrer-Policy: same-origin
+
+/forge/authorized/
+  X-Frame-Options: DENY
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'; object-src 'none'
+  Referrer-Policy: no-referrer
+
+/r/*
+  X-Frame-Options: DENY
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self' https://api.github.com https://raw.githubusercontent.com; form-action 'self'; frame-ancestors 'none'; base-uri 'none'; object-src 'none'
   Referrer-Policy: same-origin

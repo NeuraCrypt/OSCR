@@ -1,0 +1,8 @@
+# Rewrites of the static site (Workers static assets, developers.cloudflare.com/workers/static-assets/redirects/).
+# A 200 serves another file of the site at the same address: no redirect, no Worker request.
+#
+# The repository pages (the GitHub side, night phase 01): ONE static shell serves every
+# /r/<owner>/<name>/… path, and its script reads the repository in the reader's browser (GitHub's
+# anonymous API on the reader's own quota, OSCR's static layer). No file per repository (C5: the
+# catalogue already uses most of the 20,000 files a version may hold); 0 Worker requests.
+/r/* /r/ 200

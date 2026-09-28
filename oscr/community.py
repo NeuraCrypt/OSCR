@@ -42,7 +42,10 @@ nightly` pushes there once `OSCR_COMMUNITY_PUSH=remote` is in the settings.
 
 **The database, read and written** (`D1`, `open_d1`): the job runner (oscr/jobs.py, Phase 6)
 reads the requests of the site's readers and writes the outcomes back through the same two
-paths, and counts its rows in the same daily budget.
+paths, and counts its rows in the same daily budget. The same paths reach the GitHub side's
+database, `oscr_forge` (night phase 01; migrations/d1-forge/, docs/FORGE.md), for
+oscr/forgejobs.py and oscr/forgelayer.py: `open_d1(target, database="oscr_forge")`, with
+`OSCR_D1_FORGE_ID` in the settings for the REST API. The default stays `oscr_community`.
 """
 from __future__ import annotations
 
@@ -62,6 +65,9 @@ from typing import Any
 from . import catalog, entities
 
 DATABASE = "oscr_community"
+#: The D1 databases the Mac reads and writes, each with the settings key of its id for the REST API
+#: (the account id is OSCR_D1_ACCOUNT_ID for both). `oscr_forge`: the GitHub side (night phase 01).
+DATABASES: dict[str, str] = {"oscr_community": "OSCR_D1_COMMUNITY_ID", "oscr_forge": "OSCR_D1_FORGE_ID"}
 ROOT = Path(__file__).resolve().parents[1]
 MIGRATIONS = ROOT / "migrations" / "d1-community"
 WEBSITE = ROOT / "website"
@@ -358,22 +364,31 @@ def _wrangler(args: list[str], website: Path) -> str:
     return r.stdout
 
 
-def migrate_local(website: Path = WEBSITE, config: tuple[str, ...] = WRANGLER_LOCAL) -> None:
-    """The local D1 at the schema of migrations/d1-community/."""
-    _wrangler(["d1", "migrations", "apply", DATABASE, "--local", *config], website)
+def database_name(database: str) -> str:
+    """`database` when the Mac may reach it (DATABASES), else D1Error."""
+    if database not in DATABASES:
+        raise D1Error(f"unknown D1 database {database!r}: {' or '.join(DATABASES)}")
+    return database
 
 
-def apply_local(path: Path, website: Path = WEBSITE, config: tuple[str, ...] = WRANGLER_LOCAL) -> None:
+def migrate_local(website: Path = WEBSITE, config: tuple[str, ...] = WRANGLER_LOCAL, database: str = DATABASE) -> None:
+    """The local D1 at the schema of its migrations (migrations/d1-community/, or d1-forge/)."""
+    _wrangler(["d1", "migrations", "apply", database_name(database), "--local", *config], website)
+
+
+def apply_local(path: Path, website: Path = WEBSITE, config: tuple[str, ...] = WRANGLER_LOCAL,
+                database: str = DATABASE) -> None:
     """One file into the local D1: `wrangler d1 execute oscr_community --local --file`."""
-    _wrangler(["d1", "execute", DATABASE, "--local", *config, "--file", str(path.resolve()), "--yes"], website)
+    _wrangler(["d1", "execute", database_name(database), "--local", *config, "--file", str(path.resolve()), "--yes"],
+              website)
 
 
-def apply_remote_wrangler(path: Path, website: Path = WEBSITE) -> None:
+def apply_remote_wrangler(path: Path, website: Path = WEBSITE, database: str = DATABASE) -> None:
     """One file into the Cloudflare database, under wrangler's own login (`npx wrangler login`,
     the one the deployment uses): no API token then. The database is found by name, bound in
     website/wrangler.toml by the owner's tools/setup_cloudflare.sh, which also applies the
     migrations."""
-    _wrangler(["d1", "execute", DATABASE, "--remote", "--file", str(path.resolve()), "--yes"], website)
+    _wrangler(["d1", "execute", database_name(database), "--remote", "--file", str(path.resolve()), "--yes"], website)
 
 
 def rest_url(account_id: str, database_id: str) -> str:
@@ -395,12 +410,13 @@ def apply_rest(sql: str, *, account_id: str, database_id: str, token: str, post:
     return list(body.get("result") or [])
 
 
-def remote_settings(settings: dict[str, str] | None) -> tuple[str, str, str]:
-    """The REST API's account id, database id and token, or empty strings: then wrangler's login."""
+def remote_settings(settings: dict[str, str] | None, database: str = DATABASE) -> tuple[str, str, str]:
+    """The REST API's account id, database id and token, or empty strings: then wrangler's login.
+    The database's id is OSCR_D1_COMMUNITY_ID, or OSCR_D1_FORGE_ID for `oscr_forge`."""
     from . import d1
     cfg = settings or {}
-    account, database = cfg.get("OSCR_D1_ACCOUNT_ID", ""), cfg.get("OSCR_D1_COMMUNITY_ID", "")
-    return (account, database, d1.remote_token()) if account and database else ("", "", "")
+    account, ident = cfg.get("OSCR_D1_ACCOUNT_ID", ""), cfg.get(DATABASES[database_name(database)], "")
+    return (account, ident, d1.remote_token()) if account and ident else ("", "", "")
 
 
 def push(con: sqlite3.Connection, state: sqlite3.Connection, target: str, *, folder: Path,
@@ -557,10 +573,12 @@ def _results(stdout: str) -> list[dict[str, Any]]:
 
 class WranglerD1(D1):
     """Through wrangler: the local D1 of `wrangler dev --env local` (or the state folder given,
-    `--persist-to`), or the Cloudflare database under wrangler's own login."""
+    `--persist-to`), or the Cloudflare database under wrangler's own login. `database`:
+    oscr_community (the default) or oscr_forge."""
 
-    def __init__(self, target: str, website: Path = WEBSITE, persist_to: Path | None = None) -> None:
-        self.target, self.website = target, website
+    def __init__(self, target: str, website: Path = WEBSITE, persist_to: Path | None = None,
+                 database: str = DATABASE) -> None:
+        self.target, self.website, self.database = target, website, database_name(database)
         where = ["--local", *WRANGLER_LOCAL] if target == "local" else ["--remote"]
         if persist_to is not None:
             where += ["--persist-to", str(Path(persist_to).resolve())]
@@ -568,7 +586,7 @@ class WranglerD1(D1):
 
     def _execute(self, sql: str) -> list[dict[str, Any]]:
         try:
-            return _results(_wrangler(["d1", "execute", DATABASE, *self.where, "--json", "--yes", "--command", sql],
+            return _results(_wrangler(["d1", "execute", self.database, *self.where, "--json", "--yes", "--command", sql],
                                       self.website))
         except PushError as e:
             raise D1Error(str(e)) from None
@@ -612,17 +630,18 @@ class RestD1(D1):
 
 
 def open_d1(target: str, *, settings: dict[str, str] | None = None, website: Path = WEBSITE,
-            persist_to: Path | None = None) -> D1:
-    """The community database of `target`: local through wrangler; remote through the REST API
-    when its ids and token are there, else through wrangler's login."""
+            persist_to: Path | None = None, database: str = DATABASE) -> D1:
+    """The community database of `target` (or `database`, oscr_forge): local through wrangler;
+    remote through the REST API when its ids and token are there, else through wrangler's login."""
+    database_name(database)
     if target == "local":
-        return WranglerD1("local", website, persist_to)
+        return WranglerD1("local", website, persist_to, database=database)
     if target != "remote":
         raise D1Error(f"unknown target {target!r}: local or remote")
-    account, database, token = remote_settings(settings)
-    if account and database and token:
-        return RestD1(account, database, token)
-    return WranglerD1("remote", website)
+    account, ident, token = remote_settings(settings, database)
+    if account and ident and token:
+        return RestD1(account, ident, token)
+    return WranglerD1("remote", website, database=database)
 
 
 def spend(state: sqlite3.Connection, target: str, rows: int, *, now: float | None = None) -> None:
