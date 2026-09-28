@@ -98,9 +98,11 @@ jobs:
         working-directory: website
         run: npm run check -- --every-route
 
-      # The same fixture with only its 2 most recent papers static: the 2 others are rendered
-      # on demand from their records (worker/pages.ts), and the check follows every link to them.
-      - name: Check the papers rendered on demand
+      # The file budget does not grow with the catalogue: the fixture with only its 2 most recent
+      # papers static (the others rendered on demand from their records, worker/pages.ts), then the
+      # same grown with tens of thousands of synthetic entities, papers and DOIs; both builds pass
+      # the check, and only the shards differ, within their fixed numbers (scripts/growth.mjs).
+      - name: Check that the number of files does not grow with the catalogue
         if: steps.fixture.outputs.ready == 'true'
         working-directory: website
-        run: OSCR_STATIC_PAPERS=2 npm run build && npm run check
+        run: npm run check:growth
