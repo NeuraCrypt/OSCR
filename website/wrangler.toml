@@ -20,31 +20,26 @@ run_worker_first = ["/api/*"]
 # cache, static assets included, is billed as a Worker request (developers.cloudflare.com,
 # Workers pricing, note 4). The search sets Cache-Control and uses the Cache API instead.
 
-# The search's databases are bound once the owner has created them (docs/SEARCH.md, "Remote
-# setup", awaiting approval). Until then /api/search answers 503 "not_configured", the search
-# page says so, and the site deploys as before. The two blocks to add, with the ids that
-# `npx wrangler d1 create` prints:
-#
-# [[d1_databases]]
-# binding = "CATALOG"
-# database_name = "oscr_catalog"
-# database_id = "<id of oscr_catalog>"
-# migrations_dir = "../migrations/d1/catalog"
-#
-# [[d1_databases]]
-# binding = "SEARCH"
-# database_name = "oscr_search"
-# database_id = "<id of oscr_search>"
-# migrations_dir = "../migrations/d1/search"
-#
-# The accounts' database (Phase 5, docs/ACCOUNTS.md), once the owner has created it; until then
-# /api/account/me answers that sign-in is not available, and the account page says so:
-#
-# [[d1_databases]]
-# binding = "COMMUNITY"
-# database_name = "oscr_community"
-# database_id = "<id of oscr_community>"
-# migrations_dir = "../migrations/d1-community"
+# The databases of the search (docs/SEARCH.md) and of the accounts (docs/ACCOUNTS.md),
+# created by tools/setup_cloudflare.sh. Their ids are identifiers, not secrets.
+
+[[d1_databases]]
+binding = "CATALOG"
+database_name = "oscr_catalog"
+database_id = "9142b26d-faeb-429b-885d-113dc1ba5388"
+migrations_dir = "../migrations/d1/catalog"
+
+[[d1_databases]]
+binding = "SEARCH"
+database_name = "oscr_search"
+database_id = "11992a04-6e3a-4d54-be33-7fe167e45e4e"
+migrations_dir = "../migrations/d1/search"
+
+[[d1_databases]]
+binding = "COMMUNITY"
+database_name = "oscr_community"
+database_id = "38da2a3a-ecc2-4c7b-a4ee-2b3cb57c7b32"
+migrations_dir = "../migrations/d1-community"
 
 # Local development only, never deployed: `npx wrangler dev --env local`, `oscr d1 push --local`.
 # The databases live in .wrangler/state; their ids name the local files, nothing remote.
