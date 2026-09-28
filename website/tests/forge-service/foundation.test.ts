@@ -28,8 +28,8 @@ const body = async (res: Response): Promise<Record<string, any>> => (await res.j
 const req = (path: string, init?: RequestInit) => new Request(new URL(path, ORIGIN), init);
 const ROUTES = Object.keys(FORGE_ROUTES);
 /** The routes whose element is not built yet: their stub answers 501 not_built. Each element that
- *  builds a route takes it out of this list (E3: the webhook; E1 built start and act, E6 the reads). */
-const STUBS: ReadonlySet<string> = new Set(["/api/forge/webhook"]);
+ *  builds a route takes it out of this list (all built: E1 start and act, E3 the webhook, E6 the reads). */
+const STUBS: ReadonlySet<string> = new Set<string>([]);
 
 let w: ForgeWorld;
 beforeEach(() => {

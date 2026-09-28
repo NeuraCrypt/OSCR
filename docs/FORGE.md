@@ -40,7 +40,7 @@ the accounts set up (`COMMUNITY` and `SESSION_KEY`, else 503 `not_configured`).
 |---|---|---|---|---|
 | `POST /api/forge/start` | signed in; Origin and CSRF (`account/guard.ts` `signedIn`) | `{kind, repo, branch, expectedHead, digest, back, install?}` (≤ 8 KiB) → `{location}` | reads only (caps) | E1 |
 | `POST /api/forge/act` | signed in; Origin and CSRF | `{code, state, payload}` (payload ≤ 1 MiB) → `{result, sentence}` | the action row + the spec's rows, one batch | E1 |
-| `POST /api/forge/webhook` | GitHub (HMAC-SHA-256, `GITHUB_APP_WEBHOOK_SECRET`); not gated by `FORGE_OPEN` | the delivery (≤ 1 MiB, else 413 before hashing) → `{ok}` | ≤ 2 rows, the delivery row included | E3 |
+| `POST /api/forge/webhook` | GitHub (HMAC-SHA-256, `GITHUB_APP_WEBHOOK_SECRET`); not gated by `FORGE_OPEN` | the delivery (≤ 1 MiB, else 413 before hashing) → `{ok, stored}` | ≤ 2 rows: a one-row change with its delivery row, a two-row change without it (D01-24) | E3 |
 | `GET /api/forge/repo?id=<forge>:<id>` or `?path=<owner>/<name>` | signed in | OSCR's layer for one repository | ~10 read, 0 written | E6 |
 | `GET /api/forge/mine` | signed in | "Your repositories", paged by name, `?mode=`, `?template=` | the account's repositories | E6 |
 

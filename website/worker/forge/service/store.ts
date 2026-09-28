@@ -170,25 +170,28 @@ const PATCH_COLUMNS: Record<keyof RepoPatch, string> = {
 /** A change of a repository's row (1 row written; 2 when its path changes: the index entry moves).
  *  Guards make it conditional, in the same statement:
  *  - `headAtBelow`: only when the head seen is older (a webhook's older news is ignored);
- *  - `states`: only from these states (a restore only from pending_deletion). */
+ *  - `states`: only from these states (a restore only from pending_deletion);
+ *  - `differs`: only when one of the columns set holds another value (a webhook redelivered, or a
+ *    change already made, writes nothing). */
 export function updateRepo(
   db: D1Database,
   forge: string,
   repoId: string,
   patch: RepoPatch,
   t: number,
-  guard: { headAtBelow?: number; states?: RepoState[] } = {},
+  guard: { headAtBelow?: number; states?: RepoState[]; differs?: boolean } = {},
 ): Write {
   const sets: string[] = [];
   const values: unknown[] = [];
+  const compared: { column: string; value: unknown }[] = [];
   for (const [key, value] of Object.entries(patch) as [keyof RepoPatch, unknown][]) {
     if (value === undefined) continue;
     const column = PATCH_COLUMNS[key];
     if (!column) throw new TypeError(`not a column of repos: ${String(key)}`);
     sets.push(`${column} = ?`);
-    if (key === "ownerLogin" || key === "name") values.push(lower(String(value)));
-    else if (key === "template") values.push(value ? 1 : 0);
-    else values.push(value);
+    const bound = key === "ownerLogin" || key === "name" ? lower(String(value)) : key === "template" ? (value ? 1 : 0) : value;
+    values.push(bound);
+    compared.push({ column, value: bound });
   }
   if (!sets.length) throw new TypeError("an update of repos changes nothing");
   sets.push("updated_at = ?");
@@ -202,6 +205,10 @@ export function updateRepo(
   if (guard.states?.length) {
     where.push(`state IN (${guard.states.map(() => "?").join(", ")})`);
     values.push(...guard.states);
+  }
+  if (guard.differs) {
+    where.push(`(${compared.map((c) => `${c.column} IS NOT ?`).join(" OR ")})`);
+    values.push(...compared.map((c) => c.value));
   }
   const moves = patch.ownerLogin !== undefined || patch.name !== undefined;
   return { rows: moves ? 2 : 1, stmt: db.prepare(`UPDATE repos SET ${sets.join(", ")} WHERE ${where.join(" AND ")}`).bind(...values) };

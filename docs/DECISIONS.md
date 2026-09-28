@@ -831,3 +831,36 @@ fails, the repository is recorded as GitHub made it, and the answer says so in w
 
 **Why.** The repository exists on GitHub: recording nothing would leave it invisible to the
 registry for a detail the person can change in one step.
+
+### D01-24. A webhook writes at most 2 rows; its delivery row only when it fits
+
+**Decision.** A delivery's changes are conditional statements that write nothing when already made
+(a push's head only when newer: `head_at`; the other changes only when a value differs:
+`store.ts` `updateRepo` guard `differs`; a push's job only when the same push asked for none among
+the recent jobs). A change of one row is written with the delivery row (the log, and the day's
+global count); a change of two rows (a rename moves the path's index entry, a privatized repository
+loses its name, a push to a repository with tracing maps also asks the Mac for a `push` job) is
+written without it, being idempotent by itself. An installation removed writes one row per
+repository it covered, plus one. A delivery needs an installation the registry knows that covers
+the repository's account; anything else is acknowledged and dropped.
+
+**Why.** The budget of §15.6 (≤ 2 rows a delivery) with D1's billing of index entries, and
+idempotency for GitHub's redeliveries. The rows written without a delivery row are rare events and
+stay outside the day's global count, inside the margin between 5,000 and the Worker's 10,000.
+
+### D01-25. A spec reaches the person's installations, never their token
+
+**Decision.** `ActionContext.installations` (`list`, `repositories`) is bound to the action's
+token inside `act.ts`: the link action finds the installation of the App that covers a repository
+through it, and the token itself stays in `act.ts`'s scope.
+
+**Why.** Security: the rule "the token is never stored, logged or answered" is kept by
+construction, with no spec able to leak it.
+
+### D01-26. Linking a repository already linked is refused; one hidden or gone is linked again
+
+**Decision.** `link` answers 409 `already_linked` for a repository the registry follows (active,
+archived, or waiting for its deletion): its papers change with the `papers` action. A repository
+hidden, deleted or gone is linked again on its own row, brought up to date.
+
+**Why.** One row per repository id, and no silent change of who linked it.

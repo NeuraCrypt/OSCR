@@ -199,6 +199,10 @@ async function asThePerson(r: ForgeRequest, a: Acting): Promise<Response> {
     repo: a.repo,
     t: r.t,
     nonce: newNonce(),
+    installations: {
+      list: (page) => a.auth.installations(a.token, page),
+      repositories: (id, page) => a.auth.installationRepositories(a.token, id, page),
+    },
   };
   const out = await a.spec.perform(ctx);
   if (!a.spec.check(out.result, a.parsed, ctx)) {

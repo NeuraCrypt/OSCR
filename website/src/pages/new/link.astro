@@ -1,11 +1,22 @@
 ---
-// /new/link/: the mirror mode, linking an existing public repository the person administers or maintains,
-// with or without the App installed.
+// /new/link/: the mirror mode (D00-2). A repository the person already has on GitHub, public, which
+// they administer or maintain, linked to the registry and to its papers in one authorized action
+// (E1): with the App when one of their installations covers it (its pushes followed as they
+// happen, by webhooks), without it otherwise (read only, read every night). The registry never
+// copies the repository: git stays on GitHub.
 //
-// STUB, created by the foundation (F) of phase 01 so that the site builds and every link resolves;
-// owned by E3, which builds the page. science.css only; the platform's name from src/config.ts.
+// The form is shown by its script (src/scripts/link-repo.ts, a file: the page's
+// Content-Security-Policy forbids inline scripts), pre-filled from ?repo=owner/name and ?paper=DOI;
+// after an installation of the App (/forge/authorized/ links here with ?installation=ID) a note says
+// so. science.css only; the platform's name from src/config.ts.
 import Base from "../../layouts/Base.astro";
 import { SITE_NAME } from "../../config";
+
+const LINKS = {
+  apps: "https://docs.github.com/en/apps/using-github-apps/about-using-github-apps",
+  installed: "https://github.com/settings/installations",
+  roles: "https://docs.github.com/en/organizations/managing-user-access-to-your-organizations-repositories/managing-repository-roles/repository-roles-for-an-organization",
+};
 ---
 <Base
   title="Link a repository"
@@ -13,7 +24,69 @@ import { SITE_NAME } from "../../config";
   breadcrumb={[{ text: "Repositories", href: "/repositories/" }, { text: "Link a repository" }]}
 >
   <h1>Link a repository</h1>
-  <p class="summary">A repository you already have on GitHub, linked to your paper: with the App installed, its pushes are followed as they happen; without it, it is read every night.</p>
-  <p class="warning">This page is being built: it is not in service yet.</p>
-  <p>Where repositories live and what {SITE_NAME} keeps of them: <a href="/hosting/">the hosting guides</a>.</p>
+  <p class="summary">
+    A repository you already have on GitHub, linked to your paper: with the App installed, its pushes are followed as
+    they happen; without it, it is read every night. It stays where it is, in your account; {SITE_NAME} copies nothing
+    of it but what its licence allows.
+  </p>
+  <noscript>
+    <p class="warning">This form needs JavaScript: it asks GitHub for your authorization, then comes back here.</p>
+  </noscript>
+  <p id="link-installed" class="ok" hidden>
+    The App is installed on GitHub. Name one of the repositories you gave it, below, to link it.
+  </p>
+  <p id="link-message" role="status"></p>
+
+  <form id="link-form" hidden>
+    <p>
+      <label for="link-repository">The repository</label>: owner/name, or its GitHub address<br />
+      <input type="text" id="link-repository" name="repository" autocomplete="off" spellcheck="false" maxlength="300" placeholder="lab/eeg-analysis" required />
+    </p>
+    <p>
+      <label for="link-papers">Its papers</label> (DOIs, separated by spaces; optional)<br />
+      <input type="text" id="link-papers" name="papers" autocomplete="off" spellcheck="false" maxlength="2000" placeholder="10.5555/…" />
+    </p>
+    <p><label><input type="checkbox" name="install" /> Install the App on it first</label> (if it is not installed yet)</p>
+    <p><button type="submit">Link</button></p>
+    <div id="link-confirm" aria-live="polite"></div>
+  </form>
+
+  <h2>Who may link it</h2>
+  <p>
+    A person who administers or maintains the repository on GitHub (<a href={LINKS.roles}>repository roles</a>): GitHub
+    says so when you authorize. A private repository is never linked, and its name is kept nowhere. A paper you are a
+    verified author of is linked at once; another is proposed to its authors.
+  </p>
+
+  <h2>With the App, or without it</h2>
+  <dl class="settings">
+    <dt>With the App</dt>
+    <dd>
+      GitHub tells {SITE_NAME} of each push, rename, archive or deletion as it happens (a webhook, signed by GitHub and
+      checked), so the repository's page and its tracing maps follow at once. The App may read the repositories you
+      choose when you install it, and later post its checks on pull requests. It never pushes code, never reads a
+      private repository you did not give it, and you remove it at any time from
+      <a href={LINKS.installed}>your GitHub settings</a> (<a href={LINKS.apps}>about GitHub Apps</a>).
+    </dd>
+    <dt>Without it</dt>
+    <dd>
+      The repository is read only, the way anyone reads a public repository: {SITE_NAME} checks its head every night,
+      so its page may be a day behind.
+    </dd>
+  </dl>
+
+  <h2>What linking does not do</h2>
+  <p>
+    It moves nothing and copies no history: git goes on to GitHub as before, with your own credentials. Refs such as
+    pull requests' (refs/pull/…) are never mirrored. To bring code from another host, <a href="/new/import/">import
+    it</a> first; to start a new repository, <a href="/new/">create one</a>.
+  </p>
+  <ul>
+    <li><a href="/repositories/">Your repositories</a>.</li>
+    <li><a href="/hosting/">The hosting guides</a>.</li>
+  </ul>
+
+  <script>
+    import "../../scripts/link-repo";
+  </script>
 </Base>

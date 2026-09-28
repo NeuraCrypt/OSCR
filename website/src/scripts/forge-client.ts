@@ -66,6 +66,8 @@ export interface ClientDeps {
 type Json = Record<string, any>;
 
 const encoder = new TextEncoder();
+/** An account or repository name (worker/forge/paths.ts SEGMENT). */
+const SEGMENT_RE = /^(?!\.+$)[A-Za-z0-9._-]{1,100}$/;
 const nowSeconds = () => Math.floor(Date.now() / 1000);
 
 /** The tab's sessionStorage, or null when the browser keeps none (a private window, blocked data). */
@@ -304,9 +306,24 @@ export function outcomeOf(res: { status: number; body: Json } | null, pending: P
     const result = (res.body.result ?? {}) as Json;
     // What did not go as asked (a first branch GitHub kept under its own name), in words.
     if (Array.isArray(result.notes)) for (const n of result.notes) if (typeof n === "string" && n) text.push(n);
-    // A new repository: its page on this site (its quick setup when empty), a /r/ path only.
+    // Its papers: linked at once, or proposed to their authors.
+    if (Array.isArray(result.papers) && result.papers.length) {
+      const linked = result.papers.filter((p: Json) => p?.status === "linked").length;
+      const proposed = result.papers.length - linked;
+      const parts = [linked ? `${linked} ${linked === 1 ? "paper" : "papers"} linked` : "", proposed ? `${proposed} proposed to their authors` : ""].filter(Boolean);
+      text.push(`Its papers: ${parts.join(", ")}.`);
+    }
+    // A new or linked repository: its page on this site (its quick setup when empty), a /r/ path only.
     const page = typeof result.page === "string" && result.page.startsWith("/r/") && backPath(result.page) === result.page ? result.page : null;
-    return { tone: "ok", text, links: page ? [{ href: page, text: "The repository's page" }, back] : [back] };
+    const links = page ? [{ href: page, text: "The repository's page" }, back] : [back];
+    // The other repositories of the same installation, to link next (each its own action).
+    if (Array.isArray(result.others)) {
+      for (const o of result.others.slice(0, 20)) {
+        if (!o || !SEGMENT_RE.test(String(o.owner)) || !SEGMENT_RE.test(String(o.name))) continue;
+        links.push({ href: `/new/link/?repo=${encodeURIComponent(`${o.owner}/${o.name}`)}`, text: `Link ${o.owner}/${o.name} too` });
+      }
+    }
+    return { tone: "ok", text, links };
   }
   const e = (res.body.error ?? {}) as Json;
   const text = [String(e.message ?? "The action could not be carried out. Please try again.")];

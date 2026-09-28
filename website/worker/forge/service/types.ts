@@ -19,7 +19,7 @@ import type { AccountEnv, Context, D1Database, D1PreparedStatement } from "../..
 import type { User } from "../../account/store.ts";
 import type { GitBackend, GitSession } from "../gitbackend.ts";
 import type { ForgeEnv } from "../github/index.ts";
-import type { ForgeName } from "../types.ts";
+import type { ForgeName, Installation, Page, PageRequest, Permission, RepoStub } from "../types.ts";
 
 export type { Context, D1Database, D1PreparedStatement };
 
@@ -157,6 +157,16 @@ export interface ActionContext<P> {
   t: number;
   /** The action's nonce: its row's key (actions.nonce). */
   nonce: string;
+  /** The App's installations the person can see, and their repositories with the person's own
+   *  permission (GitHub's /user/installations): bound to this action's token inside act.ts, so the
+   *  token itself never reaches a spec. */
+  installations: PersonInstallations;
+}
+
+/** What `ActionContext.installations` answers (ForgeAuth's, without the token). */
+export interface PersonInstallations {
+  list(page?: PageRequest): Promise<Page<Installation>>;
+  repositories(installationId: string, page?: PageRequest): Promise<Page<RepoStub & { permission: Permission }>>;
 }
 
 /** What an action did: the answer for the page, the rows to write in the same batch as the action
