@@ -17,11 +17,14 @@
 //   readme             GET …/readme/{dir}?ref= (404 → null)
 //   importRepository   none since GitHub retired its Source Imports API: `unsupported`, with the
 //                      importer page as fallbackUrl; imports run on the researcher's machine (D00-8)
+//   autolinks          GET /repos/{o}/{r}/autolinks; POST …/autolinks {key_prefix, url_template,
+//                      is_alphanumeric}; DELETE …/autolinks/{id} (admin; GitHub answers a prefix
+//                      already there with 422 "already_exists": conflict)
 
 import { GitBackendError, invalid } from "../errors.ts";
 import type { RepoOps } from "../gitbackend.ts";
 import { fileContent, fromBase64 } from "../objects.ts";
-import { checkLogin, checkOwner, checkPath, checkRefName, checkRepoName, checkRev } from "../paths.ts";
+import { checkAutolink, checkId, checkLogin, checkOwner, checkPath, checkRefName, checkRepoName, checkRev } from "../paths.ts";
 import type * as T from "../types.ts";
 import { type Ctx, need, R, scope } from "./ctx.ts";
 import { MEDIA, readJson, readLimited } from "./http.ts";
@@ -34,6 +37,11 @@ function text(v: unknown, what: string, max: number): string | undefined {
   if (v === undefined) return undefined;
   if (typeof v !== "string" || v.length > max || /[\u0000-\u001f]/.test(v)) throw invalid(`not a ${what}`);
   return v;
+}
+
+function autolink(v: unknown): T.Autolink {
+  const a = map.obj(v, "autolink");
+  return { id: map.id(a), keyPrefix: map.str(a, "key_prefix"), urlTemplate: map.str(a, "url_template"), isAlphanumeric: map.bool(a, "is_alphanumeric", true) };
 }
 
 function features(f: Partial<T.RepoFeatures> | undefined): Record<string, boolean> {
@@ -209,6 +217,26 @@ export function repoOps(ctx: Ctx): RepoOps {
     async importRepository() {
       need(ctx, "write", "serverImport", links.importer());
       throw new GitBackendError("unsupported", "GitHub has no import API", { fallbackUrl: links.importer() });
+    },
+
+    async autolinks(repo) {
+      need(ctx, "read");
+      const answer = await http.json({ path: `${R(repo)}/autolinks`, scope: scope(repo, "read") });
+      return map.list(answer, "autolinks").map(autolink);
+    },
+
+    async createAutolink(repo, input) {
+      need(ctx, "write");
+      const path = `${R(repo)}/autolinks`;
+      const a = checkAutolink(input);
+      const body = { key_prefix: a.keyPrefix, url_template: a.urlTemplate, is_alphanumeric: a.isAlphanumeric };
+      return autolink(await http.json({ method: "POST", path, json: body }));
+    },
+
+    async deleteAutolink(repo, id) {
+      need(ctx, "write");
+      const path = `${R(repo)}/autolinks/${encodeURIComponent(checkId(id, "autolink id"))}`;
+      await http.send({ method: "DELETE", path });
     },
   };
 }

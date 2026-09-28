@@ -3,8 +3,9 @@
 
 import { GitBackendError, invalid } from "../../worker/forge/errors.ts";
 import type { RepoOps } from "../../worker/forge/gitbackend.ts";
+import type * as T from "../../worker/forge/types.ts";
 import { fileContent } from "../../worker/forge/objects.ts";
-import { checkLogin, checkOwner, checkPath, checkRefName, checkRepo, checkRepoName, checkRev } from "../../worker/forge/paths.ts";
+import { checkAutolink, checkId, checkLogin, checkOwner, checkPath, checkRefName, checkRepo, checkRepoName, checkRev } from "../../worker/forge/paths.ts";
 import type { Flat } from "./gitobjects.ts";
 import type { Account, Call, MemRepo } from "./memory.ts";
 import {
@@ -260,6 +261,36 @@ export function repoOps(c: Call): RepoOps {
     async importRepository() {
       c.enter("repos.importRepository", { act: "write", need: "serverImport", fallback: b.links.importer() });
       throw new GitBackendError("unsupported", "this forge has no import", { fallbackUrl: b.links.importer() });
+    },
+
+    // Custom autolinks, with GitHub's rules: the admin's; a prefix unique in the repository
+    // (letter case aside); "<num>" in an http(s) template, checked before anything else.
+    async autolinks(ref) {
+      checkRepo(ref);
+      c.enter("repos.autolinks", { act: "read" });
+      const r = c.repo(ref, "admin");
+      return [...r.autolinks.values()].map((a) => ({ ...a }));
+    },
+
+    async createAutolink(ref, input) {
+      checkRepo(ref);
+      const a = checkAutolink(input);
+      c.enter("repos.createAutolink", { act: "write" });
+      const r = c.repo(ref, "admin");
+      if ([...r.autolinks.values()].some((x) => x.keyPrefix.toLowerCase() === a.keyPrefix.toLowerCase())) {
+        throw new GitBackendError("conflict", "an autolink with this prefix already exists");
+      }
+      const made: T.Autolink = { id: b.nextId(), ...a };
+      r.autolinks.set(made.id, made);
+      return { ...made };
+    },
+
+    async deleteAutolink(ref, id) {
+      checkRepo(ref);
+      checkId(id, "autolink id");
+      c.enter("repos.deleteAutolink", { act: "write" });
+      const r = c.repo(ref, "admin");
+      if (!r.autolinks.delete(id)) throw notFound("no such autolink");
     },
   };
 }

@@ -176,3 +176,26 @@ export function checkCommitInput(input: CommitInput): CommitInput {
   }
   return { ...input, changes: checkChanges(input.changes) };
 }
+
+/** A custom autolink's key prefix: letters, digits and . - _ + = : / #, at most 32 characters. */
+export const AUTOLINK_PREFIX = /^[A-Za-z0-9._+=:/#-]{1,32}$/;
+
+/** A custom autolink as every backend takes it: a key prefix, an http(s) URL template holding
+ *  "<num>" (at most 2,048 characters, no credentials), and whether identifiers may hold letters. */
+export function checkAutolink(input: unknown): { keyPrefix: string; urlTemplate: string; isAlphanumeric: boolean } {
+  if (!input || typeof input !== "object") throw invalid("no autolink");
+  const a = input as Record<string, unknown>;
+  if (typeof a.keyPrefix !== "string" || !AUTOLINK_PREFIX.test(a.keyPrefix)) throw invalid("not an autolink prefix");
+  if (typeof a.urlTemplate !== "string" || a.urlTemplate.length > 2048 || !a.urlTemplate.includes("<num>") || /[\s<>"]/.test(a.urlTemplate.replaceAll("<num>", ""))) {
+    throw invalid("an autolink's URL template is an address holding <num>");
+  }
+  let url: URL;
+  try {
+    url = new URL(a.urlTemplate.replaceAll("<num>", "0"));
+  } catch {
+    throw invalid("an autolink's URL template is an address holding <num>");
+  }
+  if ((url.protocol !== "https:" && url.protocol !== "http:") || url.username || url.password) throw invalid("an autolink's URL template is an http or https address");
+  if (a.isAlphanumeric !== undefined && typeof a.isAlphanumeric !== "boolean") throw invalid("isAlphanumeric is true or false");
+  return { keyPrefix: a.keyPrefix, urlTemplate: a.urlTemplate, isAlphanumeric: a.isAlphanumeric !== false };
+}

@@ -237,6 +237,7 @@ export interface MemRepo {
   milestoneCounter: number;
   releases: Map<string, MemRelease>;
   pendingTransfer: { ownerId: string; name: string } | null;
+  autolinks: Map<string, T.Autolink>;
   checkRuns: Map<string, MemCheckRun>;
   statuses: Map<T.ObjectId, { context: string; state: T.StatusState; description: string; targetUrl: string | null }[]>;
   threads: Map<string, MemThread>;

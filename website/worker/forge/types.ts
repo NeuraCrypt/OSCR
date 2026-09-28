@@ -176,6 +176,25 @@ export interface RepoPatch {
   features?: Partial<RepoFeatures>;
 }
 
+/** A custom autolink (GitHub: "Autolink references"): `keyPrefix` followed by an identifier in an
+ *  issue, a pull request or a commit message becomes a link to `urlTemplate`, where "<num>" stands
+ *  for the identifier. The phase 01 addition to RepoOps (research use: RRIDs, a lab's protocol ids). */
+export interface Autolink {
+  id: string;
+  keyPrefix: string;
+  urlTemplate: string;
+  /** Identifiers of letters and digits (true), or digits only (false). */
+  isAlphanumeric: boolean;
+}
+
+export interface AutolinkInput {
+  keyPrefix: string;
+  /** An http or https address holding "<num>". */
+  urlTemplate: string;
+  /** Default true, as GitHub's. */
+  isAlphanumeric?: boolean;
+}
+
 export interface TransferInput {
   newOwner: string;
   newName?: string;

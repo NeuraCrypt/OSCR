@@ -9,6 +9,7 @@ import { GitBackendError, type GitErrorCode } from "../../worker/forge/errors.ts
 import type { GitSession } from "../../worker/forge/gitbackend.ts";
 import { githubBackend, githubConfigFromEnv } from "../../worker/forge/github/index.ts";
 import { base64, text, utf8 } from "../../worker/forge/objects.ts";
+import { INSTALLATION_RULE } from "../../worker/forge/rules.ts";
 import type * as T from "../../worker/forge/types.ts";
 import {
   emailKeys, ghAsset, ghCheckRun, ghCommit, ghFile, ghIssue, ghPull, ghRelease, ghRepo, ghUser, json, MockFetch, raw, type Recorded, SHA,
@@ -130,6 +131,26 @@ const CASES: Case[] = [
     call: (s) => s.repos.update(REPO, { name: "renamed", archived: true, defaultBranch: "trunk", isTemplate: true, features: { autoMerge: true } }),
     expect: [{ method: "PATCH", path: "/repos/ada/compendium", body: { name: "renamed", archived: true, default_branch: "trunk", is_template: true, allow_auto_merge: true } }],
     check: (r: T.RepoInfo) => assert.equal(r.archived, true),
+  },
+  {
+    name: "repos.autolinks",
+    replies: [["GET", "/repos/ada/compendium/autolinks", json([{ id: 7, key_prefix: "RRID:", url_template: "https://scicrunch.org/resolver/RRID:<num>", is_alphanumeric: true }])]],
+    call: (s) => s.repos.autolinks(REPO),
+    expect: [{ method: "GET", path: "/repos/ada/compendium/autolinks" }],
+    check: (r: T.Autolink[]) => assert.deepEqual(r, [{ id: "7", keyPrefix: "RRID:", urlTemplate: "https://scicrunch.org/resolver/RRID:<num>", isAlphanumeric: true }]),
+  },
+  {
+    name: "repos.createAutolink",
+    replies: [["POST", "/repos/ada/compendium/autolinks", json({ id: 8, key_prefix: "PROTO-", url_template: "https://protocols.example.org/p/<num>", is_alphanumeric: false }, 201)]],
+    call: (s) => s.repos.createAutolink(REPO, { keyPrefix: "PROTO-", urlTemplate: "https://protocols.example.org/p/<num>", isAlphanumeric: false }),
+    expect: [{ method: "POST", path: "/repos/ada/compendium/autolinks", body: { key_prefix: "PROTO-", url_template: "https://protocols.example.org/p/<num>", is_alphanumeric: false } }],
+    check: (r: T.Autolink) => assert.deepEqual(r, { id: "8", keyPrefix: "PROTO-", urlTemplate: "https://protocols.example.org/p/<num>", isAlphanumeric: false }),
+  },
+  {
+    name: "repos.deleteAutolink",
+    replies: [["DELETE", "/repos/ada/compendium/autolinks/8", json(null, 204)]],
+    call: (s) => s.repos.deleteAutolink(REPO, "8"),
+    expect: [{ method: "DELETE", path: "/repos/ada/compendium/autolinks/8" }],
   },
   {
     name: "repos.setTopics",
@@ -1034,6 +1055,32 @@ describe("the GitHub adapter, method by method", () => {
       if (c.cost) for (const [k, v] of Object.entries(c.cost)) assert.equal(s.cost()[k as keyof T.Cost], v, `cost.${k}`);
     });
   }
+});
+
+describe("custom autolinks on GitHub", () => {
+  it("a prefix already there (422 already_exists) is a conflict; a template without <num> is invalid before any request", async () => {
+    const { mock, s } = setup("user");
+    mock.on(
+      "POST",
+      "/repos/ada/compendium/autolinks",
+      json({ message: "Validation Failed", errors: [{ resource: "KeyPrefix", code: "already_exists", field: "key_prefix" }] }, 422),
+      1,
+    );
+    await refused(s.repos.createAutolink(REPO, { keyPrefix: "RRID:", urlTemplate: "https://scicrunch.org/resolver/RRID:<num>" }), "conflict");
+    const before = apiCalls(mock).length;
+    await refused(s.repos.createAutolink(REPO, { keyPrefix: "RRID:", urlTemplate: "https://scicrunch.org/resolver/RRID:" }), "invalid");
+    await refused(s.repos.createAutolink(REPO, { keyPrefix: "RRID:", urlTemplate: "ftp://example.org/<num>" }), "invalid");
+    await refused(s.repos.deleteAutolink(REPO, "../8"), "invalid");
+    assert.equal(apiCalls(mock).length, before);
+  });
+
+  it("an installation session cannot create one (the installation rule), nor delete one", async () => {
+    const { mock, s } = setup("installation");
+    const e = await refused(s.repos.createAutolink(REPO, { keyPrefix: "RRID:", urlTemplate: "https://scicrunch.org/resolver/RRID:<num>" }), "forbidden");
+    assert.equal(e.message, INSTALLATION_RULE);
+    await refused(s.repos.deleteAutolink(REPO, "8"), "forbidden");
+    assert.equal(apiCalls(mock).length, 0);
+  });
 });
 
 describe("the GitHub adapter's requests", () => {

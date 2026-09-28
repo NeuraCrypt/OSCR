@@ -539,6 +539,25 @@ export class FakeGitHub {
       return reply(repoJson(f.repo), 202);
     });
     this.on("PUT", new RegExp(`${R}/topics$`), async (m, x) => reply({ names: await x.session.repos.setTopics(ref(m), (x.json.names as string[]) ?? []) }));
+    // Custom autolinks (phase 01): GitHub answers a prefix already there with 422 already_exists.
+    const autolinkJson = (a: T.Autolink) => ({ id: Number(a.id), key_prefix: a.keyPrefix, url_template: a.urlTemplate, is_alphanumeric: a.isAlphanumeric });
+    this.on("GET", new RegExp(`${R}/autolinks$`), async (m, x) => reply((await x.session.repos.autolinks(ref(m))).map(autolinkJson)));
+    this.on("POST", new RegExp(`${R}/autolinks$`), async (m, x) => {
+      const j = x.json;
+      try {
+        const a = await x.session.repos.createAutolink(ref(m), { keyPrefix: String(j.key_prefix), urlTemplate: String(j.url_template), isAlphanumeric: j.is_alphanumeric as boolean | undefined });
+        return reply(autolinkJson(a), 201);
+      } catch (e) {
+        if (e instanceof GitBackendError && e.code === "conflict") {
+          return reply({ message: "Validation Failed", errors: [{ resource: "KeyPrefix", code: "already_exists", field: "key_prefix" }] }, 422);
+        }
+        throw e;
+      }
+    });
+    this.on("DELETE", new RegExp(`${R}/autolinks/(\\d+)$`), async (m, x) => {
+      await x.session.repos.deleteAutolink(ref(m), m[3]);
+      return new Response(null, { status: 204 });
+    });
     this.on("POST", new RegExp(`${R}/transfer$`), async (m, x) => {
       const t = await x.session.repos.transfer(ref(m), { newOwner: String(x.json.new_owner), newName: x.json.new_name as string | undefined });
       return reply(repoJson(t.repo), 202);

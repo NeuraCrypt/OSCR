@@ -92,6 +92,11 @@ export interface RepoOps {
   readme(repo: T.RepoRef, rev?: T.Rev, dir?: string): Promise<T.FileContent | null>;
   /** Capability "serverImport". GitHub: `unsupported`, with fallbackUrl = links.importer(). */
   importRepository(input: T.ImportInput): Promise<T.RepoInfo>;
+  /** Custom autolinks to external resources (phase 01, added): the admin's, as GitHub's. A prefix
+   *  already there is `conflict`; a template without "<num>" is `invalid` before any request. */
+  autolinks(repo: T.RepoRef): Promise<T.Autolink[]>;
+  createAutolink(repo: T.RepoRef, input: T.AutolinkInput): Promise<T.Autolink>;
+  deleteAutolink(repo: T.RepoRef, id: string): Promise<void>;
 }
 
 /** Refs, trees, files and commits (phases 01–03, 06). */

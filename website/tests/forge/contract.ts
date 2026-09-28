@@ -131,6 +131,53 @@ export function runContract(name: string, make: () => Promise<Harness>): void {
   };
 
   describe(`GitBackend contract: ${name}`, () => {
+    // ─── 0. custom autolinks (phase 01's addition) ────────────────────────
+    describe("autolinks", () => {
+      const RRID = { keyPrefix: "RRID:", urlTemplate: "https://scicrunch.org/resolver/RRID:<num>", isAlphanumeric: true };
+
+      it("creates, lists and deletes an autolink, as the repository's admin", async () => {
+        const h = await make();
+        const s = user(h);
+        const r = await h.seed({ name: "autolinked", files: { "a.txt": "a\n" } });
+        assert.deepEqual(await s.repos.autolinks(r.ref), []);
+        const made = await s.repos.createAutolink(r.ref, RRID);
+        assert.deepEqual({ ...made, id: "" }, { ...RRID, id: "" });
+        assert.match(made.id, /^\d+$/);
+        const digits = await s.repos.createAutolink(r.ref, { keyPrefix: "PROTO-", urlTemplate: "https://protocols.example.org/p/<num>", isAlphanumeric: false });
+        assert.equal(digits.isAlphanumeric, false);
+        assert.deepEqual((await s.repos.autolinks(r.ref)).map((a) => a.keyPrefix).sort(), ["PROTO-", "RRID:"]);
+        await s.repos.deleteAutolink(r.ref, made.id);
+        assert.deepEqual((await s.repos.autolinks(r.ref)).map((a) => a.id), [digits.id]);
+        await refused(s.repos.deleteAutolink(r.ref, made.id), "not_found");
+      });
+
+      it("a prefix already there is a conflict; a template without <num> is invalid before any request", async () => {
+        const h = await make();
+        const s = user(h);
+        const r = await h.seed({ name: "autolinked-twice", files: { "a.txt": "a\n" } });
+        await s.repos.createAutolink(r.ref, RRID);
+        await refused(s.repos.createAutolink(r.ref, { ...RRID, keyPrefix: "rrid:" }), "conflict");
+        const before = s.cost().requests;
+        for (const bad of [
+          { keyPrefix: "X-", urlTemplate: "https://example.org/x" },
+          { keyPrefix: "X-", urlTemplate: "javascript:alert(<num>)" },
+          { keyPrefix: "", urlTemplate: "https://example.org/<num>" },
+          { keyPrefix: "a b", urlTemplate: "https://example.org/<num>" },
+        ]) {
+          await refused(s.repos.createAutolink(r.ref, bad), "invalid");
+        }
+        assert.equal(s.cost().requests, before, "no request for a bad autolink");
+      });
+
+      it("an installation session cannot create one; a collaborator with write cannot either", async () => {
+        const h = await make();
+        const r = await h.seed({ name: "autolinks-guarded", files: { "a.txt": "a\n" } });
+        await refused(inst(h).repos.createAutolink(r.ref, RRID), "forbidden");
+        await refused(user(h, h.collaborator).repos.createAutolink(r.ref, RRID), "forbidden");
+        await refused(anon(h).repos.createAutolink(r.ref, RRID), "unauthorized");
+      });
+    });
+
     // ─── 1. repositories ──────────────────────────────────────────────────
     describe("repositories", () => {
       it("creates a repository, with and without a first commit", async () => {
