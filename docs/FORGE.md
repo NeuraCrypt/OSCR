@@ -309,6 +309,26 @@ path of GitHub's `.pem` file), `GITHUB_APP_SLUG` and `FORGE_OWNER_GITHUB_ID` (pu
 as secrets so that a deployment never wipes them, D01-2). `FORGE_OPEN` is never set. Registering
 the App first: [ARCHITECTURE.md](ARCHITECTURE.md), "The owner's steps".
 
+## Local end-to-end run
+
+```sh
+cd website && npm ci
+SITE_PORT=8791 MOCK_PORT=9491 FAKE_PORT=9490 sh tests/forge-service/e2e.sh   # KEEP=1 keeps the servers
+```
+
+It makes a throwaway local D1 (the fixture's facts in `oscr_community`, `oscr_forge`'s
+migrations), starts the sign-in mocks (`tests/account/mock-server.ts`) and the fake GitHub over
+HTTP (`tests/forge/fake-github-server.ts`: `/api`, `/web` for github.com's authorization and
+installation pages, `/raw`, with CORS; `POST /control {"login"}` names who approves,
+`{"offline": true}` makes it fail), builds the site with `FORGE_GITHUB_*_URL` pointing at it, and
+runs `wrangler dev --env local` with development values only (`FORGE_OPEN` unset,
+`FORGE_OWNER_GITHUB_ID` the fake's Ada). `tests/forge-service/e2e.ts` then signs in, creates and
+links repositories through real redirects, changes settings, branches and autolinks, sends signed
+webhooks, and checks the rows written and `FORGE_OPEN`'s refusal. A test browser that shows the
+`/r/` pages against the fake needs the Content-Security-Policy bypassed for them (it allows
+GitHub's own hosts, not the fake's): the screenshots in `docs/night-screenshots/phase-01/` were
+taken so, in headless Chrome only.
+
 Locally (`wrangler dev --env local`): `FORGE` is bound to a local database
 (`00000000-0000-4000-8000-00000000f09e`; `npx wrangler d1 migrations apply oscr_forge --local
 --env local`), and the App's values go in the gitignored `website/.dev.vars`, with

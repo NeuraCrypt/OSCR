@@ -10,7 +10,13 @@ Mis à jour au fil de la nuit. La mission est dans `docs/NIGHT_RUN.md`, le journ
 - **Plan** (`docs/PLATFORM_PLAN.md` §15) : les phases dans l'ordre d'exécution, avec leur budget gratuit.
 - **`GitBackend`** : l'interface neutre vis-à-vis de la forge, l'adaptateur GitHub, un double en mémoire et une suite de contrat (`website/worker/forge/`), plus le côté Mac en lecture seule (`oscr/forge.py`). Pas encore branché dans le Worker (phase 01).
 - **Tests à la clôture** : pytest 426 réussis (dont 24 pour `oscr/forge.py`) ; ruff propre ; `npm test` 460 réussis sous Node 26 et sous Node 22 (dont 325 pour `GitBackend`) ; build 31 pages ; `check --every-route` ok ; `tsc --strict` propre.
-- **Suite** : phase 01 (hébergement Git et mode miroir) sur la branche `night/phase-01-git-hosting`.
+- **Phase 01 (hébergement Git et mode miroir) : terminée**, branche `night/phase-01-git-hosting`, poussée (13 commits : la fondation, les éléments E1 à E12, l'essai de bout en bout). Rien fusionné, rien déployé.
+  - **Le service forge dans le Worker** : une action autorisée en deux requêtes (`/api/forge/start`, GitHub, `/api/forge/act`), le jeton de la personne utilisé une fois puis révoqué, jamais gardé ; 22 sortes d'actions (créer, depuis un modèle, lier un dépôt existant, ses articles, les réglages, les branches, les autoliens, la suppression avec 30 jours de grâce, Software Heritage) ; les webhooks (au plus 2 lignes chacun) ; les lectures `/repo` et `/mine`. **`FORGE_OPEN` n'est pas posé : seul ton compte GitHub (`FORGE_OWNER_GITHUB_ID`) peut écrire.**
+  - **Les pages** : `/new/` (créer), `/new/link/` (lier), `/new/import/` (importer sur ton ordinateur), `/repositories/` (tes dépôts), `/forge/authorized/` (le retour de GitHub), la coquille `/r/<compte>/<nom>/` (accueil, réglages, branches) et six guides sous `/hosting/`.
+  - **Le Mac** : `oscr forge poll|mirrors|layer|status` (les tâches, les têtes des miroirs publics, les chemins tracés, la couche statique).
+  - **Essai de bout en bout** local (`website/tests/forge-service/e2e.sh`) : connexion, création, liaison, réglages, branches, autoliens, webhooks signés, refus d'un autre compte : tout passe. Captures : `docs/night-screenshots/phase-01/` (48 images, bureau et téléphone).
+  - **Tests à la clôture** : pytest 470 ; ruff propre ; `npm test` 779 sous Node 26 et Node 22 ; build 45 pages ; `check --every-route` ok ; `tsc --strict` propre.
+- **Suite** : phase 02 (navigation dans le code) sur la branche `night/phase-02-code-navigation`, créée et poussée.
 
 ## 2. À valider par Yann
 
@@ -23,8 +29,8 @@ Mis à jour au fil de la nuit. La mission est dans `docs/NIGHT_RUN.md`, le journ
    - device flow : activé, pour l'outil en ligne de commande ;
    - installable par n'importe quel compte.
 2. **Permissions et événements de l'App** : Metadata en lecture ; Repository creation, Administration, Contents, Pull requests, Issues et Checks en écriture ; Workflows non demandé ; aucune permission de compte (pas d'email). Événements : installation, installation_repositories, push, pull_request, repository, create, delete, release.
-3. **Créer les secrets Cloudflare** avec `tools/setup_cloudflare.sh` (la phase 01 y ajoute les questions) : `GITHUB_APP_ID`, `GITHUB_APP_CLIENT_ID`, `GITHUB_APP_CLIENT_SECRET`, `GITHUB_APP_PRIVATE_KEY` (le PEM de GitHub tel quel ; le code convertit PKCS#1 en PKCS#8) et `GITHUB_APP_WEBHOOK_SECRET`, plus la variable `GITHUB_APP_SLUG`.
-4. **Créer la nouvelle base D1 `oscr_forge`** (binding `FORGE`) avec le même script.
+3. **Lancer `sh tools/setup_cloudflare.sh`** une fois l'App enregistrée (la phase 01 y a ajouté l'étape 8) : il crée, lie et migre la base D1 `oscr_forge`, puis demande sans rien afficher `GITHUB_APP_ID`, `GITHUB_APP_CLIENT_ID`, `GITHUB_APP_CLIENT_SECRET`, `GITHUB_APP_WEBHOOK_SECRET`, le **chemin** du fichier `.pem` de la clé privée (jamais collée ni affichée), le nom public de l'App (`GITHUB_APP_SLUG`) et **ton identifiant GitHub numérique** (`FORGE_OWNER_GITHUB_ID`, lu sur `https://api.github.com/users/<ton login>`, champ `id`). Les deux derniers sont des secrets pour qu'un déploiement ne les efface pas (D01-2). `FORGE_OPEN` n'est jamais posé.
+4. **Activer le côté Mac** : ajouter `OSCR_FORGE_PUSH=remote` aux réglages une fois la base créée ; `oscr nightly` lira alors les têtes des miroirs et écrira la couche statique avant le déploiement, et `oscr jobs poll --remote` traitera aussi les tâches de la forge.
 5. **Décider C3** : transférer 20 000 lignes D1 par jour des 80 000 de la poussée de recherche vers le côté GitHub, après son premier chargement complet. D'ici là, le service forge est plafonné dans le code à 5 000 lignes par jour, dans les 10 000 du Worker.
 6. **Décider si un jeton utilisateur GitHub peut être gardé, chiffré, dans le cookie de session pendant ses 8 heures** : moins d'allers-retours d'autorisation, et blame et recherche de code pour les lecteurs connectés, sur leur propre quota. Sinon, chaque écriture garde sa propre autorisation.
 7. **Décider s'il faut activer l'alias de clonage sur le domaine d'OSCR** (un 302 de `.../info/refs` vers github.com ; possible en une seule règle statique `_redirects`), après un clonage et une poussée de test avec identifiants.
@@ -43,9 +49,19 @@ Mis à jour au fil de la nuit. La mission est dans `docs/NIGHT_RUN.md`, le journ
 14. **Décision prise, à relire** : un ORCID n'est repris d'OpenAlex que s'il a été déposé par l'éditeur. Les profils d'auteurs d'OpenAlex en ajouteraient 54 280, mais OpenAlex fusionne parfois deux personnes, et un ORCID fait d'une personne l'auteur vérifié d'un article.
 15. **Ménage** : `.worktrees/openalex/data/dev-copy` (6,4 Go, copie de travail) peut être supprimé. Bug ancien signalé : `IndexError` dans `_shell_word`, `oscr/repofeatures.py`.
 
+**Phase 01, à relire (décisions prises, D01-1 à D01-29) :**
+
+16. **Licence par défaut** (D01-21) : `/new/` présélectionne la licence MIT et explique pourquoi (réutilisation, copies des scripts, archivage) ; « Aucune » reste à un clic. Une adresse qui demande un dépôt vide (import) n'en met pas.
+17. **Statut d'un article attaché** (D01-22) : « lié » seulement pour un auteur vérifié de l'article ou un mainteneur du dépôt (rôles d'`oscr_community`) ; sinon « proposé » à ses auteurs. Créer un dépôt n'en fait pas un mainteneur à lui seul.
+18. **Webhooks** (D01-24) : un changement de deux lignes (renommage, dépôt devenu privé, poussée vers un dépôt qui a des cartes) s'écrit sans ligne de livraison, idempotent par lui-même ; ces lignes, rares, restent hors du compte global de 5 000 par jour.
+19. **Retour d'installation de l'App** (D01-20) : la page redemande l'autorisation ordinaire (avec PKCE) au lieu d'utiliser le code de la page d'installation ; un aller-retour de plus, sur ce seul chemin.
+20. **Suppression** (D01-27) : la suppression définitive sur GitHub n'est possible qu'après une demande (pendant les 30 jours, ou après, quand la tâche du Mac a caché le dépôt), et seulement par une nouvelle autorisation de la personne. Aucun minuteur ne supprime.
+21. **À tester avec la vraie App** : si GitHub renvoie bien `state` au retour d'installation ; qu'une personne déjà autorisée repasse sans invite ; `POST /user/repos` et `…/generate` avec le jeton utilisateur de l'App ; les réponses réelles de `/repos/{o}/{r}/autolinks` (préfixe en double : 422 `already_exists`).
+22. **Facultatif** : une fois le dépôt modèle de compendium créé, poser la variable de build `COMPENDIUM_TEMPLATE=<compte>/<nom>` : `/new/` le proposera (D01-9).
+
 ## 3. Décisions prises
 
-Voir [`docs/DECISIONS.md`](DECISIONS.md) (entrées D00-1 à D00-16).
+Voir [`docs/DECISIONS.md`](DECISIONS.md) (entrées D00-1 à D00-16, puis D01-1 à D01-29 pour la phase 01 : les dix du plan, et dix-neuf prises en construisant).
 
 Décision de stockage : aucune option ne permet à OSCR d'héberger lui-même des dépôts Git à coût nul avec une conformité certaine aux conditions des services (D00-1). Les dépôts vivent donc dans le compte GitHub du chercheur, créés et pilotés par l'App GitHub d'OSCR avec son autorisation, une autorisation par action, plus le mode miroir pour les dépôts existants ; OSCR ne garde que sa propre couche (articles, DOI, cartes de traçage, revues) dans une nouvelle base D1 `oscr_forge` et sur le Mac (D00-2).
 
@@ -72,11 +88,33 @@ Décision de stockage : aucune option ne permet à OSCR d'héberger lui-même de
 19. **Décisions du plan** : les neuf décisions du plan en §15.7 ne sont pas encore dans `docs/DECISIONS.md`. Chacune doit y être consignée par la phase qui la construit.
 20. **Budgets par phase** : ce sont des estimations de planification, calibrées sur la journée de la conception à environ 3 000 dépôts (environ 7 000 requêtes et 2 300 lignes écrites). Elles restent à mesurer.
 
+**Phase 01 :**
+
+21. **Rien de reporté** parmi les éléments du plan. Ce que le plan laisse de côté le reste : les jetons d'API propres à OSCR (phase 10), les dépôts privés (ta décision, D00-14), l'alias de clonage sur le domaine d'OSCR, les imports côté serveur (l'API de GitHub est retirée : les imports se font sur l'ordinateur du chercheur), les gists (phase 13).
+22. **Travail partiel repris** : les fichiers laissés par les sessions interrompues (E1, E7, E9, E11, E12) ont été gardés et terminés ; les tests d'E9 et les deux pages de guide d'E12 (`/hosting/import/`, `/hosting/leave/`) ont été écrits. Le test de fondation « tant que ce n'est pas construit » d'E9 a été remplacé par les vrais tests d'E9, et la liste des routes « bouchons » du test de fondation s'est vidée à mesure qu'elles étaient construites (les invariants restent vérifiés).
+23. **Commande `tsc`** : le motif `tests/*/*/*.ts` ne correspond à aucun fichier (tsc s'arrête dessus) ; la vérification a tourné sur les mêmes fichiers listés par `find worker tests -maxdepth 3 -name "*.ts"`.
+24. **Port 8790** : occupé par le tableau de bord local (`oscr dashboard`), laissé intact ; l'essai de bout en bout a tourné sur 8791, 9490 et 9491, tout arrêté ensuite.
+25. **Captures des pages `/r/`** : la politique de sécurité (CSP) de ces pages n'autorise que les adresses de GitHub ; le navigateur de test l'a contournée pour atteindre le faux GitHub local (D01-29). Les en-têtes du site sont inchangés.
+26. **Page des branches** : les vues « récentes », « anciennes » et « les tiennes » lisent le dernier commit de chaque branche (une requête par branche, 30 au plus, seulement quand on choisit la vue), sur le quota anonyme du lecteur (60 par heure hors connexion).
+27. **Autoliens** : GitHub ne les liste qu'aux administrateurs du dépôt ; la page des réglages permet d'en ajouter et d'en supprimer, et renvoie à la page de GitHub pour la liste.
+28. **Non mesuré dans workerd** : le temps CPU des routes de la forge (à mesurer une fois déployé).
+
 ## 5. Branches, dans l'ordre de fusion
 
 1. `night/phase-00-research` : terminée et poussée.
-2. `night/phase-01-git-hosting` : créée à partir de `night/phase-00-research`, en cours.
+2. `night/phase-01-git-hosting` : terminée et poussée (construite sur la précédente).
+3. `night/phase-02-code-navigation` : créée à partir de `night/phase-01-git-hosting`, poussée, à construire.
 
 ## 6. Ajouts à `science.css`
 
-(aucun : la phase 00 n'a pas touché au site)
+- Phase 00 : aucun (elle n'a pas touché au site).
+- Phase 01, dans l'esprit du fichier (pas de pastilles, pas de majuscules décoratives, pas de thème sombre, les états dits en mots) :
+  - `.repo-head` (la ligne de titre d'un dépôt : compte / nom, et ses faits) ;
+  - `p.status-line` (la phrase d'état du miroir) ;
+  - `.setup` et `pre.commands`, avec `button.copy` (la mise en route d'un dépôt vide et les blocs de commandes à copier) ;
+  - `fieldset.choices` et `.explain` (les listes à choix expliqués : licence, .gitignore, modèle) ;
+  - `.limits` (le tableau compact des limites) ;
+  - `section.danger` (archiver, transférer, supprimer : un bloc encadré, les conséquences en mots) ;
+  - `table.branches`, `dl.settings` (deux colonnes à partir de 641 px), `.panel` (le panneau du bouton Code), `.confirm` (la phrase d'une action à confirmer) ;
+  - les champs `input[type="url"]` et `input[type="search"]` des formulaires, comme les champs texte ;
+  - leurs réglages pour le téléphone (moins de 641 px).

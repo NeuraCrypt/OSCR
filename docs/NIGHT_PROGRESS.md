@@ -33,7 +33,8 @@ from "Next step".
 | phase | branch | state |
 |---|---|---|
 | 00 research and architecture | night/phase-00-research | **done** 2026-09-29, pushed (last code commit 831deaf) |
-| 01 Git hosting | night/phase-01-git-hosting | next: branch created from night/phase-00-research |
+| 01 Git hosting | night/phase-01-git-hosting | **done** 2026-09-29, pushed (13 commits, the foundation, E1 to E12, the end-to-end run) |
+| 02 Code navigation | night/phase-02-code-navigation | next: branch created from night/phase-01-git-hosting |
 
 ## Phase 00: what it produced
 
@@ -58,17 +59,31 @@ from "Next step".
 - Not wired into the Worker yet: nothing in `worker/index.ts` or `worker/env.ts` imports
   `forge/`, and `ForgeEnv` lives in `forge/github/index.ts`.
 
+## Phase 01: what it produced
+
+- The forge service in the Worker (`website/worker/forge/service/`): `POST /api/forge/start` and
+  `/act` (one authorized action, the token used once and revoked, never stored), the action kinds
+  (create, generate, link, papers, the settings, branches, autolinks, deletion with its 30-day
+  grace, Software Heritage), `POST /api/forge/webhook` (≤ 2 rows a delivery), `GET /repo` and
+  `/mine`. `FORGE_OPEN` unset: only `FORGE_OWNER_GITHUB_ID` may write.
+- D1 `oscr_forge` (`migrations/d1-forge/0001_forge.sql`), bound locally; the owner's setup
+  script creates it remotely and stores the App's secrets.
+- The pages: `/new/`, `/new/link/`, `/new/import/`, `/repositories/`, `/forge/authorized/`, the
+  `/r/` shell (home, settings, branches), the guides under `/hosting/`.
+- The Mac: `oscr/forgejobs.py` (the jobs and the mirrors' heads), `oscr/forgelayer.py` (traced
+  paths and the static layer shards); `oscr forge poll|mirrors|layer|status`.
+- `GitBackend` gains custom autolinks (added, nothing changed).
+- The local end-to-end run `website/tests/forge-service/e2e.sh` (every check passes) and the
+  screenshots `docs/night-screenshots/phase-01/`.
+- Decisions D01-1 to D01-29 in `docs/DECISIONS.md`; the contract in `docs/FORGE.md`.
+- Tests at the close: pytest 470 passed; ruff clean; `npm test` 779 passed under Node 26 and
+  Node 22; build 45 pages; `check --every-route` ok; strict `tsc` clean (the command now lists
+  `$(find worker tests -maxdepth 3 -name "*.ts")`: `tests/*/*/*.ts` matches no file).
+
 ## Next step
 
-Phase 01, Git hosting, on branch `night/phase-01-git-hosting` (created from
-`night/phase-00-research`):
-- follow `docs/PLATFORM_PLAN.md` §15.6, "Phase 01 — Git hosting and the mirror mode": 223
-  features to build (98 Reproduce, 125 Adapt; 257 rows with the excluded ones in
-  `docs/GITHUB_PARITY.md`);
-- the forge service: wire `GitBackend` into the Worker (`POST /api/forge/start`, `/act`,
-  `/webhook`, `GET /api/forge/repo`; the `FORGE` binding and the App's secrets in `env.ts`), the
-  static callback page `/forge/authorized/` and the shell `/r/*`;
-- the `oscr_forge` migration, the Mac's new job kinds, and the questions for the App's secrets
-  and the new database in `tools/setup_cloudflare.sh`.
-The owner's actions are in `docs/NIGHT_REPORT.md` §2; until the App exists, everything runs
-against the fake GitHub and the in-memory double.
+Phase 02, code navigation, on branch `night/phase-02-code-navigation` (created from
+`night/phase-01-git-hosting`): follow `docs/PLATFORM_PLAN.md` §15.6 "Phase 02"; the code view is
+built inside the `/r/` shell (`website/src/scripts/repo-shell.ts`, `src/lib/repo-view.ts`), which
+keeps phase 01's URL scheme (D01-5). The owner's actions are in `docs/NIGHT_REPORT.md` §2; until
+the App exists, everything runs against the fake GitHub and the in-memory double.

@@ -877,3 +877,26 @@ Software Heritage directly); it writes one job and nothing on GitHub.
 
 **Why.** D00-10 and D00-15: no deletion without the person's fresh authorization, no archive
 request the registry makes on its own; the id, not a stale path, decides which repository changes.
+
+### D01-28. The pages declare every action with the Worker's own rules and sentence
+
+**Decision.** `/new/`, `/new/link/` and the repository's Settings and Branches pages import the
+action specs' `validate` and `describe` (worker/forge/service/act-*.ts, through `actions.ts`): a
+payload the Worker would refuse is said on the page before anything is sent, and the sentence a
+person confirms is exactly the one the Worker repeats after GitHub. The actions are offered to a
+signed-in reader whose layer roles are owner, maintainer or the person who linked it; GitHub
+decides at the action whether their account may (a reader with write only is refused there, in
+words).
+
+**Why.** One source of truth for what an action means; no confirmation sentence that differs from
+what is done. The cost: about 14 KB more script on those pages.
+
+### D01-29. The end-to-end run bypasses the CSP of the /r/ pages in its test browser only
+
+**Decision.** The `/r/` shell's Content-Security-Policy lets the page reach GitHub's API and raw
+files only. The local run serves the fake GitHub on 127.0.0.1, so its headless Chrome bypasses the
+CSP for those pages (DevTools' `Page.setBypassCSP`); the site's headers are unchanged, and no
+development address is ever in them.
+
+**Why.** Security: the production policy stays as strict as it is; the test browser, not the
+site, makes the exception.

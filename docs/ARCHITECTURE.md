@@ -530,3 +530,23 @@ their payloads, rows, caps, pages, jobs) is [FORGE.md](FORGE.md), the decisions 
 - **The owner's setup** is the same script: `tools/setup_cloudflare.sh` creates, binds and
   migrates `oscr_forge`, and stores the App's values as Cloudflare secrets, the private key read
   from GitHub's `.pem` file; it never sets `FORGE_OPEN`.
+- **The action kinds**, one file each family: `act-create.ts` (create, generate), `act-link.ts`
+  (link, papers: the mirror mode), `act-settings.ts` (rename, edit, topics, features, template,
+  default branch, archive, unarchive, transfer), `act-refs.ts` (branches), `act-delete.ts`
+  (deletion with its grace period, restore, the final deletion, Software Heritage),
+  `act-autolinks.ts` (custom autolinks, added to `GitBackend`'s `RepoOps` with the double, the
+  adapter, the fake GitHub and the contract). Each first asks GitHub for the repository by its id
+  and checks GitHub's answer against what was authorized (D01-27); the pages declare every action
+  with the Worker's own `validate` and `describe`, so the sentence a person confirms is the one
+  the Worker repeats (D01-28).
+- **The papers** a repository is attached to are `linked` for a verified author of the paper or
+  a maintainer of the repository (`oscr_community.roles`), `proposed` otherwise (`papers.ts`,
+  D01-22); the Mac adds a repository to a paper's record only through Phase 6's path, and checks
+  the same roles again.
+- **The webhooks** write at most 2 rows each, as conditional statements that a redelivery leaves
+  unchanged (D01-24), and only for an installation the registry knows that covers the repository.
+- **The local end-to-end run** (`website/tests/forge-service/e2e.sh`): a throwaway local D1, the
+  sign-in mocks, the fake GitHub served over HTTP (`tests/forge/fake-github-server.ts`), the site
+  built to read it, `wrangler dev` with development values only; `e2e.ts` drives sign-in, creation,
+  linking, settings, branches, autolinks, webhooks and `FORGE_OPEN`'s refusal over real HTTP. The
+  screenshots of the pages: `docs/night-screenshots/phase-01/`.
