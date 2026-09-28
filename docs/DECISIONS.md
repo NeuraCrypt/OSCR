@@ -789,3 +789,16 @@ phase 10 (plan decision 8).
 **Decision.** The foundation creates every file the elements fill: the routes answer 501
 `not_built`, the action arrays are empty, the pages are placeholders that say so, the Mac's
 commands exit with "not built yet". Nothing half-built pretends to work.
+
+### D01-20. After installing the App, the action is authorized again the ordinary way
+
+**Decision.** When a page asks to install the App first (the mirror mode), GitHub's installation
+page comes back to `/forge/authorized/` with `installation_id` and `setup_action`, and sometimes a
+code of its own. That code was not asked with a PKCE challenge, so the page never posts it: it
+declares the same action again (`forge-client.ts` `resumeAction`, the declaration kept with the
+payload in the tab), and the tab goes through GitHub's ordinary authorization page with PKCE. The
+person who just installed the App is sent back at once.
+
+**Why.** Security and simplicity: one kind of code reaches act, always bound to a PKCE verifier,
+and nothing depends on how GitHub treats a verifier for a code asked without a challenge. Cost:
+one more redirection, on the installation path only.

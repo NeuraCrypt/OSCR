@@ -65,7 +65,10 @@ the accounts set up (`COMMUNITY` and `SESSION_KEY`, else 503 `not_configured`).
    Nothing is written. It answers `{location}`: GitHub's authorization page, or the App's
    installation page.
 3. GitHub sends the browser back to the static page `/forge/authorized/`, which takes `code` and
-   `state` out of the address bar and posts them with the payload to `act`.
+   `state` out of the address bar and posts them with the payload to `act`. Back from the App's
+   installation page with an action waiting, the page declares the same action again (the
+   declaration is kept in the tab with the payload) and goes through the ordinary authorization,
+   with PKCE: a code from the installation page is never posted (D01-20).
 4. `act` opens the cookie (signature, expiry, state, session), checks the payload's digest,
    validates the payload (`spec.validate`), exchanges the code, asks GitHub who authorized, and
    requires that GitHub account to be the one linked to the signed-in account (linked now if
