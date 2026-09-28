@@ -13,8 +13,8 @@
 import { SITE_NAME } from "../../config";
 import { alignmentOf, europePmcUrl, lot2, lotEntry, plural, shortName, type Article } from "../../lib/catalog";
 import { languageOf, sizeInWords } from "../../lib/code";
-import { decorate, pairClass, splitLines } from "../../lib/lines";
-import { initialFile, mapPairs, readerFiles, sourceOf, type ReaderData } from "../../lib/reader";
+import { decorate, lineClass, pairClass, splitLines } from "../../lib/lines";
+import { initialFile, mapPairs, readerFiles, sourceOf, sourceWhy, whyNotShown, type ReaderData } from "../../lib/reader";
 
 interface Props {
   a: Article;
@@ -35,8 +35,9 @@ const f = initial >= 0 ? files[initial] : undefined;
 const r = f ? repos[f.repo] : undefined;
 const text = initial >= 0 ? (texts.get(initial) ?? null) : null;
 const lines = text !== null ? splitLines(text) : [];
-const spans = pairs.filter((p) => p.file === initial).map((p) => ({ pair: p.pair, start: p.start, end: p.end }));
-const { cover, link } = decorate(lines, spans);
+const spans = pairs.filter((p) => p.file === initial).map((p) => ({ pair: p.pair, start: p.start, end: p.end, whole: p.whole }));
+const { cover, link, color, weak } = decorate(lines, spans);
+const wholes = pairs.filter((p) => p.whole).length;
 const digits = lines.length >= 10_000 ? " digits-5" : lines.length >= 1_000 ? " digits-4" : "";
 const lang = f ? languageOf(f.path, f.language) : undefined;
 const facts = f && r
@@ -85,13 +86,21 @@ const json = JSON.stringify(data).replace(/</g, "\\u003c");
   </div>
   {pairs.length > 0 && (
     <details id="legend" class="legend">
-      <summary>The {plural(pairs.length, "match", "matches")}</summary>
+      <summary>
+        The {plural(pairs.length, "match", "matches")}{wholes > 0 && (
+          <span class="muted">
+            {" "}· {wholes === pairs.length ? (wholes === 1 ? "it ties" : "all tie") : `${wholes} of them tie`} a paragraph to a whole
+            file, not to given lines: {wholes === 1 ? "a weak match" : "weak matches"}, whose lines are not tinted
+          </span>
+        )}
+      </summary>
       <ol>
         {pairs.map((p) => (
           <li>
             <a class={pairClass(p.pair)} href={`#pair-${p.pair}`} data-pair={p.pair}>
-              [{p.pair}] {p.label} ↔ {p.path}, lines {p.start}–{p.end}
+              [{p.pair}] {p.label} ↔ {p.path}, {p.whole ? "the whole file" : `lines ${p.start}–${p.end}`}
             </a>
+            {p.whole && <span class="muted"> · a weak match</span>}
             {typeof p.score === "number" && <span class="muted"> · score {p.score.toFixed(2)}</span>}
             {p.evidence.length > 0 && <span class="muted"> · {p.evidence.join(", ")}</span>}
             {p.file < 0 && <> · <span class="warning">this file is not among the harvested files</span></>}
@@ -143,7 +152,7 @@ const json = JSON.stringify(data).replace(/</g, "\\u003c");
               <ul id="source-links">
                 {at && <li><a href={at}>{at === r!.url ? "The repository at the source" : "This file at the source"}</a></li>}
                 {at && at !== r!.url && <li><a href={r!.url}>The repository at the source ({r!.name})</a></li>}
-                {r?.commit && <li><span>At commit {r.commit.slice(0, 12)}</span></li>}
+                {f && r && <li class="why">{sourceWhy(r.commit, f.text)}</li>}
               </ul>
             </details>
           </div>
@@ -158,7 +167,7 @@ const json = JSON.stringify(data).replace(/</g, "\\u003c");
               const ks = cover.get(n0 + 1);
               const k = link.get(n0 + 1);
               return (
-                <li class={ks ? pairClass(ks[0]) : undefined} data-pairs={ks ? ks.join(" ") : undefined}>{k ? <a href={`#pair-${k}`} data-pair={k} title={`Match ${k}: show the paragraph`}>{line}</a> : line}</li>
+                <li class={lineClass(color.get(n0 + 1), weak.has(n0 + 1))} data-pairs={ks ? ks.join(" ") : undefined}>{k ? <a href={`#pair-${k}`} data-pair={k} title={`Match ${k}: show the paragraph`}>{line}</a> : line}</li>
               );
             })}
           </ol>
@@ -168,8 +177,11 @@ const json = JSON.stringify(data).replace(/</g, "\\u003c");
                 No file of the authors' code could be read here:{" "}
                 {repos.map((x, i) => <>{i > 0 && "; "}<a href={x.url}>{x.name}</a>{x.note && ` (${x.note})`}</>)}.
               </p>
-            ) : f && !f.text ? (
-              <p class="warning">This file is not shown here: <a href={at}>read it at the source</a>.</p>
+            ) : f && r && !f.text ? (
+              <>
+                <p class="warning">{whyNotShown(f, r)}</p>
+                <p>{at === r.url ? "It can be read in its repository, " : "It can be read at the source: "}<a href={at}>{at === r.url ? r.name : f.path}</a>.</p>
+              </>
             ) : null}
           </div>
           <p class="file-end" id="file-end" hidden={lines.length === 0}>

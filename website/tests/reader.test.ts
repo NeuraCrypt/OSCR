@@ -10,11 +10,11 @@ import {
   unComment,
 } from "../src/lib/code.ts";
 import { EMBEDS, LOADERS } from "../src/lib/hljs-languages.ts";
-import { decorate, pairClass, sourceLines, splitLines } from "../src/lib/lines.ts";
+import { decorate, lineClass, pairClass, sourceLines, splitLines, wholeFile } from "../src/lib/lines.ts";
 import { PREFS, readPref, writePref, type Store } from "../src/lib/prefs.ts";
 import { HttpError, TimeoutError, withRetry, worthRetrying } from "../src/lib/retry.ts";
 import {
-  encodePath, fileHref, initialFile, mapPairs, readerFiles, sourceOf, type LotFileIn, type PairIn, type RepoIn,
+  encodePath, fileHref, initialFile, mapPairs, readerFiles, sourceOf, sourceWhy, whyNotShown, type LotFileIn, type PairIn, type RepoIn,
 } from "../src/lib/reader.ts";
 import { ancestors, buildTree } from "../src/lib/tree.ts";
 
@@ -352,6 +352,8 @@ describe("the reader's files and pairs", () => {
     assert.equal(pairs[1].label, "§ paragraph 12");
     assert.equal(pairs[0].label, "§ Methods");
     assert.equal(pairs[3].source, "https://github.com/lab/x");
+    // analysis.py has 2 lines: pair 3 (lines 1–2) is the whole file, a weak match; pair 5 is not.
+    assert.deepEqual(pairs.map((p) => [p.pair, p.whole]), [[1, false], [2, false], [3, true], [4, false], [5, false]]);
   });
 
   it("opens on the file with the most matches, else the first script whose text is here", () => {
@@ -386,7 +388,38 @@ describe("the lines of a file", () => {
     assert.equal(link.get(2), 2);
     assert.equal(link.get(3), 1);
     assert.equal(pairClass(7), "pair-1");
+    assert.equal(lineClass(1, false), "pair-1");
+    assert.equal(lineClass(8, true), "pair-2 whole");
+    assert.equal(lineClass(undefined, false), undefined);
     assert.equal(sourceLines("https://gitlab.com/a/b/-/blob/c/d.py", 3, 5), "https://gitlab.com/a/b/-/blob/c/d.py#L3-5");
+  });
+});
+
+describe("a match with the whole file", () => {
+  it("is a range that covers 90 % of the file's lines at least", () => {
+    assert.equal(wholeFile(1, 107, 107), true);
+    assert.equal(wholeFile(1, 100, 107), true, "the last lines blank or an end");
+    assert.equal(wholeFile(1, 37, 312), false);
+    assert.equal(wholeFile(1, 500, 21), true, "a range past the end");
+    assert.equal(wholeFile(1, 3, null), false, "a file whose length is not known");
+    assert.equal(wholeFile(2, 2, 2), false);
+  });
+
+  it("does not tint the lines it alone covers, and yields to a match of given lines", () => {
+    const lines = ["function f", "  a", "  b", "", "  c", "end"];
+    const { cover, link, color, weak } = decorate(lines, [
+      { pair: 1, start: 1, end: 6, whole: true }, { pair: 2, start: 3, end: 5 }, { pair: 3, start: 1, end: 6, whole: true },
+    ]);
+    assert.deepEqual(cover.get(1), [1, 3]);
+    assert.deepEqual(cover.get(3), [2, 1, 3], "the given lines' pair first");
+    assert.deepEqual([link.get(1), link.get(2), link.get(3)], [1, 3, 2]);
+    assert.deepEqual([...weak].sort(), [1, 2, 6]);
+    assert.deepEqual([1, 2, 3, 6].map((n) => color.get(n)), [1, 3, 2, 1], "a weak line takes the color of the pair linked there");
+  });
+
+  it("colors a line by its narrowest range of given lines", () => {
+    const { color } = decorate(["a", "b", "c", "d"], [{ pair: 1, start: 1, end: 4 }, { pair: 2, start: 2, end: 3 }]);
+    assert.deepEqual([1, 2, 3, 4].map((n) => color.get(n)), [1, 2, 2, 1]);
   });
 });
 
@@ -441,5 +474,27 @@ describe("the paper's request to Europe PMC", () => {
     assert.equal(worthRetrying(new HttpError(429)), true);
     assert.equal(worthRetrying(new HttpError(404)), false);
     assert.equal(worthRetrying(new Error("the full text is not valid XML")), false);
+  });
+});
+
+describe("a file the reader does not show", () => {
+  const f = (why: "" | "license" | "binary" | "missing", note = "", path = "a.m") => ({ why, note, path });
+  it("says why, in a sentence, and never twice that the source has it", () => {
+    assert.match(whyNotShown(f("license"), { license: "" }), /no license, so its authors keep all their rights/);
+    assert.match(whyNotShown(f("license"), { license: "GPL-3.0-only" }), /\(GPL-3\.0-only\) does not allow republishing it\.$/);
+    assert.match(whyNotShown(f("binary", "", "x.mlx"), { license: "MIT" }), /live script is a binary file/);
+    assert.match(
+      whyNotShown(f("missing", "too large a repository to show every file here: read it at the source"), { license: "MIT" }),
+      /too large for the registry to keep the text of every file/,
+    );
+    assert.match(whyNotShown(f("missing", "too much text in this part of the site to show every file here: read it at the source"), { license: "MIT" }), /did not fit\.$/);
+    assert.equal(whyNotShown(f("missing", "extraction failed; read it at the source"), { license: "MIT" }), "This file is not shown here: extraction failed.");
+    assert.equal(whyNotShown(f("missing"), { license: "MIT" }), "This file is not shown here: its text was not kept.");
+    assert.equal(whyNotShown(f(""), { license: "MIT" }, "HTTP 503"), "This file could not be loaded here (HTTP 503).");
+  });
+
+  it("says, where it leads to the source, why one would go there", () => {
+    assert.equal(sourceWhy("0123456789abcdef", true), "Shown here as the registry read it at commit 0123456. The source has the authors' latest version and its history.");
+    assert.match(sourceWhy("", false), /^Not shown here\. The source has the file/);
   });
 });

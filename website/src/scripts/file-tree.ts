@@ -1,5 +1,6 @@
 // The list of the authors' files, in the code pane of the Code ↔ Paper reader: first the files
-// that have matches with the paper (with their number), then every file in its folders (one
+// that have matches with the paper (by their name, with their number of matches), then every
+// file in its folders (one
 // tree per repository when the paper has several), and a filter for long lists. Each file is a
 // link to itself in the reader (it opens in a new tab too); a file whose text is not here is
 // muted. Rendered by the browser from the reader's data: the page holds the list once.
@@ -94,7 +95,11 @@ export function fileTree(nav: HTMLElement, data: ReaderData, base: string, pick:
   if (matched.length) {
     lists.append(el("h4", "", "With matches"));
     const ul = el("ul");
-    for (const { f, i } of matched) ul.append(item(fileLink(i, f.path)));
+    // Each by its name (its path in full when two share a name); the path is its title.
+    const base = (p: string) => p.slice(p.lastIndexOf("/") + 1);
+    const seen = new Map<string, number>();
+    for (const { f } of matched) seen.set(base(f.path), (seen.get(base(f.path)) ?? 0) + 1);
+    for (const { f, i } of matched) ul.append(item(fileLink(i, seen.get(base(f.path))! > 1 ? f.path : base(f.path))));
     lists.append(ul);
   }
   lists.append(el("h4", "", matched.length ? "All files" : "Files"));

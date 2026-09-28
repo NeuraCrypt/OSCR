@@ -170,6 +170,7 @@ function start(data: ReaderData) {
 
   function clearActive() {
     for (const e of Array.from(document.querySelectorAll(".is-active"))) e.classList.remove("is-active");
+    view.unmark();
   }
 
   /** In a narrow window the panes are one above the other: bring the one to read into view.
@@ -179,11 +180,13 @@ function start(data: ReaderData) {
     if (box.top < 0 || box.top > innerHeight * 0.35) window.scrollTo({ top: scrollY + box.top - 8, behavior: motion });
   }
 
-  async function activate(k: number, from: Side, keyboard: boolean) {
+  /** Pair k, read: marked on both sides, each side brought to it. `quiet` (the page opening on
+   *  its first pair): the address, the window's scroll and the screen reader are left alone. */
+  async function activate(k: number, from: Side, keyboard: boolean, quiet = false) {
     const p = pairs.get(k);
     if (!p) return;
     active = k;
-    history.replaceState(null, "", url(p.file >= 0 ? p.file : view.current, null, k));
+    if (!quiet) history.replaceState(null, "", url(p.file >= 0 ? p.file : view.current, null, k));
     clearActive();
     document.querySelector(`#legend a[data-pair="${k}"]`)?.classList.add("is-active");
     const para = paperShown() ? paper.paragraph(p.paragraph) : null;
@@ -191,10 +194,10 @@ function start(data: ReaderData) {
     const shown = p.file >= 0 && (await show(p.file));
     if (active !== k) return; // another pair was chosen meanwhile
     const lines = shown ? view.markPair(p) : null;
-    bring(from === "code" ? "paper" : "code");
+    if (!quiet) bring(from === "code" ? "paper" : "code");
     if (from !== "paper" && para) scrollInto(paperBody, para);
     if (from !== "code" && lines) scrollInto(view.viewer, lines);
-    say(`Match ${k}: ${p.label}, ${p.path} lines ${p.start} to ${p.end}.`);
+    if (!quiet) say(`Match ${k}: ${p.label}, ${p.path}, ${p.whole ? "the whole file (a weak match)" : `lines ${p.start} to ${p.end}`}.`);
     if (keyboard) {
       // The keyboard follows the pair to the other side.
       const there =
@@ -259,7 +262,14 @@ function start(data: ReaderData) {
   const ready = first >= 0 && first === data.initial && prerendered ? Promise.resolve(view.adopt(first)) : first >= 0 ? show(first) : Promise.resolve(false);
   tree?.setCurrent(first);
   setPaper(readPref(browserStore, PREFS.paper, ["shown", "hidden"], "shown") === "shown", false);
-  void ready.then(() => follow(location.hash, true));
+  // An address with no anchor opens on the first match of the file shown (one of given lines
+  // rather than a whole file): its colors on both sides, each pane at it.
+  void ready.then(() => {
+    if (location.hash && location.hash !== "#code") return follow(location.hash, true);
+    const own = view.current >= 0 ? data.files[view.current].pairs.map((k) => pairs.get(k)!) : [];
+    const first = own.find((p) => !p.whole) ?? own[0];
+    if (first) return activate(first.pair, "legend", false, true);
+  });
 
   /** The file an address asks for (?path=…, ?repo=…): else the one shown first. A repository
    *  alone: its file with the most matches, else its first file whose text is here. */

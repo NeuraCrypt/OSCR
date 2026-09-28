@@ -10,8 +10,8 @@ import {
   type Lang, type Plan, type Range,
 } from "../lib/code";
 import { plural } from "../lib/format";
-import { decorate, pairClass, splitLines } from "../lib/lines";
-import { sourceOf, type ReaderData, type ReaderPair } from "../lib/reader";
+import { decorate, lineClass, pairClass, splitLines } from "../lib/lines";
+import { sourceOf, sourceWhy, whyNotShown, type ReaderData, type ReaderPair } from "../lib/reader";
 import { highlight } from "./highlighter";
 import { link, pairLink } from "./reader-paper";
 
@@ -53,24 +53,6 @@ async function copyText(text: string): Promise<boolean> {
   }
 }
 
-/** Why a file is not shown, in a sentence. */
-function whyNot(data: ReaderData, i: number, failure = ""): string {
-  const f = data.files[i];
-  const r = data.repos[f.repo];
-  if (failure) return `This file could not be loaded here (${failure}).`;
-  if (f.why === "license") {
-    return r.license
-      ? `This file is not shown here: the license of its repository (${r.license}) does not allow republishing it.`
-      : "This file is not shown here: its repository has no license, so its authors keep all their rights to it.";
-  }
-  if (f.why === "binary") {
-    return /\.mlx$/i.test(f.path)
-      ? "This file is not shown here: a MATLAB live script is a binary file (a zip archive), not text."
-      : `This file is not shown here: it is not a text file${f.note ? ` (${f.note})` : ""}.`;
-  }
-  return `This file is not shown here${f.note ? `: ${f.note}` : ": its text was not kept"}.`;
-}
-
 export type CodeView = ReturnType<typeof codeView>;
 
 export function codeView(data: ReaderData, hooks: { url(file: number, range: Range | null): string; say(text: string): void }) {
@@ -97,6 +79,8 @@ export function codeView(data: ReaderData, hooks: { url(file: number, range: Ran
   let generation = 0;
   let gutter = 0;
   const cache = new Map<number, string[]>();
+  /** The lines marked for the pair being read, with the classes they had before. */
+  let marked: { li: HTMLElement; before: string }[] = [];
 
   /* ---------- The header ---------- */
 
@@ -123,13 +107,15 @@ export function codeView(data: ReaderData, hooks: { url(file: number, range: Ran
     const items = [
       link(at, at === r.url ? "The repository at the source" : "This file at the source"),
       at === r.url ? null : link(r.url, `The repository at the source (${r.name})`),
-      r.commit ? el("span", "", `At commit ${r.commit.slice(0, 12)}`) : null,
     ];
-    sources.replaceChildren(...items.filter((x): x is HTMLElement => x !== null).map((x) => {
-      const li = el("li");
-      li.append(x);
-      return li;
-    }));
+    sources.replaceChildren(
+      ...items.filter((x): x is HTMLAnchorElement => x !== null).map((x) => {
+        const li = el("li");
+        li.append(x);
+        return li;
+      }),
+      el("li", "why", sourceWhy(r.commit, f.text)),
+    );
     linkBtn.textContent = "Link";
   }
 
@@ -146,11 +132,12 @@ export function codeView(data: ReaderData, hooks: { url(file: number, range: Ran
 
   /* ---------- The lines ---------- */
 
-  function lineItem(n: number, text: string, cover: Map<number, number[]>, links: Map<number, number>): HTMLLIElement {
+  type Marks = ReturnType<typeof decorate>;
+  function lineItem(n: number, text: string, m: Marks): HTMLLIElement {
     const li = document.createElement("li");
-    const ks = cover.get(n);
+    const ks = m.cover.get(n);
     if (ks) {
-      li.className = pairClass(ks[0]);
+      li.className = lineClass(m.color.get(n), m.weak.has(n))!;
       li.dataset.pairs = ks.join(" ");
     }
     const role = plan.roles.get(n - 1);
@@ -162,17 +149,20 @@ export function codeView(data: ReaderData, hooks: { url(file: number, range: Ran
       li.classList.add("prose");
       if (lang.mode === "notebook") shown = unComment(text);
     }
-    const k = links.get(n);
+    const k = m.link.get(n);
     if (k) li.append(pairLink(k, shown, "paragraph"));
     else li.textContent = shown;
     return li;
   }
 
   function build() {
-    const spans = data.files[current].pairs.map((k) => data.pairs.find((p) => p.pair === k)!).map((p) => ({ pair: p.pair, start: p.start, end: p.end }));
-    const { cover, link: links } = decorate(lines, spans);
+    const spans = data.files[current].pairs
+      .map((k) => data.pairs.find((p) => p.pair === k)!)
+      .map((p) => ({ pair: p.pair, start: p.start, end: p.end, whole: p.whole }));
+    const marks = decorate(lines, spans);
     const out = document.createDocumentFragment();
-    lines.forEach((line, n0) => out.append(lineItem(n0 + 1, line, cover, links)));
+    lines.forEach((line, n0) => out.append(lineItem(n0 + 1, line, marks)));
+    marked = [];
     ol.replaceChildren(out);
   }
 
@@ -183,8 +173,12 @@ export function codeView(data: ReaderData, hooks: { url(file: number, range: Ran
     return parseFloat(s.width) + parseFloat(s.marginRight || "0");
   }
 
-  function notes(parts: (string | Node)[][]) {
-    const kept = parts.filter((p) => p.length);
+  /** The notes above the lines: the file's (shortened, not highlighted), then the pair's. */
+  let fileNotes: (string | Node)[][] = [];
+  let pairNote: (string | Node)[] = [];
+  function notes(parts: (string | Node)[][] = fileNotes) {
+    fileNotes = parts;
+    const kept = [...parts, pairNote].filter((p) => p.length);
     note.replaceChildren(...kept.flatMap((p, i) => (i ? [" ", ...p] : p)));
     note.hidden = kept.length === 0;
   }
@@ -205,6 +199,7 @@ export function codeView(data: ReaderData, hooks: { url(file: number, range: Ran
     gutter = gutterOf();
     const bytes = f.bytes ?? raw.length;
     const tooBig = bytes > HIGHLIGHT_MAX_BYTES || lines.length > HIGHLIGHT_MAX_LINES;
+    pairNote = [];
     notes([
       f.truncated ? ["Shortened: only the first part of this file was kept here; ", link(sourceOf(r, f), "the whole file is at the source"), "."] : [],
       tooBig ? [`Syntax highlighting is off for this file: past ${sizeInWords(HIGHLIGHT_MAX_BYTES)} or ${plural(HIGHLIGHT_MAX_LINES, "line")}, it would slow the page.`] : [],
@@ -273,10 +268,12 @@ export function codeView(data: ReaderData, hooks: { url(file: number, range: Ran
     for (const b of [copyBtn, rawBtn, wrapBtn]) b.disabled = true;
     ol.replaceChildren();
     ol.hidden = true;
+    fileNotes = [];
+    pairNote = [];
     note.hidden = true;
     end.hidden = true;
     const at = sourceOf(r, f);
-    const p = el("p", "warning", whyNot(data, i, failure));
+    const p = el("p", "warning", whyNotShown(f, r, failure));
     const go = el("p");
     go.append(at === r.url ? "It can be read in its repository, " : "It can be read at the source: ", link(at, at === r.url ? r.name : f.path), ".");
     away.replaceChildren(p, go);
@@ -369,11 +366,19 @@ export function codeView(data: ReaderData, hooks: { url(file: number, range: Ran
   function markPair(p: ReaderPair): HTMLElement | null {
     if (p.file !== current || p.file < 0) return null;
     if (!ol.hidden && lines.length) {
+      pairNote = p.whole
+        ? [`Match ${p.pair} covers the whole file: a weak match, which ties its paragraph to this file rather than to given lines.`]
+        : [];
+      notes();
+      // Its lines take its color while it is read (a line of two pairs has the narrower's).
+      const color = pairClass(p.pair);
       let first: HTMLElement | null = null;
       const to = Math.min(ol.children.length, Math.max(p.start, p.end));
       for (let n = Math.max(1, p.start); n <= to; n++) {
         const li = ol.children[n - 1] as HTMLElement;
-        li.classList.add("is-active");
+        marked.push({ li, before: li.className });
+        li.className = `${li.className.replace(/\bpair-\d\b/, "").trim()} ${color} is-active`.trim();
+        if (p.whole && li.querySelector(`:scope > a[data-pair="${p.pair}"]`)) li.classList.add("lead");
         first ??= li;
       }
       return first;
@@ -381,6 +386,15 @@ export function codeView(data: ReaderData, hooks: { url(file: number, range: Ran
     const li = away.querySelector<HTMLElement>(`li[data-pairs~="${p.pair}"]`);
     li?.classList.add("is-active");
     return li;
+  }
+
+  /** No pair is being read any more. */
+  function unmark() {
+    for (const { li, before } of marked) li.className = before;
+    marked = [];
+    if (!pairNote.length) return;
+    pairNote = [];
+    notes();
   }
 
   return {
@@ -391,6 +405,7 @@ export function codeView(data: ReaderData, hooks: { url(file: number, range: Ran
     select,
     setWrap,
     markPair,
+    unmark,
     get current() {
       return current;
     },

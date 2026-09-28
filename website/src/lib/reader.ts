@@ -7,7 +7,7 @@
 // the harvester could not read it as text; "missing": not in the lot). A pair joins a paragraph
 // of the paper and lines of one of these files (`file`, -1 when the file is not among them).
 // Never any text of the paper: only paragraph numbers, section titles and short terms.
-import { sourceLines } from "./lines.ts";
+import { sourceLines, splitLines, wholeFile } from "./lines.ts";
 
 /** What the build knows of a repository's files (a lot's entry, oscr/catalog.py). */
 export type LotFileIn = {
@@ -90,6 +90,8 @@ export type ReaderPair = {
   label: string;
   evidence: string[];
   score: number | null;
+  /** The range is the whole file, or nearly: a weak match (its lines are not tinted). */
+  whole: boolean;
 };
 export type ReaderData = {
   fulltextId: string;
@@ -166,7 +168,7 @@ export function readerFiles(repos: RepoIn[]): { repos: ReaderRepo[]; files: Read
         path: f.path,
         language: f.language,
         kind: f.kind,
-        lines: f.lines,
+        lines: f.lines ?? (text !== null ? splitLines(text).length : null),
         bytes: text !== null ? new TextEncoder().encode(text).length : null,
         text: text !== null,
         truncated: !!f.truncated,
@@ -203,6 +205,7 @@ export function mapPairs(pairs: PairIn[], repos: ReaderRepo[], files: ReaderFile
         label: `§ ${p.section || `paragraph ${p.paragraph}`}`,
         evidence: p.evidence ?? [],
         score: typeof p.score === "number" ? p.score : null,
+        whole: !!f && wholeFile(p.start_line, p.end_line, f.lines),
       };
     });
 }
@@ -228,4 +231,36 @@ export function initialFile(files: ReaderFile[]): number {
 export function fileHref(base: string, repo: string, path: string, multi: boolean, anchor = ""): string {
   const q = new URLSearchParams(multi ? { repo, path } : { path });
   return `${base}?${q.toString()}${anchor ? `#${anchor}` : ""}`;
+}
+
+/** Why a file's text is not shown here, in a sentence (`failure`: why it could not be loaded). */
+export function whyNotShown(f: Pick<ReaderFile, "why" | "note" | "path">, r: Pick<ReaderRepo, "license">, failure = ""): string {
+  if (failure) return `This file could not be loaded here (${failure}).`;
+  if (f.why === "license") {
+    return r.license
+      ? `This file is not shown here: the license of its repository (${r.license}) does not allow republishing it.`
+      : "This file is not shown here: its repository has no license, so its authors keep all their rights to it.";
+  }
+  if (f.why === "binary") {
+    return /\.mlx$/i.test(f.path)
+      ? "This file is not shown here: a MATLAB live script is a binary file (a zip archive), not text."
+      : "This file is not shown here: it is not a text file.";
+  }
+  if (/too large a repository/i.test(f.note)) {
+    return "This file is not shown here: its repository is too large for the registry to keep the text of every file, and this one was left out.";
+  }
+  if (/too much text/i.test(f.note)) {
+    return "This file is not shown here: the registry keeps a bounded amount of text for each group of repositories, and this file did not fit.";
+  }
+  const note = f.note.replace(/[\s:;,.]*(read it at the source|readable (only )?at the source( only)?)[.]?$/i, "").trim();
+  return `This file is not shown here: ${note || "its text was not kept"}.`;
+}
+
+/** Why one would go to the source, said in the menu that leads there: the copy shown here is
+ *  the one the registry read; the source has the authors' latest version and its history. */
+export function sourceWhy(commit: string, shown: boolean): string {
+  const at = commit ? ` at commit ${commit.slice(0, 7)}` : "";
+  return shown
+    ? `Shown here as the registry read it${at}. The source has the authors' latest version and its history.`
+    : `Not shown here${at ? ` (read${at})` : ""}. The source has the file, the authors' latest version and its history.`;
 }
