@@ -9,7 +9,7 @@
 // and shows it (src/lib/repo-view.ts, src/scripts/repo-code-panel.ts): the heading line, the status
 // line in words, the Code button, the quick setup of an empty repository, the papers, the GitHub
 // Pages site; under settings/ and branches/, E8's modules (mountSettings, mountBranches).
-// Phase 02 builds the code view here; phase 01 links the README and the files to GitHub.
+// Phase 02 builds the code views here (repo-code.ts, repo-history.ts, repo-markdown.ts).
 //
 // Everything is written as text nodes (masked for email addresses), never as HTML; links are
 // checked again here (repo-view.ts safeHref). Like every browser script, it never names the
@@ -47,6 +47,7 @@ import { refSegments } from "../lib/code-nav.ts";
 import { toDom } from "./dom.ts";
 import { type CodeEnv, mountCode, mountTree, wireKeys } from "./repo-code.ts";
 import "./repo-history.ts";
+import "./repo-markdown.ts";
 import { codePanel, quickSetup, useTemplate, wireCopy } from "./repo-code-panel.ts";
 import { mountBranches } from "./repo-branches.ts";
 import { mountSettings } from "./repo-settings.ts";
@@ -67,11 +68,17 @@ function home(loaded: Loaded, site: string): El {
     if (info?.isTemplate) body.push(useTemplate(repo));
     if (loaded.latest) body.push(latestCommit(repo, loaded.latest));
     if (info) body.push(h("div", { id: "repo-files", "aria-live": "polite" }));
+    // The README's excerpt: the whole README replaces it once the files are read (repo-markdown.ts),
+    // under an open licence.
     if (loaded.readme && info?.defaultBranch) {
       body.push(
-        h("h2", null, "README"),
-        loaded.readme.excerpt ? h("p", null, loaded.readme.excerpt) : null,
-        h("p", null, h("a", { href: repoPath(repo, "blob", refSegments(info.defaultBranch, loaded.readme.path)) }, "Read the whole README")),
+        h(
+          "div",
+          { id: "readme-excerpt" },
+          h("h2", null, "README"),
+          loaded.readme.excerpt ? h("p", null, loaded.readme.excerpt) : null,
+          h("p", null, h("a", { href: repoPath(repo, "blob", refSegments(info.defaultBranch, loaded.readme.path)) }, "Read the whole README")),
+        ),
       );
     }
   }

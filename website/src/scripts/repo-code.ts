@@ -102,6 +102,8 @@ export interface Renderer {
   name: string;
   claims(path: string, language: string | null): boolean;
   render(file: ReadFile): Promise<El | null>;
+  /** Once the view is in the page: what the rendered view reads after (its images). */
+  mounted?(root: HTMLElement, file: ReadFile): Promise<void>;
 }
 
 /** The renderers of the blob view, filled by the rendering modules (E2, E5). */
@@ -416,6 +418,7 @@ export async function mountBlob(slot: HTMLElement, env: CodeEnv, segments: reado
   head = headOf(kind === "text" ? "text" : kind === "lfs" || kind === "symlink" ? "none" : "bytes");
   const body: (El | null)[] = [];
   const size = file.size;
+  let after: (() => Promise<void>) | null = null;
   if (kind === "symlink") {
     const target = utf8Text(file.bytes).trim();
     const dir = path.includes("/") ? path.slice(0, path.lastIndexOf("/")) : "";
@@ -480,7 +483,10 @@ export async function mountBlob(slot: HTMLElement, env: CodeEnv, segments: reado
       );
     }
     if (raw) body.push(h("pre", { class: "raw" }, shown.lines.join("\n")));
-    else if (rendered) body.push(rendered);
+    else if (rendered) {
+      body.push(rendered);
+      if (claimed?.mounted) after = () => claimed.mounted!(slot, read);
+    }
     else {
       if (shown.plain) body.push(h("p", null, `Shown without highlighting: over ${sizeInWords(CODE_LIMITS.highlightBytes)}, ${CODE_LIMITS.highlightLines.toLocaleString("en-GB")} lines, or a line of over ${CODE_LIMITS.highlightLineChars.toLocaleString("en-GB")} characters.`));
       const tab = editorConfigTabWidth((await editorConfigText(env, opened)) ?? "", path);
@@ -503,6 +509,7 @@ export async function mountBlob(slot: HTMLElement, env: CodeEnv, segments: reado
   show(slot, page(...body));
   finish();
   wireFile(slot, state, file.bytes);
+  if (after) await after().catch(() => undefined);
 }
 
 // ─── wiring ──────────────────────────────────────────────────────────────────
