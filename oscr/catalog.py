@@ -545,6 +545,8 @@ def public_db(con: sqlite3.Connection, path: Path) -> None:
     for (table,) in target.execute("SELECT m.name FROM sqlite_master m WHERE m.type = 'table' AND EXISTS "
                                    "(SELECT 1 FROM pragma_table_info(m.name) WHERE name = 'article_id')").fetchall():
         target.execute(f"DELETE FROM {table} WHERE article_id IN ({off})")
+    target.execute(f"DELETE FROM field_provenance WHERE entity = 'article' AND entity_id IN ({off})")
+    target.execute(f"DELETE FROM log WHERE json_valid(details) AND json_extract(details, '$.article') IN ({off})")
     target.execute(f"DELETE FROM article WHERE id IN ({off})")
     # What only off-topic papers (or nothing) pointed at goes too: repositories, their files
     # and facts, datasets, people and funders no paper in scope names.
@@ -556,10 +558,18 @@ def public_db(con: sqlite3.Connection, path: Path) -> None:
     target.execute("DELETE FROM author WHERE orcid NOT IN (SELECT orcid FROM paper_author)")
     target.execute("DELETE FROM funder WHERE id NOT IN (SELECT funder_id FROM grant_award)")
     target.execute("DELETE FROM journal WHERE id NOT IN (SELECT journal_id FROM article)")
+    # OpenAlex's institutions and topics that no paper in scope names (paper_author.ror holds ROR
+    # ids, or {"id": …} objects: both are found by the id's text).
+    target.execute("DELETE FROM institution WHERE NOT EXISTS (SELECT 1 FROM paper_author p "
+                   "WHERE instr(p.ror, '\"' || institution.id || '\"') > 0)")
+    target.execute("DELETE FROM topic WHERE id NOT IN (SELECT topic_id FROM paper_topic)")
     # No text of a paper leaves: abstracts, the raw Europe PMC records, the history of the
     # enriched records; availability statements only under an open license (D1).
     target.execute("UPDATE article SET abstract = ''")
     target.execute("DROP TABLE IF EXISTS epmc_record")
+    # The OpenAlex records as kept (their raw affiliation strings are the publishers' text): what
+    # may leave of them is in `article`, `paper_author`, `institution`, `paper_topic`, `paper_work`.
+    target.execute("DROP TABLE IF EXISTS openalex_record")
     target.execute("DROP TABLE IF EXISTS version")
     closed = [r[0] for r in target.execute("SELECT id, license FROM article").fetchall()
               if not statement_is_publishable(r[1])]

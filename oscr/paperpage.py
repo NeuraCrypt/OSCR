@@ -6,9 +6,11 @@ decisions D2 and D7). The website reads the lots when it is built: they add no f
 site. A paper's entry holds its sections:
 
 - `overview`: the bibliographic record — type, language, volume, issue, pages, dates,
-  license, the authors in order with their affiliations, keywords, MeSH, journal subjects,
-  funding, citation count, references, RRIDs, integrity notices — and the abstract, **only
-  under an open license** (D1's rule: `catalog.statement_is_publishable`);
+  license, the authors in order with their affiliations, their institutions (ROR ids, from the
+  JATS or OpenAlex), keywords, MeSH, journal subjects, OpenAlex's topic, funding, citation count
+  and references (with their source), open-access status, a preprint, RRIDs, integrity
+  notices — and the abstract, **only under an open license** (D1's rule:
+  `catalog.statement_is_publishable`);
 - `code`: each code repository's commit date, sizes, features (README, CITATION.cff,
   environment files, tests, CI, notebooks), tools, and the history of its availability
   checks (the last MAX_CHECKS);
@@ -87,6 +89,10 @@ MAX_RRID_NAME: int = 40
 
 _NOTICE_SOURCES = {"retraction-watch": "Retraction Watch", "epmc": "Europe PMC", "med": "Europe PMC",
                    "pmc": "Europe PMC"}
+#: Where a count came from, in words (`field_provenance`).
+_COUNT_SOURCES = {"epmc": "Europe PMC", "openalex": "OpenAlex", "jats": "the paper"}
+#: OpenAlex's open-access statuses (Unpaywall's), the only ones shown.
+OA_STATUSES: tuple[str, ...] = ("diamond", "gold", "hybrid", "bronze", "green", "closed")
 _AVAILABILITY = "text:availability"
 
 
@@ -167,29 +173,53 @@ def _funding(rows: list[sqlite3.Row], names: dict[str, str]) -> list[dict[str, A
     return out
 
 
+def _topic(rows: list[sqlite3.Row]) -> dict[str, str] | None:
+    """OpenAlex's primary topic of the paper, with its subfield, field and domain."""
+    t = next((x for x in rows if x["is_primary"]), None)
+    if t is None:
+        return None
+    return {"id": t["topic_id"], "name": _clean(t["name"]), "subfield": _clean(t["subfield"]),
+            "field": _clean(t["field"]), "domain": _clean(t["domain"])}
+
+
 def _overview(r: sqlite3.Row, authors: list[sqlite3.Row], grants: list[sqlite3.Row], funders: dict[str, str],
-              subjects: list[sqlite3.Row], rrids: list[sqlite3.Row], notices: list[sqlite3.Row]) -> dict[str, Any]:
+              subjects: list[sqlite3.Row], rrids: list[sqlite3.Row], notices: list[sqlite3.Row], *,
+              institutions: dict[str, sqlite3.Row] | None = None, topics: list[sqlite3.Row] | None = None,
+              sources: dict[str, str] | None = None) -> dict[str, Any]:
     license_ = (r["license"] or "").strip()
     open_ = catalog.statement_is_publishable(license_)
+    known = institutions or {}
+    sources = sources or {}
     affiliations: list[dict[str, str]] = []
     number: dict[str, int] = {}
     people = []
+    places_of: dict[str, dict[str, str]] = {}
     for a in authors:
         name, oid = _people_name(a), entities.orcid(a["orcid"])
         if not name and not oid:
             continue
-        places = entities._strings(a["affiliations"])
-        rors = [x for x in (entities.ror(entities._text(v, "id", "ror")) for v in entities._json_list(a["ror"])) if x]
+        places = entities._indexed_strings(a["affiliations"])
+        rors, paired = entities.ror_pairs(a["ror"], a["affiliations"])
+        ror_of = {i: x for x, i in paired}
         numbers = []
         for i, place in enumerate(places):
-            ror = rors[i] if len(rors) == len(places) else ""
+            if not place or place in [affiliations[n - 1]["name"] for n in numbers]:
+                continue
+            ror = ror_of.get(i, "")
             if place not in number:
                 number[place] = len(affiliations) + 1
                 affiliations.append({"name": place, "ror": ror})
             elif ror and not affiliations[number[place] - 1]["ror"]:
                 affiliations[number[place] - 1]["ror"] = ror
             numbers.append(number[place])
+        for x in rors:
+            k = known.get(x)
+            paired_name = next((places[i] for y, i in paired if y == x), "")
+            places_of.setdefault(x, {"ror": x, "name": _clean((k["name"] if k is not None else "") or paired_name),
+                                     "country": (k["country"] if k is not None else "") or ""})
         people.append({"name": name or oid, "orcid": oid, "affiliations": numbers})
+    preprint = ({"id": _clean(r["preprint_id"]), "url": _url(r["preprint_url"])}
+                if (r["preprint_id"] or "").strip() and _url(r["preprint_url"]) else None)
     by_scheme: dict[str, list[sqlite3.Row]] = defaultdict(list)
     for s in subjects:
         by_scheme[s["scheme"]].append(s)
@@ -210,6 +240,15 @@ def _overview(r: sqlite3.Row, authors: list[sqlite3.Row], grants: list[sqlite3.R
         "subjects": [_clean(s["term"]) for s in by_scheme["subject"]],
         "funding": _funding(grants, funders),
         "cited_by": r["cited_by_count"], "references": r["references_count"],
+        "cited_by_source": _COUNT_SOURCES.get(sources.get("cited_by_count", ""), ""),
+        "references_source": _COUNT_SOURCES.get(sources.get("references_count", ""), ""),
+        # OpenAlex (Phase 1): the institutions by ROR id, the topic, the open-access status, a preprint.
+        "institutions": [x for x in places_of.values() if x["name"]],
+        "topic": _topic(topics or []),
+        "openalex_id": r["openalex_id"] if re.fullmatch(r"W\d+", r["openalex_id"] or "") else "",
+        "oa_status": r["oa_status"] if r["oa_status"] in OA_STATUSES else "",
+        "oa_url": _url(r["oa_url"]),
+        "preprint": preprint,
         "rrids": [{"rrid": x["rrid"], "kind": x["kind"] or "",
                    "name": _clean(x["name"]) if len(_clean(x["name"])) <= MAX_RRID_NAME else ""}
                   for x in sorted(rrids, key=lambda x: x["rrid"]) if re.fullmatch(r"RRID:[A-Za-z]+_\S+", x["rrid"])],
@@ -714,6 +753,13 @@ def generate(con: sqlite3.Connection, folder: Path, articles: list[dict[str, Any
     subjects = _grouped(con, f"SELECT * FROM paper_subject WHERE article_id IN ({pages_sql}) ORDER BY article_id, rowid")
     rrids = _grouped(con, f"SELECT * FROM paper_rrid WHERE article_id IN ({pages_sql})")
     notices = _grouped(con, f"SELECT * FROM integrity_notice WHERE article_id IN ({pages_sql})")
+    institutions = {r["id"]: r for r in con.execute("SELECT * FROM institution")}
+    topics = _grouped(con, f"SELECT p.article_id, p.topic_id, p.is_primary, t.name, t.subfield, t.field, t.domain "
+                           f"FROM paper_topic p JOIN topic t ON t.id = p.topic_id WHERE p.article_id IN ({pages_sql})")
+    count_sources: dict[str, dict[str, str]] = defaultdict(dict)
+    for r in con.execute(f"SELECT entity_id, field, source FROM field_provenance WHERE entity = 'article' AND field IN "
+                         f"('cited_by_count', 'references_count') AND entity_id IN ({pages_sql})"):
+        count_sources[r["entity_id"]][r["field"]] = r["source"]
     statements = _grouped(con, f"SELECT * FROM statement WHERE article_id IN ({pages_sql})")
     links = _grouped(con, f"SELECT * FROM link WHERE article_id IN ({pages_sql}) ORDER BY article_id, repo")
     versions = _grouped(con, f"SELECT * FROM version WHERE entity = 'article' AND entity_id IN ({pages_sql})",
@@ -779,7 +825,8 @@ def generate(con: sqlite3.Connection, folder: Path, articles: list[dict[str, Any
         deposit = deposits.get(aid) if validations.get(aid) else None
         entry = {
             "overview": _overview(r, authors.get(aid, []), grants.get(aid, []), funders, subjects.get(aid, []),
-                                  rrids.get(aid, []), notices.get(aid, [])),
+                                  rrids.get(aid, []), notices.get(aid, []), institutions=institutions,
+                                  topics=topics.get(aid, []), sources=count_sources.get(aid, {})),
             "code": {link["repo"]: _repository(repos.get(link["repo"]), features.get(link["repo"]),
                                                tools.get(link["repo"], []), checks.get(link["repo"], []),
                                                scripts.get(link["repo"], 0)) for link in code_links},

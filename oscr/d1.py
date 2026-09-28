@@ -325,12 +325,19 @@ def project(con: sqlite3.Connection, state: sqlite3.Connection) -> Projection:
     articles = {r["id"]: r for r in con.execute(f"SELECT * FROM article WHERE id IN ({pages})")}
     journals = {r["id"]: r for r in con.execute("SELECT * FROM journal")}
     names: dict[str, list[str]] = defaultdict(list)
-    for r in con.execute(f"SELECT article_id, name, given, family FROM paper_author WHERE article_id IN ({pages}) "
-                         "ORDER BY article_id, position"):
+    rors: dict[str, list[str]] = defaultdict(list)
+    for r in con.execute(f"SELECT article_id, name, given, family, ror, affiliations FROM paper_author "
+                         f"WHERE article_id IN ({pages}) ORDER BY article_id, position"):
         name = r["name"] or " ".join(x for x in (r["given"], r["family"]) if x)
         name = clean(name)
         if name:
             names[r["article_id"]].append(name)
+        rors[r["article_id"]] += entities.ror_pairs(r["ror"], r["affiliations"])[0]
+    # OpenAlex's topics (their names, searched like keywords).
+    topics: dict[str, list[str]] = defaultdict(list)
+    for r in con.execute(f"SELECT p.article_id, t.name FROM paper_topic p JOIN topic t ON t.id = p.topic_id "
+                         f"WHERE p.article_id IN ({pages}) ORDER BY p.article_id, p.is_primary DESC, p.topic_id"):
+        topics[r["article_id"]].append(clean(r["name"]))
     subjects: dict[str, dict[str, list[str]]] = defaultdict(lambda: defaultdict(list))
     for r in con.execute(f"SELECT article_id, scheme, term FROM paper_subject WHERE article_id IN ({pages})"):
         subjects[r["article_id"]][r["scheme"]].append(clean(r["term"]))
@@ -467,11 +474,11 @@ def project(con: sqlite3.Connection, state: sqlite3.Connection) -> Projection:
                 authors = [clean(str(x)) for x in json.loads(a["authors"] or "[]") if isinstance(x, str)]
             except ValueError:
                 authors = []
-        ids = [a["doi"], a["pmid"], a["pmcid"], *sorted(datasets[aid]), *rrids.get(aid, []),
-               *([j["issn"], j["eissn"]] if j is not None else []), maps.get(aid, "")]
+        ids = [a["doi"], a["pmid"], a["pmcid"], a["openalex_id"], *sorted(datasets[aid]), *rrids.get(aid, []),
+               *([j["issn"], j["eissn"]] if j is not None else []), maps.get(aid, ""), *_unique(rors.get(aid, []))]
         text = {
             "title": title,
-            "keywords": "; ".join(s.get("keyword", []) + s.get("subject", [])),
+            "keywords": "; ".join(s.get("keyword", []) + s.get("subject", []) + topics.get(aid, [])),
             "mesh": "; ".join(s.get("mesh", [])),
             "authors": "; ".join(x for x in authors if x),
             "journal": "; ".join(_unique([journal, clean(j["nlm_ta"]) if j is not None else ""])),

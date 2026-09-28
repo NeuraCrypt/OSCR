@@ -1,0 +1,363 @@
+{
+ "id": "https://openalex.org/W4407382357",
+ "doi": "https://doi.org/10.3389/fnsys.2025.1495018",
+ "language": "en",
+ "primary_location": {
+  "id": "doi:10.3389/fnsys.2025.1495018",
+  "is_oa": true,
+  "landing_page_url": "https://doi.org/10.3389/fnsys.2025.1495018",
+  "pdf_url": "https://public-pages-files-2025.frontiersin.org/journals/systems-neuroscience/articles/10.3389/fnsys.2025.1495018/pdf",
+  "source": {
+   "id": "https://openalex.org/S97434221",
+   "display_name": "Frontiers in Systems Neuroscience",
+   "issn_l": "1662-5137",
+   "issn": [
+    "1662-5137"
+   ],
+   "is_oa": true,
+   "host_organization": "https://openalex.org/P4310320527",
+   "host_organization_name": "Frontiers Media",
+   "type": "journal"
+  },
+  "license": "cc-by",
+  "license_id": "https://openalex.org/licenses/cc-by",
+  "version": "publishedVersion",
+  "is_accepted": true,
+  "is_published": true,
+  "raw_source_name": "Frontiers in Systems Neuroscience",
+  "raw_type": "journal-article"
+ },
+ "type": "editorial",
+ "open_access": {
+  "is_oa": true,
+  "oa_status": "gold",
+  "oa_url": "https://public-pages-files-2025.frontiersin.org/journals/systems-neuroscience/articles/10.3389/fnsys.2025.1495018/pdf",
+  "any_repository_has_fulltext": true
+ },
+ "authorships": [
+  {
+   "author_position": "first",
+   "author": {
+    "id": "https://openalex.org/A5032305636",
+    "display_name": "Golnaz Baghdadi",
+    "orcid": "https://orcid.org/0000-0002-6977-5029",
+    "observed_orcids": [
+     "https://orcid.org/0000-0002-6977-5029"
+    ]
+   },
+   "institutions": [
+    {
+     "id": "https://openalex.org/I158248296",
+     "display_name": "Amirkabir University of Technology",
+     "ror": "https://ror.org/04gzbav43",
+     "country_code": "IR",
+     "type": "education",
+     "lineage": [
+      "https://openalex.org/I158248296"
+     ]
+    }
+   ],
+   "countries": [
+    "IR"
+   ],
+   "is_corresponding": true,
+   "raw_author_name": "Golnaz Baghdadi",
+   "raw_affiliation_strings": [
+    "Biomedical Engineering Department, Amirkabir University of Technology (Tehran Polytechnic), Tehran, Iran"
+   ],
+   "raw_orcid": null,
+   "affiliations": [
+    {
+     "raw_affiliation_string": "Biomedical Engineering Department, Amirkabir University of Technology (Tehran Polytechnic), Tehran, Iran",
+     "institution_ids": [
+      "https://openalex.org/I158248296"
+     ]
+    }
+   ]
+  },
+  {
+   "author_position": "middle",
+   "author": {
+    "id": "https://openalex.org/A5001991567",
+    "display_name": "Fatemeh Hadaeghi",
+    "orcid": "https://orcid.org/0000-0002-3870-798X",
+    "observed_orcids": [
+     "https://orcid.org/0000-0002-3870-798X"
+    ]
+   },
+   "institutions": [
+    {
+     "id": "https://openalex.org/I159176309",
+     "display_name": "Universität Hamburg",
+     "ror": "https://ror.org/00g30e956",
+     "country_code": "DE",
+     "type": "education",
+     "lineage": [
+      "https://openalex.org/I159176309"
+     ]
+    },
+    {
+     "id": "https://openalex.org/I4210108711",
+     "display_name": "University Medical Center Hamburg-Eppendorf",
+     "ror": "https://ror.org/01zgy1s35",
+     "country_code": "DE",
+     "type": "healthcare",
+     "lineage": [
+      "https://openalex.org/I159176309",
+      "https://openalex.org/I4210108711"
+     ]
+    }
+   ],
+   "countries": [
+    "DE"
+   ],
+   "is_corresponding": false,
+   "raw_author_name": "Fatemeh Hadaeghi",
+   "raw_affiliation_strings": [
+    "Institute of Computational Neuroscience, University Medical Center Hamburg-Eppendorf, Hamburg, Germany"
+   ],
+   "raw_orcid": null,
+   "affiliations": [
+    {
+     "raw_affiliation_string": "Institute of Computational Neuroscience, University Medical Center Hamburg-Eppendorf, Hamburg, Germany",
+     "institution_ids": [
+      "https://openalex.org/I159176309",
+      "https://openalex.org/I4210108711"
+     ]
+    }
+   ]
+  },
+  {
+   "author_position": "last",
+   "author": {
+    "id": "https://openalex.org/A5077384411",
+    "display_name": "Chella Kamarajan",
+    "orcid": "https://orcid.org/0000-0003-2291-6880",
+    "observed_orcids": [
+     "https://orcid.org/0000-0003-2291-6880"
+    ]
+   },
+   "institutions": [
+    {
+     "id": "https://openalex.org/I181697535",
+     "display_name": "SUNY Downstate Health Sciences University",
+     "ror": "https://ror.org/0041qmd21",
+     "country_code": "US",
+     "type": "healthcare",
+     "lineage": [
+      "https://openalex.org/I181697535"
+     ]
+    }
+   ],
+   "countries": [
+    "US"
+   ],
+   "is_corresponding": false,
+   "raw_author_name": "Chella Kamarajan",
+   "raw_affiliation_strings": [
+    "Department of Psychiatry and Behavioral Sciences, SUNY Downstate Health Sciences University, Brooklyn, NY, United States"
+   ],
+   "raw_orcid": null,
+   "affiliations": [
+    {
+     "raw_affiliation_string": "Department of Psychiatry and Behavioral Sciences, SUNY Downstate Health Sciences University, Brooklyn, NY, United States",
+     "institution_ids": [
+      "https://openalex.org/I181697535"
+     ]
+    }
+   ]
+  }
+ ],
+ "cited_by_count": 15,
+ "biblio": {
+  "volume": "19",
+  "issue": null,
+  "first_page": "1495018",
+  "last_page": "1495018"
+ },
+ "is_retracted": false,
+ "primary_topic": {
+  "id": "https://openalex.org/T10429",
+  "display_name": "EEG and Brain-Computer Interfaces",
+  "score": 0.9994999766349792,
+  "subfield": {
+   "id": "https://openalex.org/subfields/2805",
+   "display_name": "Cognitive Neuroscience"
+  },
+  "field": {
+   "id": "https://openalex.org/fields/28",
+   "display_name": "Neuroscience"
+  },
+  "domain": {
+   "id": "https://openalex.org/domains/1",
+   "display_name": "Life Sciences"
+  }
+ },
+ "topics": [
+  {
+   "id": "https://openalex.org/T10429",
+   "display_name": "EEG and Brain-Computer Interfaces",
+   "score": 0.9994999766349792,
+   "subfield": {
+    "id": "https://openalex.org/subfields/2805",
+    "display_name": "Cognitive Neuroscience"
+   },
+   "field": {
+    "id": "https://openalex.org/fields/28",
+    "display_name": "Neuroscience"
+   },
+   "domain": {
+    "id": "https://openalex.org/domains/1",
+    "display_name": "Life Sciences"
+   }
+  },
+  {
+   "id": "https://openalex.org/T10241",
+   "display_name": "Functional Brain Connectivity Studies",
+   "score": 0.9987000226974487,
+   "subfield": {
+    "id": "https://openalex.org/subfields/2805",
+    "display_name": "Cognitive Neuroscience"
+   },
+   "field": {
+    "id": "https://openalex.org/fields/28",
+    "display_name": "Neuroscience"
+   },
+   "domain": {
+    "id": "https://openalex.org/domains/1",
+    "display_name": "Life Sciences"
+   }
+  }
+ ],
+ "locations": [
+  {
+   "id": "doi:10.3389/fnsys.2025.1495018",
+   "is_oa": true,
+   "landing_page_url": "https://doi.org/10.3389/fnsys.2025.1495018",
+   "pdf_url": "https://public-pages-files-2025.frontiersin.org/journals/systems-neuroscience/articles/10.3389/fnsys.2025.1495018/pdf",
+   "source": {
+    "id": "https://openalex.org/S97434221",
+    "display_name": "Frontiers in Systems Neuroscience",
+    "issn_l": "1662-5137",
+    "issn": [
+     "1662-5137"
+    ],
+    "is_oa": true,
+    "host_organization": "https://openalex.org/P4310320527",
+    "host_organization_name": "Frontiers Media",
+    "type": "journal"
+   },
+   "license": "cc-by",
+   "license_id": "https://openalex.org/licenses/cc-by",
+   "version": "publishedVersion",
+   "is_accepted": true,
+   "is_published": true,
+   "raw_source_name": "Frontiers in Systems Neuroscience",
+   "raw_type": "journal-article"
+  },
+  {
+   "id": "pmid:40012906",
+   "is_oa": false,
+   "landing_page_url": "https://pubmed.ncbi.nlm.nih.gov/40012906",
+   "pdf_url": null,
+   "source": {
+    "id": "https://openalex.org/S4306525036",
+    "display_name": "PubMed",
+    "issn_l": null,
+    "issn": null,
+    "is_oa": false,
+    "host_organization": "https://openalex.org/I1299303238",
+    "host_organization_name": "National Institutes of Health",
+    "type": "repository"
+   },
+   "license": null,
+   "license_id": null,
+   "version": "publishedVersion",
+   "is_accepted": true,
+   "is_published": true,
+   "raw_source_name": "Frontiers in systems neuroscience",
+   "raw_type": "Editorial"
+  },
+  {
+   "id": "pmh:oai:pubmedcentral.nih.gov:11850518",
+   "is_oa": true,
+   "landing_page_url": "https://www.ncbi.nlm.nih.gov/pmc/articles/11850518",
+   "pdf_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC11850518/pdf/fnsys-19-1495018.pdf",
+   "source": {
+    "id": "https://openalex.org/S2764455111",
+    "display_name": "PubMed Central",
+    "issn_l": null,
+    "issn": null,
+    "is_oa": true,
+    "host_organization": "https://openalex.org/I1299303238",
+    "host_organization_name": "National Institutes of Health",
+    "type": "repository"
+   },
+   "license": "cc-by",
+   "license_id": "https://openalex.org/licenses/cc-by",
+   "version": "submittedVersion",
+   "is_accepted": false,
+   "is_published": false,
+   "raw_source_name": "Front Syst Neurosci",
+   "raw_type": "Text"
+  },
+  {
+   "id": "pmh:oai:doaj.org/article:b2431dab5d76421584abf22208bf1306",
+   "is_oa": false,
+   "landing_page_url": "https://doaj.org/article/b2431dab5d76421584abf22208bf1306",
+   "pdf_url": null,
+   "source": {
+    "id": "https://openalex.org/S4306401280",
+    "display_name": "DOAJ (DOAJ: Directory of Open Access Journals)",
+    "issn_l": null,
+    "issn": null,
+    "is_oa": false,
+    "host_organization": null,
+    "host_organization_name": null,
+    "type": "repository"
+   },
+   "license": null,
+   "license_id": null,
+   "version": "submittedVersion",
+   "is_accepted": false,
+   "is_published": false,
+   "raw_source_name": "Frontiers in Systems Neuroscience, Vol 19 (2025)",
+   "raw_type": "article"
+  },
+  {
+   "id": "pmh:oai:null:20.500.12648/16995",
+   "is_oa": true,
+   "landing_page_url": "http://hdl.handle.net/20.500.12648/16995",
+   "pdf_url": null,
+   "source": {
+    "id": "https://openalex.org/S4306400078",
+    "display_name": "SUNY Digital Repository Support (State University of New York System)",
+    "issn_l": null,
+    "issn": null,
+    "is_oa": false,
+    "host_organization": "https://openalex.org/I63190737",
+    "host_organization_name": "University at Buffalo, State University of New York",
+    "type": "repository"
+   },
+   "license": "cc-by",
+   "license_id": "https://openalex.org/licenses/cc-by",
+   "version": "submittedVersion",
+   "is_accepted": false,
+   "is_published": false,
+   "raw_source_name": "19",
+   "raw_type": "Article/Review"
+  }
+ ],
+ "funders": [],
+ "awards": [],
+ "referenced_works_count": 28,
+ "referenced_works": [
+  "https://openalex.org/W1567998935",
+  "https://openalex.org/W2051424583",
+  "https://openalex.org/W2110328161"
+ ],
+ "related_works": [
+  "https://openalex.org/W2090251673",
+  "https://openalex.org/W3096545521"
+ ]
+}

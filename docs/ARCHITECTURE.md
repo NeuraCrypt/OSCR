@@ -23,7 +23,7 @@ The rules that govern everything below are in [CLAUDE.md](../CLAUDE.md):
 
 ```mermaid
 flowchart LR
-  EPMC["Europe PMC, Crossref, DataCite, forges"] --> W["watch, on the Mac"]
+  EPMC["Europe PMC, Crossref, DataCite, OpenAlex, forges"] --> W["watch, on the Mac"]
   W --> B[("private SQLite database")]
   B <--> A["align: lexical-v1"]
   B --> I["local dashboard, port 8790"]
@@ -54,6 +54,7 @@ read before.
 | the cached full text (JATS, both of Europe PMC's flavours) | type, abstract, journal (ISSN, publisher), volume, issue, pages, dates, authors (order, ORCID, affiliations, ROR, corresponding), funding, keywords, subjects, references, RRIDs, availability statements | `oscr/biblio.py` |
 | the Europe PMC `core` result (kept in `epmc_record` since Phase 1) | MeSH, grants, more ORCIDs, citation count, open-access flag, corrections and retractions | `oscr/biblio.py` |
 | the Retraction Watch data (a weekly download, looked up locally by DOI) | retractions, corrections, expressions of concern | `oscr/sources/retractions.py` |
+| OpenAlex (one free lookup by DOI per paper, the owner's key; kept in `openalex_record`) | the work's id, institutions by ROR id with country and type, open-access status and link, a preprint, the primary topic (subfield, field, domain), referenced and related works; and, only where the JATS and Europe PMC said nothing, ORCID iDs, corresponding authors, funders, citation and reference counts, volume, issue, pages, publisher | `oscr/sources/openalex.py` |
 | the stored file lists and scripts | notebooks, README, CITATION.cff, environment files, tests, CI; the tools used (imports and calls) | `oscr/repofeatures.py` |
 | rules over title, keywords, MeSH, journal, abstract | on topic or not, modality, organism, population, subfield, each with a confidence and its reasons | `oscr/classify.py` |
 
@@ -61,7 +62,22 @@ read before.
   in order, each in one transaction, when the database opens. Schema 4 adds the tables of
   [PLATFORM_PLAN.md](PLATFORM_PLAN.md) §4.
 - **Provenance**: `field_provenance` says where each value came from (jats, epmc,
-  retraction-watch…) and when.
+  retraction-watch, openalex…), with the record it came from (a PMCID, an OpenAlex id), and
+  when. The sources merge in that order of authority: the JATS, then Europe PMC, then OpenAlex,
+  which never replaces a value another source gave (a person's correction, the owner's label
+  included).
+- **OpenAlex** (schema 7, `oscr/migrations/0007_openalex.sql`): the key comes from the macOS
+  keychain (`org.oscr.openalex`, or `OPENALEX_API_KEY`) and travels only in the
+  `Authorization` header to api.openalex.org — never in a URL, the cache, a log or an error.
+  Only single lookups are made (free; $1 of credit a day covers the paid calls OSCR does not
+  make); each day's calls and spending are kept from OpenAlex's own headers (`openalex.Budget`),
+  and a second 429 stops OpenAlex until midnight UTC. New papers are looked up during their
+  scan, before their enrichment (`harvest.scan_article`); those OpenAlex does not know yet (it
+  lags a few days) are asked again a week later by the watch's daily round
+  (`enrich.openalex_pass`); `oscr enrich --openalex [--all]` does the papers read before,
+  resumably. The raw records stay on the Mac; the institutions, topics, open-access status,
+  preprints and counts reach the pages, the entities and the search (`catalog.public_db`
+  keeps nothing of off-topic papers).
 - **Versions**: `version` keeps each change of a record, with what changed; texts appear
   there only as digests.
 - **Every verdict on a repository** is kept in `alive_check`, not only the last one.
@@ -71,8 +87,8 @@ read before.
   (`tools/compare_models.py`).
 - **Off-topic papers** (D7) stay on the Mac: they are out of every public output (the
   catalogue, the scripts, the matches, the public database) and out of the statistics.
-- **No article text leaves** (`catalog.public_db`). Abstracts, the raw Europe PMC records and
-  the versions are removed from the public database, and availability statements are kept
+- **No article text leaves** (`catalog.public_db`). Abstracts, the raw Europe PMC and OpenAlex
+  records and the versions are removed from the public database, and availability statements are kept
   only under CC BY, CC0, CC BY-SA or CC BY-NC (D1). The paper's page shows the abstract and the
   statements under the same licenses only (Phase 4, below).
 - **Rates are computed on research articles** (`catalog.RESEARCH_TYPES`); reviews,
