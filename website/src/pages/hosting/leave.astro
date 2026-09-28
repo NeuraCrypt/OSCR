@@ -1,10 +1,37 @@
 ---
-// /hosting/leave/: the exit path.
+// /hosting/leave/: the exit path. The repository is already in the researcher's own GitHub account
+// (D00-2): leaving the registry moves nothing. The page says how to unlink it or ask for the layer's
+// deletion (the repository's settings, E8), how to keep a complete backup with git alone (clone
+// --mirror, a bundle), how to get GitHub's migration archive of the repository's metadata, how to
+// save the registry's layer for the repository as JSON (read from the static shard and saved by the
+// browser: src/scripts/import-repo.ts), where a citable copy goes (Zenodo, figshare), and how to
+// restore a history from Software Heritage.
 //
-// STUB, created by the foundation (F) of phase 01 so that the site builds and every link resolves;
-// owned by E12, which builds the page. science.css only; the platform's name from src/config.ts.
+// A static page: its form is shown by its script, whose only request is the static shard
+// /forge/layer/NN.json (0 Worker requests). Every command comes from src/lib/import-commands.ts, with
+// placeholders in capitals. science.css only; the platform's name from src/config.ts.
 import Base from "../../layouts/Base.astro";
 import { SITE_NAME } from "../../config";
+import { backupCommands, commandText, migrationArchiveCommands, swhRestoreCommands } from "../../lib/import-commands";
+import { DATA_HOMES } from "../../lib/limits-text";
+import { GRACE_SECONDS } from "../../../worker/forge/service/caps.ts";
+
+const GRACE_DAYS = Math.round(GRACE_SECONDS / 86_400);
+
+const REPO = { owner: "OWNER", name: "NAME" };
+const backup = commandText(backupCommands(REPO));
+const backupLfs = commandText(backupCommands(REPO, { lfs: true }));
+const migration = commandText(migrationArchiveCommands(REPO));
+const SWHID = `swh:1:rev:${"0".repeat(40)}`;
+const restore = commandText(swhRestoreCommands(SWHID, { owner: "OWNER", name: "NAME-restored" }));
+const LINKS = {
+  migrationsApi: "https://docs.github.com/en/rest/migrations/users",
+  cli: "https://cli.github.com/",
+  bundle: "https://git-scm.com/docs/git-bundle",
+  figshare: "https://help.figshare.com/article/how-to-connect-figshare-with-your-github-account",
+  swh: "https://archive.softwareheritage.org/",
+  swhVault: "https://docs.softwareheritage.org/devel/swh-vault/",
+};
 ---
 <Base
   title="Leaving the registry"
@@ -12,7 +39,96 @@ import { SITE_NAME } from "../../config";
   breadcrumb={[{ text: "Hosting code", href: "/hosting/" }, { text: "Leaving the registry" }]}
 >
   <h1>Leaving the registry</h1>
-  <p class="summary">Your repository is already in your own GitHub account: how to unlink it, back it up, and export what the registry keeps about it.</p>
-  <p class="warning">This page is being built: it is not in service yet.</p>
-  <p>Where repositories live and what {SITE_NAME} keeps of them: <a href="/hosting/">the hosting guides</a>.</p>
+  <p class="summary">
+    Your repository is already in your own GitHub account: leaving {SITE_NAME} moves nothing and deletes nothing on
+    GitHub. What {SITE_NAME} keeps is a layer around it (the papers it is linked to, tracing maps, script copies under
+    licences that allow it), and you can take that with you too.
+  </p>
+
+  <h2 id="unlink">Unlink it, or ask for its layer's deletion</h2>
+  <p>
+    From the repository's page on {SITE_NAME}, under Settings: unlink it from its papers (one authorized action, as
+    you, on GitHub), or ask for its layer to be deleted. The layer then leaves the site after a grace period of {GRACE_DAYS}
+    days during which you can change your mind. Deleting the repository on GitHub itself stays your own act, on GitHub or
+    from the same page, with a fresh authorization: {SITE_NAME} never does it for you. Script copies and tracing maps
+    of a paper are removed with a removal request, from the paper's own page.
+  </p>
+
+  <form id="leave-form" hidden>
+    <p>
+      <label for="leave-repo">Your repository</label> (account/name, or its GitHub address)<br />
+      <input type="text" id="leave-repo" autocomplete="off" spellcheck="false" maxlength="200" />
+    </p>
+    <p><label><input type="checkbox" id="leave-lfs" /> It uses Git LFS: back up its large files too</label></p>
+    <p><button type="submit">Show the commands for it</button></p>
+    <p id="leave-message" role="status"></p>
+  </form>
+  <section id="leave-result" class="setup" hidden>
+    <h3>Its settings on {SITE_NAME}</h3>
+    <p id="leave-settings"></p>
+    <h3>A complete backup with git</h3>
+    <pre class="commands" id="leave-backup" data-copy="the backup commands"></pre>
+    <h3>GitHub's migration archive of its metadata</h3>
+    <pre class="commands" id="leave-migration" data-copy="the migration archive commands"></pre>
+    <h3>The registry's layer, as JSON</h3>
+    <p>
+      Read from the site's public files and saved by your browser: the papers it is linked to and what the registry
+      shows about it.
+    </p>
+    <p><button type="button" id="leave-export">Prepare the file</button></p>
+    <p id="leave-export-message" role="status"></p>
+  </section>
+
+  <h2 id="backup">A complete backup with git</h2>
+  <p>
+    A mirror clone holds every branch, tag and commit; a <a href={LINKS.bundle}>bundle</a> puts all of it in one file you
+    can keep anywhere and clone from later. OWNER is your account, NAME the repository:
+  </p>
+  <pre class="commands" data-copy="the backup commands">{backup}</pre>
+  <p>With Git LFS, its large files are fetched into the mirror too (they are not in the bundle: keep the folder):</p>
+  <pre class="commands" data-copy="the backup commands with LFS">{backupLfs}</pre>
+
+  <h2 id="metadata">Issues, pull requests and the rest: GitHub's migration archive</h2>
+  <p>
+    Git keeps the code and its history; the issues, pull requests, comments, releases and wiki are GitHub's metadata.
+    GitHub exports them as a migration archive (<a href={LINKS.migrationsApi}>the user migrations API</a>), here with
+    <a href={LINKS.cli}>GitHub's command-line tool</a> and your own sign-in. The repository is not locked while it is
+    prepared. Options leave out the Git data, the metadata, attachments, releases or projects when you do not need
+    them (exclude_… set to true).
+  </p>
+  <pre class="commands" data-copy="the migration archive commands">{migration}</pre>
+
+  <h2 id="layer">The registry's layer</h2>
+  <p>
+    Everything {SITE_NAME} shows publicly about a repository comes from its public files: the form above saves it as
+    one JSON file, made in your browser. Tracing maps validated by an author have their own DOI on Zenodo, and stay
+    citable wherever the code goes.
+  </p>
+
+  <h2 id="citation">A citable copy</h2>
+  <p>
+    A DOI for a release of the code itself comes from an archive, not from a host:
+    <a href={DATA_HOMES.zenodoGithub}>Zenodo's GitHub integration</a> or
+    <a href={LINKS.figshare}>figshare's</a> archive each release you publish on GitHub, with its own DOI.
+  </p>
+
+  <h2 id="software-heritage">Restoring from Software Heritage</h2>
+  <p>
+    <a href={LINKS.swh}>Software Heritage</a> keeps public code for the long term; {SITE_NAME} asks it to save a
+    repository when a person asks. A history it holds can be restored into an empty repository through its
+    <a href={LINKS.swhVault}>vault</a>: replace the identifier below (swh:1:rev:…) by the one Software Heritage shows for
+    the commit, and NAME-restored by the empty repository you created.
+  </p>
+  <pre class="commands" data-copy="the restore commands">{restore}</pre>
+
+  <h2 id="more">More</h2>
+  <ul>
+    <li><a href="/repositories/">Your repositories</a>, and their settings.</li>
+    <li><a href="/hosting/import/">Importing a repository</a>, the other way round.</li>
+    <li><a href="/hosting/">The hosting guides</a>.</li>
+  </ul>
+
+  <script>
+    import "../../scripts/import-repo";
+  </script>
 </Base>
