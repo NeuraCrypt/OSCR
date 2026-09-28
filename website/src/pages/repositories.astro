@@ -68,20 +68,20 @@ const graceDays = Math.round(GRACE_SECONDS / 86_400);
 
     <form id="repos-filter">
       <p>
-        <label for="repos-mode">Show</label>
+        <label for="repos-mode">Show</label>{" "}
         <select id="repos-mode" name="mode">
           <option value="">every repository</option>
           <option value="created">the ones created through the registry</option>
           <option value="mirror">the linked ones (mirrors)</option>
           <option value="installed">the linked ones with the App installed</option>
           <option value="public">the linked ones without the App</option>
-        </select>
-        <label for="repos-template">and</label>
+        </select>{" "}
+        <label for="repos-template">and</label>{" "}
         <select id="repos-template" name="template">
           <option value="">templates or not</option>
           <option value="true">templates only</option>
           <option value="false">no templates</option>
-        </select>
+        </select>{" "}
         <button type="submit">Show</button>
       </p>
     </form>

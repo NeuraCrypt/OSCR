@@ -185,7 +185,7 @@ export function mountBranches(root: HTMLElement, repo: ShellRepo, deps: { sessio
     });
   }
 
-  root.replaceChildren(
+  const parts: (HTMLElement | null)[] = [
     el("h2", { text: "Branches" }),
     el("p", {}, repo.defaultBranch ? `The default branch is ${repo.defaultBranch}: new clones check it out, and it cannot be deleted.` : "The repository is empty: its first push makes its first branch."),
     can.act ? null : el("p", {}, can.why),
@@ -195,7 +195,8 @@ export function mountBranches(root: HTMLElement, repo: ShellRepo, deps: { sessio
     table,
     create,
     box,
-  );
+  ];
+  root.replaceChildren(...parts.filter((p): p is HTMLElement => p !== null));
 
   if (!deps.session || !repo.defaultBranch) {
     draw();

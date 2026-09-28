@@ -56,8 +56,8 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
 /* A form in a page (the DOI lookup), like the masthead's search (approved 2026-09-27) */
 /* A button anywhere in a page (the forms, the citations' "Copy") and a form's menus, like the
    masthead's (proposed in Phases 3 and 4; the owner said not to wait, 2026-09-28) */
-main form input[type="text"], main button, main form select { font: inherit; border-radius: 0; }
-main form input[type="text"] { width: min(28em, 100%); padding: .15em .35em; border: 1px solid #777; box-sizing: border-box; }
+main form input[type="text"], main form input[type="url"], main form input[type="search"], main button, main form select { font: inherit; border-radius: 0; }
+main form input[type="text"], main form input[type="url"], main form input[type="search"] { width: min(28em, 100%); padding: .15em .35em; border: 1px solid #777; box-sizing: border-box; }
 /* The contribution forms (Phase 6: submit a paper, claim it, correct it, ask for its removal): a
    text of several lines like a field, a group of fields ruled like the sidebar, its legend in bold */
 main form textarea {
