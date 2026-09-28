@@ -1,0 +1,109 @@
+{
+  "about": "Email addresses masked in free text: the same pairs are checked against oscr/catalog.py::mask_emails (tests/test_forge.py) and website/worker/forge/mask.ts (website/tests/forge/mask.test.ts).",
+  "cases": [
+    {
+      "input": "Contact: jane.doe@example.org",
+      "expected": "Contact: [email hidden]"
+    },
+    {
+      "input": "Signed-off-by: Ada Lovelace <ada@example.ac.uk>",
+      "expected": "Signed-off-by: Ada Lovelace <[email hidden]>"
+    },
+    {
+      "input": "git@github.com:owner/repo.git",
+      "expected": "git@github.com:owner/repo.git"
+    },
+    {
+      "input": "clone git@gitlab.com:group/project.git or write to ops@gitlab.com",
+      "expected": "clone git@gitlab.com:group/project.git or write to [email hidden]"
+    },
+    {
+      "input": "no address here @ all",
+      "expected": "no address here @ all"
+    },
+    {
+      "input": "user@localhost",
+      "expected": "user@localhost"
+    },
+    {
+      "input": "josé.garcía@universidad.es",
+      "expected": "[email hidden]"
+    },
+    {
+      "input": "ünïcödé@example.com",
+      "expected": "[email hidden]"
+    },
+    {
+      "input": "line1 a@b.co\nline2\nline3 c.d+tag@sub.example.io.",
+      "expected": "line1 [email hidden]\nline2\nline3 [email hidden]."
+    },
+    {
+      "input": "email: first_last-99%x@mail-server.example.com, next",
+      "expected": "email: [email hidden], next"
+    },
+    {
+      "input": "@decorator\ndef f():\n    pass\n",
+      "expected": "@decorator\ndef f():\n    pass\n"
+    },
+    {
+      "input": "x@y.z",
+      "expected": "x@y.z"
+    },
+    {
+      "input": "numbers 123@456.com",
+      "expected": "numbers [email hidden]"
+    },
+    {
+      "input": "trailing@example.comé",
+      "expected": "trailing@example.comé"
+    },
+    {
+      "input": "日本語テキスト user@example.jp 続き",
+      "expected": "日本語テキスト [email hidden] 続き"
+    },
+    {
+      "input": "a.b@c.d.e.fr",
+      "expected": "[email hidden]"
+    },
+    {
+      "input": "(mailto:someone@example.org)",
+      "expected": "(mailto:[email hidden])"
+    },
+    {
+      "input": "someone@EXAMPLE.ORG",
+      "expected": "[email hidden]"
+    },
+    {
+      "input": "multiple: a@example.com, b@example.com; c@example.com",
+      "expected": "multiple: [email hidden], [email hidden]; [email hidden]"
+    },
+    {
+      "input": "𝔘nicode@example.com",
+      "expected": "[email hidden]"
+    },
+    {
+      "input": "٣@example.com",
+      "expected": "[email hidden]"
+    },
+    {
+      "input": "x_y@example.com_",
+      "expected": "x_y@example.com_"
+    },
+    {
+      "input": "ⅷ@example.com",
+      "expected": "[email hidden]"
+    },
+    {
+      "input": "combining é@example.com",
+      "expected": "combining é@example.com"
+    },
+    {
+      "input": "# Author: R. Fisher (r.fisher@stats.example.edu)\nimport numpy as np\n",
+      "expected": "# Author: R. Fisher ([email hidden])\nimport numpy as np\n"
+    },
+    {
+      "input": "",
+      "expected": ""
+    }
+  ]
+}
