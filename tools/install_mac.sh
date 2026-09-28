@@ -20,7 +20,7 @@ AGENTS=~/Library/LaunchAgents
 LOGS=~/Library/Logs/oscr
 DOMAIN=gui/$(id -u)
 SETTINGS=~/.config/oscr/settings
-TASKS=(org.oscr.harvester org.oscr.dashboard org.oscr.nightly)
+TASKS=(org.oscr.harvester org.oscr.dashboard org.oscr.nightly org.oscr.jobs)
 
 remove() {
   for task in "$@"; do

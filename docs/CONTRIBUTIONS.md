@@ -1,8 +1,8 @@
 # Contributions (Phase 6)
 
 What a signed-in reader asks of the registry — submit a paper and its code, claim a paper, correct a
-record, validate a tracing map, add the badge, request a removal — and how the Mac answers. Built on
-branch `phase-6`, tested locally only: **nothing here is deployed, and nothing remote was touched.**
+record, validate a tracing map, add the badge, request a removal — and how the Mac answers. Live since
+2026-09-28.
 The steps marked **[owner]** are at the end.
 
 | piece | where |
@@ -226,7 +226,8 @@ CPU); a correction at most 20 (ten links added); nothing else asks outside.
 
 ## The owner's steps [owner]
 
-None is needed for the local tests. When Phase 6 is to go live:
+Done on 2026-09-28 (Phase 6 is live): steps 1, 2 and 4 below. Step 5 is the owner's, whenever a
+request comes. They stay here for a reinstallation:
 
 1. **The database's new tables**: `sh tools/setup_cloudflare.sh` again (it applies the migrations of
    the three databases, `migrations/d1-community/0002_contributions.sql` included, and changes nothing

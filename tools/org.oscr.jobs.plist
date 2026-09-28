@@ -7,9 +7,7 @@
   deposited on Zenodo (the sandbox unless OSCR_ZENODO_INSTANCE=zenodo), a claim or a removal
   request listed for the owner (`oscr claims list`, `oscr reports list`).
 
-  NOT INSTALLED YET: tools/install_mac.sh installs its TASKS only. Once the owner has applied the
-  community database's migrations remotely (sh tools/setup_cloudflare.sh) and deployed the Worker
-  with Phase 6, add org.oscr.jobs to TASKS there and run the installer again.
+  Installed by tools/install_mac.sh (one of its TASKS) since 2026-09-28.
 
   Its own task rather than a step of the harvester's loop: the watch spends up to 30 minutes in a
   slice of the stock, so a request would wait that long; here it waits at most ten. What it costs:
