@@ -21,6 +21,7 @@ const {
 const fullTitle = title ? `${title} — ${SITE_NAME}` : SITE_TAGLINE === SITE_NAME ? SITE_NAME : `${SITE_NAME} — ${SITE_TAGLINE}`;
 // The ways in besides the catalogue, in the masthead (science.css `.masthead nav`).
 const sections = [
+  { text: "Search", href: "/search/" },
   { text: "Browse", href: "/browse/" },
   { text: "DOI lookup", href: "/lookup/" },
 ];
@@ -43,7 +44,7 @@ const sections = [
       <div class="inner">
         <a class="site" href="/" title={SITE_TAGLINE === SITE_NAME ? undefined : SITE_TAGLINE}>{SITE_NAME}</a>
         <nav aria-label="Sections">{sections.map((s) => <a href={s.href}>{s.text}</a>)}</nav>
-        <form action="/" method="get" role="search">
+        <form action="/search/" method="get" role="search">
           <input type="search" name="q" placeholder="Search the catalogue" aria-label="Search the catalogue" />
           <select name="field" aria-label="Where to search">
             <option value="all">All fields</option>

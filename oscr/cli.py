@@ -16,6 +16,7 @@
     oscr scripts audit|build|publish     the authors' scripts on Hugging Face (verified licenses only)
     oscr enrich [--all] [--epmc]         Phase 1: the enriched records of the papers already read
     oscr labels data/annotation/sample.csv   the owner's category labels (they win over the rules)
+    oscr d1 build|push|status --local    Phase 3: the search's D1 databases, as deltas (docs/SEARCH.md)
 """
 from __future__ import annotations
 
@@ -234,6 +235,19 @@ def main(argv: list[str] | None = None) -> int:
     sc.add_argument("--dataset", default=cfg.get("OSCR_SCRIPTS_DATASET", ""), help="Hugging Face org/dataset")
     sc.add_argument("--dry-run", action="store_true", help="publish: build and count, send nothing")
 
+    dd = sp.add_parser("d1", help="Phase 3: the search's D1 databases (catalogue and full-text index), pushed as "
+                                  "deltas within a daily budget of rows written")
+    dd.add_argument("action", choices=["build", "push", "status"],
+                    help="build: write the next delta as SQL files; push: build, apply, record; status: what was pushed")
+    target = dd.add_mutually_exclusive_group()
+    target.add_argument("--local", action="store_true", help="the local D1 of `wrangler dev --env local` (default)")
+    target.add_argument("--remote", action="store_true", help="the Cloudflare databases (once approved: docs/SEARCH.md)")
+    dd.add_argument("--budget", type=int, default=int(cfg.get("OSCR_D1_BUDGET", "80000")), help="rows written a day")
+    dd.add_argument("--state", default="data/d1/state.db", help="the push's state: keys, row hashes, budget")
+    dd.add_argument("--sql-dir", default="data/d1/sql", help="where the SQL files are written")
+    dd.add_argument("--reset", action="store_true",
+                    help="the target's databases were recreated empty: forget what they held, send everything")
+
     n = sp.add_parser("nightly", help="the publication: public catalogue, then Hugging Face and the website")
     n.add_argument("--out", default="data/public", help="a separate folder, only ever generated in public mode")
     n.add_argument("--dataset", default=cfg.get("OSCR_HF_DATASET", ""), help="Hugging Face user/dataset (empty: send nothing)")
@@ -355,6 +369,10 @@ def main(argv: list[str] | None = None) -> int:
                 print(contacts.publish(con, Path(a.folder), a.dataset, platform=platform, dry_run=a.dry_run))
         elif a.command == "zenodo":
             _zenodo(con, a)
+        elif a.command == "d1":
+            from . import d1
+            print(d1.command(con, a.action, target="remote" if a.remote else "local", budget=a.budget,
+                             state_path=Path(a.state), folder=Path(a.sql_dir), settings=cfg, reset=a.reset))
         elif a.command == "reverify":
             print(f"{harvest.reverify(con, client, opts, maximum=a.max)} papers re-verified")
         if a.command in ("run", "scan", "backfill", "doi", "folder", "reverify", "align", "export"):

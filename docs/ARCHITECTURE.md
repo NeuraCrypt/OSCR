@@ -13,6 +13,8 @@ The rules that govern everything below are in [CLAUDE.md](../CLAUDE.md):
 | **The local dashboard** (`oscr dashboard`) | the Mac, http://127.0.0.1:8790 | the table of the private database, for the owner only, read-only | $0 |
 | **The public catalogue** (`oscr nightly`) | the Mac, at 04:17 | `data/public/` in public mode, then the Hugging Face dataset, then the website | $0 |
 | **The website** (`website/`, Astro) | Cloudflare Workers (static assets) | the public site, built from the public catalogue, with the Code ↔ Paper reader | $0 |
+| **The search index** (`oscr d1 push`, Phase 3) | the Mac → Cloudflare D1 | the papers with a page, projected into two D1 databases (`oscr_catalog`, `oscr_search`), pushed as deltas within 80,000 rows written a day ([SEARCH.md](SEARCH.md)) | $0 |
+| **The Worker's code** (`website/worker/`, Phase 3) | Cloudflare Workers, `/api/*` only | `/api/search`: FTS5 in D1, facets, sorts, CSV and JSON exports | $0 (100,000 requests a day) |
 | **The map DOIs** (`oscr zenodo`) | Zenodo (CERN) | a map validated by an author receives a DOI in the community | $0 |
 
 ```mermaid
@@ -107,6 +109,7 @@ ends with `SITE_NAME`; the only style is `science.css`.
 | `/tools/`, `/tool/<id>/` | the tools found in the authors' code: repositories, papers | `entities/tools.json` |
 | `/datasets/`, `/dataset/<id>/` | the datasets cited, by repository | `entities/datasets.json` |
 | `/lookup/` | the DOI lookup: any paper read, with or without a page | `lookup/NNN.json`, fetched by the browser |
+| `/search/` | the search (Phase 3): a static page and a Svelte island that asks `/api/search` only when a search is submitted | D1, through the Worker |
 | `/about/` | what the registry is, and what it never publishes | — |
 
 - **Who counts.** `oscr/entities.py` counts only the papers with a page (D2): the authors'
@@ -148,7 +151,7 @@ Its life:
 2. **Author validation.** ORCID offers sign-in for free (public API, `/authenticate`
    scope). The site's Worker receives the validation and writes it to D1. The Mac picks it
    up, then deposits the map on Zenodo.
-3. **Search**, designed in the platform plan (below).
+3. ~~Search~~: built in Phase 3 (below, and [SEARCH.md](SEARCH.md)); the remote databases await the owner's approval.
 4. ~~A first paper ↔ code alignment~~: `lexical-v1`, computed on the Mac. Next: GROBID for
    the text, tree-sitter for the code, a local model on the Mac.
 
@@ -175,13 +178,38 @@ neuro stock, of which ~2.3 GB are public.
 
 The platform extension (a normalized D1 catalogue, accounts, search and a community) is
 specified in [PLATFORM_PLAN.md](PLATFORM_PLAN.md). Each phase follows the rules of
-[CLAUDE.md](../CLAUDE.md); Phase 2 (navigation, the pages above) is built on its branch and
-awaits the owner's review.
+[CLAUDE.md](../CLAUDE.md); Phase 2 (navigation, the pages above) and Phase 3 (the search,
+below) are built on their branches and await the owner's review.
 
 ### Search engine
 
-Proposed: **SQLite FTS5 in D1**, not Pagefind. Details and figures are in
-[PLATFORM_PLAN.md](PLATFORM_PLAN.md) §7.
+**Built (Phase 3), awaiting the owner's review; the remote databases await approval.** SQLite
+FTS5 in D1, not Pagefind; the details, the API and the measurements are in
+[SEARCH.md](SEARCH.md), the choice in [PLATFORM_PLAN.md](PLATFORM_PLAN.md) §7.
+
+```mermaid
+flowchart LR
+  M[("Mac: SQLite")] -- "oscr d1 push: deltas, ≤ 80k rows a day" --> C[("D1 oscr_catalog: papers, facet_counts")]
+  M -- "idem" --> S[("D1 oscr_search: paper_fts (FTS5)")]
+  B["search page (Svelte island)"] -- "on submit only" --> W["Worker: /api/search"]
+  W -- "1 statement: MATCH, rank or date, ≤ 501 rows" --> S
+  W -- "1 statement: the page's rows by key" --> C
+```
+
+- **Two databases**, because a D1 database that holds FTS5 cannot be exported: `oscr_catalog`
+  (what a result row shows, the precomputed counts of the unfiltered view) and `oscr_search`
+  (the index).
+- **The filters are index tokens**, not an index table: each facet value of a paper is a token
+  of the index's `facets` column, so a filter is part of the MATCH, costs no row written per
+  value, and D1 reads only the matching rows.
+- **The key is the date**: YYYYMMDD × 100,000 + n. "Newest first" is the index's rowid order and
+  a date range a rowid range, without an index.
+- **Bounded costs**: a window of 500 results gives the page, the exact total and the facet
+  counts up to 500 (past it, the counts are the first 500's, the total says "more than 500" and
+  the pages stop there): a search reads at most ~540 rows (~600 at 50 results a page), an export
+  ~1,500; the Worker's CPU stays under ~3 ms (measured in V8, docs/SEARCH.md §5).
+- **Never an abstract in an answer**: abstracts are indexed only under an open license (D1's
+  rule), in a contentless index; results carry title, journal, date, status and links.
 
 **Why not Pagefind.** Pagefind writes one fragment file per indexed record, plus index
 chunks, filter files and a start-up file that lists every record.
@@ -192,19 +220,7 @@ chunks, filter files and a start-up file that lists every record.
 - Its maintainer calls ~180k pages "probably around the ceiling".
 - Everything indexed can be downloaded by anyone.
 
-**Why FTS5.**
-- **No files.** Daily updates are small row upserts from the Mac.
-- **Full query syntax:** boolean operators, phrases and column filters, with `bm25()` weights
-  per column.
-- **Indexed sort columns.**
-- **Facets:** counts are precomputed nightly for the unfiltered views and exact on filtered
-  queries.
-
-It lives in a D1 database of its own, because a D1 database that contains FTS5 tables
-cannot be exported.
-
 **The cost to watch.** Every search is a Worker request, even when cached, out of 100,000 a
-day for the whole site, plus D1 rows read (5 M a day; how FTS5 lookups count is not
-documented, so it will be measured). If that budget gets tight, the fallback costs no
-request: a static inverted index published as Parquet blocks on Hugging Face and read by byte
-ranges, like the scripts.
+day for the whole site, plus D1 rows read (5 M a day). If that budget gets tight, the fallback
+costs no request: a static inverted index published as Parquet blocks on Hugging Face and read
+by byte ranges, like the scripts (the owner's plan B, decision D3).
