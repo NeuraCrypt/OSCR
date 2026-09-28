@@ -179,7 +179,7 @@ async function main(): Promise<void> {
   if (slot && loaded.info) {
     const repo = shellRepo(loaded, signedIn);
     if (view === "settings") mountSettings(slot, repo);
-    else if (view === "branches") mountBranches(slot, repo);
+    else if (view === "branches") mountBranches(slot, repo, { session });
   }
 }
 
