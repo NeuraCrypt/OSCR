@@ -46,6 +46,7 @@ import {
 import { refSegments } from "../lib/code-nav.ts";
 import { toDom } from "./dom.ts";
 import { type CodeEnv, mountCode, mountTree, wireKeys } from "./repo-code.ts";
+import "./repo-history.ts";
 import { codePanel, quickSetup, useTemplate, wireCopy } from "./repo-code-panel.ts";
 import { mountBranches } from "./repo-branches.ts";
 import { mountSettings } from "./repo-settings.ts";

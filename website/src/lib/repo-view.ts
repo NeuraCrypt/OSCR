@@ -64,6 +64,7 @@ export const HTML_TAGS = [
   "strong", "summary", "ul", "ol", "em", "del", "ins", "sub", "sup", "kbd", "samp", "var", "q", "cite", "dfn", "abbr", "s",
   "b", "i", "u", "blockquote", "hr", "br", "img", "table", "caption", "thead", "tbody", "tfoot", "tr", "th", "td",
   "dl", "dt", "dd", "small", "mark", "figure", "figcaption", "time", "input", "label", "form", "header", "footer",
+  "select", "option",
 ] as const;
 /** MathML Core's presentation elements (math is rendered by the browser: no script, no font). */
 export const MATH_TAGS = [
@@ -96,11 +97,13 @@ export function safeSrc(src: unknown): string | null {
   return null;
 }
 
-/** A link a view may carry: a path of this site, an https address without credentials or "@"
+/** A link a view may carry: an anchor of this page (#name), a path of this site, an https address
+ *  without credentials or "@"
  *  (an email address never hides in a link either), or GitHub Desktop's own scheme on a GitHub
  *  address. Anything else is null, and the view keeps only the link's text. */
 export function safeHref(href: unknown): string | null {
   if (typeof href !== "string" || !href || href.length > 2000 || /[\s"'<>\\@]/.test(href)) return null;
+  if (href.startsWith("#")) return /^#[A-Za-z][A-Za-z0-9_.:-]{0,200}$/.test(href) ? href : null;
   if (href.startsWith("/")) return href.startsWith("//") ? null : href;
   if (href.startsWith("x-github-client://openRepo/")) {
     return safeHref(href.slice("x-github-client://openRepo/".length))?.startsWith(`${GITHUB}/`) ? href : null;
@@ -114,12 +117,18 @@ export function safeHref(href: unknown): string | null {
   return u.protocol === "https:" && !u.username && !u.password ? href : null;
 }
 
-/** An element: attributes outside ATTRS are dropped, an unsafe href is dropped (the text stays),
- *  and every text child is masked. */
+/** A data attribute a view may set (a script's own state, never read as markup): data-<words>. */
+export const isDataAttr = (name: string): boolean => /^data-[a-z]{1,20}(?:-[a-z]{1,20}){0,2}$/.test(name);
+
+/** Whether a view may set this attribute. */
+export const allowedAttr = (name: string): boolean => (ATTRS as readonly string[]).includes(name) || isDataAttr(name);
+
+/** An element: attributes outside ATTRS (and data-*) are dropped, an unsafe href is dropped (the
+ *  text stays), and every text child is masked. */
 export function h(tag: Tag, attrs: Record<string, string | null | undefined | false> | null, ...children: (Child | Child[])[]): El {
   const out: Record<string, string> = {};
   for (const [k, v] of Object.entries(attrs ?? {})) {
-    if (v === null || v === undefined || v === false || !(ATTRS as readonly string[]).includes(k)) continue;
+    if (v === null || v === undefined || v === false || !allowedAttr(k)) continue;
     if (k === "href") {
       const safe = safeHref(v);
       if (safe) out.href = safe;

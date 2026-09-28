@@ -371,6 +371,71 @@ form.jump input { width: 8em; }
 figure.file-image { margin: .6em 0 1em; padding: .6em; border: 1px solid var(--rule); text-align: center; }
 figure.file-image img { max-width: 100%; height: auto; }
 
+/* History, commits and diffs (night phase 02): a commit's header, the list of commits by day, the
+   diffs as tables with the numbers in their own cells; added and deleted lines tinted, their sign
+   in its own column, and the counts said in words for a screen reader */
+.commit-head h2 { font-size: 1.25em; margin: .6em 0 .3em; overflow-wrap: anywhere; }
+.commit-head p { margin: .25em 0; }
+pre.message { white-space: pre-wrap; overflow-wrap: anywhere; background: none; border: 0; padding: 0; margin: .3em 0 .6em; font-size: .9em; }
+p.commit-stats, .commit-facts p { margin: .3em 0; }
+ul.checks { margin: .2em 0 .6em; padding-left: 1.3em; font-size: .92em; }
+ol.commit-list { list-style: none; margin: 0 0 1em; padding: 0; }
+ol.commit-list li { padding: .45em 0; border-bottom: 1px solid var(--rule); }
+ol.commit-list .title { font-size: 1em; margin: 0; overflow-wrap: anywhere; }
+ol.commit-list .line { color: var(--muted); font-size: .9em; }
+form.commit-filters, form.compare-form { margin: .5em 0 1em; font-size: .93em; }
+form.commit-filters input[type="text"], form.compare-form input[type="text"] { width: 12em; }
+form.commit-filters input[type="date"] { font: inherit; border: 1px solid #777; border-radius: 0; padding: .1em .3em; }
+p.pager { margin: 1em 0; }
+p.diff-options { font-size: .92em; margin: .4em 0 .8em; }
+p.diff-options input { width: 12em; }
+p.expand { font-size: .88em; margin: .2em 0 .8em; }
+
+section.file-diff { margin: 0 0 1.2em; border: 1px solid var(--rule); }
+section.file-diff > header { background: var(--bg-sidebar); border-bottom: 1px solid var(--rule); padding: .3em .7em; }
+section.file-diff > header h3 { font-family: var(--font-code); font-size: .92em; margin: 0; overflow-wrap: anywhere; }
+section.file-diff > header p { margin: .1em 0 0; font-size: .88em; color: var(--muted); }
+section.file-diff > .file-body { overflow-x: auto; }
+section.file-diff > .file-body > p { margin: .5em .7em; }
+.counts .added { color: var(--ok); }
+.counts .deleted { color: #8a1b1b; }
+
+table.diff { border-collapse: collapse; width: 100%; font-family: var(--font-code); font-size: .82em; line-height: 1.45; }
+table.diff td { vertical-align: top; padding: 0 .5em; }
+table.diff td.num {
+  width: 1%; min-width: 3em; text-align: right; color: var(--muted); background: var(--bg-sidebar);
+  border-right: 1px solid var(--rule); user-select: none; white-space: nowrap;
+}
+table.diff td.code { white-space: pre; tab-size: 4; }
+table.diff.split td.code { width: 49%; white-space: pre-wrap; overflow-wrap: anywhere; }
+table.diff td.code .sign { display: inline-block; width: 1em; color: var(--muted); user-select: none; }
+table.diff tr.hunk td { background: #eef2f6; color: var(--muted); padding: .15em .7em; white-space: pre-wrap; }
+table.diff td.add, table.diff td.num.add { background: #e8f5e8; }
+table.diff td.del, table.diff td.num.del { background: #fbeaea; }
+table.diff td.code.add .sign { color: var(--ok); }
+table.diff td.code.del .sign { color: #8a1b1b; }
+table.diff td.empty { background: #f7f7f7; }
+table.diff td.note { color: var(--muted); }
+
+/* An image changed: side by side, or one over the other (swipe, onion skin), in eleven steps */
+.image-diff { padding: .5em .7em; }
+.image-diff .two-up { display: flex; flex-wrap: wrap; gap: 1em; }
+.image-diff figure { margin: 0; text-align: center; }
+.image-diff img { max-width: 100%; border: 1px solid var(--rule); }
+.image-diff figcaption { font-size: .88em; color: var(--muted); }
+.image-diff .overlay { position: relative; display: inline-block; }
+.image-diff .overlay img.top { position: absolute; left: 0; top: 0; }
+.overlay.onion-0 img.top { opacity: 0; } .overlay.onion-1 img.top { opacity: .1; } .overlay.onion-2 img.top { opacity: .2; }
+.overlay.onion-3 img.top { opacity: .3; } .overlay.onion-4 img.top { opacity: .4; } .overlay.onion-5 img.top { opacity: .5; }
+.overlay.onion-6 img.top { opacity: .6; } .overlay.onion-7 img.top { opacity: .7; } .overlay.onion-8 img.top { opacity: .8; }
+.overlay.onion-9 img.top { opacity: .9; } .overlay.onion-10 img.top { opacity: 1; }
+.overlay.swipe-0 img.top { clip-path: inset(0 100% 0 0); } .overlay.swipe-1 img.top { clip-path: inset(0 90% 0 0); }
+.overlay.swipe-2 img.top { clip-path: inset(0 80% 0 0); } .overlay.swipe-3 img.top { clip-path: inset(0 70% 0 0); }
+.overlay.swipe-4 img.top { clip-path: inset(0 60% 0 0); } .overlay.swipe-5 img.top { clip-path: inset(0 50% 0 0); }
+.overlay.swipe-6 img.top { clip-path: inset(0 40% 0 0); } .overlay.swipe-7 img.top { clip-path: inset(0 30% 0 0); }
+.overlay.swipe-8 img.top { clip-path: inset(0 20% 0 0); } .overlay.swipe-9 img.top { clip-path: inset(0 10% 0 0); }
+.overlay.swipe-10 img.top { clip-path: none; }
+
 footer {
   max-width: var(--width); margin: 0 auto; padding: 1em;
   border-top: 1px solid var(--rule); font-size: .85em; color: var(--muted);
@@ -399,5 +464,7 @@ footer a { margin-right: 1em; }
   ol.lines.code li::before { width: 2.8em; }
   .code-layout { flex-direction: column; align-items: stretch; }
   nav.file-tree { order: 2; flex-basis: auto; position: static; max-height: 20em; margin: .6em 0 0; }
+  table.diff.split td.code { width: auto; }
+  form.commit-filters input[type="text"], form.compare-form input[type="text"] { width: 100%; box-sizing: border-box; }
   section.danger, .setup, .panel { padding-left: .6em; padding-right: .6em; }
 }

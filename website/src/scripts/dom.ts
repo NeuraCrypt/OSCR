@@ -5,7 +5,7 @@
 // string is ever parsed: nothing a repository holds can become markup or script.
 
 import { maskEmails } from "../../worker/forge/mask.ts";
-import { ATTRS, type El, MATH_TAGS, safeHref, safeSrc, TAGS } from "../lib/repo-view.ts";
+import { allowedAttr, type El, MATH_TAGS, safeHref, safeSrc, TAGS } from "../lib/repo-view.ts";
 
 const MATHML = "http://www.w3.org/1998/Math/MathML";
 const MATH = new Set<string>(MATH_TAGS);
@@ -17,7 +17,7 @@ export function toDom(node: string | El): Node {
   const tag = known ? node.tag : "span";
   const el = MATH.has(tag) ? document.createElementNS(MATHML, tag) : document.createElement(tag);
   for (const [k, v] of Object.entries(node.attrs)) {
-    if (!(ATTRS as readonly string[]).includes(k)) continue;
+    if (!allowedAttr(k)) continue;
     if (k === "href") {
       const safe = safeHref(v);
       if (safe) el.setAttribute("href", safe);
