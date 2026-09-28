@@ -122,8 +122,9 @@ def _where(found_by: str, section: str) -> str:
 RESEARCH_TYPES: tuple[str, ...] = ("research-article", "brief-report", "methods-article", "data-paper",
                                    "rapid-communication", "short-report")
 #: A paper the classification judged off-topic stays on the Mac: out of the site and out
-#: of the statistics (owner's decision D7). Unclassified papers ('') count.
-IN_SCOPE = "scanned_at IS NOT NULL AND on_topic != 'no'"
+#: of the statistics (owner's decision D7). Unclassified papers ('') count. So does a record
+#: withdrawn at someone's request, once the owner accepted it (Phase 6, `oscr reports`).
+IN_SCOPE = "scanned_at IS NOT NULL AND on_topic != 'no' AND withdrawn = ''"
 #: The links, repositories and matches that may leave: those of papers in scope. A
 #: repository cited only by off-topic papers stays on the Mac with them (D7).
 IN_SCOPE_IDS = f"SELECT id FROM article WHERE {IN_SCOPE}"
@@ -538,8 +539,9 @@ def public_db(con: sqlite3.Connection, path: Path) -> None:
     # is by sql.js or Datasette Lite.
     target.execute("PRAGMA journal_mode = DELETE")
     target.execute("UPDATE link SET excerpt = ''")
-    # Off-topic papers stay on the Mac (D7), with everything attached to them.
-    off = "SELECT id FROM article WHERE on_topic = 'no'"
+    # Off-topic papers stay on the Mac (D7), with everything attached to them; so do the records
+    # withdrawn at someone's request (Phase 6, `oscr reports accept`).
+    off = "SELECT id FROM article WHERE on_topic = 'no' OR withdrawn != ''"
     for (table,) in target.execute("SELECT m.name FROM sqlite_master m WHERE m.type = 'table' AND EXISTS "
                                    "(SELECT 1 FROM pragma_table_info(m.name) WHERE name = 'article_id')").fetchall():
         target.execute(f"DELETE FROM {table} WHERE article_id IN ({off})")
@@ -565,6 +567,10 @@ def public_db(con: sqlite3.Connection, path: Path) -> None:
     # Development tests (test validations, sandbox DOIs) never leave.
     target.execute("DELETE FROM validation WHERE proof != 'orcid'")
     target.execute("DELETE FROM card_doi WHERE instance != 'zenodo'")
+    # Who corrected a record (Phase 6) stays on the Mac: the corrections themselves are the links,
+    # and the pages say "a correction by a verified author", never who.
+    target.execute("DROP TABLE IF EXISTS link_edit")
+    target.execute("UPDATE field_provenance SET source_ref = '' WHERE source IN ('author', 'maintainer', 'submitter')")
     target.execute(
         "UPDATE file SET text = NULL, note = ? WHERE repo IN "
         "(SELECT repo FROM repository WHERE redistributable NOT IN ('yes', 'with_conditions'))",

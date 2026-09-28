@@ -1,18 +1,23 @@
 #!/bin/sh
-# The accounts end to end, on this machine only (docs/ACCOUNTS.md, "Local end-to-end run"):
+# The accounts and the contributions end to end, on this machine only (docs/ACCOUNTS.md, "Local
+# end-to-end run"; docs/CONTRIBUTIONS.md):
 #
 # 1. the fixture's synthetic Mac database (tools/make_fixture.py), and its facts as SQL files
 #    (`oscr community build --local`);
-# 2. a throwaway local D1: the migration, then those files (`wrangler d1 execute --local --file`);
-# 3. the mock providers (mock-server.ts) and `wrangler dev --env local` (the site's Worker) with
-#    development values only, never real client ids or secrets;
-# 4. tests/account/e2e.ts: sign-ins, linking, verifications, sign-out, D1's count of rows written.
+# 2. a throwaway local D1: the migrations, then those files (`wrangler d1 execute --local --file`);
+# 3. the mock server (mock-server.ts: the providers; doi.org and the forges under /checks/; the Zenodo
+#    sandbox under /zenodo/) and `wrangler dev --env local` (the site's Worker) with development
+#    values only, never real client ids or secrets;
+# 4. tests/account/e2e.ts: sign-ins, linking, verifications, sign-out, D1's count of rows written;
+# 5. tests/contributions/e2e.ts, in three steps with the Mac's job runner between them (`oscr jobs
+#    poll --local`, offline, its deposits on the mock Zenodo sandbox) and the owner's decisions
+#    (`oscr claims accept`, `oscr reports reject`, `oscr submissions accept`).
 #
 #   cd website && npm ci && CATALOG_DIR=../tests/fixtures/public-catalog npm run build
-#   sh tests/account/e2e.sh                 (KEEP=1 leaves both servers running afterwards)
+#   SITE_PORT=8788 MOCK_PORT=9480 sh tests/account/e2e.sh     (KEEP=1 leaves both servers running)
 #
 # Everything lives in a temporary folder (--persist-to): the local D1 of `wrangler dev` is not
-# touched, and nothing is remote.
+# touched, and nothing is remote: no real provider, forge, DOI registry or Zenodo is asked.
 set -eu
 cd "$(dirname "$0")/../.."
 ROOT=$(cd .. && pwd)
@@ -51,7 +56,7 @@ WRANGLER_SEND_METRICS=false npx wrangler dev --env local --port "$SITE_PORT" --p
   --var "GITHUB_CLIENT_ID:Iv1.testgithubclient" --var "GITHUB_CLIENT_SECRET:github-test-secret" \
   --var "GITHUB_URL:$MOCK/github" --var "GITHUB_API_URL:$MOCK/github-api" \
   --var "GOOGLE_CLIENT_ID:test-client.apps.googleusercontent.com" --var "GOOGLE_CLIENT_SECRET:google-test-secret" \
-  --var "GOOGLE_ISSUER:$MOCK/google" --var "ACCOUNT_DEV_METRICS:1" >"$TMP/dev.log" 2>&1 &
+  --var "GOOGLE_ISSUER:$MOCK/google" --var "CHECKS_URL:$MOCK/checks" --var "ACCOUNT_DEV_METRICS:1" >"$TMP/dev.log" 2>&1 &
 DEV_PID=$!
 
 i=0
@@ -62,3 +67,28 @@ until curl -fs "http://localhost:$SITE_PORT/api/account/me" >/dev/null 2>&1; do
 done
 
 SITE="http://localhost:$SITE_PORT" MOCK="$MOCK" node --experimental-strip-types tests/account/e2e.ts
+
+# The contributions. The Mac's side runs offline (no Europe PMC, no git), its Zenodo is the mock
+# (an explicit sandbox, whatever the settings say), and it reads and writes the same local D1.
+mac() {
+  (cd "$ROOT" && OSCR_ZENODO_SANDBOX_URL="$MOCK/zenodo" ZENODO_SANDBOX_TOKEN="e2e-mock-token" "$PYTHON" -m oscr \
+    --db "$TMP/mac.db" --cache "$TMP/cache" --offline --no-verify --no-metadata --no-swh --no-contents --no-records "$@" \
+    --local --persist-to "$TMP/state" --folder "$TMP/community" --instance sandbox)
+}
+owner_list() {
+  (cd "$ROOT" && "$PYTHON" -m oscr --db "$TMP/mac.db" --cache "$TMP/cache" "$1" list --folder "$TMP/community")
+}
+export SITE="http://localhost:$SITE_PORT" MOCK JARS="$TMP/jars.json"
+node --experimental-strip-types tests/contributions/e2e.ts ask
+mac jobs poll
+CLAIM=$(owner_list claims | sed -n 's/^claim \([0-9]*\):.* as author of .*/\1/p' | head -n 1)
+REPORT=$(owner_list reports | sed -n 's/^request \([0-9]*\):.*/\1/p' | head -n 1)
+mac claims accept "$CLAIM" --message "Welcome."
+mac reports reject "$REPORT" --message "The record is correct."
+node --experimental-strip-types tests/contributions/e2e.ts answers
+mac jobs poll
+SUBMISSION=$(owner_list submissions | sed -n 's/^submission \([0-9]*\):.*/\1/p' | head -n 1)
+mac submissions accept "$SUBMISSION"
+mac jobs poll
+node --experimental-strip-types tests/contributions/e2e.ts published
+(cd "$ROOT" && "$PYTHON" -m oscr --db "$TMP/mac.db" --cache "$TMP/cache" jobs status --folder "$TMP/community")

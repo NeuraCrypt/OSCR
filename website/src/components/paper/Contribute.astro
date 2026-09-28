@@ -1,0 +1,214 @@
+---
+// The Contribute section of a paper's page (Phase 6): what a reader may do there, by their roles.
+// Static: a signed-out reader (and a browser without JavaScript) sees how to sign in, and the way
+// to ask for the record's removal. When the browser holds a session (the hint cookie), the page's
+// script (src/scripts/paper-actions.ts) asks the Worker once (GET /api/contributions/paper) and
+// shows the blocks that apply:
+//
+// - claim the paper as one of its authors (a verified author needs no claim);
+// - correct its record (its links: code, data, tools): a verified author, or a maintainer of its
+//   code for their own repository;
+// - validate its tracing map, with one's ORCID iD: a verified author, when the paper has code;
+// - add the badge to the code's README: snippets to copy, and GitHub's own editor, where the
+//   author opens the pull request themselves (explicit consent, and no permission to ask);
+// - request the record's removal: anyone signed in.
+//
+// Every form writes text only (DOM text nodes, never HTML); the Worker checks every request again.
+import { SITE_NAME } from "../../config";
+import { shortName, type Article } from "../../lib/catalog";
+import type { PaperPage } from "../../lib/paper";
+import Wrap from "./Wrap.astro";
+
+interface Props {
+  a: Article;
+  p?: PaperPage;
+}
+const { a, p } = Astro.props;
+const back = `/paper/${a.slug}/`;
+const site = Astro.site ?? new URL("https://example.org");
+const pageUrl = new URL(back, site).href;
+const badgeUrl = new URL("/badge.svg", site).href;
+const snippets = [
+  { label: "Markdown", text: `[![${SITE_NAME}](${badgeUrl})](${pageUrl})` },
+  { label: "reStructuredText", text: `.. image:: ${badgeUrl}\n   :target: ${pageUrl}\n   :alt: ${SITE_NAME}` },
+  { label: "HTML", text: `<a href="${pageUrl}"><img src="${badgeUrl}" alt="${SITE_NAME}"></a>` },
+];
+/** The code on GitHub, where its README can be edited in the browser. */
+const github = a.code
+  .filter((r) => r.repo.startsWith("github.com/") && r.url)
+  .map((r) => {
+    const readme = p?.code[r.repo]?.readme ?? "";
+    const base = r.url.replace(/\/+$/, "").replace(/\.git$/, "");
+    return { repo: r.repo, name: shortName(r), readme, url: readme ? `${base}/blob/HEAD/${readme}` : base };
+  });
+/** The record's links, as a correction can change them. */
+const ROLES = [
+  { value: "code", text: "the authors' code" },
+  { value: "data", text: "their data" },
+  { value: "tool", text: "a tool they used" },
+  { value: "remove", text: "not this paper's: remove it" },
+];
+const links = [
+  ...a.code.map((r) => ({ repo: r.repo, url: r.url, role: "code", name: shortName(r) })),
+  ...(p?.data ?? []).map((d) => ({ repo: d.repo, url: d.url, role: "data", name: d.repo })),
+];
+const map = p?.map;
+const digest = map?.digest ?? "";
+const REASONS = [
+  { value: "author_request", text: "I am an author of this paper, and ask for its removal" },
+  { value: "copyright", text: "It infringes a copyright" },
+  { value: "personal_data", text: "It shows personal data" },
+  { value: "incorrect", text: "It is wrong, and cannot be corrected" },
+  { value: "other", text: "Another reason (say which)" },
+];
+---
+<section id="contribute" data-paper={a.id} data-doi={a.doi} data-digest={digest} data-back={back}>
+  <h2>Contribute</h2>
+  <p class="summary">
+    The authors of this paper and the maintainers of its code can claim it, correct its record and validate its tracing
+    map; anyone signed in can ask for its removal. Every request goes to {SITE_NAME}'s own machine, which answers it; your
+    account page follows them.
+  </p>
+  <p id="contribute-status" role="status" aria-live="polite"></p>
+
+  <div id="contribute-signed-out">
+    <p>
+      <a href={`/api/auth/orcid/start?return=${back}`}>Sign in with ORCID</a> to claim this paper as one of its authors,
+      correct its record or validate its tracing map: when the paper's metadata lists your ORCID iD, you are recognized at
+      once. Maintainers of its code: <a href={`/api/auth/github/start?return=${back}`}>sign in with GitHub</a>, then claim
+      the repository on <a href="/account/">your account page</a>.
+    </p>
+  </div>
+
+  <div id="contribute-signed-in" hidden>
+    <p id="contribute-who"></p>
+
+    <div id="claim-block" hidden>
+      <h3>Claim this paper</h3>
+      <p id="claim-state"></p>
+      <form id="claim-form" method="post" action="/api/claims" hidden>
+        <p>
+          Your ORCID iD is not among this paper's authors in its metadata: say why you are one of them, and a moderator
+          looks at your claim.
+        </p>
+        <p><label for="claim-statement">Why you are one of its authors</label><br />
+          <textarea id="claim-statement" name="statement" rows="3" maxlength="1000" required></textarea></p>
+        <p><label for="claim-link">A page that shows it (optional)</label><br />
+          <input id="claim-link" name="link" type="text" inputmode="url" placeholder="https://" autocomplete="off" /></p>
+        <p><button type="submit">Send the claim</button></p>
+      </form>
+    </div>
+
+    <div id="edit-block" hidden>
+      <h3>Correct its record</h3>
+      <p>
+        Say what each link of this record is, remove the ones that are not the paper's, add the ones that are missing. The
+        correction becomes a new version of the record, in its Versions section.
+      </p>
+      <form id="edit-form" method="post" action="/api/edits">
+        {links.length > 0 && (
+          <fieldset>
+            <legend>Its links</legend>
+            <ul id="edit-links">
+              {links.map((l) => (
+                <li data-repo={l.repo} data-role={l.role}>
+                  <a class="code" href={l.url}><Wrap text={l.name} /></a>:{" "}
+                  <select name={`role-${l.repo}`} aria-label={`What ${l.name} is`}>
+                    {ROLES.map((r) => <option value={r.value} selected={r.value === l.role}>{r.text}</option>)}
+                  </select>
+                </li>
+              ))}
+            </ul>
+          </fieldset>
+        )}
+        <fieldset>
+          <legend>Links to add</legend>
+          <p><label for="edit-add">One address a line: a forge, an archive, a dataset</label><br />
+            <textarea id="edit-add" name="add" rows="2" spellcheck="false"></textarea></p>
+          <p><label for="edit-add-role">They are</label>{" "}
+            <select id="edit-add-role" name="add-role">
+              <option value="code">the authors' code</option>
+              <option value="data">their data</option>
+            </select></p>
+        </fieldset>
+        <p><label for="edit-note">A note on the correction (optional)</label><br />
+          <textarea id="edit-note" name="note" rows="2" maxlength="500"></textarea></p>
+        <p><button type="submit">Send the correction</button></p>
+      </form>
+      <p id="edit-state" role="status" aria-live="polite"></p>
+    </div>
+
+    {a.code.length > 0 && (
+      <div id="validate-block" hidden>
+        <h3>Validate its tracing map</h3>
+        <p>
+          You validate the map as this page shows it:{" "}
+          {map
+            ? `${map.repositories} ${map.repositories === 1 ? "repository" : "repositories"} of the authors' code, each at its verified commit and with its license, ${map.files} ${map.files === 1 ? "script" : "scripts"}, and ${map.pairs} ${map.pairs === 1 ? "match" : "matches"} between paragraphs and code`
+            : "its repositories, at their verified commits, and their scripts"}{" "}
+          (see the Code and Map sections). It then receives a DOI on Zenodo, with you (your ORCID iD) and {SITE_NAME} as
+          its creators; the code itself is not deposited.
+        </p>
+        {digest && <p class="summary">The map's fingerprint: <span class="code">sha256:{digest.slice(0, 16)}…</span></p>}
+        <p id="validate-state"></p>
+        <form id="validate-form" method="post" action="/api/validations">
+          <p><button type="submit">Validate the map</button></p>
+        </form>
+      </div>
+    )}
+
+    {a.code.length > 0 && (
+      <div id="badge-block" hidden>
+        <h3>Add the badge to its README</h3>
+        <p><img src="/badge.svg" alt={`${SITE_NAME}: paper ↔ code`} /></p>
+        <p>
+          The badge links the code to this page. Copy one of these into the README of the paper's code: only you decide
+          where it goes, and nothing is changed for you.
+        </p>
+        {snippets.map((s) => (
+          <details open={s.label === "Markdown"}>
+            <summary>{s.label}</summary>
+            <p><code data-copy={`the badge in ${s.label}`}>{s.text.split("\n").map((line, i) => (
+              <>{i > 0 && <br />}<Wrap text={i > 0 ? `\n${line}` : line} /></>
+            ))}</code></p>
+          </details>
+        ))}
+        {github.length > 0 && (
+          <>
+            <p>Propose it on GitHub yourself: open the README, choose Edit (the pencil), paste the snippet at the top, then
+              “Commit changes…” and, to review it first, “Create a new branch and start a pull request”. You open the pull
+              request; {SITE_NAME} asks for no permission.</p>
+            <ul>
+              {github.map((g) => (
+                <li>
+                  <a href={g.url}>{g.readme ? `${g.name}: ${g.readme} on GitHub` : `${g.name} on GitHub (add a README there)`}</a>
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
+        <p id="badge-status" role="status" aria-live="polite" data-copy-status></p>
+      </div>
+    )}
+  </div>
+
+  <h3 id="removal">Request its removal</h3>
+  <p id="removal-signed-out">
+    To ask for this record to be removed from {SITE_NAME}, <a href="/account/">sign in</a> (ORCID, GitHub or Google), then
+    come back here: a moderator reads every request. Removal without an account comes later.
+  </p>
+  <p id="removal-state"></p>
+  <form id="removal-form" method="post" action="/api/reports" hidden>
+    <p><label for="removal-reason">Why</label><br />
+      <select id="removal-reason" name="reason">
+        {REASONS.map((r) => <option value={r.value}>{r.text}</option>)}
+      </select></p>
+    <p><label for="removal-details">What a moderator should know</label><br />
+      <textarea id="removal-details" name="details" rows="3" maxlength="2000"></textarea></p>
+    <p><button type="submit">Send the request</button></p>
+  </form>
+</section>
+
+<script>
+  import "../../scripts/paper-actions";
+</script>

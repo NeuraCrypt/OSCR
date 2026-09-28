@@ -58,6 +58,15 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
    masthead's (proposed in Phases 3 and 4; the owner said not to wait, 2026-09-28) */
 main form input[type="text"], main button, main form select { font: inherit; border-radius: 0; }
 main form input[type="text"] { width: min(28em, 100%); padding: .15em .35em; border: 1px solid #777; box-sizing: border-box; }
+/* The contribution forms (Phase 6: submit a paper, claim it, correct it, ask for its removal): a
+   text of several lines like a field, a group of fields ruled like the sidebar, its legend in bold */
+main form textarea {
+  font: inherit; width: min(40em, 100%); padding: .2em .35em;
+  border: 1px solid #777; border-radius: 0; box-sizing: border-box;
+}
+main fieldset { margin: .8em 0; padding: .3em .8em .6em; border: 1px solid var(--rule); }
+main legend { padding: 0 .3em; font-weight: bold; }
+main form select { max-width: 100%; }
 
 /* The sections of a paper's page: a bar of in-page links under its title (#overview, #code…).
    A ruled bar, never pills; the sections that open with sign-in are muted. */

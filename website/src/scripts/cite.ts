@@ -1,13 +1,13 @@
-// The copy buttons of a paper's Cite section, in the reader's browser. Progressive: without
-// JavaScript, each citation is plain text to select; with it, a button after each one
-// copies it, or selects it when the browser does not allow copying. Like every browser
+// The copy buttons of a paper's page — its Cite section, and the badge's snippets (Phase 6) — in
+// the reader's browser. Progressive: without JavaScript, each text is plain text to select; with
+// it, a button after each one copies it, or selects it when the browser does not allow copying.
+// The result is said in the section's own status line ([data-copy-status]). Like every browser
 // script, it never names the platform.
-const status = document.getElementById("cite-status");
-const say = (text: string) => {
-  if (status) status.textContent = text;
-};
-
 for (const block of document.querySelectorAll<HTMLElement>("[data-copy]")) {
+  const status = block.closest("section")?.querySelector<HTMLElement>("[data-copy-status]") ?? null;
+  const say = (text: string) => {
+    if (status) status.textContent = text;
+  };
   const what = block.dataset.copy || "the citation";
   const button = document.createElement("button");
   button.type = "button";

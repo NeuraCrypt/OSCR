@@ -59,8 +59,8 @@ Schema: `migrations/d1-community/0001_accounts.sql`. Times are Unix seconds.
     updates it) and the account page's list. One more row per claim created.
 - The tables keyed by text are `WITHOUT ROWID` (a rowid table would add a hidden unique index,
   one more row per insert); `claims` uses its rowid (`INTEGER PRIMARY KEY`, no AUTOINCREMENT).
-  `roles`, `paper_orcid` and `repo_owner` are read by their key's prefix: no index. The index
-  "verified authors of a paper" comes with Phase 6, which needs it.
+  `roles`, `paper_orcid` and `repo_owner` are read by their key's prefix: no index. Phase 6 needed
+  no index "verified authors of a paper" either: all its queries read a person's own roles.
 
 ## The facts: `oscr community`
 
@@ -81,11 +81,17 @@ deletions first, within a daily budget (default 10,000 rows, `--budget`; see "Th
 ```sh
 oscr community build --local      # the delta as SQL files, data/community/local-<time>/NNN-oscr_community.sql
 oscr community push --local       # the same, applied to the local D1 of `wrangler dev`, then recorded
+oscr community push --remote      # the same, to the Cloudflare database (Phase 6)
 oscr community status             # what each target holds, the rows written per day
 ```
 
-`--local` is the only target: the remote push waits for the owner's approval (follow-up: the
-same REST API path as the catalogue's `oscr d1 push --remote`, with its keychain token).
+`--remote` goes the way of the catalogue's `oscr d1 push --remote`: the REST API when
+`OSCR_D1_ACCOUNT_ID`, `OSCR_D1_COMMUNITY_ID` (settings) and the keychain's token
+(`org.oscr.cloudflare-d1`) are there, otherwise `wrangler d1 execute oscr_community --remote
+--file` under wrangler's own login. `oscr nightly` pushes there once `OSCR_COMMUNITY_PUSH=remote` is
+in the settings. Phase 6 adds a third table, `paper_repo` (which forge repository is the code of
+which paper: its maintainers may correct that record), and counts the Mac's answers to the site's
+requests (`oscr jobs`) in the same daily budget ([CONTRIBUTIONS.md](CONTRIBUTIONS.md)).
 
 ## The routes
 
@@ -153,7 +159,9 @@ and the nonce. `ORCID_PKCE=off` stops sending it should the server ever refuse i
 **Sessions.** `__Host-oscr_session`: `HttpOnly; Secure; SameSite=Lax; Path=/`, no `Domain`, 30
 days (`Max-Age=2592000`). D1 keeps only the id's SHA-256. The expiry slides at most once a day
 (the cookie is then sent again); `last_seen_at` moves at most once an hour. Signing out deletes
-the row. A sign-in deletes the user's expired sessions.
+the row. A sign-in deletes the user's expired sessions. Since Phase 6, a second cookie goes with
+it, `__Host-oscr_signed_in=1` (not `HttpOnly`: the pages read it; it grants nothing): a paper's page
+asks the Worker only when it is there, so a signed-out reader's page view costs no request.
 
 **CSRF.** Every state-changing route is a POST under `/api/account/`, and needs: the session;
 `X-CSRF-Token`, an HMAC of the session's id hash under the server key (bound to the session,
@@ -200,7 +208,7 @@ counts one more row for each index an insert touches):
 | an active session's upkeep (`last_seen_at`, the daily slide) | at most 1 an hour |
 | `GET /api/account/me`, a check that changes nothing | 0 |
 | sign-out | 1 |
-| maintainer claim: verified / pending | 3 / 2 |
+| maintainer claim: verified / pending | 3 / 3 (since Phase 6, a pending claim also writes its job for the owner) |
 
 Rows read: 15 for `/api/account/me`, 16 for a first ORCID sign-in, 17 for a returning one.
 
@@ -307,7 +315,8 @@ npx wrangler d1 create oscr_community        # prints the database id
 npx wrangler d1 migrations apply oscr_community --remote
 ```
 
-Then the facts: the remote push of `oscr community` (follow-up, with the owner's approval).
+Then the facts: `oscr community push --remote`, and every night with `OSCR_COMMUNITY_PUSH=remote`
+in the settings.
 
 ## Local development
 
@@ -321,7 +330,8 @@ cd website && npx wrangler dev --env local   # http://localhost:8787/account/
 ```
 
 **Tests.** `npm test` (in `website/`: node:test with Node's own TypeScript support and
-node:sqlite, no dependency; 63 tests for the accounts, 98 with the search's) and `uv run pytest -q tests/test_community.py`.
+node:sqlite, no dependency; 63 tests for the accounts, 135 with the search's and the contributions')
+and `uv run pytest -q tests/test_community.py`.
 
 **Local end-to-end run.** `sh tests/account/e2e.sh` (in `website/`, after the build): a throwaway
 local D1 with the fixture's facts, the mock providers (`tests/account/mock-server.ts`: ORCID,
@@ -353,11 +363,11 @@ account page says that signing in is not set up yet; the rest of the site deploy
 ## Limits and what comes next
 
 - No account deletion, no unlinking, no "sign out everywhere" yet (the index is there).
-- Maintainer claims only for forge repositories (Zenodo, OSF… have no owner in their address);
-  author claims by hand (a paper whose metadata lacks the iD) come with Phase 6; moderation of
-  pending claims with Phase 7.
+- Maintainer claims only for forge repositories (Zenodo, OSF… have no owner in their address).
+  Author claims by hand (a paper whose metadata lacks the iD) are built (Phase 6); pending claims
+  are decided by the owner (`oscr claims`) until the moderation of Phase 7.
 - A renamed or transferred GitHub repository keeps the owner the Mac recorded until the Mac
   re-reads it.
 - No rate limit per account or address yet beyond the 20 pending claims (Turnstile, and limits
   stored in D1, come with the public forms).
-- The remote push of the facts, and the owner's steps above.
+- The owner's steps above. (The remote push of the facts is built: Phase 6.)

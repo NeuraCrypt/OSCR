@@ -1,11 +1,17 @@
 // Test support: the community database as an in-memory SQLite database (node:sqlite), created from
-// the real migration (migrations/d1-community/), behind the part of the D1 binding the Worker uses.
-// Like D1: foreign keys on, a batch is one transaction, `undefined` cannot be bound.
-import { readFileSync } from "node:fs";
+// the real migrations (migrations/d1-community/, in order), behind the part of the D1 binding the
+// Worker uses. Like D1: foreign keys on, a batch is one transaction, `undefined` cannot be bound.
+import { readdirSync, readFileSync } from "node:fs";
 import { DatabaseSync } from "node:sqlite";
 import type { D1Database, D1PreparedStatement, D1Result } from "../../worker/account/types.ts";
 
-const MIGRATION = new URL("../../../migrations/d1-community/0001_accounts.sql", import.meta.url);
+const MIGRATIONS = new URL("../../../migrations/d1-community/", import.meta.url);
+/** The migrations' SQL, in the order wrangler applies them. */
+export const SCHEMA = readdirSync(MIGRATIONS)
+  .filter((name) => /^\d{4}_.*\.sql$/.test(name))
+  .sort()
+  .map((name) => readFileSync(new URL(name, MIGRATIONS), "utf8"))
+  .join("\n");
 
 export type FakeD1 = D1Database & { sqlite: DatabaseSync; queries: string[]; failWith?: string };
 
@@ -14,7 +20,7 @@ const READER = /^\s*(SELECT|WITH|PRAGMA)\b/i;
 export function fakeD1(): FakeD1 {
   const sqlite = new DatabaseSync(":memory:");
   sqlite.exec("PRAGMA foreign_keys = ON");
-  sqlite.exec(readFileSync(MIGRATION, "utf8"));
+  sqlite.exec(SCHEMA);
 
   const execute = <T>(query: string, values: unknown[]): D1Result<T> => {
     if (fake.failWith) throw new Error(fake.failWith);
@@ -77,12 +83,18 @@ export function everyText(db: FakeD1): string {
   return tables.flatMap((t) => rows(db, t.name).flatMap((r) => Object.values(r).filter((v) => typeof v === "string"))).join("\n");
 }
 
-/** The Mac's facts, as `oscr community push` writes them. */
-export function addFacts(db: FakeD1, facts: { papers?: [string, string, string, string][]; repos?: [string, string, string][] }): void {
+/** The Mac's facts, as `oscr community push` writes them: `paperRepos` are (repo, paper) pairs. */
+export function addFacts(
+  db: FakeD1,
+  facts: { papers?: [string, string, string, string][]; repos?: [string, string, string][]; paperRepos?: [string, string][] },
+): void {
   for (const [orcid, paper, slug, title] of facts.papers ?? []) {
     db.sqlite.prepare("INSERT OR REPLACE INTO paper_orcid (orcid, paper_id, slug, title) VALUES (?, ?, ?, ?)").run(orcid, paper, slug, title);
   }
   for (const [repo, host, owner] of facts.repos ?? []) {
     db.sqlite.prepare("INSERT OR REPLACE INTO repo_owner (repo, host, owner) VALUES (?, ?, ?)").run(repo, host, owner);
+  }
+  for (const [repo, paper] of facts.paperRepos ?? []) {
+    db.sqlite.prepare("INSERT OR REPLACE INTO paper_repo (repo, paper_id) VALUES (?, ?)").run(repo, paper);
   }
 }

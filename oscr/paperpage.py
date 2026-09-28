@@ -17,10 +17,12 @@ site. A paper's entry holds its sections:
   "on request" — and never a quotation;
 - `data`: the data links, with the dataset each one names and where it was found;
 - `map`: the tracing map — what it holds, whether an author validated it (ORCID), and once
-  deposited, its DOI and its JSON on Zenodo;
+  deposited, its DOI and its JSON on Zenodo; and its digest (`zenodo.map_digest`), which a
+  verified author's validation carries back (Phase 6: the Mac deposits the map the page showed);
 - `versions`: the history of the record as a diff of public facts. Only VERSION_FIELDS
   leave: the digests of texts (abstract, statements), the classification's raw values and
-  any field added later stay on the Mac;
+  any field added later stay on the Mac. A version made by a person's correction (Phase 6)
+  says so, by their role only (`by`: author, maintainer, submitter), never who;
 - `cite`: the paper's citation in BibTeX, RIS, an APA-like text and CSL-JSON, and its
   map's once it has a DOI. The platform, a creator of the map, is written PLATFORM: the
   website puts its name (`SITE_NAME`) there;
@@ -67,7 +69,13 @@ MAX_ITEMS: int = 30
 #: availability statements, the classification's raw values (`categories`, including
 #: `on_topic`), and any field a later version of the enrichment adds.
 VERSION_FIELDS: tuple[str, ...] = ("type", "language", "journal", "volume", "issue", "pages", "dates", "authors",
-                                   "keywords", "mesh", "funding", "references", "rrids", "integrity")
+                                   "keywords", "mesh", "funding", "references", "rrids", "integrity", "code", "data")
+#: Facts the versions record since a later phase (the links' keys, Phase 6): a version is not
+#: said to change them when the one before did not record them yet.
+LATER_FIELDS: frozenset[str] = frozenset({"code", "data"})
+#: Who made a version, from its actor: the harvester, or a person's correction by their role
+#: (oscr/jobs.py writes "author:orcid:…", "maintainer:github:…", "submitter:…"; never shown).
+BY_ROLE: dict[str, str] = {"author": "author", "maintainer": "maintainer", "submitter": "submitter"}
 VERSION_KEYS: dict[str, tuple[str, ...]] = {
     "journal": ("title", "issn", "eissn", "publisher", "nlm_ta"),
     "dates": ("received", "accepted", "epub", "ppub", "collection", "first_publication"),
@@ -230,6 +238,7 @@ def _repository(d: sqlite3.Row | None, feature: sqlite3.Row | None, tools: list[
     HTTP status say it."""
     return {
         "commit_date": (d["commit_date"] if d is not None else "") or "",
+        "readme": _readme(d),
         "files": d["n_files"] if d is not None else None,
         "scripts_listed": scripts,
         "created": (d["created"] if d is not None else "") or "",
@@ -240,6 +249,18 @@ def _repository(d: sqlite3.Row | None, feature: sqlite3.Row | None, tools: list[
         "checks": [{"on": entities._day(c["checked_at"]), "state": c["state"], "http": c["http_status"]}
                    for c in sorted(checks, key=lambda c: -c["checked_at"])[:MAX_CHECKS]],
     }
+
+
+_README = re.compile(r"(?i)^readme(\.[\w-]+)?$")
+
+
+def _readme(d: sqlite3.Row | None) -> str:
+    """The path of a repository's README at its root, from its file list ("README.md"): where
+    the badge of a verified author goes (Phase 6). "" when there is none, or no list."""
+    if d is None:
+        return ""
+    names = [f for f in entities._json_list(d["files"]) if isinstance(f, str) and "/" not in f and _README.match(f)]
+    return sorted(names, key=lambda f: (not f.lower().endswith(".md"), f))[0] if names else ""
 
 
 def _paragraphs(text: str) -> set[str]:
@@ -320,14 +341,16 @@ def _data_links(links: list[sqlite3.Row]) -> list[dict[str, str]]:
 # The tracing map.
 
 def _map(article: dict[str, Any], validations: list[sqlite3.Row], deposit: sqlite3.Row | None,
-         files: int, pairs: int, method: str) -> dict[str, Any]:
+         files: int, pairs: int, method: str, digest: str = "") -> dict[str, Any]:
     """What the map holds, and where it stands: proposed by the harvester, or validated by
     an author with their ORCID (the only proof that leaves, as in catalog.json) and, once
-    deposited on Zenodo (never the sandbox), its DOI and its JSON."""
+    deposited on Zenodo (never the sandbox), its DOI and its JSON. `digest`: the map's
+    (zenodo.map_digest), which a validation from the page carries back."""
     record = str(deposit["record_id"]) if deposit is not None else ""
     return {
         "status": "validated" if validations else "proposed" if article["code"] else "none",
         "repositories": len(article["code"]), "files": files, "pairs": pairs, "method": method,
+        "digest": digest,
         "validated_by": [{"name": _clean(v["name"]), "orcid": entities.orcid(v["orcid"]),
                           "on": entities._day(v["validated_at"])} for v in validations],
         "doi": (deposit["doi"] if deposit is not None else "") or "",
@@ -363,6 +386,8 @@ def _scalar(value: Any) -> Any:
 def _changes(before: dict[str, Any], after: dict[str, Any]) -> list[dict[str, Any]]:
     changes: list[dict[str, Any]] = []
     for field in VERSION_FIELDS:
+        if field in LATER_FIELDS and before and field not in before:
+            continue          # recorded for the first time: not a change of the record
         b, a = before.get(field), after.get(field)
         if field in VERSION_KEYS:
             b, a = (b if isinstance(b, dict) else {}), (a if isinstance(a, dict) else {})
@@ -403,9 +428,10 @@ def history(rows: list[sqlite3.Row]) -> list[dict[str, Any]]:
         public = {k: snapshot[k] for k in VERSION_FIELDS if k in snapshot}
         changes = _changes(before, public)
         if changes:
-            out.append({"version": r["version"], "date": entities._day(r["created_at"]),
-                        "by": "harvester" if r["actor"] == "harvester" else "editor", "first": i == 0,
-                        "changes": changes})
+            actor = str(r["actor"] or "harvester")
+            by = "harvester" if actor == "harvester" else BY_ROLE.get(actor.split(":", 1)[0], "editor")
+            out.append({"version": r["version"], "date": entities._day(r["created_at"]), "by": by,
+                        "first": i == 0, "changes": changes})
         before = public
     return out[::-1]
 
@@ -760,7 +786,8 @@ def generate(con: sqlite3.Connection, folder: Path, articles: list[dict[str, Any
             "availability": _availability(r, statements.get(aid, []), links.get(aid, [])),
             "data": _data_links(links.get(aid, [])),
             "map": _map(a, validations.get(aid, []), deposit,
-                        sum(scripts.get(link["repo"], 0) for link in code_links), n_pairs, method),
+                        sum(scripts.get(link["repo"], 0) for link in code_links), n_pairs, method,
+                        zenodo.map_digest(zenodo.map_of(con, aid)) if code_links else ""),
             "versions": history(versions.get(aid, [])),
             "cite": {"paper": cite_paper(r, authors.get(aid, []), journals.get(r["journal_id"] or ""),
                                          [x["name"] for x in a.get("authors") or []]),

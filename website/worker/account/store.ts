@@ -35,6 +35,8 @@ export interface Claim {
   repo: string;
   status: "pending" | "verified" | "rejected";
   evidence: string;
+  /** The owner's words on a decided claim (Phase 6). */
+  message?: string;
   created_at: number;
   decided_at: number | null;
 }
@@ -88,7 +90,7 @@ export const reads = {
   claims: (db: D1Database, userId: string): D1PreparedStatement =>
     db
       .prepare(
-        "SELECT id, kind, paper_id, repo, status, evidence, created_at, decided_at FROM claims WHERE user_id = ? " +
+        "SELECT id, kind, paper_id, repo, status, evidence, message, created_at, decided_at FROM claims WHERE user_id = ? " +
           "ORDER BY created_at DESC, id DESC LIMIT 100",
       )
       .bind(userId),
@@ -271,17 +273,26 @@ export async function grantMaintainer(db: D1Database, userId: string, repo: stri
   ]);
 }
 
-/** A maintainer claim the evidence could not settle: pending, for the moderators (Phase 7). A
- *  pending claim asked again gets the new evidence; a rejected one stays rejected. Returns the
- *  claim as it now is. */
+/** A maintainer claim the evidence could not settle: pending, for the owner (`oscr claims`; the
+ *  moderators with Phase 7). A pending claim asked again gets the new evidence; a rejected one
+ *  stays rejected. With a job for the Mac while it is pending (Phase 6's `jobs`): 3 rows written
+ *  for a new claim (the row, its index entry, the job), 2 when asked again. Returns the claim as
+ *  it now is. */
 export async function pendingMaintainer(db: D1Database, userId: string, repo: string, evidence: unknown, now: number): Promise<Claim> {
-  await db
-    .prepare(
-      "INSERT INTO claims (user_id, kind, repo, evidence, status, created_at) VALUES (?, 'maintainer', ?, ?, 'pending', ?) " +
-        "ON CONFLICT (user_id, kind, paper_id, repo) DO UPDATE SET evidence = excluded.evidence WHERE claims.status = 'pending'",
-    )
-    .bind(userId, repo, JSON.stringify(evidence), now)
-    .run();
+  await db.batch([
+    db
+      .prepare(
+        "INSERT INTO claims (user_id, kind, repo, evidence, status, created_at) VALUES (?, 'maintainer', ?, ?, 'pending', ?) " +
+          "ON CONFLICT (user_id, kind, paper_id, repo) DO UPDATE SET evidence = excluded.evidence WHERE claims.status = 'pending'",
+      )
+      .bind(userId, repo, JSON.stringify(evidence), now),
+    db
+      .prepare(
+        "INSERT INTO jobs (kind, ref, user_id, created_at) SELECT 'claim', id, user_id, ? FROM claims " +
+          "WHERE user_id = ? AND kind = 'maintainer' AND paper_id = '' AND repo = ? AND status = 'pending'",
+      )
+      .bind(now, userId, repo),
+  ]);
   const claim = await db
     .prepare(
       "SELECT id, kind, paper_id, repo, status, evidence, created_at, decided_at FROM claims WHERE user_id = ? AND kind = 'maintainer' AND paper_id = '' AND repo = ?",

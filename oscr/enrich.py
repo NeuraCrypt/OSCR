@@ -335,7 +335,8 @@ def enrich_article(con: sqlite3.Connection, article_id: str, *, xml: str | None 
     contacts.write(con, article_id, contacts.merge(contacts.from_jats(xml) if xml else [],
                                                    contacts.from_epmc(core) if core else []), now)
     categories = _classify(con, article_id, a, rec, now)
-    db.save_version(con, "article", article_id, _snapshot(rec, categories))
+    # The links' keys too (Phase 6): a person's correction of them is a version of the record.
+    db.save_version(con, "article", article_id, {**_snapshot(rec, categories), **db.links_snapshot(con, article_id)})
     repos = [r[0] for r in con.execute("SELECT DISTINCT repo FROM link WHERE article_id = ? AND role = 'code'",
                                        (article_id,))]
     described = sum(repository_facts(con, r, now) for r in repos)

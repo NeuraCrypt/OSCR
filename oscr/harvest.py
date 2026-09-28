@@ -243,6 +243,8 @@ def _adjust(con: sqlite3.Connection, article_id: str, l: sqlite3.Row, d: sqlite3
     role = l["role"]
     if d is None or d["state"] != "alive":
         return role
+    if db.edited_role(con, article_id, l["repo"]):
+        return role          # a person said what this link is (Phase 6): the verification does not overrule them
     new, why = role, ""
     n = d["n_scripts"]
     n_files = d["n_files"] or 0

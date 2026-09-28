@@ -1,10 +1,12 @@
 // What every route of the Worker receives: its bindings (wrangler.toml) and its context.
 import type { AccountEnv } from "./account/types.ts";
+import type { CheckEnv } from "./contributions/checks.ts";
 import type { D1Database } from "./d1.ts";
 
 /** The accounts (Phase 5) bring `COMMUNITY`, the D1 `oscr_community`, and their secrets
- *  (account/types.ts; docs/ACCOUNTS.md). */
-export interface Env extends AccountEnv {
+ *  (account/types.ts; docs/ACCOUNTS.md); the contributions (Phase 6) the development mock of
+ *  their checks (contributions/checks.ts). */
+export interface Env extends AccountEnv, CheckEnv {
   /** D1 `oscr_catalog`: the result rows and the counts of the search (Phase 3, docs/SEARCH.md). */
   CATALOG?: D1Database;
   /** D1 `oscr_search`: the full-text index (Phase 3). */

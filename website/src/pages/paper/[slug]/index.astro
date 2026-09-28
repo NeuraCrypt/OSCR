@@ -7,6 +7,7 @@
 import Base from "../../../layouts/Base.astro";
 import Code from "../../../components/paper/Code.astro";
 import Cite from "../../../components/paper/Cite.astro";
+import Contribute from "../../../components/paper/Contribute.astro";
 import Data from "../../../components/paper/Data.astro";
 import Later from "../../../components/paper/Later.astro";
 import Overview from "../../../components/paper/Overview.astro";
@@ -45,6 +46,7 @@ const SECTIONS = [
   { id: "versions", label: "Versions" },
   { id: "cite", label: "Cite" },
   { id: "similar", label: "Similar" },
+  { id: "contribute", label: "Contribute" },
   { id: "discussion", label: "Discussion" },
   { id: "reproductions", label: "Reproductions" },
   { id: "activity", label: "Activity" },
@@ -79,6 +81,7 @@ const LATER = new Set(["discussion", "reproductions", "activity"]);
       <Versions p={p} />
       <Cite a={a} p={p} />
       <Similar p={p} />
+      <Contribute a={a} p={p} />
       <Later />
     </div>
 
@@ -125,6 +128,11 @@ const LATER = new Set(["discussion", "reproductions", "activity"]);
           <ul><li>the paper: {licenseLabel(p.overview.license) || "none stated"}</li></ul>
         </>
       )}
+      <h3>This record</h3>
+      <ul>
+        <li><a href="#contribute">Claim it, correct it{hasCode ? ", validate its map" : ""}</a></li>
+        <li><a href="#removal">Request its removal</a></li>
+      </ul>
     </aside>
   </div>
 </Base>

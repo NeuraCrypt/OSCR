@@ -1,7 +1,20 @@
 # Headers of the static pages (Workers static assets, developers.cloudflare.com/workers/static-assets/headers/).
-# The account page holds a session's CSRF token in its script: no other site may frame it, and it
-# runs this site's own files only (it has no inline script or style).
+# The pages whose scripts ask the Worker for a signed-in reader hold a session's CSRF token: no other
+# site may frame them, and they run this site's own files only (no inline script or style: Astro
+# writes every script as a file, astro.config.mjs). The account page (Phase 5); /submit/ and a
+# paper's page (Phase 6) — `:slug` is one segment, so the Code ↔ Paper reader (/paper/<slug>/code/),
+# which reads Europe PMC and Hugging Face, keeps its own rules.
 /account/
+  X-Frame-Options: DENY
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'; object-src 'none'
+  Referrer-Policy: same-origin
+
+/submit/
+  X-Frame-Options: DENY
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'; object-src 'none'
+  Referrer-Policy: same-origin
+
+/paper/:slug/
   X-Frame-Options: DENY
   Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'; object-src 'none'
   Referrer-Policy: same-origin

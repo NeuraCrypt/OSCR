@@ -47,6 +47,8 @@ export type Features = {
 /** What the Code section adds to a repository of catalog.json. */
 export type RepoFacts = {
   commit_date: string;
+  /** The README at the repository's root ("README.md"), where the badge goes (Phase 6). */
+  readme?: string;
   files: number | null;
   scripts_listed: number;
   created: string;
@@ -76,6 +78,8 @@ export type MapFacts = {
   deposited_on: string;
   record_url: string;
   json_url: string;
+  /** The map's SHA-256 (oscr/zenodo.py map_digest): a validation from this page carries it (Phase 6). */
+  digest?: string;
 };
 export type Change = {
   field: string;
@@ -87,6 +91,8 @@ export type Change = {
   n_removed?: number;
   reordered?: boolean;
 };
+/** `by`: "harvester", or the role of the person whose correction made it (Phase 6): "author",
+ *  "maintainer", "submitter" — never who. */
 export type Version = { version: number; date: string; by: string; first: boolean; changes: Change[] };
 export type Citation = { apa: string; bibtex: string; ris: string; csl: Record<string, unknown> };
 export type Similar = { slug: string; score: number; reasons: string };
@@ -198,6 +204,8 @@ const FIELDS: Record<string, string> = {
   references: "References",
   rrids: "RRIDs",
   integrity: "Integrity notices",
+  code: "Code links",
+  data: "Data links",
 };
 export const fieldLabel = (f: string) => FIELDS[f] ?? f;
 
@@ -217,6 +225,8 @@ export function recorded(changes: Change[]): string[] {
       funding: ["funder", "funders"],
       rrids: ["RRID", "RRIDs"],
       integrity: ["integrity notice", "integrity notices"],
+      code: ["code link", "code links"],
+      data: ["data link", "data links"],
     };
     if (lists[top]) out.push(`${n} ${n === 1 ? lists[top][0] : lists[top][1]}`);
     else if (top === "references") out.push(`${c.after} references`);

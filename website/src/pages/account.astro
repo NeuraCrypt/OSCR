@@ -85,6 +85,30 @@ const providers = [
     <h3>Your claims</h3>
     <p id="claims-none">None yet.</p>
     <ul id="claims"></ul>
+    <p>
+      An author of a paper whose metadata lacks your ORCID iD: claim it from the paper's own page, in its Contribute
+      section.
+    </p>
+
+    <h2 id="submissions">Your submissions</h2>
+    <p>
+      <a href="/submit/">Submit a paper</a> and the links to its authors' code. {SITE_NAME} reads it and writes a draft of its
+      record here: review it, correct the links if need be, then publish it.
+    </p>
+    <p id="submissions-none">None yet.</p>
+    <div id="submissions-list"></div>
+    <p id="submissions-result" role="status" aria-live="polite"></p>
+
+    <h2 id="requests">Your corrections, validations and requests</h2>
+    <h3>Corrections of records</h3>
+    <p id="edits-none">None yet.</p>
+    <ul id="edits"></ul>
+    <h3>Validations of tracing maps</h3>
+    <p id="validations-none">None yet.</p>
+    <ul id="validations"></ul>
+    <h3>Removal requests</h3>
+    <p id="reports-none">None yet.</p>
+    <ul id="reports"></ul>
 
     <form id="signout-form" method="post" action="/api/account/signout">
       <p><button type="submit">Sign out</button></p>

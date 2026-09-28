@@ -96,6 +96,17 @@ export function sessionCookie(value: string): string {
   return setCookie(SESSION_COOKIE, value, SESSION_SECONDS);
 }
 
+/** A hint for the static pages' scripts, which cannot read the session cookie (HttpOnly): "1"
+ *  while this browser holds a session. It carries nothing else and grants nothing (every route
+ *  reads the session itself); it spares the Worker a request for each page a signed-out reader
+ *  opens, since a paper's page asks the Worker only when it is there. Readable by the page (no
+ *  HttpOnly), set, extended and cleared with the session cookie. */
+export const HINT_COOKIE = "__Host-oscr_signed_in";
+
+export function hintCookie(on: boolean): string {
+  return `${HINT_COOKIE}=${on ? "1" : ""}; Path=/; Secure; SameSite=Lax; Max-Age=${on ? SESSION_SECONDS : 0}`;
+}
+
 /** The CSRF token of a session. */
 export function csrfToken(key: string, idHash: string): Promise<string> {
   return hmac(key, "csrf", idHash);

@@ -4,7 +4,9 @@ Status: **Phase 0 validated by the owner on 2026-09-27, with the decisions of §
 deployed; Phase 3 (search) is built and awaits the owner's approval for its remote setup
 (docs/SEARCH.md §7); Phase 4 (the full paper page) is built on its branch and awaits review
 (§12); Phase 5 (accounts) is built on its branch and awaits review and the owner's
-applications (§8, [ACCOUNTS.md](ACCOUNTS.md)).**
+applications (§8, [ACCOUNTS.md](ACCOUNTS.md)); Phase 6 (submission, claims, edition, validation,
+Zenodo sandbox, badge) is built on branch `phase-6`, tested locally, not deployed (§9,
+[CONTRIBUTIONS.md](CONTRIBUTIONS.md)).**
 Date: 2026-09-26. Scope: turn the catalogue into a full platform (arXiv + SSRN + PubMed +
 a Kaggle dataset page), at zero cost, following `CLAUDE.md`. The platform's name lives in
 one configuration variable, `SITE_NAME` (current value: `OSCR`).
@@ -235,13 +237,16 @@ applied with `wrangler d1 migrations apply` on Cloudflare and by `oscr` on the M
 | `roles` | `user_id` (key prefix), `role` (member, verified_author, maintainer, moderator, admin), `scope_kind`, `scope_id`, `granted_by`, `granted_at`. Built |
 | `claims` | `id`, `user_id`✱, `kind` (author, maintainer), `paper_id` or `repo`, `evidence`, `status`, `decided_by`, `decided_at`. Built |
 | `paper_orcid`, `repo_owner` | the facts the verifications need, pushed by the Mac (`oscr community`). Built |
-| `submissions` | `id`, `user_id`, `doi`, `code_urls` (JSON), `checks` (JSON), `status`✱, `created_at` |
-| `jobs` | `id`, `kind` (harvest_doi, verify_repo, align, deposit_map, badge_pr), `payload` (JSON), `status`✱, `attempts`, `created_at`, `taken_at`, `finished_at`, `result` (JSON) |
+| `submissions` | `id`, `user_id`, `doi`, `code_urls` (JSON), `note`, `checks` (JSON), `status`, `revisions`, `paper_id`, `author`, `draft` (JSON, written by the Mac), `message`, `created_at`, `updated_at`; index (user, DOI), unique. Built (Phase 6): no status index — the Mac finds work through `jobs` |
+| `jobs` | `id`, `kind` (submission, publish, edit, validation, claim, report), `ref` (the request's id), `user_id`, `created_at`. Built (Phase 6), append-only and without index: the Mac reads the rows after the last one it saw and keeps each job's status, attempts and result on its side (`data/community/state.db`); the outcome goes into the request's own row. A status column, its index and an update per job would cost three more rows a request |
+| `edits` | `id`, `user_id`, `paper_id`, `as_role` (verified_author, maintainer), `repo`, `changes` (JSON: add, remove, role of a link), `note`, `status`, `version`, `message`, `created_at`, `decided_at`; index (user, created_at). Built (Phase 6) |
+| `validations` | `id`, `user_id`, `paper_id`, `orcid`, `proof` (orcid, orcid-sandbox), `map_digest`, `status`, `instance`, `doi`, `record_url`, `message`, `created_at`, `decided_at`; index (user, created_at). Built (Phase 6) |
+| `paper_repo` | the forge repositories that are a paper's code, pushed by the Mac (`oscr community`). Built (Phase 6) |
 | `discussions` | `id`, `paper_id`✱, `kind` (question, error_report, reproduction), `title`, `status`✱, `author_id`, `created_at`, `resolved_by` |
 | `comments` | `id`, `discussion_id`✱, `parent_id`, `author_id`, `body_md`, `body_html` (sanitized at write), `created_at`, `edited_at`, `hidden` |
 | `votes` | `user_id`, `target_kind`, `target_id`✱, `value`, `created_at` (unique per user and target) |
 | `reproduction_reports` | `id`, `paper_id`✱, `user_id`, `outcome` (reproduced, partially, failed), `environment` (JSON), `repo_commit`, `datasets` (JSON), `notes_md`, `created_at` |
-| `reports` | `id`, `target_kind`, `target_id`, `reporter_id`, `reason` (incl. takedown), `status`✱, `created_at` |
+| `reports` | `id`, `user_id`, `target_kind` (paper), `target_id`, `reason` (author_request, copyright, personal_data, incorrect, other), `details`, `status`, `message`, `created_at`, `decided_at`; index (user, kind, target), unique. Built (Phase 6) for removal requests; other reports with Phase 7 |
 | `moderation_actions` | `id`, `moderator_id`, `target_kind`, `target_id`, `action`, `reason`, `created_at` |
 | `collections`, `collection_items` | `id`, `owner_id`, `title`, `public`; items `(collection_id, paper_id)` |
 | `subscriptions` | `user_id`✱, `target_kind` (category, journal, author, tool, dataset, search), `target_id`, `created_at` |
@@ -454,16 +459,37 @@ steps: [ACCOUNTS.md](ACCOUNTS.md)).
   (`paper_orcid`, pushed by the Mac from the papers' metadata), at sign-in and on request.
   Maintainer: on request, the GitHub account owns the repository, belongs publicly to its
   organization or contributed to it — checked by the Worker with the person's own fresh token
-  (not kept), else a pending claim for moderation (Phase 7). Manual author claims: Phase 6.
+  (not kept), else a pending claim for moderation (Phase 7). Manual author claims: built in
+  Phase 6, decided by the owner (`oscr claims`) until the moderation of Phase 7.
 - D1 writes per sign-in (measured): 5 for a new account, 2 for a returning one; 3 for a link.
 
 ## 9. Submission, claim, edition, validation
 
-Submit a DOI and code links → immediate checks in the Function (DOI resolves, links answer,
-license) → `jobs` row → the Mac polls, harvests, verifies, aligns, pushes a draft → the author
-reviews and corrects → publication (new `versions` row). Claim, edit (every edit is a version),
-validate the map (→ Zenodo sandbox deposit per `CLAUDE.md`), badge pull request only with the
-author's explicit consent, takedown request from every record.
+**Built in Phase 6** (branch `phase-6`, not deployed; the flows, the routes' contract, the D1
+writes per action and the owner's steps: [CONTRIBUTIONS.md](CONTRIBUTIONS.md)).
+
+- **Submit** (`/submit/`): a DOI and one to five code links → immediate checks in the Worker (the
+  DOI resolves at doi.org's handle API, each link answers, the place is one the registry knows;
+  the license is left to the Mac, which reads it from the repository) → a `submissions` row and a
+  `jobs` row → the Mac polls (`oscr jobs poll`), harvests the DOI (`harvest.scan_article`),
+  verifies the links and their license, counts the matches, and writes a draft back → the
+  submitter reviews and corrects it on the account page → publication: at once when their ORCID
+  iD is among the paper's authors, otherwise after the owner's decision; the links become a new
+  version of the record.
+- **Claim**: automatic for an ORCID iD the paper's metadata lists (Phase 5); otherwise a statement
+  and a link, pending until the owner decides (`oscr claims`); a decided claim writes the role.
+- **Edit** (a verified author, or a maintainer of the paper's code): links added, removed or given
+  a role, never markup; the Mac applies them with their provenance as a new `version`, which the
+  Versions section shows ("a correction by a verified author").
+- **Validate the map** (a verified author, with their ORCID iD): the map the page showed (its
+  digest), then `zenodo.validate` and `zenodo.deposit_map` on the Zenodo **sandbox** per
+  `CLAUDE.md`; the DOI goes back to the author. From ORCID's sandbox, a validation is a test.
+- **Badge**: one static image and snippets (Markdown, reStructuredText, HTML) linking to the
+  paper's page; the author opens the pull request in GitHub's own editor (explicit consent, no
+  permission asked). The one-click pull request is not built: it would need the `public_repo`
+  scope.
+- **Takedown request** from every record (signed in until Turnstile, Phase 7), decided by the owner
+  (`oscr reports`): accepted, the record leaves every public output.
 
 ## 10. Community
 
@@ -490,7 +516,7 @@ nightly to Hugging Face as JSON and Parquet (deltas only, to fit the uplink).
 | 3 — search | D1 projection + FTS5, facets, advanced search, export. **Built on branch `phase-3`, awaiting review, not deployed; the remote D1 databases await approval** (`docs/SEARCH.md`) | 1, D3 |
 | 4 — full paper page | all tabs, Versions with diff. **Built on branch `phase-4`, awaiting review, not deployed**: `oscr/paperpage.py` writes `papers/NN.json`; the tabs are sections of one page (Overview, Code, Map, Data, Versions, Cite, Similar; Discussion, Reproductions and Activity say what they will hold and that they open with sign-in); abstracts under D1's rule; the tab bar's style awaits the owner (markup only until then) | 1–3 |
 | 5 — accounts | ORCID, GitHub, Google, roles, author and maintainer verification. **Built on branch `phase-5`, awaiting review, not deployed**; awaits the owner's applications, secrets and database ([ACCOUNTS.md](ACCOUNTS.md)) | D4 (OAuth apps) |
-| 6 — submission, claims, edition, validation, Zenodo sandbox, badge | | 5 |
+| 6 — submission, claims, edition, validation, Zenodo sandbox, badge | submission with immediate checks and a draft from the Mac; manual author claims; corrections of a record's links as new versions; map validation → Zenodo sandbox deposit; the badge; removal requests; the Mac's job runner and the owner's commands; the remote push of the facts. **Built on branch `phase-6`, tested locally (end to end with mocks), not deployed**; awaits the owner's steps ([CONTRIBUTIONS.md](CONTRIBUTIONS.md)) | 5 |
 | 7 — discussions, reproductions, moderation, notifications | | 5, D5 |
 | 8 — feeds, API, exports, institutional pages | | 1–4 |
 

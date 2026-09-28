@@ -6,13 +6,17 @@
 //   GET /api/search      the search (api.ts, search.ts; the contract: docs/SEARCH.md)
 //   /api/auth/*          sign-in with ORCID, GitHub, Google (account/; docs/ACCOUNTS.md)
 //   /api/account/*       the signed-in reader's account (account/)
+//   /api/contributions, /api/submissions, /api/claims, /api/edits, /api/validations,
+//   /api/reports         what a signed-in reader asks of the registry (contributions/;
+//                        docs/CONTRIBUTIONS.md)
 //
-// The search's answers are public and cached (Cache-Control: public, api.ts); the accounts'
-// depend on the reader (a session cookie) and all say `Cache-Control: no-store`.
+// The search's answers are public and cached (Cache-Control: public, api.ts); the accounts' and
+// the contributions' depend on the reader (a session cookie) and all say `Cache-Control: no-store`.
 //
 // Only the default export: the runtime takes every export of the main module for an entry point.
 import { handleAccount } from "./account/index.ts";
 import { error, handleSearch } from "./api.ts";
+import { handleContributions } from "./contributions/index.ts";
 import type { Context, Env, Handler } from "./env.ts";
 
 type Route = { path: string; handle: Handler } | { prefix: string; handle: Handler };
@@ -20,11 +24,22 @@ type Route = { path: string; handle: Handler } | { prefix: string; handle: Handl
 /** The accounts answer for their own paths; one they do not know is a 404 like any other. */
 const account: Handler = async (request, env, ctx) =>
   (await handleAccount(request, env, ctx)) ?? error(404, "not_found", "No such route.");
+/** The contributions (Phase 6), likewise. */
+const contributions: Handler = async (request, env, ctx) =>
+  (await handleContributions(request, env, ctx)) ?? error(404, "not_found", "No such route.");
 
 const ROUTES: Route[] = [
   { path: "/api/search", handle: handleSearch },
   { prefix: "/api/auth/", handle: account },
   { prefix: "/api/account/", handle: account },
+  { path: "/api/contributions", handle: contributions },
+  { prefix: "/api/contributions/", handle: contributions },
+  { path: "/api/submissions", handle: contributions },
+  { prefix: "/api/submissions/", handle: contributions },
+  { path: "/api/claims", handle: contributions },
+  { path: "/api/edits", handle: contributions },
+  { path: "/api/validations", handle: contributions },
+  { path: "/api/reports", handle: contributions },
 ];
 
 function route(pathname: string): Handler | undefined {

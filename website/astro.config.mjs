@@ -15,4 +15,8 @@ export default defineConfig({
   // science.css as ONE external file, shared by every page and cached, rather
   // than copied into each of them.
   build: { inlineStylesheets: "never" },
+  // Every page script as a file of the site, never inline: the pages that ask the Worker for
+  // a signed-in reader (the account, a paper's page, /submit/) forbid inline scripts in their
+  // Content-Security-Policy (public/_headers).
+  vite: { build: { assetsInlineLimit: 0 } },
 });

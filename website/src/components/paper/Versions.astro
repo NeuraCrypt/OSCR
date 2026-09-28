@@ -12,6 +12,13 @@ interface Props {
 const { p } = Astro.props;
 const versions = p?.versions ?? [];
 const value = (v: string | number | undefined) => (v === undefined || v === "" ? "—" : `${v}`);
+/** Who made a version that is not the harvester's, by their role only (Phase 6). */
+const BY: Record<string, string> = {
+  author: " (a correction by a verified author)",
+  maintainer: " (a correction by a maintainer of its code)",
+  submitter: " (the links of the person who submitted it)",
+  editor: " (an edit)",
+};
 /** A list of items, and how many more there are. */
 const items = (shown: string[], n: number | undefined) =>
   shown.join("; ") + ((n ?? 0) > shown.length ? `; and ${plural((n ?? 0) - shown.length, "other")}` : "");
@@ -31,9 +38,9 @@ const change = (c: Change) => {
 <section id="versions">
   <h2>Versions</h2>
   <p class="summary">
-    The history of this record: each version stored by the harvester, and what changed in its facts. The texts of the
-    paper (its abstract, its availability statements) are not part of it; versions that changed only those are not
-    listed.
+    The history of this record: each version stored by the harvester or made by a correction of its authors or of the
+    maintainers of its code, and what changed in its facts. The texts of the paper (its abstract, its availability
+    statements) are not part of it; versions that changed only those are not listed.
   </p>
   {versions.length === 0 ? (
     <p>No version of this record has been stored yet.</p>
@@ -42,7 +49,7 @@ const change = (c: Change) => {
       <>
         <h3>
           Version {v.version}, {dateInWords(v.date)}{v.first ? ": the first record" : ""}
-          {v.by !== "harvester" && " (an edit)"}
+          {v.by !== "harvester" && (BY[v.by] ?? BY.editor)}
         </h3>
         {v.first ? (
           <p>Recorded: {recorded(v.changes).join(", ")}.</p>

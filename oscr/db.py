@@ -295,7 +295,8 @@ def mark_scanned(con: sqlite3.Connection, article_id: str, *, has_fulltext: bool
 
 
 def replace_links(con: sqlite3.Connection, article_id: str, candidates: Iterable[Any]) -> None:
-    """A paper's links are those of its LATEST scan: replaced, never stacked."""
+    """A paper's links are those of its LATEST scan: replaced, never stacked. Then the
+    corrections people made to them (Phase 6, `link_edit`), which outlive every scan."""
     con.execute("DELETE FROM link WHERE article_id = ?", (article_id,))
     for c in candidates:
         con.execute(
@@ -305,6 +306,50 @@ def replace_links(con: sqlite3.Connection, article_id: str, candidates: Iterable
              c.margin, c.found_by, c.section[:200], _j(c.reasons), c.excerpt[:1000], c.occurrences))
         con.execute("INSERT OR IGNORE INTO repository (repo, url, host, kind) VALUES (?,?,?,?)",
                     (c.link.repo, c.link.url, c.link.host, c.link.kind))
+    apply_link_edits(con, article_id)
+
+
+#: What a person's correction says, in the link's reasons.
+_EDITED_BY = {"author": "a verified author", "maintainer": "a maintainer of the code", "submitter": "its submitter"}
+
+
+def apply_link_edits(con: sqlite3.Connection, article_id: str) -> int:
+    """The people's corrections of a paper's links, over what the harvester found: a link added
+    (`found_by` = author, maintainer or submitter), removed, or given another role. Returns how
+    many applied."""
+    n = 0
+    for e in con.execute("SELECT * FROM link_edit WHERE article_id = ? ORDER BY created_at, repo", (article_id,)).fetchall():
+        why = f"{e['op']} by {_EDITED_BY.get(e['source'], e['source'])} ({e['ref'] or 'the site'})"
+        if e["op"] == "remove":
+            n += con.execute("DELETE FROM link WHERE article_id = ? AND repo = ?", (article_id, e["repo"])).rowcount
+        elif e["op"] == "role":
+            n += con.execute("UPDATE link SET role = ?, confidence = 'high', reasons = ? WHERE article_id = ? AND repo = ?",
+                             (e["role"], _j([why]), article_id, e["repo"])).rowcount
+        else:
+            con.execute(
+                "INSERT OR REPLACE INTO link (article_id, repo, url, host, kind, role, confidence, margin, found_by, "
+                "section, reasons, excerpt, occurrences) VALUES (?,?,?,?,?,?, 'high', 0, ?, '', ?, '', 1)",
+                (article_id, e["repo"], e["url"], e["host"], e["kind"], e["role"], e["source"], _j([why])))
+            con.execute("INSERT OR IGNORE INTO repository (repo, url, host, kind) VALUES (?,?,?,?)",
+                        (e["repo"], e["url"], e["host"], e["kind"]))
+            n += 1
+    return n
+
+
+def edited_role(con: sqlite3.Connection, article_id: str, repo: str) -> bool:
+    """Whether a person set this link's role: the verification's own reading of the repository
+    (harvest._adjust) does not change it then."""
+    return con.execute("SELECT 1 FROM link_edit WHERE article_id = ? AND repo = ? AND op IN ('add', 'role')",
+                       (article_id, repo)).fetchone() is not None
+
+
+def links_snapshot(con: sqlite3.Connection, article_id: str) -> dict[str, list[str]]:
+    """What a version keeps of a paper's links: the keys of its code and of its data, sorted."""
+    out: dict[str, list[str]] = {"code": [], "data": []}
+    for r in con.execute("SELECT repo, role FROM link WHERE article_id = ? AND role IN ('code', 'data') ORDER BY repo",
+                         (article_id,)):
+        out[r["role"]].append(r["repo"])
+    return out
 
 
 def save_repository(con: sqlite3.Connection, repo: str, record: dict[str, Any]) -> None:

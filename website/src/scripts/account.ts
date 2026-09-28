@@ -6,7 +6,7 @@ type Provider = { name: string; label: string; linked: boolean; start: string };
 type Identity = { provider: string; label: string; handle: string; url: string; linked_at: string };
 type Role = { role: string; scope_kind: string; scope_id: string; automatic: boolean };
 type Paper = { id: string; doi: string; title: string; url: string };
-type Claim = { id: number; kind: string; repo: string; paper_id: string; status: string; via: string | null; created_at: string };
+type Claim = { id: number; kind: string; repo: string; paper_id: string; url?: string; status: string; via: string | null; message?: string; created_at: string };
 type Me = {
   signed_in: boolean;
   available?: boolean;
@@ -40,6 +40,8 @@ function write(el: HTMLElement | null, tone: "" | "ok" | "warning", ...parts: Pa
         s.textContent = p.strong;
         return s;
       }
+      // Only this site's pages and web addresses become links; anything else stays text.
+      if (!/^(\/(?!\/)|https?:\/\/)/i.test(p.href)) return document.createTextNode(p.text);
       const a = document.createElement("a");
       a.href = p.href;
       a.textContent = p.text;
@@ -197,7 +199,10 @@ function showSignedIn(me: Me) {
   byId("claims-none")?.toggleAttribute("hidden", claims.length > 0);
   byId("claims")?.replaceChildren(
     ...claims.map((c) => {
-      const li = item(c.kind === "maintainer" ? `Maintainer of ${c.repo}: ` : `Author of ${c.paper_id}: `);
+      const li =
+        c.kind === "maintainer"
+          ? item(`Maintainer of ${c.repo}: `)
+          : item("Author of ", c.url ? { href: c.url, text: c.paper_id } : c.paper_id, ": ");
       const via: Record<string, string> = {
         owner: "you own it",
         org_member: "you belong to its organization",
@@ -207,6 +212,7 @@ function showSignedIn(me: Me) {
       if (c.status === "verified") li.append(statusWords(`verified${c.via && via[c.via] ? `, ${via[c.via]}` : ""}`, "ok"));
       else if (c.status === "pending") li.append(statusWords("waiting for a moderator", "warning"));
       else li.append(statusWords("rejected by a moderator", "warning"));
+      if (c.message) li.append(document.createTextNode(` — ${c.message}`));
       return li;
     }),
   );
@@ -228,9 +234,217 @@ async function load() {
     showSignedOut(null);
     return;
   }
-  if (me.signed_in) showSignedIn(me);
-  else showSignedOut(me);
+  if (me.signed_in) {
+    showSignedIn(me);
+    await loadContributions();
+  } else showSignedOut(me);
 }
+
+// ---------------------------------------------------------------------------------------------
+// Phase 6: the account's submissions, corrections, validations and removal requests
+// (GET /api/contributions), and a submission's draft to review, correct and publish.
+
+type DraftLink = { key: string; url: string; role: string; source: string; state: string; license: string; scripts: number | null };
+type Draft = {
+  paper?: { id: string; doi: string; title: string; journal: string; published: string; page: boolean };
+  links?: DraftLink[];
+  map?: { repositories: number; files: number; pairs: number | null };
+  notes?: string[];
+};
+type Submission = {
+  id: number;
+  doi: string;
+  code_urls: string[];
+  note: string;
+  status: string;
+  revisions: number;
+  url: string;
+  author: boolean;
+  draft: Draft;
+  message: string;
+};
+type Asked = { id: number; paper_id: string; url: string; status: string; message: string; doi?: string; record_url?: string; instance?: string; reason?: string; version?: number | null };
+type Lists = { submissions?: Submission[]; edits?: Asked[]; validations?: Asked[]; reports?: Asked[]; error?: { message: string } };
+
+const SUBMISSION: Record<string, [string, "ok" | "warning"]> = {
+  queued: ["being read by the registry", "warning"],
+  draft: ["draft ready: review it, then publish it", "ok"],
+  publishing: ["being published", "warning"],
+  moderation: ["waits for a moderator", "warning"],
+  published: ["published", "ok"],
+  refused: ["refused", "warning"],
+};
+const STATES: Record<string, string> = { alive: "the link answers", dead: "the link is dead", unreachable: "unreachable at the last attempt", unverified: "not verified yet" };
+const SOURCES: Record<string, string> = { paper: "found in the paper", you: "given by you", both: "found in the paper and given by you" };
+
+function para(tone: "" | "ok" | "warning", ...parts: Part[]): HTMLParagraphElement {
+  const p = document.createElement("p");
+  write(p, tone, ...parts);
+  return p;
+}
+
+function textarea(id: string, value: string, rows: number): HTMLTextAreaElement {
+  const t = document.createElement("textarea");
+  t.id = id;
+  t.rows = rows;
+  t.value = value;
+  t.spellcheck = false;
+  return t;
+}
+
+function labelled(id: string, text: string, field: HTMLElement): HTMLParagraphElement {
+  const p = document.createElement("p");
+  const label = document.createElement("label");
+  label.htmlFor = id;
+  label.textContent = text;
+  p.append(label, document.createElement("br"), field);
+  return p;
+}
+
+function button(text: string): HTMLParagraphElement {
+  const p = document.createElement("p");
+  const b = document.createElement("button");
+  b.type = "submit";
+  b.textContent = text;
+  p.append(b);
+  return p;
+}
+
+function submissionItem(s: Submission): HTMLElement {
+  const box = document.createElement("details");
+  box.open = s.status === "draft" || s.status === "refused";
+  const summary = document.createElement("summary");
+  const [words, tone] = SUBMISSION[s.status] ?? [s.status, "warning"];
+  summary.append(document.createTextNode(`doi:${s.doi}: `), statusWords(words, tone));
+  box.append(summary);
+  if (s.message) box.append(para(s.status === "published" ? "ok" : "", s.message));
+  const d = s.draft ?? {};
+  if (d.paper) {
+    box.append(
+      para("", "The paper: ", { href: `https://doi.org/${d.paper.doi}`, text: d.paper.title || d.paper.doi }, d.paper.journal ? `, ${d.paper.journal}` : "", d.paper.published ? ` (${d.paper.published})` : "", "."),
+    );
+    const links = d.links ?? [];
+    if (links.length) {
+      box.append(para("", "Its links, as the registry verified them:"));
+      const ul = document.createElement("ul");
+      for (const l of links) {
+        const li = item({ href: l.url, text: l.key }, ` — ${l.role === "data" ? "data" : "code"}, ${SOURCES[l.source] ?? l.source}: `);
+        li.append(statusWords(STATES[l.state] ?? l.state, l.state === "alive" ? "ok" : "warning"));
+        li.append(document.createTextNode(`${l.license ? `; license ${l.license}` : "; no license"}${l.scripts != null ? `; ${l.scripts} script${l.scripts === 1 ? "" : "s"}` : ""}`));
+        ul.append(li);
+      }
+      box.append(ul);
+    }
+    if (d.map) {
+      const pairs = d.map.pairs == null ? "the matches with the paper come after publication" : `${d.map.pairs} match${d.map.pairs === 1 ? "" : "es"} with the paper's paragraphs`;
+      box.append(para("", `Its tracing map: ${d.map.repositories} code repositor${d.map.repositories === 1 ? "y" : "ies"}, ${d.map.files} script${d.map.files === 1 ? "" : "s"}, ${pairs}.`));
+    }
+    for (const n of d.notes ?? []) box.append(para("warning", n));
+  }
+  if (["draft", "refused", "moderation"].includes(s.status) && s.revisions < 10) {
+    const form = document.createElement("form");
+    form.method = "post";
+    form.dataset.revise = String(s.id);
+    form.append(
+      labelled(`revise-${s.id}`, "Its code links, one a line (at most five)", textarea(`revise-${s.id}`, s.code_urls.join("\n"), 3)),
+      labelled(`revise-note-${s.id}`, "A note for the moderators (optional)", textarea(`revise-note-${s.id}`, s.note, 2)),
+      button("Correct the links"),
+    );
+    box.append(form);
+  }
+  if (s.status === "draft") {
+    const form = document.createElement("form");
+    form.method = "post";
+    form.dataset.publish = String(s.id);
+    form.append(
+      para("", s.author ? "Your ORCID iD is among the paper's authors: the record is published at once." : "A moderator looks at the record before it is published."),
+      button("Publish"),
+    );
+    box.append(form);
+  }
+  if (s.status === "published" && s.url) box.append(para("", "Its page, after the site's next update: ", { href: s.url, text: s.url }, "."));
+  return box;
+}
+
+const EDIT: Record<string, [string, "ok" | "warning"]> = { queued: ["on its way", "warning"], applied: ["applied", "ok"], refused: ["not applied", "warning"] };
+const VALIDATION: Record<string, [string, "ok" | "warning"]> = {
+  queued: ["on its way to Zenodo", "warning"],
+  deposited: ["deposited", "ok"],
+  map_changed: ["the map changed since: validate it again from its page", "warning"],
+  refused: ["refused", "warning"],
+  failed: ["could not be deposited", "warning"],
+};
+const REPORT: Record<string, [string, "ok" | "warning"]> = { open: ["waits for a moderator", "warning"], accepted: ["accepted", "ok"], rejected: ["refused", "warning"] };
+const REASONS: Record<string, string> = {
+  author_request: "an author's request",
+  copyright: "copyright",
+  personal_data: "personal data",
+  incorrect: "a wrong record",
+  other: "another reason",
+};
+
+function askedItem(what: string, a: Asked, words: Record<string, [string, "ok" | "warning"]>, extra: Part[] = [], quiet = false): HTMLLIElement {
+  const [w, tone] = words[a.status] ?? [a.status, "warning"];
+  const li = item(what, { href: a.url, text: a.paper_id }, ...extra, ": ");
+  li.append(statusWords(w, tone));
+  // The registry's words, unless the line already says it all.
+  if (a.message && !quiet) li.append(document.createTextNode(` — ${a.message}`));
+  return li;
+}
+
+function list(id: string, none: string, items: HTMLElement[]) {
+  byId(none)?.toggleAttribute("hidden", items.length > 0);
+  byId(id)?.replaceChildren(...items);
+}
+
+async function loadContributions() {
+  let lists: Lists;
+  try {
+    const res = await fetch("/api/contributions", { credentials: "same-origin", headers: { Accept: "application/json" } });
+    lists = (await res.json()) as Lists;
+  } catch {
+    write(byId("submissions-result"), "warning", "Your submissions and requests could not be read. Please try again in a moment.");
+    return;
+  }
+  if (lists.error) return write(byId("submissions-result"), "warning", lists.error.message);
+  list("submissions-list", "submissions-none", (lists.submissions ?? []).map(submissionItem));
+  list("edits", "edits-none", (lists.edits ?? []).map((e) => askedItem("Of ", e, EDIT, e.version ? [` (version ${e.version})`] : [])));
+  list(
+    "validations",
+    "validations-none",
+    (lists.validations ?? []).map((v) =>
+      askedItem(
+        "The map of ",
+        v,
+        VALIDATION,
+        v.doi ? [", DOI ", { href: v.record_url || `https://doi.org/${v.doi}`, text: v.doi }, v.instance === "sandbox" ? " (Zenodo's sandbox: a test DOI)" : ""] : [],
+        v.status === "deposited",
+      ),
+    ),
+  );
+  list("reports", "reports-none", (lists.reports ?? []).map((r) => askedItem("Of ", r, REPORT, [` (${REASONS[r.reason ?? ""] ?? r.reason})`])));
+}
+
+byId("submissions-list")?.addEventListener("submit", async (ev) => {
+  const form = ev.target as HTMLFormElement;
+  if (!(form instanceof HTMLFormElement)) return;
+  ev.preventDefault();
+  const out = byId("submissions-result");
+  busy(form, true);
+  let r;
+  if (form.dataset.revise) {
+    const id = form.dataset.revise;
+    const links = (byId<HTMLTextAreaElement>(`revise-${id}`)?.value ?? "").split(/\s+/).filter(Boolean);
+    r = await call(`/api/submissions/${id}/revise`, { code_urls: links, note: byId<HTMLTextAreaElement>(`revise-note-${id}`)?.value ?? "" });
+    if (r.ok) write(out, "ok", "Corrected: the registry reads the links again and writes a new draft.");
+  } else {
+    r = await call(`/api/submissions/${form.dataset.publish}/publish`);
+    if (r.ok) write(out, "ok", r.data.status === "publishing" ? "Published: the record goes on the site at its next update." : "Sent: a moderator looks at the record before it is published.");
+  }
+  busy(form, false);
+  if (!r.ok) return write(out, "warning", problem(r.data));
+  await loadContributions();
+});
 
 function busy(form: HTMLFormElement, on: boolean) {
   for (const b of form.querySelectorAll("button")) b.disabled = on;

@@ -1,0 +1,68 @@
+---
+// Submit a paper and its code (Phase 6). The page is static: its script (src/scripts/submit.ts)
+// asks the Worker who is signed in (/api/account/me, only when the browser holds a session), and
+// sends the form to POST /api/submissions, which checks at once that the DOI resolves, that the
+// links answer and that they point to a place the registry knows. Then the registry's own machine
+// reads the paper, verifies the code and its license, and writes a draft of the record back for
+// the submitter to review, correct and publish (docs/CONTRIBUTIONS.md). science.css only.
+import Base from "../layouts/Base.astro";
+import { SITE_NAME } from "../config";
+---
+<Base
+  title="Submit a paper"
+  description="Submit a paper and the links to its authors' code: checked at once, read and verified, then a draft for you to review and publish."
+  breadcrumb={[{ text: "Submit a paper" }]}
+>
+  <h1>Submit a paper</h1>
+  <p class="summary">
+    A paper whose authors published their code, and that {SITE_NAME} has not found yet, or not with all its code: give its
+    DOI and the links to the code.
+  </p>
+  <p id="submit-message" role="status" aria-live="polite"></p>
+  <noscript><p class="warning">The form runs in your browser: it needs JavaScript.</p></noscript>
+
+  <h2>How it goes</h2>
+  <ol>
+    <li>You give the paper's DOI and one to five links to its authors' code (GitHub, GitLab, Codeberg, Zenodo, OSF, figshare,
+      Code Ocean, Hugging Face…). {SITE_NAME} checks at once that the DOI is registered and that each link answers.</li>
+    <li>{SITE_NAME}'s own machine then reads the paper as it reads every paper, verifies the code at its source (its
+      commit, its license, its scripts) and matches it with the paper's paragraphs.</li>
+    <li>A draft of the record comes back to <a href="/account/">your account page</a>: review it, correct the links if need
+      be, then publish it.</li>
+    <li>When your ORCID iD is among the paper's authors, the record is published at once; otherwise a moderator looks at it
+      first. Papers outside neuroscience stay out of {SITE_NAME}.</li>
+  </ol>
+
+  <div id="submit-signed-out">
+    <p>
+      To submit a paper, sign in: <a href="/api/auth/orcid/start?return=/submit/">with ORCID</a> (an author of the paper is
+      then recognized at once), <a href="/api/auth/github/start?return=/submit/">with GitHub</a>, or from
+      <a href="/account/">your account page</a>.
+    </p>
+  </div>
+
+  <form id="submit-form" method="post" action="/api/submissions" hidden>
+    <p><label for="submit-doi">The paper's DOI</label><br />
+      <input id="submit-doi" name="doi" type="text" size="34" placeholder="10.1234/abcd" autocomplete="off" spellcheck="false"
+        required /></p>
+    <p><label for="submit-links">Links to its authors' code, one a line (at most five)</label><br />
+      <textarea id="submit-links" name="code_urls" rows="3" spellcheck="false" required
+        placeholder="https://github.com/owner/name"></textarea></p>
+    <p><label for="submit-note">A note for the moderators (optional; no address, please)</label><br />
+      <textarea id="submit-note" name="note" rows="2" maxlength="1000"></textarea></p>
+    <p><button type="submit">Submit</button></p>
+  </form>
+  <p id="submit-result" role="status" aria-live="polite"></p>
+
+  <h2>What is kept</h2>
+  <ul>
+    <li>The DOI, the links and your note, with your account, until the record is published or refused, and the
+      draft of the record that {SITE_NAME} made.</li>
+    <li>No email address: a note loses any address typed into it.</li>
+    <li>Ten submissions a day at most for one account.</li>
+  </ul>
+
+  <script>
+    import "../scripts/submit";
+  </script>
+</Base>

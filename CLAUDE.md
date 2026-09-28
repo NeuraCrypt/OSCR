@@ -106,8 +106,36 @@ database `oscr_community`, `docs/ACCOUNTS.md`):
 - The databases, the server key and the six sign-in values are set by the owner with
   `sh tools/setup_cloudflare.sh` (it asks for each value, never shows it, never writes it to a
   file).
-- The facts the verifications read (`paper_orcid`, `repo_owner`) come from the Mac
-  (`oscr community`); the Worker never writes them.
+- The facts the verifications read (`paper_orcid`, `repo_owner`, `paper_repo`) come from the Mac
+  (`oscr community`, pushed nightly once `OSCR_COMMUNITY_PUSH=remote`); the Worker never writes them.
+
+## Contributions (Phase 6)
+
+What signed-in readers ask of the registry (`website/worker/contributions/`, `oscr/jobs.py`,
+`docs/CONTRIBUTIONS.md`). The Worker checks and records (a row and a `jobs` row in D1
+`oscr_community`); the Mac polls (`oscr jobs poll`) and answers into the request's row.
+
+- **Submission**: a DOI and 1–5 code links, checked at once in the Worker (the DOI is registered,
+  each link answers, and points to a place the registry knows: the Worker fetches nothing else).
+  The license is the Mac's to read. The Mac harvests the paper into a draft; the submitter reviews,
+  corrects, publishes — at once when their ORCID iD is among the paper's authors, otherwise after
+  the owner's decision (`oscr submissions`). An off-topic paper stays out (D7).
+- **Edition**: a record's links only (code, data, tools), never markup, by a verified author of the
+  paper or a maintainer of its code (their own repository). Every correction is a new version
+  (`link_edit`, kept across rescans); who made it stays on the Mac — the pages say its role only.
+- **Validation**: a verified author, with the ORCID iD of their linked identity, validates the map
+  the page showed (its digest; a map that changed since is not deposited). Deposit on the **Zenodo
+  sandbox** unless `OSCR_ZENODO_INSTANCE=zenodo`. While sign-in uses ORCID's sandbox, a validation
+  is recorded as a test (`proof = 'test'`), never exported.
+- **Badge**: one static image (`/badge.svg`, no file per paper) and snippets; the author opens the
+  pull request in GitHub's own editor. No write permission is ever asked of GitHub.
+- **Takedown**: a request from every record (signed in until Turnstile), decided by the owner
+  (`oscr reports`); accepted, the record leaves every public output (`article.withdrawn`).
+- Manual author claims and claims GitHub cannot settle: decided by the owner (`oscr claims`) until
+  Phase 7's moderation.
+- **Costs**: a request writes 3 D1 rows, an answer 1 (in the facts push's daily budget); per-account
+  daily limits are counted from the rows; a signed-out reader's page view asks the Worker nothing
+  (the `__Host-oscr_signed_in` hint cookie). No email address in any form: the texts lose theirs.
 
 ## The website's style (website/)
 

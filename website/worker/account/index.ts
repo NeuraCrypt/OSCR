@@ -16,22 +16,21 @@
 
 import { sameText } from "./crypto.ts";
 import { beginFlow, callbackUrl, FLOW_COOKIE, openFlow, type Flow } from "./flow.ts";
+import { MAX_BODY, measured, now, readJson, ready, signedIn, staleCookies } from "./guard.ts";
 import { clearCookie, json, problem, readCookie, redirect, returnPath, withQuery } from "./http.ts";
-import { counted } from "./metrics.ts";
 import { configured, exchange, identify, LABELS, provider, PROVIDERS, type Person, type Provider, type ProviderName } from "./providers.ts";
 import { repoKey, repoUrl } from "./repo.ts";
 import {
   agentHint,
   closeSession,
   csrfToken,
-  csrfValid,
+  hintCookie,
   loadSession,
   openSession,
   SESSION_COOKIE,
   sessionCookie,
   sessionHash,
   sessionValue,
-  touchSession,
   type Session,
 } from "./session.ts";
 import {
@@ -62,8 +61,6 @@ export type { AccountEnv } from "./types.ts";
 
 /** Claims a user may have waiting for a moderator at once. */
 export const MAX_PENDING = 20;
-/** The largest request body read (the claim form's JSON). */
-const MAX_BODY = 4096;
 
 /** The accounts' answer to `request`, or null when its path is not theirs. `env` is the Worker's
  *  whole environment: the accounts read their own bindings from it (AccountEnv). */
@@ -71,28 +68,13 @@ export async function handleAccount(request: Request, env: AccountEnv | object, 
   const url = new URL(request.url);
   const path = url.pathname.length > 1 ? url.pathname.replace(/\/+$/, "") : url.pathname;
   if (!/^\/api\/(auth|account)(\/|$)/.test(path)) return null;
-  const own = env as AccountEnv;
-  const metrics = own.ACCOUNT_DEV_METRICS === "1" && own.COMMUNITY ? counted(own.COMMUNITY) : null;
-  const e: AccountEnv = metrics ? { ...own, COMMUNITY: metrics.db } : own;
-  let res: Response;
-  try {
-    res = await route(request, e, url, path);
-  } catch (err) {
-    res = failure(err, path);
-  }
-  if (metrics) {
-    res.headers.set("X-D1-Queries", String(metrics.totals.queries));
-    res.headers.set("X-D1-Rows-Read", String(metrics.totals.read));
-    res.headers.set("X-D1-Rows-Written", String(metrics.totals.written));
-  }
-  return res;
-}
-
-const now = () => Math.floor(Date.now() / 1000);
-
-/** The accounts work once the community database is bound and the server key is set. */
-function ready(env: AccountEnv): env is AccountEnv & { COMMUNITY: D1Database; SESSION_KEY: string } {
-  return !!env.COMMUNITY && typeof env.SESSION_KEY === "string" && env.SESSION_KEY.length >= 32;
+  return measured(env as AccountEnv, async (e) => {
+    try {
+      return await route(request, e, url, path);
+    } catch (err) {
+      return failure(err, path);
+    }
+  });
 }
 
 async function route(request: Request, env: AccountEnv, url: URL, path: string): Promise<Response> {
@@ -201,7 +183,7 @@ async function callback(request: Request, env: AccountEnv, name: ProviderName, u
   const cookies = [clear];
   if (outcome === "signed_in") {
     // A new session id at every sign-in; the browser's previous session, if any, is deleted.
-    cookies.push(sessionCookie(await openSession(db, user.id, t, agentHint(request.headers.get("User-Agent")), hash)));
+    cookies.push(sessionCookie(await openSession(db, user.id, t, agentHint(request.headers.get("User-Agent")), hash)), hintCookie(true));
   }
   // Author verification, on every sign-in of an account with an ORCID iD.
   if (user.orcid) await syncAuthorRoles(db, user.id, user.orcid, t);
@@ -257,33 +239,6 @@ async function verifyMaintainer(
 // ---------------------------------------------------------------------------------------------
 // The account.
 
-type SignedIn = { db: D1Database; key: string; session: Session; user: User; cookies: string[] };
-
-/** The signed-in account behind a request. A POST must also come from the site's own pages
- *  (Origin, and Sec-Fetch-Site when the browser sends it) and carry the session's CSRF token. */
-async function signedIn(request: Request, env: AccountEnv, t: number, a: { post: boolean; touch: boolean }): Promise<SignedIn | Response> {
-  if (!ready(env)) return problem(503, "not_configured", "Accounts are not set up yet.");
-  if (a.post) {
-    const site = request.headers.get("Sec-Fetch-Site");
-    if (request.headers.get("Origin") !== new URL(request.url).origin || (site !== null && site !== "same-origin")) {
-      return problem(403, "bad_origin", "This request did not come from the registry's own pages.");
-    }
-  }
-  const db = env.COMMUNITY;
-  const value = sessionValue(request);
-  const session = value ? await loadSession(db, await sessionHash(value), t) : null;
-  const user = session ? await userById(db, session.userId) : null;
-  if (!value || !session || !user) {
-    const stale = readCookie(request, SESSION_COOKIE) !== null ? [clearCookie(SESSION_COOKIE)] : [];
-    return problem(401, "signed_out", "You are not signed in.", stale);
-  }
-  if (a.post && !(await csrfValid(env.SESSION_KEY, session.idHash, request.headers.get("X-CSRF-Token") ?? ""))) {
-    return problem(403, "bad_csrf", "This page is out of date: reload it, then try again.");
-  }
-  const slid = a.touch ? await touchSession(db, session, value, t) : null;
-  return { db, key: env.SESSION_KEY, session, user, cookies: slid ? [slid] : [] };
-}
-
 const iso = (t: number | null) => (t ? new Date(t * 1000).toISOString() : null);
 
 /** The page of a paper: the slug the Mac pushed, else the same rule as catalog.slug. */
@@ -314,8 +269,7 @@ async function me(request: Request, env: AccountEnv, t: number): Promise<Respons
   const s = await signedIn(request, env, t, { post: false, touch: true });
   if (s instanceof Response) {
     if (s.status !== 401) return s;
-    const stale = readCookie(request, SESSION_COOKIE) !== null ? [clearCookie(SESSION_COOKIE)] : [];
-    return json({ signed_in: false, available: true, providers: providerList(env, new Set()) }, 200, stale);
+    return json({ signed_in: false, available: true, providers: providerList(env, new Set()) }, 200, staleCookies(request));
   }
   const { db, user } = s;
   const [ids, roles, papers, claims] = await db.batch([
@@ -353,7 +307,18 @@ async function me(request: Request, env: AccountEnv, t: number): Promise<Respons
         } catch {
           // an evidence that is not JSON cannot be stored (CHECK json_valid)
         }
-        return { id: c.id, kind: c.kind, paper_id: c.paper_id, repo: c.repo, status: c.status, via, created_at: iso(c.created_at), decided_at: iso(c.decided_at) };
+        return {
+          id: c.id,
+          kind: c.kind,
+          paper_id: c.paper_id,
+          repo: c.repo,
+          url: c.paper_id ? `/paper/${paperSlug(c.paper_id)}/` : repoUrl(c.repo),
+          status: c.status,
+          via,
+          message: c.message ?? "",
+          created_at: iso(c.created_at),
+          decided_at: iso(c.decided_at),
+        };
       }),
       csrf: await csrfToken(s.key, s.session.idHash),
     },
@@ -366,7 +331,7 @@ async function signout(request: Request, env: AccountEnv, t: number): Promise<Re
   const s = await signedIn(request, env, t, { post: true, touch: false });
   if (s instanceof Response) return s;
   await closeSession(s.db, s.session.idHash);
-  return json({ signed_in: false }, 200, [clearCookie(SESSION_COOKIE)]);
+  return json({ signed_in: false }, 200, [clearCookie(SESSION_COOKIE), hintCookie(false)]);
 }
 
 async function authorship(request: Request, env: AccountEnv, t: number): Promise<Response> {
@@ -380,25 +345,11 @@ async function authorship(request: Request, env: AccountEnv, t: number): Promise
   return json({ granted, revoked, papers: papers.map(paperJson) }, 200, s.cookies);
 }
 
-async function readJson(request: Request): Promise<Record<string, unknown> | null> {
-  if (!(request.headers.get("Content-Type") ?? "").toLowerCase().startsWith("application/json")) return null;
-  // A body larger than a claim is not read at all.
-  if (Number(request.headers.get("Content-Length") ?? 0) > MAX_BODY) return null;
-  const text = await request.text();
-  if (text.length > MAX_BODY) return null;
-  try {
-    const value = JSON.parse(text) as unknown;
-    return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : null;
-  } catch {
-    return null;
-  }
-}
-
 async function maintainer(request: Request, env: AccountEnv, url: URL, t: number): Promise<Response> {
   const s = await signedIn(request, env, t, { post: true, touch: true });
   if (s instanceof Response) return s;
   const { db, user } = s;
-  const body = await readJson(request);
+  const body = await readJson(request, MAX_BODY);
   const repo = repoKey(typeof body?.repo === "string" ? body.repo : "");
   if (!repo) {
     return problem(400, "bad_repo", "Give the address of the repository, such as https://github.com/owner/name.", s.cookies);

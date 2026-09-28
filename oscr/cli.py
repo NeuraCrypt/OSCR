@@ -17,7 +17,9 @@
     oscr enrich [--all] [--epmc]         Phase 1: the enriched records of the papers already read
     oscr labels data/annotation/sample.csv   the owner's category labels (they win over the rules)
     oscr d1 build|push|status --local    Phase 3: the search's D1 databases, as deltas (docs/SEARCH.md)
-    oscr community build|push --local    the sign-in's facts (ORCID iDs, repository owners) for the local D1
+    oscr community build|push --local    the sign-in's facts (ORCID iDs, repository owners) for D1 (--remote too)
+    oscr jobs poll --local|--remote      Phase 6: the site's requests (submissions, corrections, validations…)
+    oscr claims|reports|submissions list|accept|refuse   the owner's decisions (docs/CONTRIBUTIONS.md)
 """
 from __future__ import annotations
 
@@ -82,6 +84,43 @@ def _article_id(con, doi: str) -> str:
     if row is None:
         raise SystemExit(f"{doi} is not in the database: run `oscr doi {doi}` first")
     return row["id"]
+
+
+def _jobs(con, a: argparse.Namespace, cfg: dict[str, str], client: Client, opts: harvest.Options) -> str:
+    """Phase 6: the site's requests, read from D1 community and answered (oscr/jobs.py)."""
+    from . import community, jobs
+    state = jobs.open_state(Path(a.folder) / "state.db")
+    try:
+        if a.command == "jobs" and a.action == "status":
+            return jobs.status(state)
+        target = "remote" if a.remote else "local" if a.local else ""
+        kinds = {"claims": ("claim",), "reports": ("report",), "submissions": ("publish",)}.get(a.command, ())
+        if a.command != "jobs" and a.action == "list":
+            return jobs.describe_waiting(jobs.waiting(state, target or "remote", kinds) if target else
+                                         jobs.waiting(state, "local", kinds) + jobs.waiting(state, "remote", kinds))
+        if not target:
+            raise SystemExit(f"{a.command} {a.action}: add --local (the local D1 of `wrangler dev`) or --remote "
+                             f"(the Cloudflare database)")
+        d1 = community.open_d1(target, settings=cfg, persist_to=Path(a.persist_to) if a.persist_to else None)
+        runner = jobs.Runner(con, d1, state, jobs.MacHarvester(client, opts), instance=a.instance,
+                             zenodo_community=cfg.get("OSCR_ZENODO_COMMUNITY", "oscr"),
+                             platform=cfg.get("OSCR_PLATFORM_NAME", "Open Scientific Code Registry (OSCR)"),
+                             budget=a.budget, report=lambda m: print(m, flush=True))
+        try:
+            if a.command == "jobs":
+                return jobs.poll(runner).describe(target)
+            if a.id is None:
+                raise SystemExit(f"{a.command} {a.action}: which one? (its number, from `oscr {a.command} list`)")
+            accept = a.action == "accept"
+            if a.command == "claims":
+                return jobs.decide_claim(runner, a.id, accept, a.message)
+            if a.command == "reports":
+                return jobs.decide_report(runner, a.id, accept, a.message)
+            return jobs.decide_submission(runner, a.id, accept, a.message)
+        except community.D1Error as e:
+            raise SystemExit(f"D1 ({target}): {e}") from None
+    finally:
+        state.close()
 
 
 def _zenodo(con, a: argparse.Namespace) -> None:
@@ -248,11 +287,42 @@ def main(argv: list[str] | None = None) -> int:
     dd.add_argument("--reset", action="store_true",
                     help="the target's databases were recreated empty: forget what they held, send everything")
     cm = sp.add_parser("community", help="the facts the sign-in verifies (ORCID iDs of papers with a page, owners of "
-                                         "their repositories), as deltas for the D1 community database")
+                                         "their repositories, which paper each is the code of), as deltas for the D1 "
+                                         "community database")
     cm.add_argument("action", choices=["build", "push", "status"])
-    cm.add_argument("--local", action="store_true", help="the local D1 of `wrangler dev`: the only target for now")
+    where = cm.add_mutually_exclusive_group()
+    where.add_argument("--local", action="store_true", help="the local D1 of `wrangler dev`")
+    where.add_argument("--remote", action="store_true",
+                       help="the Cloudflare database: the REST API with OSCR_D1_ACCOUNT_ID, OSCR_D1_COMMUNITY_ID and the "
+                            "keychain's token, else wrangler's own login")
     cm.add_argument("--folder", default="data/community", help="the SQL files and the push's state")
     cm.add_argument("--budget", type=int, default=None, help="rows written a day (default 10,000)")
+
+    # Phase 6: the site's requests, and the owner's decisions (docs/CONTRIBUTIONS.md).
+    def community_target(parser: argparse.ArgumentParser) -> None:
+        group = parser.add_mutually_exclusive_group()
+        group.add_argument("--local", action="store_true", help="the local D1 of `wrangler dev --env local`")
+        group.add_argument("--remote", action="store_true", help="the Cloudflare database (as `community push --remote`)")
+        parser.add_argument("--folder", default="data/community", help="the state (shared with `oscr community`)")
+        parser.add_argument("--persist-to", default="", help="the local D1's state folder, when not website/.wrangler/state")
+        parser.add_argument("--budget", type=int, default=int(cfg.get("OSCR_COMMUNITY_BUDGET", "10000")),
+                            help="rows written a day, the facts push's included (default 10,000)")
+        parser.add_argument("--instance", choices=["sandbox", "zenodo"], default=cfg.get("OSCR_ZENODO_INSTANCE", "sandbox"),
+                            help="the Zenodo of the maps' deposits (the sandbox while the platform is built)")
+
+    jb = sp.add_parser("jobs", help="Phase 6: read the site's requests from D1 (submissions, corrections, validations, "
+                                    "claims, removal requests) and answer them")
+    jb.add_argument("action", choices=["poll", "status"])
+    community_target(jb)
+    for name, verbs, what in (("claims", ["list", "accept", "refuse"], "the claims that wait for the owner"),
+                              ("reports", ["list", "accept", "reject"], "the requests to remove a record"),
+                              ("submissions", ["list", "accept", "refuse"],
+                               "the submissions published by someone who is not among the paper's authors")):
+        dp = sp.add_parser(name, help=f"Phase 6: {what}")
+        dp.add_argument("action", choices=verbs)
+        dp.add_argument("id", type=int, nargs="?", help="its number, from the list")
+        dp.add_argument("--message", default="", help="your words for the person who asked (shown on their account page)")
+        community_target(dp)
 
     n = sp.add_parser("nightly", help="the publication: public catalogue, then Hugging Face and the website")
     n.add_argument("--out", default="data/public", help="a separate folder, only ever generated in public mode")
@@ -348,6 +418,15 @@ def main(argv: list[str] | None = None) -> int:
                         state_path=Path("data/d1/state.db"), folder=Path("data/d1/sql"), settings=cfg), flush=True)
                 except (Exception, SystemExit) as e:
                     errors.append(f"Search (D1): {e}")
+            if cfg.get("OSCR_COMMUNITY_PUSH") == "remote":
+                # The sign-in's facts (docs/ACCOUNTS.md, docs/CONTRIBUTIONS.md): the day's changes.
+                from . import community
+                try:
+                    print(f"{now()} community (D1): " + community.command(
+                        con, "push", target="remote", folder=Path("data/community"),
+                        budget=int(cfg.get("OSCR_COMMUNITY_BUDGET", "10000")), settings=cfg), flush=True)
+                except (Exception, SystemExit) as e:
+                    errors.append(f"Community (D1): {e}")
             if cfg.get("OSCR_SCRIPTS_DATASET"):
                 try:
                     print(f"{now()} " + _scripts(con, "publish", Path("data/scripts"), cfg["OSCR_SCRIPTS_DATASET"],
@@ -384,7 +463,10 @@ def main(argv: list[str] | None = None) -> int:
                 print(contacts.publish(con, Path(a.folder), a.dataset, platform=platform, dry_run=a.dry_run))
         elif a.command == "community":
             from . import community
-            print(community.command(con, a.action, local=a.local, folder=Path(a.folder), budget=a.budget))
+            print(community.command(con, a.action, target="remote" if a.remote else "local" if a.local else None,
+                                    folder=Path(a.folder), budget=a.budget, settings=cfg))
+        elif a.command in ("jobs", "claims", "reports", "submissions"):
+            print(_jobs(con, a, cfg, client, opts))
         elif a.command == "zenodo":
             _zenodo(con, a)
         elif a.command == "d1":

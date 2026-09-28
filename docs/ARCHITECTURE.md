@@ -17,7 +17,9 @@ The rules that govern everything below are in [CLAUDE.md](../CLAUDE.md):
 | **The Worker's code** (`website/worker/`, Phase 3) | Cloudflare Workers, `/api/*` only | `/api/search`: FTS5 in D1, facets, sorts, CSV and JSON exports | $0 (100,000 requests a day) |
 | **The map DOIs** (`oscr zenodo`) | Zenodo (CERN) | a map validated by an author receives a DOI in the community | $0 |
 | **The accounts** (`website/worker/account/`, Phase 5) | the Worker's code, `/api/auth/*` and `/api/account/*`, with the D1 database `oscr_community` | sign-in with ORCID, GitHub or Google; sessions; the verified authors and maintainers ([ACCOUNTS.md](ACCOUNTS.md)) | $0 |
-| **The accounts' facts** (`oscr community`) | the Mac | the ORCID iDs of the papers with a page and the owners of their repositories, pushed to `oscr_community` as deltas | $0 |
+| **The accounts' facts** (`oscr community`) | the Mac | the ORCID iDs of the papers with a page, the owners of their repositories and which paper each is the code of, pushed to `oscr_community` as deltas (locally, or to Cloudflare: nightly with `OSCR_COMMUNITY_PUSH=remote`) | $0 |
+| **The contributions** (`website/worker/contributions/`, Phase 6) | the Worker's code, `/api/contributions`, `/api/submissions`, `/api/claims`, `/api/edits`, `/api/validations`, `/api/reports`, with `oscr_community` | submit a paper and its code, claim a paper, correct a record, validate a map, request a removal: checked at once, recorded with a job for the Mac ([CONTRIBUTIONS.md](CONTRIBUTIONS.md)) | $0 |
+| **The job runner** (`oscr jobs poll`, Phase 6) | the Mac, every ten minutes (proposed: `tools/org.oscr.jobs.plist`, not installed) | reads the new jobs in `oscr_community`, harvests a submitted paper into a draft, applies corrections as new versions, deposits validated maps on the Zenodo sandbox, lists claims and removal requests for the owner (`oscr claims`, `oscr reports`, `oscr submissions`) | $0 |
 
 ```mermaid
 flowchart LR
@@ -29,9 +31,11 @@ flowchart LR
   N --> HF["Hugging Face, private dataset"]
   N --> P["website: Astro on Cloudflare Workers"]
   P -- "sign-in: /api/auth, /api/account" --> U[("D1 oscr_community")]
-  B -- "oscr community: ORCID iDs, repository owners" --> U
-  U -. "planned: the author's validation of a map (Phase 6)" .-> B
-  B --> Z["Zenodo: DOI of the validated map"]
+  P -- "requests: /api/submissions, /api/edits, /api/validations, …" --> U
+  B -- "oscr community: ORCID iDs, repository owners, paper ↔ code" --> U
+  U -- "oscr jobs poll: submissions, corrections, validations, claims, removals" --> B
+  B -- "answers: drafts, versions, DOIs, decisions" --> U
+  B --> Z["Zenodo (sandbox while building): DOI of the validated map"]
   Z --> P
 ```
 
@@ -149,9 +153,10 @@ id, like `alignments/`), for the papers with a page only; the site reads them wh
 | Code | each repository: state, license, commit and its date, languages, size, Software Heritage, where it was found, what it holds (README, license file, CITATION.cff, environment files, tests, CI, notebooks), the tools found in it, the history of its availability checks (the last 20: date, state, HTTP status; a check's error text stays on the Mac); the way into the reader; the code statement | `repository`, `repo_feature`, `repo_tool`, `alive_check`, `statement` |
 | Map | proposed or validated (ORCID only), what the map holds, its DOI and its JSON on Zenodo once deposited (never the sandbox) | `validation`, `card_doi`, `file`, `alignment` |
 | Data | the datasets cited (their pages), the other data links and where each was found, the data statement | `link`, `paper_dataset`, `dataset`, `statement` |
-| Versions | the record's history, newest first: date, and what changed in its public facts | `version` |
+| Versions | the record's history, newest first: date, and what changed in its public facts, its code and data links included (Phase 6); a correction says by whom by role only ("a verified author") | `version` |
 | Cite | the paper in an APA-like text, BibTeX, RIS and CSL-JSON, built at export; the map's too once it has a DOI; a copy button (`src/scripts/cite.ts`) | `article`, `journal`, `paper_author` |
 | Similar | up to 10 papers with a page, ranked by the tools, categories, datasets, cited references (`paper_reference` DOIs) and authors (ORCID iD) they share, each weighed by its rarity, with the reasons in words ("shares FieldTrip, EEG, 3 references") | computed at export |
+| Contribute (Phase 6) | how to sign in; for a signed-in reader, by their roles: claim the paper, correct its links, validate its map (with its digest), the badge's snippets; a removal request for anyone signed in (the sidebar links to it). Its script asks the Worker once, only when the browser holds a session | `map.digest`, the code's README (`repository.files`); the Worker's `/api/contributions/paper` |
 
 **What never leaves**, tested on synthetic databases (`tests/test_paperpage.py`) and checked
 again by `website/scripts/data.mjs`:
@@ -181,22 +186,52 @@ It contains neither the text of the paper nor the code.
 
 Its life:
 1. **Proposed** by the harvester. It is visible on the website, without a DOI.
-2. **Validated** by an author, signed in with their ORCID. The map kept is the one the
-   author saw, or corrected.
-3. **Deposited** on Zenodo, in the community (`oscr zenodo deposit`). It receives a DOI.
+2. **Validated** by an author, signed in with their ORCID (Phase 6: the paper's Contribute
+   section). The page carries the map's digest (`zenodo.map_digest`) and the validation brings it
+   back: the map kept is the one the author saw — if it changed since, the Mac asks the author to
+   look again. While the site signs in with ORCID's sandbox, a validation is a test (`proof =
+   'test'`), which only Zenodo's sandbox takes.
+3. **Deposited** on Zenodo, in the community, by the Mac's job runner (`oscr jobs poll`; by hand:
+   `oscr zenodo deposit`), on the sandbox while the platform is built. It receives a DOI, which
+   goes back to the author's account page.
    - Relations: `IsSupplementTo` the paper, `References` the code repository, at the
      validated commit.
    - Creators: the author (ORCID) and the platform.
 4. **Corrected** later: a new version, under the same concept DOI.
 
+## Contributions (Phase 6)
+
+What signed-in readers ask of the registry, and the Mac's answers ([CONTRIBUTIONS.md](CONTRIBUTIONS.md)):
+
+- **The Worker checks and records; the Mac does the work.** A request is checked at once in the
+  Worker (the session, its CSRF token and the site's Origin; the reader's role; for a link, that
+  it points to a place the registry knows and answers; for a DOI, that it is registered), then
+  written to `oscr_community` with a row in `jobs`. The Mac polls `jobs` and writes each outcome
+  into the request's row: the Worker never harvests, verifies a license or talks to Zenodo, and
+  the Mac never listens on the network.
+- **A correction is a version.** Corrections of a record's links (by a verified author of the
+  paper, or a maintainer of its code for their own repository) are kept on the Mac
+  (`link_edit`), applied after every later scan, and each makes a new `version` with its
+  provenance (the person's ORCID iD or GitHub login, on the Mac only). The Versions section says
+  "a correction by a verified author".
+- **The owner decides what the machine cannot**: manual author claims, claims GitHub cannot
+  settle, removal requests, and submissions published by someone who is not among the paper's
+  authors (`oscr claims`, `oscr reports`, `oscr submissions`; moderation in the site is Phase 7).
+  An accepted removal takes the record out of every public output (`article.withdrawn`, like an
+  off-topic paper).
+- **Cheap by construction.** A request writes 3 rows (its row, its index entry, the job), an
+  answer 1; per-account daily limits are counted from the rows; a signed-out reader's page view
+  costs no Worker request (the pages ask only when the `__Host-oscr_signed_in` hint cookie is
+  there).
+
 ## What remains to build, in order
 
 1. ~~Deploy the website~~: done on 2026-09-26, https://oscr.yannbellec-b.workers.dev, rebuilt every night.
-2. **Author validation.** Sign-in is built (Phase 5, [ACCOUNTS.md](ACCOUNTS.md)): ORCID
+2. ~~Author validation~~: built. Sign-in (Phase 5, [ACCOUNTS.md](ACCOUNTS.md)): ORCID
    (`openid` scope, free for non-commercial use), GitHub and Google, and an ORCID iD found
-   among a paper's authors makes a verified author of it. Next (Phase 6): the verified author
-   validates the map in the site's Worker, which writes it to D1; the Mac picks it up, then
-   deposits the map on Zenodo.
+   among a paper's authors makes a verified author of it. Phase 6 ([CONTRIBUTIONS.md](CONTRIBUTIONS.md)):
+   the verified author validates the map in the site's Worker, which writes it to D1; the Mac
+   picks it up and deposits the map on Zenodo (the sandbox while the platform is built).
 3. ~~Search~~: built in Phase 3 (below, and [SEARCH.md](SEARCH.md)); the remote databases await the owner's approval.
 4. ~~A first paper ↔ code alignment~~: `lexical-v1`, computed on the Mac. Next: GROBID for
    the text, tree-sitter for the code, a local model on the Mac.
@@ -209,7 +244,7 @@ Checked on 2026-09-26 in Cloudflare's documentation; the full table, with source
 | Service | Limit | Consequence |
 |---|---|---|
 | Workers static assets | 20,000 files per version; 25 MiB per file; asset requests free and unlimited | one static page per paper holds up to ~15,000 papers with code. Beyond that: pages grouped, or rendered on demand |
-| Workers | 100,000 requests per day for all dynamic routes, cached or not; 10 ms of CPU per request; 64 MiB per Worker | kept for actions: sign-in, validation, search, API |
+| Workers | 100,000 requests per day for all dynamic routes, cached or not; 10 ms of CPU per request; 64 MiB per Worker | kept for actions: sign-in, contributions, search, API; a signed-out reader's page asks nothing |
 | D1 | 500 MB per database, 10 databases; 5 M rows read and 100,000 written per day | the catalogue projection, the script index and the community, pushed as deltas |
 | Hugging Face | public datasets free ("best-effort"); byte ranges with CORS | the open data, and the script blocks |
 | Zenodo | 50 GB per record; 60 requests per minute without a token | a map weighs a few KB |

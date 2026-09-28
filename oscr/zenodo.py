@@ -28,6 +28,7 @@ file of the repository nor from the settings.
 """
 from __future__ import annotations
 
+import hashlib
 import html
 import json
 import os
@@ -64,6 +65,14 @@ TOKEN_HELP = ("No token for {instance}. Create one at {base}/account/settings/ap
 
 class InvenioError(RuntimeError):
     pass
+
+
+def sandbox_mock() -> str:
+    """Development only: `OSCR_ZENODO_SANDBOX_URL`, a mock of the sandbox on this machine (the local
+    end-to-end run of website/tests/account/e2e.sh), http://127.0.0.1 or localhost only; "" otherwise.
+    It never replaces the real Zenodo."""
+    url = os.environ.get("OSCR_ZENODO_SANDBOX_URL", "").strip().rstrip("/")
+    return url if re.match(r"http://(127\.0\.0\.1|localhost)(:\d+)?(/|$)", url) else ""
 
 
 def keychain_service(instance: str) -> str:
@@ -104,7 +113,7 @@ class Invenio:
         if instance not in INSTANCES:
             raise InvenioError(f"unknown instance: {instance} ({', '.join(INSTANCES)})")
         self.instance = instance
-        self.base = INSTANCES[instance]
+        self.base = sandbox_mock() if instance == "sandbox" and sandbox_mock() else INSTANCES[instance]
         headers = {"User-Agent": USER_AGENT, **NATIVE}
         if api_token:
             headers["Authorization"] = f"Bearer {api_token}"
@@ -252,6 +261,15 @@ def map_of(con: sqlite3.Connection, article_id: str) -> dict[str, Any]:
         "alignments": alignments,
         "proposed": {"by": "oscr", "on": time.strftime("%Y-%m-%d")},
     }
+
+
+def map_digest(card: dict[str, Any]) -> str:
+    """The SHA-256 of a map's content, as the paper's page shows it: without the day it was
+    proposed nor who validated it. The page carries it; a validation from the site brings it
+    back (Phase 6, oscr/jobs.py), and the Mac deposits the map only if it is still that one."""
+    content = {k: v for k, v in card.items() if k not in ("proposed", "validated")}
+    text = json.dumps(content, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
 def validate(con: sqlite3.Connection, article_id: str, *, orcid: str, name: str, proof: str,

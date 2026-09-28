@@ -36,7 +36,7 @@ const exists = (route) =>
 
 // 1. The fixed pages.
 const FIXED = ["/", "/about/", "/browse/", "/authors/", "/journals/", "/institutions/", "/tools/", "/datasets/",
-  "/lookup/", "/search/", "/404.html"];
+  "/lookup/", "/search/", "/404.html", "/account/", "/submit/", "/badge.svg"];
 for (const route of FIXED) if (!exists(route)) problems.push(`missing page ${route}`);
 
 // 2. A page for each paper of decision D2, none for the others; a reader for each paper
@@ -51,10 +51,12 @@ const shards = existsSync("public/lookup") ? readdirSync("public/lookup").filter
 for (const name of shards) if (!exists(`/lookup/${name}`)) problems.push(`missing lookup shard ${name}`);
 
 // 3. Every internal link and resource of every page leads to a file, and every link within
-// a page ("#code") to an element of that page. A paper's page has its ten sections.
+// a page ("#code") to an element of that page. A paper's page has its sections, the Contribute
+// section and its removal request included (Phase 6), and no inline script: its
+// Content-Security-Policy (public/_headers) allows this site's files only.
 const pages = files.filter((f) => f.endsWith(".html"));
-const SECTIONS = ["overview", "code", "map", "data", "versions", "cite", "similar", "discussion", "reproductions",
-  "activity"];
+const SECTIONS = ["overview", "code", "map", "data", "versions", "cite", "similar", "contribute", "removal", "discussion",
+  "reproductions", "activity"];
 let links = 0;
 for (const page of pages) {
   const html = readFileSync(join(DIST, page), "utf8");
@@ -76,6 +78,9 @@ for (const page of pages) {
   if (/^\/paper\/[^/]+\/index\.html$/.test(page)) {
     const missing = SECTIONS.filter((id) => !ids.has(id));
     if (missing.length) problems.push(`${page}: no section ${missing.map((id) => `#${id}`).join(", ")}`);
+  }
+  if (/^\/(paper\/[^/]+|account|submit)\/index\.html$/.test(page) && /<script(?![^>]*\ssrc=)[^>]*>/.test(html)) {
+    problems.push(`${page}: an inline script, which its Content-Security-Policy forbids`);
   }
 }
 
