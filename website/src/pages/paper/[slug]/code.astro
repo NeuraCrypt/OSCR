@@ -6,13 +6,15 @@
 import Base from "../../../layouts/Base.astro";
 import { SITE_NAME } from "../../../config";
 import {
-  alignmentOf, europePmcUrl, lot2, lotEntry, plural, recordUrl, shortName, STATES, withCode,
+  alignmentOf, europePmcUrl, lot2, lotEntry, plural, recordUrl, shortName, STATES, withReader,
   type Article, type LotFile,
 } from "../../../lib/catalog";
 import { decorate, fileInfo, pairClass, sourceLines, splitLines } from "../../../lib/lines";
 
+// The papers with code among the STATIC_PAPERS most recent (lib/shards.ts): past them, the Worker
+// sends /paper/<slug>/code/ to the paper's page (worker/pages.ts).
 export function getStaticPaths() {
-  return withCode.map((a) => ({ params: { slug: a.slug }, props: { a } }));
+  return withReader.map((a) => ({ params: { slug: a.slug }, props: { a } }));
 }
 
 const { a } = Astro.props as { a: Article };

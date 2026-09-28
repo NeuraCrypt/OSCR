@@ -4,9 +4,9 @@
 import Base from "../../layouts/Base.astro";
 import { number, plural } from "../../lib/catalog";
 import { countryName } from "../../lib/format";
-import { institutionPages, institutions, institutionUrl, STATIC_MAX } from "../../lib/entities";
+import { institutions, institutionUrl } from "../../lib/entities";
 
-const sorted = [...institutionPages].sort((x, y) => x.name.localeCompare(y.name));
+const sorted = [...institutions].sort((x, y) => x.name.localeCompare(y.name));
 ---
 <Base
   title="Institutions"
@@ -32,11 +32,5 @@ const sorted = [...institutionPages].sort((x, y) => x.name.localeCompare(y.name)
         </li>
       ))}
     </ul>
-  )}
-  {institutions.length > institutionPages.length && (
-    <p class="line">
-      {plural(institutions.length - institutionPages.length, "other institution")} will have their page when pages are
-      rendered on demand (beyond the first {number(STATIC_MAX.institution)}).
-    </p>
   )}
 </Base>

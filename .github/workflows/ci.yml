@@ -91,8 +91,16 @@ jobs:
         run: npm run build
 
       # Every kind of page exists (the fixture exercises them all), every internal link
-      # leads to a file, no page shows an email address; prints the number of files.
+      # leads to a file or a record, no page shows an email address; prints the number of
+      # files folder by folder and holds the build to its file budget (src/lib/shards.ts).
       - name: Check the routes and the links
         if: steps.fixture.outputs.ready == 'true'
         working-directory: website
         run: npm run check -- --every-route
+
+      # The same fixture with only its 2 most recent papers static: the 2 others are rendered
+      # on demand from their records (worker/pages.ts), and the check follows every link to them.
+      - name: Check the papers rendered on demand
+        if: steps.fixture.outputs.ready == 'true'
+        working-directory: website
+        run: OSCR_STATIC_PAPERS=2 npm run build && npm run check

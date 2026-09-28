@@ -1,0 +1,29 @@
+---
+// The authors with an ORCID iD whose family name starts with one letter (A to Z, or "Other").
+import Base from "../../layouts/Base.astro";
+import { number, plural } from "../../lib/catalog";
+import { authorLetters, authorUrl, inIndex, type Author } from "../../lib/entities";
+
+export function getStaticPaths() {
+  return authorLetters.map((g) => ({ params: { letter: g.slug }, props: { g } }));
+}
+
+const { g } = Astro.props as { g: (typeof authorLetters)[number] };
+const counted = (a: Author) =>
+  `${plural(a.counts.papers, "paper")}${a.counts.with_code > 0 ? `, ${number(a.counts.with_code)} with code` : ""}`;
+const title = g.letter === "Other" ? "Authors: other names" : `Authors: ${g.letter}`;
+---
+<Base
+  title={title}
+  description={`The authors, with an ORCID iD, whose family name starts with ${g.letter === "Other" ? "another character" : g.letter}.`}
+  breadcrumb={[{ text: "Browse", href: "/browse/" }, { text: "Authors", href: "/authors/" }, { text: g.letter }]}
+>
+  <h1>{title}</h1>
+  <p class="summary">{plural(g.authors.length, "author")} with an ORCID iD.</p>
+  <p class="line">
+    {authorLetters.map((x, i) => <>{i > 0 && " "}{x.slug === g.slug ? <strong>{x.letter}</strong> : <a href={`/authors/${x.slug}/`}>{x.letter}</a>}</>)}
+  </p>
+  <ul>
+    {g.authors.map((a) => <li><a href={authorUrl(a.orcid)}>{inIndex(a)}</a> — {counted(a)}</li>)}
+  </ul>
+</Base>

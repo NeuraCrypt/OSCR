@@ -3,7 +3,7 @@
 // request, or which shares its data only. Its sections are those of one page, reached
 // through a bar of in-page links (#overview, #code, …): no JavaScript and no route of their
 // own. What they show beyond catalog.json comes from src/data/papers/ (oscr/paperpage.py);
-// the Code ↔ Paper reader stays at /paper/<slug>/code/.
+// the Code ↔ Paper reader stays at /paper/<slug>/code/. Built for the most recent papers only.
 import Base from "../../../layouts/Base.astro";
 import Code from "../../../components/paper/Code.astro";
 import Cite from "../../../components/paper/Cite.astro";
@@ -16,13 +16,15 @@ import TracingMap from "../../../components/paper/TracingMap.astro";
 import Versions from "../../../components/paper/Versions.astro";
 import Wrap from "../../../components/paper/Wrap.astro";
 import {
-  alignmentOf, dateInWords, europePmcUrl, plural, readerUrl, shortName, status, withPage, type Article,
+  alignmentOf, dateInWords, europePmcUrl, plural, readerUrl, shortName, staticPages, status, type Article,
 } from "../../../lib/catalog";
 import { datasetOf } from "../../../lib/entities";
 import { licenseLabel, NOTICES, pageOf, PROMINENT } from "../../../lib/paper";
 
+// The STATIC_PAPERS most recent papers (lib/shards.ts); the others' pages are rendered on demand
+// by the Worker (worker/pages.ts), from src/pages/records/.
 export function getStaticPaths() {
-  return withPage.map((a) => ({ params: { slug: a.slug }, props: { a } }));
+  return staticPages.map((a) => ({ params: { slug: a.slug }, props: { a } }));
 }
 
 const { a } = Astro.props as { a: Article };

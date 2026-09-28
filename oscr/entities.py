@@ -6,8 +6,13 @@ and categories behind the papers, and the DOI lookup.
 - `entities/authors.json`, `journals.json`, `institutions.json`, `tools.json`,
   `datasets.json`: one entry per entity, the entities with the most papers first;
 - `entities/categories.json`: facet → value → papers;
-- `lookup/NNN.json`: the DOI lookup, one shard per first 3 hex characters of the SHA-1 of
-  the lowercased DOI (4,096 shards at most, only the non-empty ones written).
+- `lookup/NN.json`: the DOI lookup, one shard per first 2 hex characters of the SHA-1 of
+  the lowercased DOI (256 shards at most, only the non-empty ones written). Each entry is
+  `DOI → [status, day read]`, plus the page's name when the paper has one: ~57 bytes an
+  entry, ~61 entries a shard for 15,652 DOIs (2026-09-28), ~2,400 (~135 KB) at the full
+  neuro stock of ~610,000 papers read. The website's file budget, not the lookup's size,
+  set the number: 4,096 shards of 3 hex characters took a quarter of the 20,000 files a
+  Worker may serve (docs/PLATFORM_PLAN.md §6).
 
 It also tells `catalog.json`, for each paper, whether it has a page and, when it has one,
 which authors, journal, tools and datasets its page links to.
@@ -49,8 +54,10 @@ MIN_CONFIDENCE: float = 0.6
 HIDDEN_FACETS: tuple[str, ...] = ("on_topic",)
 #: The facets in the order the site shows them; any other facet comes after, by name.
 FACET_ORDER: tuple[str, ...] = ("modality", "organism", "population", "subfield")
-#: The lookup's shards: the first LOOKUP_HEX hex characters of sha1(DOI), 16**3 = 4,096.
-LOOKUP_HEX: int = 3
+#: The lookup's shards: the first LOOKUP_HEX hex characters of sha1(DOI), 16**2 = 256. The
+#: website's lookup page reads the same number (website/src/lib/shards.ts, LOOKUP_HEX; a test
+#: checks that they agree).
+LOOKUP_HEX: int = 2
 
 ENTITY_FILES: tuple[str, ...] = ("authors", "journals", "institutions", "tools", "datasets", "categories")
 
@@ -501,20 +508,20 @@ def _categories(con: sqlite3.Connection, p: _Papers) -> dict[str, Any]:
     return {"min_confidence": MIN_CONFIDENCE, "facets": facets}
 
 
-def lookup(con: sqlite3.Connection, slugs: dict[str, str]) -> dict[str, dict[str, dict[str, str]]]:
-    """Every in-scope paper read, by DOI, split into shards: DOI → status, the day it was
-    read, and its page when it has one. Off-topic papers are not there (D7)."""
-    shards: dict[str, dict[str, dict[str, str]]] = defaultdict(dict)
+def lookup(con: sqlite3.Connection, slugs: dict[str, str]) -> dict[str, dict[str, list[str]]]:
+    """Every in-scope paper read, by DOI, split into shards: DOI → [status, the day it was
+    read], and its page as a third item when it has one. Off-topic papers are not there (D7)."""
+    shards: dict[str, dict[str, list[str]]] = defaultdict(dict)
     for r in con.execute(f"SELECT id, doi, status, scanned_at FROM article WHERE {catalog.IN_SCOPE} AND doi != '' "
                          f"ORDER BY scanned_at, id"):
         doi = normalize_doi(r["doi"])
         if not doi:
             continue
-        entry = {"status": r["status"], "read_on": _day(r["scanned_at"])}
+        entry = [r["status"], _day(r["scanned_at"])]
         if r["id"] in slugs:
-            entry["slug"] = slugs[r["id"]]
+            entry.append(slugs[r["id"]])
         shard = shards[lookup_shard(doi)]
-        if "slug" in shard.get(doi, {}) and "slug" not in entry:
+        if len(shard.get(doi, [])) > 2 and len(entry) == 2:
             continue    # two records of one DOI: the one with a page answers
         shard[doi] = entry
     return {k: dict(sorted(v.items())) for k, v in sorted(shards.items())}

@@ -3,6 +3,9 @@
 import { existsSync, readFileSync } from "node:fs";
 import raw from "../data/catalog.json";
 import { dayInWords } from "./format";
+import { shortName, webUrl } from "./names";
+import type { Row } from "./render.ts";
+import { STATIC_PAPERS, staticSelection } from "./shards.ts";
 
 /** A repository cited by a paper as its authors' code, and what verification found. */
 export type Repo = {
@@ -99,15 +102,12 @@ type Catalog = {
   articles: Article[];
 };
 
-/** Only web addresses become links: anything else in the data (a `javascript:` URL,
- *  say) is dropped, and the pages fall back to another link or to none. */
-export const webUrl = (u: string | null | undefined) => (u && /^https?:\/\//i.test(u) ? u : "");
+export { shortName, webUrl } from "./names";
 
 export const catalog = raw as unknown as Catalog;
 for (const a of catalog.articles) for (const r of a.code) r.url = webUrl(r.url);
 
-/** The papers whose authors' code was found: the home page lists them, and each has a
- *  Code ↔ Paper reader. */
+/** The papers whose authors' code was found: the home page lists them. */
 export const withCode = catalog.articles.filter((a) => a.code.length > 0);
 
 /** The papers that have a page (the owner's decision D2): the authors' code, code on
@@ -115,8 +115,43 @@ export const withCode = catalog.articles.filter((a) => a.code.length > 0);
  *  does not say: its papers with code keep their page. */
 export const withPage = catalog.articles.filter((a) => a.page === true || a.code.length > 0);
 
+/** The papers whose page is built ahead of time: the STATIC_PAPERS most recent (lib/shards.ts).
+ *  The others' pages are rendered on demand by the Worker (worker/pages.ts), from the records
+ *  of src/pages/records/; they have no Code ↔ Paper reader. */
+const staticSlugs = staticSelection(withPage, staticCap());
+/** STATIC_PAPERS, or a smaller number set in OSCR_STATIC_PAPERS: for the tests and the
+ *  screenshots, which build the fixture with papers rendered on demand. Never a larger one. */
+function staticCap(): number {
+  const asked = Number.parseInt(process.env.OSCR_STATIC_PAPERS ?? "", 10);
+  return Number.isInteger(asked) && asked >= 0 ? Math.min(asked, STATIC_PAPERS) : STATIC_PAPERS;
+}
+export const isStatic = (a: Pick<Article, "slug">) => staticSlugs.has(a.slug);
+export const staticPages = withPage.filter(isStatic);
+export const onDemand = withPage.filter((a) => !isStatic(a));
+/** The papers with a Code ↔ Paper reader: those with code and a static page. */
+export const withReader = withCode.filter(isStatic);
+
 export const recordUrl = (a: Article) => `/paper/${a.slug}/`;
-export const readerUrl = (a: Article) => `/paper/${a.slug}/code/`;
+/** The paper's Code ↔ Paper reader, or "" when it has none (no code, or no static page). */
+export const readerUrl = (a: Article) => (a.code.length > 0 && isStatic(a) ? `/paper/${a.slug}/code/` : "");
+
+/** A paper as the catalogue's listing shows it (lib/render.ts). */
+export function rowOf(a: Article): Row {
+  return {
+    slug: a.slug,
+    doi: a.doi,
+    title: a.title,
+    journal: a.journal,
+    published: a.published,
+    status: a.status,
+    code: a.code.map((r) => ({ repo: r.repo, url: r.url, name: shortName(r), license: r.license })),
+    files: a.code.reduce((n, d) => n + (d.files_read || 0), 0),
+    pairs: a.alignment?.pairs ?? 0,
+    map: a.card?.doi ?? "",
+    data: a.datasets?.length ?? a.data_links,
+    reader: readerUrl(a) !== "",
+  };
+}
 export const lot2 = (n: number) => String(n).padStart(2, "0");
 
 export { STATUSES, status } from "./status";
@@ -136,20 +171,6 @@ export const LEVELS: Record<string, string> = {
   imported: "copy kept",
 };
 
-const FORGE = /^(?:github\.com|gitlab\.com|codeberg\.org|bitbucket\.org)\/(.+)$/;
-
-/** A repository as one reads it at a glance: "owner/repo", "Zenodo 123", "OSF abcde". */
-export function shortName(d: Pick<Repo, "repo" | "url">): string {
-  const m = d.repo.match(FORGE);
-  if (m) {
-    // The normalized name is in lower case; the URL keeps the authors' spelling.
-    const u = d.url.match(/^https?:\/\/(?:www\.)?[^/]+\/([^?#]+?)(?:\.git)?\/?$/);
-    return u && u[1].toLowerCase() === m[1] ? u[1] : m[1];
-  }
-  const z = d.repo.match(/^(zenodo|osf|figshare):(.+)$/);
-  if (z) return `${{ zenodo: "Zenodo", osf: "OSF", figshare: "figshare" }[z[1]]} ${z[2]}`;
-  return d.repo;
-}
 
 export { dateInWords, dayInWords, number, plural } from "./format";
 

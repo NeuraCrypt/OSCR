@@ -4,6 +4,7 @@
 // papers that have a page count (decisions D2 and D7).
 import { existsSync, readFileSync } from "node:fs";
 import { webUrl, withPage, type Article } from "./catalog";
+import { MAX_CATEGORIES } from "./shards.ts";
 
 /** `papers`: the papers with a page; `with_code`: those with their authors' code. */
 export type Counts = { papers: number; with_code: number };
@@ -85,54 +86,46 @@ for (const t of tools) {
 }
 for (const d of datasets) d.url = webUrl(d.url);
 
-/** How many pages of each entity type are built ahead of time: the entities with the most
- *  papers. Beyond it, their pages will be rendered on demand by the Worker from D1 in
- *  Phase 3; until then an entity past the limit is named, without a link. Today's counts
- *  (about 1,000 authors with an ORCID iD, 300 journals, 100 tools, 150 datasets) are far
- *  below it, and so is the 20,000-file limit of a Worker's static assets. */
-export const STATIC_MAX = {
-  author: 2000,
-  journal: 2000,
-  institution: 2000,
-  tool: 2000,
-  dataset: 2000,
-  category: 2000,
-} as const;
-
-/** The `n` entities with the most papers, then by name: those that get a static page. */
-function top<T extends { counts: Counts }>(list: T[], n: number, name: (x: T) => string): T[] {
-  return [...list].sort((x, y) => y.counts.papers - x.counts.papers || name(x).localeCompare(name(y))).slice(0, n);
-}
-
-export const authorPages = top(authors, STATIC_MAX.author, (a) => a.name);
-export const journalPages = top(journals, STATIC_MAX.journal, (j) => j.title);
-export const institutionPages = top(institutions, STATIC_MAX.institution, (i) => i.name);
-export const toolPages = top(tools, STATIC_MAX.tool, (t) => t.name);
-export const datasetPages = top(datasets, STATIC_MAX.dataset, (d) => d.title || d.id);
-
-const authorSet = new Set(authorPages.map((a) => a.orcid));
+/** An entity's page: every entity of the export has one, rendered in the browser from its shard
+ *  (src/pages/records/, src/scripts/entity.ts) behind one shell page per type, which
+ *  public/_redirects serves for /author/<orcid>/ and the like. No file per entity: their number
+ *  does not change the site's file count (lib/shards.ts). */
 const journalMap = new Map(journals.map((j) => [j.id, j]));
-const journalSet = new Set(journalPages.map((j) => j.id));
 const institutionMap = new Map(institutions.map((i) => [i.id, i]));
-const institutionSet = new Set(institutionPages.map((i) => i.id));
 const toolMap = new Map(tools.map((t) => [t.id, t]));
-const toolSet = new Set(toolPages.map((t) => t.id));
 const datasetMap = new Map(datasets.map((d) => [d.id, d]));
-const datasetSet = new Set(datasetPages.map((d) => d.id));
+const authorMap = new Map(authors.map((a) => [a.orcid, a]));
 
-/** An entity's page, or "" when it has none (not in the export, or past STATIC_MAX). */
-export const authorUrl = (orcid: string) => (orcid && authorSet.has(orcid) ? `/author/${orcid}/` : "");
-export const journalUrl = (id?: string) => (id && journalSet.has(id) ? `/journal/${journalMap.get(id)!.slug}/` : "");
-export const institutionUrl = (id: string) => (institutionSet.has(id) ? `/institution/${id}/` : "");
-export const toolUrl = (id: string) => (toolSet.has(id) ? `/tool/${toolMap.get(id)!.slug}/` : "");
-export const datasetUrl = (id: string) => (datasetSet.has(id) ? `/dataset/${datasetMap.get(id)!.slug}/` : "");
+/** An entity's page, or "" when the export does not know it. */
+export const authorUrl = (orcid: string) => (orcid && authorMap.has(orcid) ? `/author/${orcid}/` : "");
+export const journalUrl = (id?: string) => (id && journalMap.has(id) ? `/journal/${journalMap.get(id)!.slug}/` : "");
+export const institutionUrl = (id: string) => (institutionMap.has(id) ? `/institution/${id}/` : "");
+export const toolUrl = (id: string) => (toolMap.has(id) ? `/tool/${toolMap.get(id)!.slug}/` : "");
+export const datasetUrl = (id: string) => (datasetMap.has(id) ? `/dataset/${datasetMap.get(id)!.slug}/` : "");
 
 export const journalOf = (id?: string) => (id ? journalMap.get(id) : undefined);
 export const institutionOf = (id: string) => institutionMap.get(id);
 export const toolOf = (id: string) => toolMap.get(id);
 export const datasetOf = (id: string) => datasetMap.get(id);
-const authorMap = new Map(authors.map((a) => [a.orcid, a]));
 export const authorOf = (orcid: string) => authorMap.get(orcid);
+
+/** The authors by the first letter of their family name, A to Z then "Other": one page of the
+ *  list each (/authors/a/ …), so that no page of the list grows past a letter's share. */
+const familyOf = (a: Author) => a.family || a.name.split(" ").pop() || a.name;
+export const inIndex = (a: Author) => (a.family && a.given ? `${a.family}, ${a.given}` : a.name);
+export const authorLetters: { letter: string; slug: string; authors: Author[] }[] = (() => {
+  const sorted = [...authors].sort((x, y) => familyOf(x).localeCompare(familyOf(y)) || x.name.localeCompare(y.name));
+  const groups = new Map<string, Author[]>();
+  for (const a of sorted) {
+    const first = familyOf(a).normalize("NFD").charAt(0).toUpperCase();
+    const letter = /[A-Z]/.test(first) ? first : "Other";
+    if (!groups.has(letter)) groups.set(letter, []);
+    groups.get(letter)!.push(a);
+  }
+  return [...groups.entries()]
+    .sort(([x], [y]) => (x === "Other" ? 1 : y === "Other" ? -1 : x.localeCompare(y)))
+    .map(([letter, list]) => ({ letter, slug: letter.toLowerCase(), authors: list }));
+})();
 export const datasetName = (d: Pick<Dataset, "id" | "title">) => d.title || d.id;
 export const orcidUrl = (orcid: string) => `https://orcid.org/${orcid}`;
 export const rorUrl = (id: string) => `https://ror.org/${id}`;
@@ -157,9 +150,13 @@ export const facetLabel = (facet: string) =>
 const allCategories: Category[] = Object.entries(categories.facets).flatMap(([facet, values]) =>
   Object.entries(values).map(([value, v]) => ({ ...v, facet, value, name: v.name || value, url: `/browse/${facet}/${v.slug}/` })),
 );
-export const categoryPages = top(allCategories, STATIC_MAX.category, (c) => `${c.facet} ${c.value}`);
+/** The categories with a page: those with the most papers, at most MAX_CATEGORIES (lib/shards.ts).
+ *  Their number is the classification's vocabulary (about 60 values), not the catalogue's size. */
+export const categoryPages = [...allCategories]
+  .sort((x, y) => y.counts.papers - x.counts.papers || `${x.facet} ${x.value}`.localeCompare(`${y.facet} ${y.value}`))
+  .slice(0, MAX_CATEGORIES);
 const categorySet = new Set(categoryPages.map((c) => c.url));
-/** Each facet with its values, the values with the most papers first; `url` is "" past STATIC_MAX. */
+/** Each facet with its values, the values with the most papers first; `url` is "" past MAX_CATEGORIES. */
 export const facets = Object.keys(categories.facets).map((facet) => ({
   facet,
   label: facetLabel(facet),

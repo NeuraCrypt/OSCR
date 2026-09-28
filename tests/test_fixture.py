@@ -55,8 +55,8 @@ def test_the_fixture_exercises_every_page_of_the_site():
     assert {a["orcid"] for a in authors} == {make_fixture.ADA, make_fixture.BEN}
     assert json.loads((entities / "categories.json").read_text())["facets"]
     lookup = {doi: e for f in (make_fixture.OUT / "lookup").glob("*.json") for doi, e in json.loads(f.read_text()).items()}
-    assert lookup["10.5555/oscr.fixture.5"] == {"status": "none", "read_on": "2026-09-25"}
-    assert "slug" in lookup["10.5555/oscr.fixture.4"]
+    assert lookup["10.5555/oscr.fixture.5"] == ["none", "2026-09-25"]
+    assert len(lookup["10.5555/oscr.fixture.4"]) == 3, "a paper with a page: its page's name"
 
 
 def test_the_fixture_holds_no_email_address():
