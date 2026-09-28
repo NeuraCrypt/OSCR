@@ -31,8 +31,17 @@ export type Journal = {
   papers: string[];
   counts: Counts & { read: number };
 };
-/** An institution, by ROR id; its name is the affiliation most often written with it. */
-export type Institution = { id: string; name: string; papers: string[]; authors: string[]; counts: Counts };
+/** An institution, by ROR id: named as OpenAlex names it, else after the affiliation most often
+ *  written with it; its country (ISO 3166-1 alpha-2) and type from OpenAlex, "" when unknown. */
+export type Institution = {
+  id: string;
+  name: string;
+  country?: string;
+  type?: string;
+  papers: string[];
+  authors: string[];
+  counts: Counts;
+};
 export type Tool = {
   id: string;
   slug: string;

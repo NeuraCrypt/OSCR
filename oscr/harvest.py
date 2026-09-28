@@ -14,6 +14,11 @@ interrupted pass resumes where it stopped:
    single script does not. Then the paper's status and its library rows.
 5. ALIGN. For a paper whose code text is stored, which paragraph matches which
    lines (`align.py`), for the Code ↔ Paper reader.
+
+Then the enrichment (`enrich.py`), with the paper's OpenAlex work looked up first when the
+owner's key is there (one free call; `sources/openalex.py`). A paper OpenAlex does not know
+yet — new papers appear there a few days after their publication — is asked again by the
+watch's daily round (`enrich.openalex_pass`).
 """
 from __future__ import annotations
 
@@ -28,7 +33,7 @@ from pathlib import Path
 from typing import Any
 
 from . import db, find, jats, library, links, methods, repos
-from .net import Client, Outage, Unavailable, github_token
+from .net import Client, Outage, Unavailable, github_token, openalex_key
 from .sources import europepmc, forges, metadata
 
 
@@ -60,6 +65,9 @@ class Options:
     #: Phase 1: build the paper's enriched record (bibliography, people, subjects,
     #: categories, datasets) and describe its repositories (features, tools).
     enrich: bool = True
+    #: Look the paper up in OpenAlex before enriching it (a free call): only with the
+    #: owner's key (keychain `org.oscr.openalex`, or OPENALEX_API_KEY).
+    openalex: bool = field(default_factory=lambda: bool(openalex_key()))
 
 
 @dataclass
@@ -148,8 +156,26 @@ def scan_article(con: sqlite3.Connection, client: Client, art: europepmc.EpmcArt
     if opts.align and xml and status.startswith("code_"):
         _align_quietly(con, client, art.id, xml)
     if opts.enrich:
+        if opts.openalex:
+            _openalex_quietly(con, client, art.id)
         _enrich_quietly(con, art.id, xml, art.core or None)
     return status
+
+
+def _openalex_quietly(con: sqlite3.Connection, client: Client, article_id: str) -> None:
+    """The paper's OpenAlex work, kept for the enrichment that follows. A bonus too: OpenAlex
+    paused (its budget, a 429), down, or not knowing the paper yet never costs the scan anything;
+    the watch's daily round asks again."""
+    from .sources import openalex
+    try:
+        openalex.fetch(con, client, article_id, openalex.Budget(con))
+        con.commit()
+    except openalex.Paused:
+        con.commit()             # the pause is noted; nothing to log for each paper
+    except (Outage, Unavailable) as e:
+        con.rollback()
+        db.log_event(con, "openalex_error", article=article_id, error=str(e)[:300])
+        con.commit()
 
 
 def _enrich_quietly(con: sqlite3.Connection, article_id: str, xml: str | None, core: dict | None) -> None:
@@ -589,6 +615,11 @@ def watch(con: sqlite3.Connection, client: Client, domain: str, opts: Options, *
                 db.set_cursor(con, "watch:reverification", str(time.time()))
                 con.commit()
                 report(f"{_now()} re-verification: {n} papers taken up again, {aligned} aligned")
+                if opts.enrich and opts.openalex:
+                    # The papers OpenAlex did not know when they were read, or never asked.
+                    from . import enrich
+                    report(f"{_now()} " + enrich.openalex_pass(con, client, deadline=time.time() + slice_s,
+                                                               report=lambda _: None))
             if backfill_done(con, domain, back_to):
                 time.sleep(idle_s)
             else:

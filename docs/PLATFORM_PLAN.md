@@ -107,8 +107,10 @@ Every figure below was checked on 2026-09-26 on the official documentation (sour
 
 **Upstream APIs.**
 - **OpenAlex** now needs a free API key (since 2026-02-13). The free credit is $1 a day.
-  DOI lookups are free; list queries cost $0.10 per 1,000 calls. The 610k papers in batches
-  of 100 DOIs take ~6,100 calls, ~$0.61: within the free credit if spread over days.
+  DOI lookups are free; list queries cost $0.10 per 1,000 calls. OSCR makes single lookups
+  only (`/works/doi:…`, measured 2026-09-28: `x-ratelimit-cost-usd: 0`): the 610k papers take
+  610k free calls, ~42 hours at 4 a second, and $0. The key travels in the `Authorization`
+  header, never in a URL.
 - **Crossref** list queries: 1–3 a second, measured on the live headers. Retractions come
   from the Retraction Watch data (a daily `git pull`), not from the API.
 - **GitHub**: 5,000 requests an hour with a token.
@@ -268,8 +270,8 @@ throws away (kept from now on; ~25 batched requests for the papers already read)
 | field | today | source to use (coverage measured) |
 |---|---|---|
 | DOI, PMID, PMCID | ✅ | — |
-| arXiv / bioRxiv id of a linked preprint | 🔴 | OpenAlex locations; Europe PMC `commentCorrectionList` **E** |
-| OpenAlex id | 🔴 | OpenAlex (batched: 50 DOIs per request) |
+| arXiv / bioRxiv id of a linked preprint | ✅ OpenAlex 4% (12% of the papers with a page) | OpenAlex locations (`article.preprint_id`); Europe PMC `commentCorrectionList` **E** |
+| OpenAlex id | ✅ 97% | OpenAlex, one free lookup by DOI (else PMID) per paper (`article.openalex_id`) |
 | title | ✅ | — |
 | abstract | **J** 97% · **E** | JATS `<abstract>`, Europe PMC `abstractText` |
 | article type | **J** 100% · **E** | JATS `article-type` (see §1), Europe PMC `pubTypeList` |
@@ -277,22 +279,22 @@ throws away (kept from now on; ~25 batched requests for the papers already read)
 | journal title | ✅ | — |
 | ISSN | **J** 50% · **E** | Europe PMC `journalInfo.journal` (ISSN, eISSN) |
 | volume, issue, pages | **J** 96% / 72% / 99% · **E** | JATS, Europe PMC `journalInfo`, `pageInfo` |
-| publisher | **J** 83% | JATS `<publisher-name>`; Crossref / OpenAlex for the rest |
+| publisher | **J** 83% · ✅ OpenAlex for the rest | JATS `<publisher-name>`; OpenAlex's host organization for the rest |
 | dates: received, accepted | **J** 42% | JATS `<history>`; Crossref for the rest (partial) |
 | dates: online, print | **J** 49% / 10% · **E** | JATS `<pub-date>`, Europe PMC `firstPublicationDate`, `journalInfo.printPublicationDate` |
 | authors: names | ✅ (strings) | — |
-| authors: order, ORCID, affiliations | **J** (ORCID 25% of authors, affiliations 99%) · **E** | JATS `<contrib>`, `<aff>`; Europe PMC `authorList` (ORCID in `authorId`); OpenAlex for more ORCIDs |
-| institutions (ROR), countries | 🔴 (ROR in the JATS: rare) | OpenAlex authorships |
-| corresponding author (name only) | **J** 46% | JATS `<corresp>` / `corresp="yes"`; OpenAlex `is_corresponding` |
-| open-access status, OA link | **E** / 🔴 | Europe PMC `isOpenAccess`, `fullTextUrlList`; OpenAlex `open_access` (Unpaywall data, so no separate Unpaywall calls) |
+| authors: order, ORCID, affiliations | **J** (ORCID 25% of authors, affiliations 99%) · **E** · ✅ OpenAlex | JATS `<contrib>`, `<aff>`; Europe PMC `authorList` (ORCID in `authorId`); OpenAlex for more ORCIDs — only those the publisher deposited for the authorship (`raw_orcid`), never its author profiles' (they decide who is a verified author); the OpenAlex author id (`paper_author.openalex_id`) |
+| institutions (ROR), countries | ✅ OpenAlex 95% of the papers (was 11%) (ROR in the JATS: rare) | OpenAlex authorships: `institution` (ROR id, name, country, type), each placed on the author's affiliation it is (`paper_author.ror`) |
+| corresponding author (name only) | **J** 46% · ✅ OpenAlex for the rest | JATS `<corresp>` / `corresp="yes"`; OpenAlex `is_corresponding` only when the paper names none |
+| open-access status, OA link | **E** · ✅ OpenAlex 97% | Europe PMC `isOpenAccess`, `fullTextUrlList`; OpenAlex `open_access` (Unpaywall data, so no separate Unpaywall calls): `article.oa_status`, `oa_url` |
 | article license | ✅ (100% of texts) | — |
-| funders, grant numbers | **J** 30% (award ids 22%) · **E** | JATS `<funding-group>`, Europe PMC `grantsList`; Crossref funder ids |
+| funders, grant numbers | **J** 30% (award ids 22%) · **E** · ✅ OpenAlex for the rest | JATS `<funding-group>`, Europe PMC `grantsList`; OpenAlex `funders` (ROR ids) and `awards` when both are silent; Crossref funder ids |
 | keywords | **J** 39% · **E** | JATS `<kwd-group>`, Europe PMC `keywordList` |
 | MeSH terms | **E** | Europe PMC `meshHeadingList` (no PubMed call needed) |
-| OpenAlex topics, journal subjects | 🔴 (JATS subject groups 50%) | OpenAlex |
-| citation count | **E** / 🔴 | Europe PMC `citedByCount`; OpenAlex `cited_by_count` |
-| references (count, cited DOIs) | **J** (87–100% of texts; 50% of references carry a DOI) | JATS `<ref-list>` (both flavours); OpenAlex `referenced_works` for the rest |
-| related works | 🔴 | OpenAlex `related_works` |
+| OpenAlex topics, journal subjects | ✅ OpenAlex 96% (JATS subject groups 50%) | OpenAlex `topics`, the primary one with its subfield, field and domain (`topic`, `paper_topic`) |
+| citation count | **E** · ✅ OpenAlex for the rest | Europe PMC `citedByCount` first; OpenAlex `cited_by_count` when Europe PMC has none (the page names the source) |
+| references (count, cited DOIs) | **J** (87–100% of texts; 50% of references carry a DOI) · ✅ OpenAlex | JATS `<ref-list>` (both flavours); OpenAlex `referenced_works` as OpenAlex ids (`paper_work`), and their count when the paper gives none. OpenAlex gives no DOI for them: a DOI per cited work would take a paid list call |
+| related works | ✅ OpenAlex 3% | OpenAlex `related_works` (`paper_work`) |
 | retractions, corrections, expressions of concern | **E** / 🔴 | Europe PMC `commentCorrectionList`; Crossref updates (Retraction Watch data); the 6 retraction notices and 20 corrections already read |
 | Code / Data availability statements (full text) | **J** (data 67%, code 5% of texts) | parsed today for judging, not stored — publication subject to decision D1 |
 | datasets cited (OpenNeuro, DANDI, NeuroVault, OSF, figshare, Zenodo, GIN) | **J** | today's `data` links, to normalize into `datasets` with their identifiers |
@@ -329,7 +331,7 @@ inputs it used, so a page can explain its score.
 
 **Cost of the enrichment at full scale.** J, E and G fields: no new request (E: the answers
 are kept from now on). OpenAlex:
-~12k batched requests for 610k papers. Crossref: one request per DOI (integrity, funders),
+one free lookup per paper, 610k for the full stock ($0). Crossref: one request per DOI (integrity, funders),
 spread over the backfill. GitHub API: one or two requests per GitHub repository (~50–80k),
 within 5,000/h. Git history: local, no quota.
 
@@ -512,7 +514,7 @@ nightly to Hugging Face as JSON and Parquet (deltas only, to fit the uplink).
 | phase | delivers | depends on |
 |---|---|---|
 | 1 — harvester enrichment | the J, E and G fields first (no new request), the article type and the rates on research articles, then OpenAlex, Crossref integrity, GitHub metadata, git history, tool detection, RRIDs, datasets, classification (rules, then local model), provenance, versions; migrations; backfill of the papers already read | decisions D1, D6 |
-| 2 — navigation | categories, journals, institutions, authors, tools, datasets pages; the DOI lookup; pages for "on request" and "data only" (D2). **Built on branch `phase-2`, awaiting review, not deployed**; institutions await ROR ids from OpenAlex | 1 |
+| 2 — navigation | categories, journals, institutions, authors, tools, datasets pages; the DOI lookup; pages for "on request" and "data only" (D2). **Built on branch `phase-2`, awaiting review, not deployed**; institutions get their ROR ids, names and countries from OpenAlex since 2026-09-28 | 1 |
 | 3 — search | D1 projection + FTS5, facets, advanced search, export. **Built on branch `phase-3`, awaiting review, not deployed; the remote D1 databases await approval** (`docs/SEARCH.md`) | 1, D3 |
 | 4 — full paper page | all tabs, Versions with diff. **Built on branch `phase-4`, awaiting review, not deployed**: `oscr/paperpage.py` writes `papers/NN.json`; the tabs are sections of one page (Overview, Code, Map, Data, Versions, Cite, Similar; Discussion, Reproductions and Activity say what they will hold and that they open with sign-in); abstracts under D1's rule; the tab bar's style awaits the owner (markup only until then) | 1–3 |
 | 5 — accounts | ORCID, GitHub, Google, roles, author and maintainer verification. **Built on branch `phase-5`, awaiting review, not deployed**; awaits the owner's applications, secrets and database ([ACCOUNTS.md](ACCOUNTS.md)) | D4 (OAuth apps) |
@@ -556,9 +558,55 @@ Europe PMC records in 37 requests and 55 s, then 3,685 papers enriched in 4 min 
   110 checked RRIDs; 40 of 40 hand-checked detections correct).
 - **Owner's labels**: `data/annotation/sample.csv` (150 papers) awaits the owner. Then
   `oscr labels`, and the model comparison (`tools/compare_models.py`, 01:00–07:00 only).
-- **Not yet**: OpenAlex (awaits the owner's key); GitHub metadata (needs a token); the
-  commit at the paper's publication (needs deeper clones); a model for the ambiguous
-  categories (after the comparison).
+- **Not yet**: GitHub metadata (needs a token); the commit at the paper's publication (needs
+  deeper clones); a model for the ambiguous categories (after the comparison).
+
+#### OpenAlex (2026-09-28, schema 7)
+
+`oscr/sources/openalex.py`; `oscr enrich --openalex [--all]`; new papers during their scan, the
+papers OpenAlex did not know yet in the watch's daily round. Measured on a copy of the database
+(21,100 papers read on 2026-09-28, of which 16,623 in scope and 3,683 with a page; `oscr enrich --openalex`: 20,597 lookups (every paper with a DOI or a PMID) in 3 h 47 min, most of it the enrichment run again on each paper; $0.00 spent, 0 paused):
+
+| field | papers read | in scope | with a page | before |
+|---|---|---|---|---|
+| found in OpenAlex | 97.1% | 96.5% | 99.7% | — |
+| an institution with a ROR id | 95.2% | 94.7% | 98.7% | 10.8% (JATS) |
+| OpenAlex topic (primary: subfield, field, domain) | 96.4% | 95.8% | 99.4% | — |
+| open-access status | 97.1% | 96.5% | 99.7% | — (Europe PMC's yes/no: 98.9%) |
+| citation count | 99.1% | 98.9% | 99.9% | 98.9% (Europe PMC first; OpenAlex fills 38 papers) |
+| a linked preprint | 4.1% | 4.3% | 12.2% | — |
+| referenced works (OpenAlex ids) | 82.9% | 83.5% | 82.3% | — (JATS references: 90.8%) |
+| related works | 2.8% | 3.2% | 8.5% | — |
+| an author with an ORCID iD | 67.0% | 67.2% | 83.4% | 64.2% |
+| a corresponding author | 96.1% | 95.6% | 98.6% | 92.7% |
+| funding | 62.5% | 63.6% | 86.0% | 50.8% |
+
+- **Institutions**: 13,961 by ROR id, in 173 countries (types: education, healthcare, facility,
+  company…); an author's ROR id is placed on the affiliation it is when their texts match, and
+  names the institution on its page. 94.8% of the 156,598 authorships carry an OpenAlex author
+  id. ORCID iDs: +2,501 (to 49,000), only those the publishers deposited. OpenAlex's author
+  profiles carry one for 54,280 more authorships: not taken — they come from its
+  disambiguation, and an ORCID iD on a paper makes its holder a verified author of it (to
+  decide with the owner: shown as "OpenAlex's profile" without the verified-author rights?).
+- **Topics**: 2,456; primary field Medicine 9,001, Neuroscience 4,455, Biochemistry, Genetics
+  and Molecular Biology 2,765, Engineering 798, Psychology 713, Computer Science 613. Open
+  access: gold 15,325, hybrid 3,347, diamond 1,351, green 423, bronze 22, closed 13.
+- **Not found**: 116 papers (100 without a DOI, looked up by PMID; 16 recent DOIs), asked again
+  after a week. 503 papers without DOI or PMID are not asked (OpenAlex has no lookup by PMCID;
+  its filter would be a paid call).
+- **Nothing else moved**: 0 off-topic verdicts and 0 statuses changed. 4 enrichment errors,
+  none from OpenAlex (2 a crash of the tool detection on a shell script, 2 Europe PMC 503s).
+  20,118 new versions: 14,291 only record Phase 6's link keys (not shown on the pages), the
+  others funders (2,463), publishers (2,434) and authors (1,157).
+- **What leaves**: the public export of the copy lists 4,688 institutions (4,607 named by
+  OpenAlex, with their country), and among the 3,683 pages 3,636 show institutions, 3,661 a
+  topic, 3,673 an open-access status, 450 a preprint; no email address. The raw records
+  (`openalex_record`) stay on the Mac. The site built from it: 16,905 files, past the
+  15,000-file margin (the institution pages go from 1,217 to the 2,000 cap; the site was
+  already at ~16,100 without them) — the entity pages on demand become urgent.
+- **Storage**: a kept record averages 4.8 KB (~100 MB today, ~3 GB at the full stock), and
+  `paper_work` ~48 rows a paper.
+
 
 ## 13. The owner's decisions (2026-09-27)
 

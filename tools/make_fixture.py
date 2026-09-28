@@ -20,6 +20,10 @@ statements, closed-license ones whose texts must stay out, versions with a real 
 one that only changed texts), a map validated by an author with its DOI next to sandbox
 tests that must stay out, integrity notices, repository features and checks, funders,
 references shared between papers. SECRETS lists what must never reach the export.
+
+And what OpenAlex adds: institutions named, with their country and type (one of them reached
+only through OpenAlex's placing of an author), a topic, an open-access status, a preprint and a
+citation count whose source the page names.
 """
 from __future__ import annotations
 
@@ -53,7 +57,10 @@ OFF_TOPIC = {"doi": "10.5555/oscr.fixture.9", "title": "An off-topic synthetic s
              "dataset": "doi:10.5555/oscr.fixture.data.9", "category": "off-topic imaging",
              "abstract": "An off-topic abstract that must appear nowhere",
              "statement": "An off-topic statement that must appear nowhere",
-             "notice": "10.5555/oscr.fixture.offtopic.notice"}
+             "notice": "10.5555/oscr.fixture.offtopic.notice",
+             "topic": "An off-topic synthetic topic that must appear nowhere", "openalex": "W0000000009"}
+#: A second institution, reached only through OpenAlex's placing of an author (invented ROR id).
+SECOND_INSTITUTE = "0synthe00"
 #: Texts and facts that must never reach the export: the abstract and statements of papers
 #: under a closed license, the digests kept by the versions, a classification's raw value,
 #: Retraction Watch's reasons, a sandbox test's validator and DOI.
@@ -251,6 +258,7 @@ def database(path: Path) -> sqlite3.Connection:
                          ("organism", "mouse", 0.4, "rule", 0)])              # not confident enough: left out
     _categories(con, d, [("modality", "EEG", 0.95, "rule", 0), ("organism", "human", 1.0, "owner", 0)])
     _phase4(con, a, b, c, d, x)
+    _openalex(con, a, b, d, x)
     con.execute("UPDATE article SET scanned_at = ?", (READ_AT,))
     con.commit()
     return con
@@ -365,6 +373,33 @@ def _phase4(con, a: str, b: str, c: str, d: str, x: str) -> None:
                     "VALUES (?,?,?,?,?,?)",
                     [(a, "zenodo", "1000001", "10.5555/oscr.fixture.map.1", "10.5555/oscr.fixture.map.0", READ_AT),
                      (a, "sandbox", "999", "10.5072/zenodo.999", "10.5072/zenodo.998", READ_AT)])
+
+
+def _openalex(con, a: str, b: str, d: str, x: str) -> None:
+    """What OpenAlex adds (sources/openalex.py), with invented ids in OpenAlex's forms."""
+    con.executemany("INSERT INTO institution (id, name, country, type, openalex_id) VALUES (?,?,?,?,?)",
+                    [("0fixtur00", "Fixture University", "NL", "education", "I0000000001"),
+                     (SECOND_INSTITUTE, "Second Synthetic Institute", "DE", "facility", "I0000000002"),
+                     (OFF_TOPIC["ror"], "Institute of Elsewhere", "US", "education", "I0000000009")])
+    # Paper 4's first author as OpenAlex places them: each ROR id with the affiliation it is.
+    con.execute("UPDATE paper_author SET ror = ?, openalex_id = 'A0000000002' WHERE article_id = ? AND position = 1",
+                (json.dumps([{"id": "0fixtur00", "aff": 0}, {"id": SECOND_INSTITUTE, "aff": 1}]), d))
+    con.execute("UPDATE article SET openalex_id = 'W0000000001', oa_status = 'gold', oa_url = ?, preprint_id = ?, "
+                "preprint_url = ? WHERE id = ?",
+                ("https://doi.org/10.5555/oscr.fixture.1", "doi:10.5555/oscr.fixture.preprint.1",
+                 "https://doi.org/10.5555/oscr.fixture.preprint.1", a))
+    con.execute("UPDATE article SET openalex_id = 'W0000000002', oa_status = 'hybrid' WHERE id = ?", (b,))
+    con.execute("UPDATE article SET openalex_id = ? WHERE id = ?", (OFF_TOPIC["openalex"], x))
+    con.executemany("INSERT INTO topic (id, name, subfield_id, subfield, field_id, field, domain_id, domain) "
+                    "VALUES (?, ?, '2805', 'Cognitive Neuroscience', '28', 'Neuroscience', '1', 'Life Sciences')",
+                    [("T00001", "Synthetic EEG methods"), ("T00009", OFF_TOPIC["topic"])])
+    con.executemany("INSERT INTO paper_topic (article_id, topic_id, score, is_primary) VALUES (?, ?, 0.99, 1)",
+                    [(a, "T00001"), (x, "T00009")])
+    con.executemany("INSERT INTO field_provenance (entity, entity_id, field, source, source_ref, fetched_at) "
+                    "VALUES ('article', ?, ?, ?, ?, ?)",
+                    [(a, "cited_by_count", "epmc", "PMC0000001", READ_AT), (b, "cited_by_count", "openalex",
+                                                                            "W0000000002", READ_AT),
+                     (x, "topics", "openalex", OFF_TOPIC["openalex"], READ_AT)])
 
 
 if __name__ == "__main__":

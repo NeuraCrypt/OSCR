@@ -15,6 +15,7 @@
     oscr stats                           the library's figures
     oscr scripts audit|build|publish     the authors' scripts on Hugging Face (verified licenses only)
     oscr enrich [--all] [--epmc]         Phase 1: the enriched records of the papers already read
+    oscr enrich --openalex [--all]       their OpenAlex works (free lookups by DOI; the owner's key), resumable
     oscr labels data/annotation/sample.csv   the owner's category labels (they win over the rules)
     oscr d1 build|push|status --local    Phase 3: the search's D1 databases, as deltas (docs/SEARCH.md)
     oscr community build|push --local    the sign-in's facts (ORCID iDs, repository owners) for D1 (--remote too)
@@ -252,6 +253,11 @@ def main(argv: list[str] | None = None) -> int:
     en.add_argument("--all", action="store_true", help="every paper, not only those never enriched")
     en.add_argument("--epmc", action="store_true",
                     help="first fetch the Europe PMC core results of the papers that have none (100 per request)")
+    en.add_argument("--openalex", action="store_true",
+                    help="look the papers up in OpenAlex (one free call each, by DOI) and enrich them again with "
+                         "it: those never asked, and those OpenAlex did not know a week ago; with --all, every "
+                         "paper not asked in the last 20 hours. Resumable; stops for the day on a 429")
+    en.add_argument("--hours", type=float, default=0, help="--openalex: stop after this many hours (0: no limit)")
     en.add_argument("--max", type=int, default=None)
 
     lb = sp.add_parser("labels", help="import the owner's category labels from the annotation file")
@@ -445,7 +451,12 @@ def main(argv: list[str] | None = None) -> int:
                 raise SystemExit("\n".join(errors))
         elif a.command == "enrich":
             from . import enrich
-            print(enrich.backfill(con, client, everything=a.all, epmc=a.epmc, maximum=a.max))
+            if a.openalex:
+                print(enrich.openalex_pass(con, client, everything=a.all, maximum=a.max,
+                                           deadline=time.time() + a.hours * 3600 if a.hours else None,
+                                           report=lambda m: print(m, flush=True)))
+            else:
+                print(enrich.backfill(con, client, everything=a.all, epmc=a.epmc, maximum=a.max))
         elif a.command == "labels":
             from . import enrich
             print(enrich.import_owner_labels(con, Path(a.csv)))

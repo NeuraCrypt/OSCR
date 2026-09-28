@@ -183,6 +183,37 @@ def _strings(raw: str | None) -> list[str]:
     return out
 
 
+def _indexed_strings(raw: str | None) -> list[str]:
+    """A JSON list of affiliations, each cleaned of contact details, in place: an element that
+    is left empty stays as "" so that an index into the list (paper_author.ror's `aff`) holds."""
+    return [re.sub(r"\s+", " ", strip_contacts(_text(v, "name", "text", "affiliation", "institution"))).strip()
+            for v in _json_list(raw)]
+
+
+def ror_pairs(ror_raw: str | None, affiliations_raw: str | None) -> tuple[list[str], list[tuple[str, int]]]:
+    """An author's ROR ids, and which of their affiliations (index) each one is.
+
+    `paper_author.ror` holds ROR ids (from the JATS), or {"id", "aff"} objects (from OpenAlex,
+    `aff` the index of the affiliation, or null when none of them is it). Plain ids pair with the
+    affiliations by position when there are as many of both; otherwise they are not paired."""
+    entries = _json_list(ror_raw)
+    places = _indexed_strings(affiliations_raw)
+    ids: list[str] = []
+    pairs: list[tuple[str, int]] = []
+    for v in entries:
+        x = ror(_text(v, "id", "ror"))
+        if not x or x in ids:
+            continue
+        ids.append(x)
+        i = v.get("aff") if isinstance(v, dict) else None
+        if isinstance(i, int) and not isinstance(i, bool) and 0 <= i < len(places) and places[i]:
+            pairs.append((x, i))
+    if not any(isinstance(v, dict) for v in entries):
+        kept = [i for i, place in enumerate(places) if place]
+        pairs = list(zip(ids, kept, strict=True)) if len(ids) == len(kept) else []
+    return ids, pairs
+
+
 def _web(url: str | None) -> str:
     return url if url and re.match(r"https?://", url, re.IGNORECASE) else ""
 
@@ -222,11 +253,13 @@ def _by_count(entries: list[dict[str, Any]], name: str, key: str = "id") -> list
 def _people(con: sqlite3.Connection, p: _Papers, tools_of: dict[str, list[str]]
             ) -> tuple[dict[str, list[dict[str, str]]], list[dict[str, Any]], list[dict[str, Any]]]:
     """Each paper's authors in order (name, ORCID iD or ""), the authors with an ORCID iD,
-    and the institutions (ROR ids) of the authors' affiliations."""
+    and the institutions (ROR ids) of the authors' affiliations: named as OpenAlex names them
+    (`institution`), else by the affiliation most often written with them."""
     rows: dict[str, list[sqlite3.Row]] = defaultdict(list)
     for r in con.execute(f"SELECT * FROM paper_author WHERE article_id IN ({PAGES_SQL}) ORDER BY article_id, position"):
         rows[r["article_id"]].append(r)
     registered = {r["orcid"]: r["name"] for r in con.execute("SELECT orcid, name FROM author")}
+    known = {r["id"]: r for r in con.execute("SELECT * FROM institution")}
 
     def name_of(r: sqlite3.Row) -> str:
         name = r["name"] or " ".join(x for x in (r["given"], r["family"]) if x)
@@ -252,7 +285,7 @@ def _people(con: sqlite3.Connection, p: _Papers, tools_of: dict[str, list[str]]
             if name or oid:
                 listed[aid].append({"name": name or strip_contacts(registered.get(oid, "")) or oid, "orcid": oid})
             affiliations = _strings(r["affiliations"])
-            rors = [x for x in (ror(_text(v, "id", "ror")) for v in _json_list(r["ror"])) if x]
+            rors, paired = ror_pairs(r["ror"], r["affiliations"])
             if oid:
                 e = people.setdefault(oid, {"papers": set(), "rors": {}, "named": None, "placed": None})
                 e["papers"].add(aid)
@@ -262,9 +295,12 @@ def _people(con: sqlite3.Connection, p: _Papers, tools_of: dict[str, list[str]]
                     e["placed"] = (when, affiliations)
                 for x in rors:
                     e["rors"][x] = max(e["rors"].get(x, when), when)
-            # An institution's name: the affiliation written most often with its ROR id.
-            pairs = (list(zip(rors, affiliations, strict=True)) if len(rors) == len(affiliations)
-                     else [(x, a) for x in rors for a in affiliations])
+            # An institution's name, when OpenAlex does not give it: the affiliation written most
+            # often with its ROR id.
+            places_of = _indexed_strings(r["affiliations"])
+            plain = not any(isinstance(v, dict) for v in _json_list(r["ror"]))
+            pairs = ([(x, places_of[i]) for x, i in paired] if paired
+                     else [(x, a) for x in rors for a in affiliations] if plain else [])
             for x in rors:
                 inst = places.setdefault(x, {"papers": set(), "authors": set(), "names": Counter()})
                 inst["papers"].add(aid)
@@ -288,8 +324,11 @@ def _people(con: sqlite3.Connection, p: _Papers, tools_of: dict[str, list[str]]
     institutions = []
     for x, inst in places.items():
         names = sorted(inst["names"].items(), key=lambda kv: (-kv[1], len(kv[0]), kv[0]))
+        k = known.get(x)
+        name = re.sub(r"\s+", " ", strip_contacts(k["name"] if k is not None else "")).strip()
         institutions.append({
-            "id": x, "name": names[0][0] if names else f"ROR {x}",
+            "id": x, "name": name or (names[0][0] if names else f"ROR {x}"),
+            "country": (k["country"] if k is not None else "") or "", "type": (k["type"] if k is not None else "") or "",
             "papers": p.slugs(inst["papers"]), "authors": sorted(inst["authors"]),
             "counts": p.counts(inst["papers"]),
         })

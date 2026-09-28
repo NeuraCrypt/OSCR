@@ -28,3 +28,13 @@ export function dateInWords(day: string): string {
     day: "numeric", month: "long", year: "numeric", timeZone: "UTC",
   });
 }
+
+/** "DE" → "Germany" (ISO 3166-1 alpha-2, as OpenAlex gives an institution's country); "" stays "". */
+export function countryName(code: string): string {
+  if (!/^[A-Z]{2}$/.test(code ?? "")) return "";
+  try {
+    return new Intl.DisplayNames(["en"], { type: "region" }).of(code) ?? code;
+  } catch {
+    return code;
+  }
+}

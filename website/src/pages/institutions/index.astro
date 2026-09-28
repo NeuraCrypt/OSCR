@@ -1,8 +1,9 @@
 ---
-// The institutions of the authors, by ROR id. Few full texts carry ROR ids today; most
-// will come with OpenAlex. The page exists even while the list is empty.
+// The institutions of the authors, by ROR id: from the full texts that carry them, and from
+// OpenAlex, which places most authors. The page exists even while the list is empty.
 import Base from "../../layouts/Base.astro";
 import { number, plural } from "../../lib/catalog";
+import { countryName } from "../../lib/format";
 import { institutionPages, institutions, institutionUrl, STATIC_MAX } from "../../lib/entities";
 
 const sorted = [...institutionPages].sort((x, y) => x.name.localeCompare(y.name));
@@ -14,9 +15,10 @@ const sorted = [...institutionPages].sort((x, y) => x.name.localeCompare(y.name)
 >
   <h1>Institutions</h1>
   <p class="summary">
-    Institutions come from the <a href="https://ror.org/">ROR</a> identifiers written in the authors' affiliations. Few
-    full texts carry them; OpenAlex will add most of them. An institution is named after the affiliation most often
-    written with its identifier.
+    Institutions are identified by <a href="https://ror.org/">ROR</a>: from the authors' affiliations when the full
+    text gives the identifier, and from <a href="https://openalex.org/">OpenAlex</a>, which names them and gives their
+    country. An institution OpenAlex does not name is named after the affiliation most often written with its
+    identifier.
   </p>
   {institutions.length === 0 ? (
     <p>No institution yet: no paper with a page has a ROR identifier in its affiliations.</p>
@@ -24,7 +26,8 @@ const sorted = [...institutionPages].sort((x, y) => x.name.localeCompare(y.name)
     <ul>
       {sorted.map((i) => (
         <li>
-          <a href={institutionUrl(i.id)}>{i.name}</a> — {plural(i.counts.papers, "paper")}
+          <a href={institutionUrl(i.id)}>{i.name}</a>{countryName(i.country ?? "") && ` (${countryName(i.country ?? "")})`} —{" "}
+          {plural(i.counts.papers, "paper")}
           {i.counts.with_code > 0 && `, ${number(i.counts.with_code)} with code`}
         </li>
       ))}

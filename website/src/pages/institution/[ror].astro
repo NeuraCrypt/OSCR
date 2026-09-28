@@ -3,6 +3,7 @@
 import Base from "../../layouts/Base.astro";
 import Listing from "../../components/Listing.astro";
 import { number, plural } from "../../lib/catalog";
+import { countryName } from "../../lib/format";
 import { authorOf, authorUrl, institutionPages, papersOf, rorUrl, type Institution } from "../../lib/entities";
 
 export function getStaticPaths() {
@@ -10,6 +11,7 @@ export function getStaticPaths() {
 }
 
 const { i } = Astro.props as { i: Institution };
+const country = countryName(i.country ?? "");
 const papers = papersOf(i.papers);
 const people = i.authors
   .map((orcid) => ({ orcid, name: authorOf(orcid)?.name ?? orcid, url: authorUrl(orcid) }))
@@ -26,6 +28,12 @@ const people = i.authors
     {number(i.counts.with_code)} of them with the authors' code.
   </p>
   <div class="line"><span class="label">ROR:</span> <a href={rorUrl(i.id)}>{rorUrl(i.id)}</a></div>
+  {(country || i.type) && (
+    <div class="line">
+      {country && <><span class="label">Country:</span> {country}</>}{country && i.type && " · "}
+      {i.type && <><span class="label">Type:</span> {i.type}</>}
+    </div>
+  )}
   {people.length > 0 && (
     <div class="line">
       <span class="label">Authors with an ORCID iD:</span>{" "}
