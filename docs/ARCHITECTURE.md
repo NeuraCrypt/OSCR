@@ -305,3 +305,192 @@ chunks, filter files and a start-up file that lists every record.
 day for the whole site, plus D1 rows read (5 M a day). If that budget gets tight, the fallback
 costs no request: a static inverted index published as Parquet blocks on Hugging Face and read
 by byte ranges, like the scripts (the owner's plan B, decision D3).
+
+## Git hosting (night run, phase 00)
+
+Decided on the night of 2026-09-28/29. The options compared, the reasons and what would change
+each choice are in [DECISIONS.md](DECISIONS.md), entries D00-1 to D00-16. Nothing of it is built
+yet: phase 01 builds it on this design.
+
+**No option lets OSCR hold Git repositories itself with certain compliance and at zero cost**
+(D00-1):
+- Hugging Face, a GitHub organization and the other hosted forges: their terms do not clearly
+  allow one customer to serve other people's repositories.
+- Every permanent free cloud VM asks for a payment card.
+- A Git server on Cloudflare's free plan can neither index a real push within 10 ms of CPU nor
+  hold ~100 GB.
+
+**What OSCR does instead:**
+- **Repositories live in the researcher's own GitHub account** (D00-2). OSCR's GitHub App
+  creates them and acts on them with the researcher's consent: one authorization per action, as
+  that person (D00-4).
+- **The mirror mode is the same machinery**, applied to a repository the researcher already has.
+- **OSCR keeps only its own layer**: links to papers and DOIs, tracing maps pinned to commits,
+  reviews, the scientific issue types. It lives in a new D1 database and on the Mac.
+- **`GitBackend` hides the forge**, so another storage can replace GitHub later without
+  rewriting the rest (D00-13).
+
+### The pieces
+
+| Piece | Where it runs | What it does | Cost |
+|---|---|---|---|
+| **The repositories** | the researchers' own GitHub accounts | git over HTTPS and SSH; commits and merges made by GitHub's API as the person; pull requests, issues, releases; continuous integration for the repository's own tests only (D00-11) | $0 for OSCR: each researcher's own free quotas |
+| **OSCR's GitHub App** | registered by the owner, installed by researchers | creates a repository when asked; acts as the person through a per-action authorization; sends webhooks; posts OSCR's check runs | $0 |
+| **The repository pages** | static shells (`/r/*`, one `_redirects` rule, no file per repository) and the reader's browser | read public repositories straight from `api.github.com` and `raw.githubusercontent.com`, on the reader's own quota (D00-5); mask email addresses as `catalog.mask_emails` does; take OSCR's layer from a small static index | $0: no Worker request when signed out |
+| **The forge service** (phase 01) | the Worker's code, `/api/forge/*` | per-action authorization (`start`, then `act`); webhooks; OSCR's live layer for signed-in readers; never a git proxy, never a stored user token | 2 requests per action, 1 per webhook |
+| **`oscr_forge`** (new D1 database, binding `FORGE`) | Cloudflare D1 | repositories known by their forge id (public only), links to papers, installations, the paths tracing maps point to, the action log, jobs for the Mac; no Git object, token or email address | inside the Worker's D1 share (D00-12) |
+| **`GitBackend`** | `website/worker/forge/` (Worker and browser); `oscr/forge.py` (the Mac, read-only) | the forge-neutral interface; the GitHub adapter; an in-memory double and a contract suite for tests | $0 |
+| **The Mac** | as today | verifies linked repositories and their licenses; keeps the licensed script copies; computes tracing maps at pinned commits; polls public mirrors; asks Software Heritage to archive when a person requests it (D00-15). Never writes to a forge, never runs users' code | $0 |
+| **The researcher's machine** | `git` and the `oscr` command-line tool (phase 14) | imports, keeping commit ids (D00-8); uploads above OSCR's caps; local blame. The tool's GitHub token stays in the researcher's keychain | $0 |
+
+```mermaid
+flowchart LR
+  R["researcher: git, oscr CLI"] -- "clone, push: GitHub's own credentials" --> G[("GitHub: the researcher's repositories")]
+  B["browser: static shells /r/*"] -- "anonymous REST and raw, the reader's own quota" --> G
+  B -- "start / act: one authorization per action" --> W["Worker: /api/forge/*"]
+  B -- "authorize" --> A["github.com/login/oauth"]
+  A -- "code, back to /forge/authorized/" --> B
+  W -- "GitBackend as the person, then revoke the token" --> G
+  G -- "webhooks" --> W
+  W -- "check runs: the App's own act" --> G
+  W <--> F[("D1 oscr_forge")]
+  W <--> U[("D1 oscr_community: accounts")]
+  F -- "oscr jobs poll" --> M["the Mac"]
+  M -- "read only: heads, files, licenses" --> G
+  M -- "traced paths, answers" --> F
+  M -- "on request" --> S["Software Heritage"]
+```
+
+### Git over HTTPS, and tokens
+
+- **Clones go straight to github.com.** Clone, fetch, pull and push use
+  `https://github.com/<owner>/<name>.git` (or SSH) with GitHub's own credentials.
+  - OSCR runs no git proxy and issues no git token (D00-3).
+  - A proxy would pass GitHub's service on to others (GitHub's AUP §6), and Cloudflare's terms
+    do not clearly allow a proxy in front of content hosted elsewhere.
+- **The scoped tokens are GitHub App user tokens.** Each is limited to the App's permissions, the
+  person's own rights and the repositories where the App is installed, and expires after 8 hours.
+  - The command-line tool gets one through GitHub's device flow, so the token never reaches OSCR.
+  - It acts as git's credential helper for github.com only.
+- **A clone alias on OSCR's domain** is designed and switched off. It would be a `302` from
+  `…/info/refs` to github.com, which git follows by default. The owner decides whether to turn it
+  on.
+- **OSCR's own tokens** (phases 09 and 14) will reach OSCR's API only, never git.
+
+### Writing, and where commits and merges are made
+
+- **Every write is one authorization per action** (D00-4):
+  1. The page confirms the action with the person.
+  2. `POST /api/forge/start` signs a 10-minute cookie. It holds the state, the PKCE verifier, the
+     action and the SHA-256 of its payload. Nothing is written to D1.
+  3. GitHub sends the browser back to a static page, which posts the code and the payload to
+     `POST /api/forge/act`.
+  4. The Worker exchanges the code and checks that the GitHub account is the one linked to the
+     signed-in OSCR account.
+  5. It acts through `GitBackend` as the person and checks that GitHub's answer matches the
+     action.
+  6. It revokes the token. The token is never stored.
+- **The App's installation token** is minted in memory for the App's own acts only: OSCR's check
+  run on a pull request, and reading an installed repository after its webhook.
+- **Commits are made by GitHub** (D00-7):
+  - a web edit is one `createCommitOnBranch` call: one request, compare-and-swap on the branch
+    head, signed by GitHub, authored by the person;
+  - moves, executable bits and commits with two parents use the Git data API.
+- **Merges are made by GitHub.** Branch and pull-request merges go through GitHub's merge
+  endpoints. A merge conflict is resolved in the browser and committed with two parents.
+- **Nothing Git is built in the Worker or on the Mac.** Payloads through the Worker are capped at
+  1 MiB to start, because of the 10 ms of CPU; the cap is raised once measured in V8.
+
+### Large files, limits, the mirror mode, imports, deletion
+
+- **Large files** (D00-9) go, in this order:
+  1. to release assets (under 2 GiB each, with no limit on bandwidth);
+  2. to a Zenodo record made by the researcher;
+  3. to a Hugging Face dataset in the researcher's own account.
+
+  Git LFS is for small binaries only: each GitHub Free owner gets 10 GiB of LFS storage and
+  10 GiB of LFS download a month.
+- **The limits** are shown at creation and in the editor: 100 MiB per file, 2 GB per push, a
+  repository ideally under 1 GB. Through the Worker: web commits up to 1 MiB, release assets up
+  to 25 MiB, streamed without parsing. Beyond that, GitHub's own pages or the command-line tool.
+- **The mirror mode** (D00-2):
+  - A researcher installs the App on an existing repository. OSCR then receives its webhooks and
+    can write back with the researcher's authorization.
+  - A public repository without the App is read only; the Mac polls it.
+  - OSCR copies no Git data, except the licensed scripts it already keeps.
+- **Imports** (D00-8) run on the researcher's machine: `git clone --mirror` then
+  `git push --mirror`, or GitHub's own importer page. A Zenodo archive becomes one commit that
+  cites its DOI. Never in the Worker or on the Mac.
+- **Deletion** (D00-10):
+  - OSCR archives the repository on GitHub and hides it at once, for a 30-day grace period during
+    which it can be restored.
+  - The deletion on GitHub is then the researcher's own act, through a fresh authorization, never
+    OSCR's token or a timer.
+  - Tracing maps that point to the repository are shown before anything is done.
+- **Scope** (D00-14): public repositories only at first. The App asks for no account permission,
+  so no email address. `GitBackend`'s types have no field for an email address.
+
+### What each operation costs
+
+The budgets (D00-12):
+- 40,000 of the 100,000 Worker requests a day are planned for the GitHub side;
+- the forge service's D1 writes are capped in code at 5,000 a day, inside the Worker's 10,000,
+  until the owner confirms C3;
+- no R2, no KV, no Durable Objects, no Cron Triggers.
+
+| operation | Worker requests | D1 rows written | GitHub quota used, and whose |
+|---|---|---|---|
+| a repository page, a file, a commit list, a diff, signed out | 0 | 0 | the reader's own anonymous 60 an hour (raw files are not counted in them) |
+| OSCR's layer for a signed-in reader | 1 | 0 (~10 read) | – |
+| create a repository | 2 | ~5 | the person's own |
+| a web commit, a branch, a pull request, a review, a merge, an issue | 2 | 1 (the action log) | the person's own |
+| a scientific issue (OSCR's own) | 1 | 3 | – |
+| a release; an asset up to 25 MiB | 2 | 1–2 | the person's own |
+| a webhook (a push, a pull request with OSCR's check, a rename) | 1 | 0–2 | the installation's own, for the check run |
+| the Mac polling a public mirror | 0 | 1 per changed head (the facts push's share) | `git ls-remote`, or the Mac's token (a `304` answer is free) |
+| clone, fetch, push | 0 | 0 | the researcher's own |
+
+A day at 3,000 repositories is estimated at about 7,000 Worker requests and 2,300 D1 rows
+written.
+
+### `GitBackend`
+
+- **The interface** (`website/worker/forge/`). It groups repositories, git (refs, trees, files,
+  commits, compare, blame, search, and making commits and merges), pull requests and reviews,
+  issues, releases, checks, webhooks, the App's authorization, and links to the forge's own
+  pages. It covers phases 01 to 07.
+  - Errors are typed: one class, twelve codes. Limits and capabilities are given per kind of
+    credential: anonymous, user, installation.
+  - Its read side also runs in the browser.
+  - An installation session may write nothing but check runs.
+- **The GitHub adapter** uses REST, plus GraphQL where REST falls short: blame, review threads,
+  auto-merge, reverting a pull request, pinning and transferring issues. It adds no dependency,
+  and reaches the network only through an injected `fetch`.
+- **An in-memory double** implements the whole interface, with git's real object ids, and a
+  contract suite runs on every backend.
+- **`oscr/forge.py`** is the Mac's read-only counterpart: a repository by its forge id, the head
+  of a branch through conditional requests, whether a commit exists, the files at a commit.
+- **Other forges can be added later.** A Forgejo, GitLab or Cloudflare backend would add an
+  adapter that passes the same contract. That becomes possible if the owner ever unlocks
+  OSCR-hosted storage (D00-1).
+
+### The owner's steps [owner]
+
+1. **Register the GitHub App.** It is separate from the sign-in OAuth App, which keeps no scope.
+   - Name from `SITE_NAME`.
+   - Callback URL `…/forge/authorized/`, with user authorization requested during installation.
+     GitHub then allows no separate setup URL: the same page also receives the return from an
+     installation.
+   - Webhook `…/api/forge/webhook`, with a secret.
+   - Repository permissions: Metadata (read); Repository creation, Administration, Contents, Pull
+     requests, Issues and Checks (write). No account permission.
+   - Installable by any account. Expiring user tokens. Device flow on, for the command-line tool.
+2. **Give its values to `tools/setup_cloudflare.sh`**, which gains these questions in phase 01:
+   `GITHUB_APP_ID`, `GITHUB_APP_CLIENT_ID`, `GITHUB_APP_CLIENT_SECRET`, `GITHUB_APP_PRIVATE_KEY`
+   (GitHub's file as it is) and `GITHUB_APP_WEBHOOK_SECRET`, plus the variable
+   `GITHUB_APP_SLUG`. The same script creates the D1 database `oscr_forge`.
+3. **Decide**:
+   - C3: 20,000 D1 rows a day for the GitHub side;
+   - whether a user token may stay, encrypted, in the session cookie for its 8 hours;
+   - whether to switch on the clone alias;
+   - whether OSCR may ask Software Heritage to archive the commits of validated maps by default.
