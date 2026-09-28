@@ -38,7 +38,7 @@ from typing import Any
 from urllib.parse import parse_qs, quote, urlsplit
 
 from .links import Link
-from .net import Client
+from .net import Client, github_token
 
 #: SCRIPT extensions, and the language they denote. `.m` is MATLAB: in
 #: neuroscience, Objective-C does not come up.
@@ -175,7 +175,7 @@ def _auth_github() -> list[str]:
     authenticate: anonymous clones are rate-limited more harshly there since
     2025-05-08. The token goes in a header, never in the URL nor in error
     messages."""
-    token = os.environ.get("GITHUB_TOKEN", "").strip()
+    token = github_token()
     if not token:
         return []
     import base64

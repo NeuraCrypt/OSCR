@@ -54,8 +54,24 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
 .masthead nav { display: flex; gap: 1em; font-size: .9em; }
 .masthead nav a, .masthead nav a:visited { color: var(--masthead-text); }
 /* A form in a page (the DOI lookup), like the masthead's search (approved 2026-09-27) */
-main form input[type="text"], main form button { font: inherit; border-radius: 0; }
+/* A button anywhere in a page (the forms, the citations' "Copy") and a form's menus, like the
+   masthead's (proposed in Phases 3 and 4; the owner said not to wait, 2026-09-28) */
+main form input[type="text"], main button, main form select { font: inherit; border-radius: 0; }
 main form input[type="text"] { width: min(28em, 100%); padding: .15em .35em; border: 1px solid #777; box-sizing: border-box; }
+
+/* The sections of a paper's page: a bar of in-page links under its title (#overview, #code…).
+   A ruled bar, never pills; the sections that open with sign-in are muted. */
+nav.tabs ul {
+  display: flex; flex-wrap: wrap; gap: 0 .15em;
+  margin: .6em 0 1.2em; padding: 0; list-style: none;
+  border-bottom: 1px solid var(--rule);
+}
+nav.tabs a {
+  display: block; padding: .3em .75em .25em; margin-bottom: -1px;
+  border: 1px solid transparent; border-bottom: 0;
+}
+nav.tabs a:hover { background: var(--bg-sidebar); border-color: var(--rule); text-decoration: none; }
+nav.tabs .later a { color: var(--muted); }
 
 /* Breadcrumb under the masthead */
 .breadcrumb {
@@ -167,4 +183,7 @@ footer a { margin-right: 1em; }
   .record { flex-direction: column; }
   .sidebar { flex-basis: auto; width: 100%; box-sizing: border-box; }
   .compare { flex-direction: column; }
+  /* The body of a record takes the column's width: a long word or a <pre> no longer widens it. */
+  .record .body { width: 100%; }
+  nav.tabs a { padding: .25em .5em; }
 }

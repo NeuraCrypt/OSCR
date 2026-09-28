@@ -802,6 +802,17 @@ def apply_remote(chunk: Chunk, *, account_id: str, database_id: str, token: str,
     return sum(int((res.get("meta") or {}).get("rows_written") or 0) for res in body.get("result", []))
 
 
+def apply_remote_wrangler(chunk: Chunk, website: Path = WEBSITE) -> int:
+    """One file into the Cloudflare database with `wrangler d1 execute --remote --file`, under
+    wrangler's own login (`npx wrangler login`, the one the nightly deployment already uses): no
+    API token then. The databases are found by name, bound in website/wrangler.toml. Returns the
+    rows written, as estimated (wrangler does not report them for a file)."""
+    assert chunk.path is not None
+    _run(["npx", "wrangler", "d1", "execute", DATABASES[chunk.db], "--remote",
+          "--file", str(chunk.path.resolve()), "--yes"], website)
+    return sum(s.rows for s in chunk.statements)
+
+
 def remote_chunks(plan: Plan) -> list[Chunk]:
     """Smaller chunks for the REST API: a call stays well under its limits (30 s, 100 KB per
     statement)."""
@@ -824,11 +835,14 @@ def push(con: sqlite3.Connection, state: sqlite3.Connection, target: str, *, fol
         cfg = settings or {}
         ids = {CATALOG: cfg.get("OSCR_D1_CATALOG_ID", ""), SEARCH: cfg.get("OSCR_D1_SEARCH_ID", "")}
         account, token = cfg.get("OSCR_D1_ACCOUNT_ID", ""), remote_token()
-        if not (account and all(ids.values()) and token):
-            raise PushError("remote push: OSCR_D1_ACCOUNT_ID, OSCR_D1_CATALOG_ID and OSCR_D1_SEARCH_ID (settings) and "
-                            "a token (keychain org.oscr.cloudflare-d1) are needed: docs/SEARCH.md")
-        todo = remote_chunks(plan)
-        send = lambda c: apply_remote(c, account_id=account, database_id=ids[c.db], token=token)  # noqa: E731
+        if account and all(ids.values()) and token:
+            # The REST API: D1 reports the rows each chunk wrote.
+            todo = remote_chunks(plan)
+            send = lambda c: apply_remote(c, account_id=account, database_id=ids[c.db], token=token)  # noqa: E731
+        else:
+            # No token: wrangler's own login, as the deployment (docs/SEARCH.md).
+            todo = write(plan, folder)
+            send = lambda c: apply_remote_wrangler(c, website)  # noqa: E731
     else:
         raise ValueError(f"unknown target {target!r}")
     done = 0
@@ -844,9 +858,10 @@ def push(con: sqlite3.Connection, state: sqlite3.Connection, target: str, *, fol
                        plan.describe()))
         state.commit()
     plan.applied, plan.written = done, written
-    if target == "local" and todo and todo[0].path is not None:
-        # Applied: the files of a local push are not kept (a full push at the full stock is
-        # ~400 MB of SQL). A failed push keeps them, and `oscr d1 build` writes them to be read.
+    if todo and todo[0].path is not None:
+        # Applied: the files of a push through wrangler are not kept (a full push at the full
+        # stock is ~400 MB of SQL). A failed push keeps them, and `oscr d1 build` writes them to
+        # be read.
         shutil.rmtree(todo[0].path.parent, ignore_errors=True)
     return plan
 

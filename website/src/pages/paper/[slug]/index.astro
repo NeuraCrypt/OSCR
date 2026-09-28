@@ -49,6 +49,8 @@ const SECTIONS = [
   { id: "reproductions", label: "Reproductions" },
   { id: "activity", label: "Activity" },
 ];
+/** The sections that open with sign-in (Phase 7): muted in the bar. */
+const LATER = new Set(["discussion", "reproductions", "activity"]);
 ---
 <Base
   title={a.title}
@@ -65,12 +67,9 @@ const SECTIONS = [
           {n.source && `, from ${n.source}`}.
         </p>
       ))}
-      {/* The sections of the page. Markup only for now: a style for this bar awaits the owner's approval. */}
-      <nav aria-label="Sections of this page">
-        <p class="line">
-          <span class="label">Sections:</span>{" "}
-          {SECTIONS.map((x, i) => <>{i > 0 && " · "}<a href={`#${x.id}`}>{x.label}</a></>)}
-        </p>
+      {/* The sections of the page: a ruled bar of in-page links (nav.tabs, science.css). */}
+      <nav class="tabs" aria-label="Sections of this page">
+        <ul>{SECTIONS.map((x) => <li class={LATER.has(x.id) ? "later" : undefined}><a href={`#${x.id}`}>{x.label}</a></li>)}</ul>
       </nav>
 
       <Overview a={a} p={p} />

@@ -346,3 +346,33 @@ def test_reset_sends_everything_again(con, state):
     assert again.new == 3
     assert {s.key for s in again.statements if s.table == "papers"} == {
         str(p.pid) for p in d1.project(con, state).papers.values()}           # the same keys
+
+
+def test_without_a_token_the_remote_push_goes_through_wranglers_login(con, state, tmp_path, monkeypatch):
+    for n in range(1, 4):
+        paper(con, n)
+    con.commit()
+    calls = []
+    monkeypatch.setattr(d1, "remote_token", lambda: "")
+    monkeypatch.setattr(d1, "_run", lambda cmd, cwd: calls.append(cmd) or "")
+    plan = d1.push(con, state, "remote", folder=tmp_path / "sql", settings={}, report=lambda _: None)
+    assert calls and all(c[:4] == ["npx", "wrangler", "d1", "execute"] and "--remote" in c and "--file" in c
+                         for c in calls)
+    assert {c[4] for c in calls} == {"oscr_catalog", "oscr_search"}
+    assert plan.applied == len(plan.statements) and plan.written > 0
+    assert d1.build(con, state, "remote").statements == []          # recorded: nothing left to send
+    assert not list((tmp_path / "sql").glob("remote-*/*.sql"))       # applied: the files are not kept
+
+
+def test_the_night_pushes_the_search_once_the_settings_say_so(tmp_path, monkeypatch, capsys):
+    from oscr import catalog
+    calls = []
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(catalog, "generate", lambda con, out, public: out)
+    monkeypatch.setattr(d1, "command", lambda con, action, **kw: calls.append((action, kw["target"])) or "pushed")
+    for settings, pushes in (({}, []), ({"OSCR_D1_PUSH": "remote"}, [("push", "remote")])):
+        calls.clear()
+        monkeypatch.setattr(cli, "settings", lambda s=settings: dict(s))
+        cli.main(["--db", str(tmp_path / "mac.db"), "nightly", "--out", str(tmp_path / "out")])
+        assert calls == pushes
+    assert "search (D1): pushed" in capsys.readouterr().out

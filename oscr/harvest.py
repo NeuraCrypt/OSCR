@@ -18,7 +18,6 @@ interrupted pass resumes where it stopped:
 from __future__ import annotations
 
 import json
-import os
 import re
 import sqlite3
 import time
@@ -29,7 +28,7 @@ from pathlib import Path
 from typing import Any
 
 from . import db, find, jats, library, links, methods, repos
-from .net import Client, Outage, Unavailable
+from .net import Client, Outage, Unavailable, github_token
 from .sources import europepmc, forges, metadata
 
 
@@ -47,7 +46,7 @@ class Options:
     contents: bool = True
     #: The GitHub "DOI in README" search: 10 requests/min without a token, 30 with
     #: one. By default, only when a token is there.
-    github_search: bool = field(default_factory=lambda: bool(os.environ.get("GITHUB_TOKEN")))
+    github_search: bool = field(default_factory=lambda: bool(github_token()))
     reverify_after_days: int = 30
     #: Promotion threshold: a "data" repository holding at least this many scripts,
     #: and at least 20% scripts among its files, carries code.

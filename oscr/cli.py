@@ -23,7 +23,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import signal
 import sys
 import time
@@ -31,7 +30,7 @@ from datetime import date
 from pathlib import Path
 
 from . import catalog, db, harvest
-from .net import Cache, Client
+from .net import Cache, Client, github_token
 from .sources import europepmc
 
 SETTINGS = Path.home() / ".config" / "oscr" / "settings"
@@ -75,7 +74,7 @@ def _options(a: argparse.Namespace) -> harvest.Options:
                            verify=not a.no_verify, metadata=not a.no_metadata, swh=not a.no_swh,
                            snapshots=a.snapshots, reverify_after_days=0 if a.reverify_all else 30,
                            contents=not a.no_contents, records=not a.no_records,
-                           github_search=a.github_search or bool(os.environ.get("GITHUB_TOKEN")))
+                           github_search=a.github_search or bool(github_token()))
 
 
 def _article_id(con, doi: str) -> str:
@@ -340,6 +339,15 @@ def main(argv: list[str] | None = None) -> int:
                     print(f"{now()} {publish.deploy_cloudflare(out, a.cloudflare)}", flush=True)
                 except (Exception, SystemExit) as e:
                     errors.append(f"Cloudflare: {e}")
+            if cfg.get("OSCR_D1_PUSH") == "remote":
+                # The search's databases (docs/SEARCH.md): the day's changes, within the budget.
+                from . import d1
+                try:
+                    print(f"{now()} search (D1): " + d1.command(
+                        con, "push", target="remote", budget=int(cfg.get("OSCR_D1_BUDGET", "80000")),
+                        state_path=Path("data/d1/state.db"), folder=Path("data/d1/sql"), settings=cfg), flush=True)
+                except (Exception, SystemExit) as e:
+                    errors.append(f"Search (D1): {e}")
             if cfg.get("OSCR_SCRIPTS_DATASET"):
                 try:
                     print(f"{now()} " + _scripts(con, "publish", Path("data/scripts"), cfg["OSCR_SCRIPTS_DATASET"],

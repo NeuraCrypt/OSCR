@@ -26,6 +26,7 @@ a decision, taken on the dataset's page the day a website reads it.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import re
@@ -120,6 +121,25 @@ def publish_hf(site: Path, dataset: str, *, mirror: Path | None = None, dry_run:
     return summary
 
 
+#: Written into node_modules after `npm ci`: the digest of the package-lock.json installed.
+INSTALLED_LOCK = ".oscr-lock-sha256"
+
+
+def _lock_digest(website: Path) -> str:
+    lock = website / "package-lock.json"
+    return hashlib.sha256(lock.read_bytes()).hexdigest() if lock.exists() else ""
+
+
+def _installed_lock(website: Path) -> str | None:
+    """The digest of the package-lock.json that node_modules was installed from, or None: then
+    `npm ci` runs before the build, so that a merge that changes the dependencies (Svelte came
+    with Phase 3) is installed rather than found missing by the build."""
+    try:
+        return (website / "node_modules" / INSTALLED_LOCK).read_text().strip()
+    except OSError:
+        return None
+
+
 def deploy_cloudflare(catalog: Path, project: str, website: Path = WEBSITE) -> str:
     """Rebuild the website from the public catalogue (`catalog`, generated in public
     mode) and put it online as the static assets of a Cloudflare Worker (`project` is the
@@ -127,7 +147,8 @@ def deploy_cloudflare(catalog: Path, project: str, website: Path = WEBSITE) -> s
     changed are uploaded. `npx wrangler login` must have been done once; wrangler keeps and
     renews its login itself."""
     env = {**os.environ, "CATALOG_DIR": str(catalog.resolve())}
-    steps = [] if (website / "node_modules").exists() else [["npm", "install", "--no-audit", "--no-fund"]]
+    lock = _lock_digest(website)
+    steps = [] if _installed_lock(website) == lock else [["npm", "ci", "--no-audit", "--no-fund"]]
     steps += [["npm", "run", "build"],
               ["npx", "wrangler", "deploy", "--name", project]]
     output = ""
@@ -136,5 +157,7 @@ def deploy_cloudflare(catalog: Path, project: str, website: Path = WEBSITE) -> s
         if r.returncode != 0:
             raise RuntimeError(f"{' '.join(step[:4])} failed: " + (r.stderr or r.stdout).strip()[-600:])
         output = r.stdout
+        if step[:2] == ["npm", "ci"]:
+            (website / "node_modules" / INSTALLED_LOCK).write_text(lock)
     url = re.search(r"https://[\w.-]+\.workers\.dev\S*", output)
     return f"website online: {url.group(0) if url else project}"

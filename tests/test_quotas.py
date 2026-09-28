@@ -57,3 +57,13 @@ def test_accession_codes_are_not_code():
     m = Mention(g, f"The population code analysis scripts are available at {g}.",
                 ("Code availability",), "availability")
     assert role.judge(m, links.normalize(g), ["X"]).role == "code"
+
+
+def test_the_github_token_comes_from_the_keychain_when_the_environment_has_none(monkeypatch):
+    from oscr import net
+    monkeypatch.delenv("GITHUB_TOKEN", raising=False)
+    monkeypatch.setattr(net, "_keychain_github_token", lambda: "keychain-token")
+    assert net.github_token() == "keychain-token"
+    assert repos._auth_github()[0] == "-c"
+    monkeypatch.setenv("GITHUB_TOKEN", "environment-token")
+    assert net.github_token() == "environment-token"

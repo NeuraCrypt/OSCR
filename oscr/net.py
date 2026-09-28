@@ -16,10 +16,12 @@ to give it, through the `OSCR_CONTACT` variable.
 """
 from __future__ import annotations
 
+import functools
 import hashlib
 import io
 import json
 import os
+import subprocess
 import tempfile
 import threading
 import time
@@ -78,6 +80,28 @@ def is_transient(status: int) -> bool:
 def contact() -> str:
     """The address the user chose to declare, or nothing."""
     return os.environ.get("OSCR_CONTACT", "").strip()
+
+
+
+#: The macOS keychain service holding the GitHub token (read-only on public repositories).
+GITHUB_KEYCHAIN = "org.oscr.github"
+
+
+def github_token() -> str:
+    """The GitHub token: GITHUB_TOKEN when set (GitHub Actions sets one), else the macOS keychain
+    (`org.oscr.github`), since launchd starts the Mac's tasks without it. Never written anywhere,
+    never in a URL nor in an error message."""
+    return os.environ.get("GITHUB_TOKEN", "").strip() or _keychain_github_token()
+
+
+@functools.lru_cache(maxsize=1)
+def _keychain_github_token() -> str:
+    try:
+        r = subprocess.run(["security", "find-generic-password", "-s", GITHUB_KEYCHAIN, "-w"],
+                           capture_output=True, text=True, timeout=10)
+    except (OSError, subprocess.TimeoutExpired):
+        return ""
+    return r.stdout.strip() if r.returncode == 0 else ""
 
 
 @dataclass
@@ -151,7 +175,7 @@ class Client:
             gap = INTERVALS.get(host, DEFAULT_INTERVAL)
             if host == "api.github.com" and "/search/" in url:
                 # GitHub search has its own quota: 10/min without a token, 30 with one.
-                gap = 2.1 if os.environ.get("GITHUB_TOKEN") else 6.5
+                gap = 2.1 if github_token() else 6.5
                 host = "api.github.com/search"
             remaining = self._last.get(host, 0.0) + gap - time.monotonic()
             if remaining > 0:
@@ -159,8 +183,8 @@ class Client:
             self._last[host] = time.monotonic()
 
     def _headers(self, host: str) -> dict[str, str]:
-        token = os.environ.get("GITHUB_TOKEN", "").strip()
-        if host == "api.github.com" and token:
+        token = github_token() if host == "api.github.com" else ""
+        if token:
             return {"Authorization": f"Bearer {token}",
                     "Accept": "application/vnd.github+json"}
         return {}

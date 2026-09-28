@@ -272,6 +272,9 @@ Every step costs nothing. None is needed for the local tests.
 
 ### 4. The Cloudflare secrets
 
+`sh tools/setup_cloudflare.sh` (from the repository's root) does this step and the next: it makes
+`SESSION_KEY` itself and asks for the six values, one by one, without showing them. By hand:
+
 From `website/`, the owner's own terminal (each command asks for the value; none is ever written
 to a file of the repository):
 

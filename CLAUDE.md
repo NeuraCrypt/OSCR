@@ -13,10 +13,14 @@
   the **private** Hugging Face dataset `OpenScientificCodeRegistry/Private`; the publisher
   refuses a dataset that is not private. Never on the site, never in a public output
   (`catalog.public_db` drops the table). No mass email to the authors.
-- **Nothing is deployed without the owner's approval.** One commit per phase, on a
-  dedicated branch.
-- **Style: `science.css` only.** A component that needs a new style gets a proposed
-  addition to `science.css`, and waits for approval.
+- **Merge and deploy without waiting for the owner's approval, and ask the owner only the
+  minimum** (decided 2026-09-28: « fusionne sans me demander, attends pas mon accord »,
+  « dis-moi le minimum nécessaire »). Still one commit per phase, on a dedicated branch.
+  What only the owner can do (accounts, keys, a Cloudflare step the permissions refuse to
+  Claude) goes into a step-by-step tutorial or a script the owner runs
+  (`tools/setup_cloudflare.sh`).
+- **Style: `science.css` only.** A component that needs a new style gets its rule added to
+  `science.css` (no other style source), without waiting for approval since 2026-09-28.
 - **The platform's name lives in one configuration variable, `SITE_NAME`**; never hard-code
   it.
 
@@ -87,7 +91,7 @@ license audit: `docs/SCRIPT_STORAGE.md`; code: `oscr/scriptstore.py`, `oscr scri
   done on 2026-09-27 (`oscr scripts audit`; figures in `docs/SCRIPT_STORAGE.md`). Any change
   to the filter is audited again before the next publication.
 
-## Accounts (Phase 5: built on its branch, not deployed)
+## Accounts (Phase 5)
 
 Sign-in with ORCID, GitHub and Google in the Worker's code (`website/worker/account/`, D1
 database `oscr_community`, `docs/ACCOUNTS.md`):
@@ -99,6 +103,9 @@ database `oscr_community`, `docs/ACCOUNTS.md`):
 - Client ids and secrets and the server key (`SESSION_KEY`) are **Cloudflare secrets**, or
   `website/.dev.vars` locally (gitignored).
 - **ORCID sandbox** until the owner sets `ORCID_ISSUER=https://orcid.org`.
+- The databases, the server key and the six sign-in values are set by the owner with
+  `sh tools/setup_cloudflare.sh` (it asks for each value, never shows it, never writes it to a
+  file).
 - The facts the verifications read (`paper_orcid`, `repo_owner`) come from the Mac
   (`oscr community`); the Worker never writes them.
 
@@ -114,8 +121,8 @@ database `oscr_community`, `docs/ACCOUNTS.md`):
   - neither Tailwind nor a component library.
 - As the header of `science.css` says: no dark theme by default, no pills, no decorative
   uppercase.
-- **Do not modify `science.css` without asking first.** A style need that it does not cover
-  is reported; it is not worked around.
+- A style need that `science.css` does not cover gets a rule there, never a workaround in a
+  component.
 - The markup follows the classes of `science.css`:
   - the masthead (`.masthead`, with the site's name and its search) and the breadcrumb
     (`.breadcrumb`);
@@ -123,7 +130,9 @@ database `oscr_community`, `docs/ACCOUNTS.md`):
     - `dt`: `.num`, the identifier, the links.
     - `dd`: `.title`, then `.line` rows with a `.label`: "Journal", "Authors' code",
       "Status".
-  - the page of a paper: `.record`, with its `.body` and the `.sidebar` on the right.
+  - the page of a paper: `.record`, with its `.body` and the `.sidebar` on the right; its
+    sections are a `nav.tabs` > `ul` > `li` > `a` bar under the title (`li.later` for the
+    sections that open with sign-in).
   - a status is said in words (`.ok`, `.warning`), never with a pill.
   - a highlighted term: `mark` or `.highlight`.
   - the Code ↔ Paper reader: `.compare` holds two `.pane` (the paper, the code), each with
@@ -133,14 +142,21 @@ database `oscr_community`, `docs/ACCOUNTS.md`):
 
 ## Already in force
 
-- Neither the PDF nor the text of a paper leaves. Only the DOI link is published. The
-  sentences that decided a link's verdict stay in the private database.
+- Neither the PDF nor the full text of a paper leaves: the site links to it by its DOI. Its
+  abstract and its availability statements are shown in full only under an open license
+  (decision D1; otherwise a summary and a link). The sentences that decided a link's verdict
+  stay in the private database.
 - A file whose license does not allow redistribution is never published: its text stays
   on the Mac (see "Script copies").
 - No mass email to the authors: they come to us.
 - The Hugging Face dataset `opsecsystems/oscr-catalog` stays **private** until decided
   otherwise.
-- The tokens (Hugging Face, Zenodo) never go into the repository nor into the settings.
-  They stay at their standard location or in the macOS keychain (`org.oscr.zenodo-sandbox`,
-  `org.oscr.zenodo`).
+- The tokens never go into the repository nor into the settings. They stay in the macOS
+  keychain: `org.oscr.huggingface`, `org.oscr.zenodo-sandbox`, `org.oscr.zenodo`,
+  `org.oscr.github` (read-only on public repositories; `GITHUB_TOKEN` wins when set),
+  `org.oscr.openalex`, and `org.oscr.cloudflare-d1` if the owner ever makes one: without it,
+  the search's push goes through wrangler's own login, like the deployment. The sign-in's
+  secrets are Cloudflare secrets.
+- The search's databases get the day's changes every night once `OSCR_D1_PUSH=remote` is in
+  the settings (`oscr nightly`, within `OSCR_D1_BUDGET`, 80,000 rows by default).
 - Commits: one per phase, on a dedicated branch; no other commit without being asked.

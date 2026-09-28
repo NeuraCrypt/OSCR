@@ -189,6 +189,7 @@ def test_the_catalogue_exports_the_matches_for_the_reader(con, tmp_path):
 
 def test_the_night_rebuilds_the_website_and_puts_it_online(tmp_path, monkeypatch):
     (tmp_path / "node_modules").mkdir()
+    (tmp_path / "node_modules" / publish.INSTALLED_LOCK).write_text("")      # no package-lock.json: ""
     calls = []
 
     def fake_run(step, cwd, env, **kw):
@@ -201,3 +202,21 @@ def test_the_night_rebuilds_the_website_and_puts_it_online(tmp_path, monkeypatch
     assert r == "website online: https://oscr.example.workers.dev"
     assert [s for s, _ in calls] == [["npm", "run", "build"], ["npx", "wrangler", "deploy"]]
     assert calls[0][1] == str((tmp_path / "pub").resolve())
+
+
+def test_the_night_installs_the_packages_when_the_lock_changed(tmp_path, monkeypatch):
+    (tmp_path / "package-lock.json").write_text('{"packages": {"node_modules/svelte": {"version": "5.0.0"}}}')
+    (tmp_path / "node_modules").mkdir()
+    (tmp_path / "node_modules" / publish.INSTALLED_LOCK).write_text("the digest of an older lock")
+    calls = []
+
+    def fake_run(step, cwd, env, **kw):
+        calls.append(step[:2])
+        import subprocess
+        return subprocess.CompletedProcess(step, 0, stdout="https://oscr.example.workers.dev\n", stderr="")
+    monkeypatch.setattr(publish.subprocess, "run", fake_run)
+    publish.deploy_cloudflare(tmp_path / "pub", "oscr", website=tmp_path)
+    assert calls == [["npm", "ci"], ["npm", "run"], ["npx", "wrangler"]]
+    calls.clear()
+    publish.deploy_cloudflare(tmp_path / "pub", "oscr", website=tmp_path)    # installed: not again
+    assert calls == [["npm", "run"], ["npx", "wrangler"]]

@@ -1,7 +1,7 @@
 # The search (Phase 3)
 
-Status: **built on branch `phase-3`, tested locally, not deployed. The remote setup at the end
-of this page awaits the owner's approval.** The rules are the owner's decision D3 (`CLAUDE.md`):
+Status: **merged (2026-09-28). The remote setup is `tools/setup_cloudflare.sh`, run by the
+owner (§7).** The rules are the owner's decision D3 (`CLAUDE.md`):
 SQLite FTS5 in D1; a search runs only when the form is submitted, never as one types; when the
 daily quota is spent, a clear message says so; plan B is a static index on Hugging Face.
 
@@ -314,52 +314,42 @@ databases, as for the full-stock simulation of §5.
 `[env.local]` in `website/wrangler.toml` binds the two local databases; the top-level
 configuration, which `npm run deploy` uses, binds none until the owner creates them.
 
-## 7. Remote setup — awaiting the owner's approval
+## 7. Remote setup: `tools/setup_cloudflare.sh`
 
-Nothing below has been run. Each step is free on the Workers Free plan.
+The owner runs it once, in their own Terminal (the permissions refuse Claude the creation of
+remote resources); it runs again safely:
 
-1. **Create the two databases** (close to the Mac, in Western Europe):
-   ```bash
-   cd website
-   npx wrangler d1 create oscr_catalog --location weur
-   npx wrangler d1 create oscr_search --location weur
-   ```
-   Each prints a `database_id`.
-2. **Bind them**: in `website/wrangler.toml`, uncomment the two `[[d1_databases]]` blocks under
-   the top-level configuration and paste the two ids (ids are not secrets).
-3. **Create the schemas** (from `website/`: the migrations are `../migrations/d1/catalog` and
-   `../migrations/d1/search`):
-   ```bash
-   npx wrangler d1 migrations apply oscr_catalog --remote
-   npx wrangler d1 migrations apply oscr_search --remote
-   ```
-4. **A token for the Mac's pushes**, D1 edit rights only: dash.cloudflare.com → My Profile → API
-   Tokens → Create Token → Custom token → Permissions: *Account · D1 · Edit*, the owner's
-   account only. Into the keychain, never a file:
-   ```bash
-   security add-generic-password -s org.oscr.cloudflare-d1 -a oscr -w
-   ```
-   And in `~/.config/oscr/settings` (identifiers, not secrets): `OSCR_D1_ACCOUNT_ID=…`,
-   `OSCR_D1_CATALOG_ID=…`, `OSCR_D1_SEARCH_ID=…`.
-5. **First load**:
-   ```bash
-   oscr d1 build --remote     # what would leave, as SQL files; nothing sent
-   oscr d1 push --remote      # sends it, within 80,000 rows written
-   oscr d1 status
-   ```
-   At today's scale one push is enough (~2,000–2,500 rows); at the full stock it takes 2–4
-   days: repeat once a day until the push says nothing is left.
-6. **Deploy** the Worker with the site (`npm run deploy`, or the nightly job): `/api/search`
-   answers, and `/search/` works. Before the databases exist, the same deployment is harmless:
-   `/api/search` answers `not_configured` and the page says the search is not available yet.
-7. **Check**: `curl 'https://oscr.yannbellec-b.workers.dev/api/search?q=eeg'` (results, and
-   `cost.rows_read`); the D1 dashboard's row metrics after a day.
-8. **Every day**: `oscr d1 push --remote` after the nightly publication (04:17 local time, after
-   D1's day starts at 00:00 UTC), as a step of `oscr nightly` or its own launchd task (to be
-   decided). A push that finds nothing changed writes nothing.
-9. **Undo**: remove the bindings and deploy (the page then says the search is not available);
-   D1 Time Travel restores a database to any minute of the last 7 days; `npx wrangler d1 delete`
-   removes one.
+```bash
+cd /Volumes/Expansion/Scrapper && sh tools/setup_cloudflare.sh
+```
+
+1. **The databases**: `oscr_catalog`, `oscr_search` (and `oscr_community`, for the accounts),
+   created in Western Europe (`--location weur`) if missing, then bound at the top of
+   `website/wrangler.toml` by `tools/bind_d1.py` (ids are identifiers, not secrets).
+2. **Their tables**: `npx wrangler d1 migrations apply <database> --remote`.
+3. **The site**, rebuilt from the public catalogue and deployed with the bindings:
+   `/api/search` answers and `/search/` works. Before the databases exist, the same deployment
+   is harmless: `/api/search` answers `not_configured` and the page says the search is not
+   available yet.
+4. **The first load**: `oscr d1 push --remote`, after `OSCR_D1_PUSH=remote` is written to the
+   settings. At today's scale one push is enough (~2,000–2,500 rows); at the full stock it
+   takes 2–4 days within the budget.
+5. **Every night**: `oscr nightly` pushes the day's changes once `OSCR_D1_PUSH=remote` is in
+   the settings, after D1's day starts (00:00 UTC). A push that finds nothing changed writes
+   nothing.
+
+**How the push reaches Cloudflare.** Through wrangler's own login (`npx wrangler login`, the
+one the deployment uses): `wrangler d1 execute <database> --remote --file`, the rows written
+counted from the statements. With a token (Account · D1 · Edit, in the keychain as
+`org.oscr.cloudflare-d1`) and `OSCR_D1_ACCOUNT_ID`, `OSCR_D1_CATALOG_ID`, `OSCR_D1_SEARCH_ID`
+in the settings, it uses the REST API instead, which reports the rows written exactly.
+
+**Check**: `curl 'https://oscr.yannbellec-b.workers.dev/api/search?q=eeg'` (results, and
+`cost.rows_read`); `oscr d1 status`; the D1 dashboard's row metrics after a day.
+
+**Undo**: remove the bindings and deploy (the page then says the search is not available);
+D1 Time Travel restores a database to any minute of the last 7 days; `npx wrangler d1 delete`
+removes one.
 
 ## 8. Limits and next steps
 
