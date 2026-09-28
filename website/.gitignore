@@ -6,3 +6,7 @@ dist/
 src/data/
 public/scripts/
 public/lookup/
+# The local secrets of `wrangler dev` (docs/ACCOUNTS.md): never committed; the example is.
+.dev.vars
+.dev.vars.*
+!.dev.vars.example

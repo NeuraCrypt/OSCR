@@ -3,7 +3,8 @@
 Status: **Phase 0 validated by the owner on 2026-09-27, with the decisions of §13. Phases 1 and 2 are
 deployed; Phase 3 (search) is built and awaits the owner's approval for its remote setup
 (docs/SEARCH.md §7); Phase 4 (the full paper page) is built on its branch and awaits review
-(§12); Phase 5 is in progress.**
+(§12); Phase 5 (accounts) is built on its branch and awaits review and the owner's
+applications (§8, [ACCOUNTS.md](ACCOUNTS.md)).**
 Date: 2026-09-26. Scope: turn the catalogue into a full platform (arXiv + SSRN + PubMed +
 a Kaggle dataset page), at zero cost, following `CLAUDE.md`. The platform's name lives in
 one configuration variable, `SITE_NAME` (current value: `OSCR`).
@@ -228,11 +229,12 @@ applied with `wrangler d1 migrations apply` on Cloudflare and by `oscr` on the M
 
 | table | key columns |
 |---|---|
-| `users` | `id`, `display_name`, `created_at`, `bio`, public handles only (ORCID iD, GitHub login) — **no email stored unless the user asks for email notifications** |
-| `identities` | `user_id`✱, `provider` (orcid, github, google), `subject`✱ (OIDC `sub` / GitHub id), `linked_at` |
-| `sessions` | `id_hash`✱, `user_id`, `created_at`, `expires_at` (not in the mission's list; needed for stateless Workers) |
-| `roles` | `user_id`✱, `role` (member, verified_author, maintainer, moderator, admin), `scope_kind`, `scope_id`, `granted_by`, `granted_at` |
-| `claims` | `id`, `user_id`, `paper_id`✱, `kind` (author, maintainer), `evidence`, `status`✱, `decided_by`, `decided_at` |
+| `users` | `id`, `display_name`, `created_at`, public handles only (ORCID iD, GitHub login) — **no email, ever** (D5: notifications in the site). Built (Phase 5) |
+| `identities` | `user_id`✱, `provider` (orcid, github, google), `subject` (OIDC `sub` / GitHub id; key with the provider), `linked_at`. Built |
+| `sessions` | `id_hash` (key), `user_id`✱, `created_at`, `expires_at`, `last_seen_at`, `user_agent_hint`. Built |
+| `roles` | `user_id` (key prefix), `role` (member, verified_author, maintainer, moderator, admin), `scope_kind`, `scope_id`, `granted_by`, `granted_at`. Built |
+| `claims` | `id`, `user_id`✱, `kind` (author, maintainer), `paper_id` or `repo`, `evidence`, `status`, `decided_by`, `decided_at`. Built |
+| `paper_orcid`, `repo_owner` | the facts the verifications need, pushed by the Mac (`oscr community`). Built |
 | `submissions` | `id`, `user_id`, `doi`, `code_urls` (JSON), `checks` (JSON), `status`✱, `created_at` |
 | `jobs` | `id`, `kind` (harvest_doi, verify_repo, align, deposit_map, badge_pr), `payload` (JSON), `status`✱, `attempts`, `created_at`, `taken_at`, `finished_at`, `result` (JSON) |
 | `discussions` | `id`, `paper_id`✱, `kind` (question, error_report, reproduction), `title`, `status`✱, `author_id`, `created_at`, `resolved_by` |
@@ -436,15 +438,24 @@ and the remote steps awaiting approval are in `docs/SEARCH.md`.
 
 ## 8. Accounts, roles, sessions
 
-- Sign-in with ORCID (OpenID Connect), GitHub (OAuth) and Google (OpenID Connect) in the Worker
-  Functions; several identities linked to one account.
-- Sessions: a random 256-bit id in an `HttpOnly; Secure; SameSite=Lax` cookie; only its hash
-  in D1 (`sessions`); CSRF token on every form; no in-memory state (stateless Workers).
-- Secrets (OAuth client secrets, session key, D1 API token of the Mac) in Cloudflare secrets
-  and the macOS keychain — never in the repository.
-- Verified author: the signed-in ORCID appears among the paper's authors (OpenAlex, Crossref,
-  JATS); otherwise a manual claim goes to moderation. Maintainer: the GitHub account owns or
-  contributes to the repository (checked by a job on the Mac with its token).
+**Built in Phase 5** (branch `phase-5`, not deployed; details, measurements and the owner's
+steps: [ACCOUNTS.md](ACCOUNTS.md)).
+
+- Sign-in with ORCID (OpenID Connect, `openid`), GitHub (OAuth, no scope) and Google (OpenID
+  Connect, `openid` only) in the Worker's code (`website/worker/account/`): authorization code
+  flow, `state`, PKCE (S256), a nonce and the ID token's RS256 signature checked with WebCrypto.
+  Several identities linked to one account; no email address asked for, read or stored.
+- Sessions: a random 256-bit id in a `__Host-` cookie, `HttpOnly; Secure; SameSite=Lax`; only
+  its SHA-256 in D1; 30 days, sliding at most once a day; a CSRF token (an HMAC bound to the
+  session) and the site's `Origin` on every POST; no in-memory state.
+- Secrets (client ids and secrets, the server key) in Cloudflare secrets, `.dev.vars` locally
+  (gitignored) — never in the repository.
+- Verified author: the signed-in ORCID iD appears among the authors of a paper with a page
+  (`paper_orcid`, pushed by the Mac from the papers' metadata), at sign-in and on request.
+  Maintainer: on request, the GitHub account owns the repository, belongs publicly to its
+  organization or contributed to it — checked by the Worker with the person's own fresh token
+  (not kept), else a pending claim for moderation (Phase 7). Manual author claims: Phase 6.
+- D1 writes per sign-in (measured): 5 for a new account, 2 for a returning one; 3 for a link.
 
 ## 9. Submission, claim, edition, validation
 
@@ -478,7 +489,7 @@ nightly to Hugging Face as JSON and Parquet (deltas only, to fit the uplink).
 | 2 — navigation | categories, journals, institutions, authors, tools, datasets pages; the DOI lookup; pages for "on request" and "data only" (D2). **Built on branch `phase-2`, awaiting review, not deployed**; institutions await ROR ids from OpenAlex | 1 |
 | 3 — search | D1 projection + FTS5, facets, advanced search, export. **Built on branch `phase-3`, awaiting review, not deployed; the remote D1 databases await approval** (`docs/SEARCH.md`) | 1, D3 |
 | 4 — full paper page | all tabs, Versions with diff. **Built on branch `phase-4`, awaiting review, not deployed**: `oscr/paperpage.py` writes `papers/NN.json`; the tabs are sections of one page (Overview, Code, Map, Data, Versions, Cite, Similar; Discussion, Reproductions and Activity say what they will hold and that they open with sign-in); abstracts under D1's rule; the tab bar's style awaits the owner (markup only until then) | 1–3 |
-| 5 — accounts | ORCID, GitHub, Google, roles, author and maintainer verification | D4 (OAuth apps) |
+| 5 — accounts | ORCID, GitHub, Google, roles, author and maintainer verification. **Built on branch `phase-5`, awaiting review, not deployed**; awaits the owner's applications, secrets and database ([ACCOUNTS.md](ACCOUNTS.md)) | D4 (OAuth apps) |
 | 6 — submission, claims, edition, validation, Zenodo sandbox, badge | | 5 |
 | 7 — discussions, reproductions, moderation, notifications | | 5, D5 |
 | 8 — feeds, API, exports, institutional pages | | 1–4 |
