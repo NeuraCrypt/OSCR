@@ -2,7 +2,8 @@
 
 Status: **Phase 0 validated by the owner on 2026-09-27, with the decisions of §13. Phases 1 and 2 are
 deployed; Phase 3 (search) is built and awaits the owner's approval for its remote setup
-(docs/SEARCH.md §7); Phases 4 and 5 are in progress.**
+(docs/SEARCH.md §7); Phase 4 (the full paper page) is built on its branch and awaits review
+(§12); Phase 5 is in progress.**
 Date: 2026-09-26. Scope: turn the catalogue into a full platform (arXiv + SSRN + PubMed +
 a Kaggle dataset page), at zero cost, following `CLAUDE.md`. The platform's name lives in
 one configuration variable, `SITE_NAME` (current value: `OSCR`).
@@ -334,7 +335,7 @@ within 5,000/h. Git history: local, no quota.
 | `/` | search bar, key figures, new today / this week, categories with counts, top journals and tools | static, rebuilt nightly |
 | `/search` | simple and advanced search, facets with counts, sorts, export | static shell + Svelte island + search API |
 | `/browse/`, `/browse/<facet>/<value>/` (built, Phase 2); `/browse/<category>/<year>/` | category tree by facet with counts; a category's papers by day; later by year, paginated like arXiv lists | static (bounded) |
-| `/paper/<id>/` + tabs (`code`, `map`, `data`, `versions`, `discussion`, `reproductions`, `cite`, `activity`, `similar`) | the central page; since Phase 2 also for "on request" and "data only" (D2), linking to its authors, journal, tools, datasets and categories | static while under the file budget, then on demand (SSR from `papers.doc`); tabs with live data are islands |
+| `/paper/<id>/` + tabs (`code`, `map`, `data`, `versions`, `discussion`, `reproductions`, `cite`, `activity`, `similar`) | the central page; since Phase 2 also for "on request" and "data only" (D2), linking to its authors, journal, tools, datasets and categories. Since Phase 4 the tabs are sections of the one page (`#overview`, `#code`, …), not routes: no file added | static while under the file budget, then on demand (SSR from `papers.doc`); tabs with live data are islands |
 | `/paper/<id>/read/` | Code ↔ Paper reader | same shell as the paper; texts fetched by the browser |
 | `/authors/`, `/author/<orcid>/`, `/journals/`, `/journal/<id>/`, `/institutions/`, `/institution/<ror>/`, `/tools/`, `/tool/<id>/`, `/datasets/`, `/dataset/<id>/` (built, Phase 2) | entity indexes and pages | static for the top `STATIC_MAX` (2,000) of each type by papers, on demand for the long tail (Phase 3) |
 | `/lookup/` (built, Phase 2) | the DOI lookup: any in-scope paper read, with or without a page (D2) | static page; the browser fetches one of ≤ 4,096 shards `/lookup/NNN.json` (first 3 hex characters of sha1(DOI)) |
@@ -476,7 +477,7 @@ nightly to Hugging Face as JSON and Parquet (deltas only, to fit the uplink).
 | 1 — harvester enrichment | the J, E and G fields first (no new request), the article type and the rates on research articles, then OpenAlex, Crossref integrity, GitHub metadata, git history, tool detection, RRIDs, datasets, classification (rules, then local model), provenance, versions; migrations; backfill of the papers already read | decisions D1, D6 |
 | 2 — navigation | categories, journals, institutions, authors, tools, datasets pages; the DOI lookup; pages for "on request" and "data only" (D2). **Built on branch `phase-2`, awaiting review, not deployed**; institutions await ROR ids from OpenAlex | 1 |
 | 3 — search | D1 projection + FTS5, facets, advanced search, export. **Built on branch `phase-3`, awaiting review, not deployed; the remote D1 databases await approval** (`docs/SEARCH.md`) | 1, D3 |
-| 4 — full paper page | all tabs, Versions with diff | 1–3 |
+| 4 — full paper page | all tabs, Versions with diff. **Built on branch `phase-4`, awaiting review, not deployed**: `oscr/paperpage.py` writes `papers/NN.json`; the tabs are sections of one page (Overview, Code, Map, Data, Versions, Cite, Similar; Discussion, Reproductions and Activity say what they will hold and that they open with sign-in); abstracts under D1's rule; the tab bar's style awaits the owner (markup only until then) | 1–3 |
 | 5 — accounts | ORCID, GitHub, Google, roles, author and maintainer verification | D4 (OAuth apps) |
 | 6 — submission, claims, edition, validation, Zenodo sandbox, badge | | 5 |
 | 7 — discussions, reproductions, moderation, notifications | | 5, D5 |
@@ -540,8 +541,9 @@ Also in `CLAUDE.md`, which binds every phase.
 | D10 | The owner creates the OpenAlex key |
 | scripts | No D1 index: positions in the static pages at build, one manifest per repository on Hugging Face (`OpenScientificCodeRegistry/Database`); published only once the license filter is applied and verified |
 
-**Open for Phase 4 (the paper page):** abstracts are article text too. The same license rule
-as D1 is proposed for them.
+**Phase 4 (the paper page):** abstracts are article text too. D1's rule is applied to them, as
+proposed: in full under CC BY, CC0, CC BY-SA or CC BY-NC only; otherwise a line and a link to
+the paper. For the owner to confirm at review.
 
 ## 14. Risks
 

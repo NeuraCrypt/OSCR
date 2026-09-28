@@ -1,0 +1,131 @@
+---
+// The Code section of a paper's page: each repository of its authors' code — state,
+// license, commit, languages, files, Software Heritage, what it holds (README, CITATION.cff,
+// environment, tests, CI, notebooks), the tools found in it and the history of its
+// availability checks —, the way into the Code ↔ Paper reader, and the code availability
+// statement (decision D1).
+import {
+  alignmentOf, dateInWords, LEVELS, lotEntry, plural, readerUrl, shortName, STATES, type Article,
+} from "../../lib/catalog";
+import { toolOf, toolUrl } from "../../lib/entities";
+import { featureWords, type PaperPage } from "../../lib/paper";
+import Statements from "./Statements.astro";
+import Wrap from "./Wrap.astro";
+
+interface Props {
+  a: Article;
+  p?: PaperPage;
+}
+const { a, p } = Astro.props;
+const hasCode = a.code.length > 0;
+const reader = readerUrl(a);
+const pairs = alignmentOf(a)?.pairs ?? [];
+const matches = (repo: string, path: string) => pairs.filter((x) => x.repo === repo && x.path === path).length;
+/** The reader, opened on one file. */
+const readHere = (repo: string, path: string) => `${reader}?${new URLSearchParams({ repo, path })}`;
+/** Why a paper without code has a page, in words. */
+const WITHOUT: Record<string, string> = {
+  on_request: "The paper says that its authors' code is available on request: it was not published with the paper, so there is nothing to verify.",
+  data_only: "The paper links to its data, not to its authors' code: see the Data section.",
+};
+const day = (iso: string) => (/^\d{4}-\d{2}-\d{2}/.test(iso) ? dateInWords(iso.slice(0, 10)) : iso);
+const checkWords = (c: { state: string; http: number | null }) =>
+  `${STATES[c.state] ?? c.state}${c.http ? ` (HTTP ${c.http})` : ""}`;
+const kinds = new Set(p?.availability.statements.map((s) => s.kind) ?? []);
+---
+<section id="code">
+  <h2>Code</h2>
+  {hasCode ? (
+    <p>
+      <a class="reader-link" href={reader}>Code ↔ Paper</a>: the paper and its authors' code side by side
+      {pairs.length > 0 ? `, with ${plural(pairs.length, "match", "matches")} between paragraphs and lines of code.` : "."}
+    </p>
+  ) : (
+    <p>{WITHOUT[a.status] ?? "No code of the authors was found in the paper."}</p>
+  )}
+
+  {a.code.map((r) => {
+    const e = lotEntry(r);
+    const f = p?.code[r.repo];
+    const files = e?.files ?? [];
+    const readable = files.filter((x) => x.kind !== "note");
+    const languages = Object.entries(r.languages ?? {}).sort((x, y) => y[1] - x[1]);
+    const features = f?.features ? featureWords(f.features) : null;
+    const tools = (f?.tools ?? []).map((t) => ({ ...t, name: toolOf(t.id)?.name ?? t.id, url: toolUrl(t.id) }));
+    const checks = f?.checks ?? [];
+    const sizes = [f?.files != null && plural(f.files, "file"), r.scripts != null && plural(r.scripts, "script")].filter(Boolean);
+    return (
+      <section>
+        <h3><a class="code" href={r.url}><Wrap text={shortName(r)} /></a></h3>
+        <div class="line"><span class="label">License:</span> {r.license || "none: the authors keep all their rights"}</div>
+        <div class="line">
+          <span class="label">State:</span>{" "}
+          {r.state === "alive" ? <span class="ok">{STATES.alive}</span> : <span class="warning">{STATES[r.state] ?? r.state}</span>}
+          {f?.verified_on && `, verified on ${dateInWords(f.verified_on)}`}
+        </div>
+        <div class="line"><span class="label">Evidence:</span> {LEVELS[r.level] ?? r.level}</div>
+        {r.commit && (
+          <div class="line">
+            <span class="label">Commit:</span> <code>{r.commit}</code>{f?.commit_date && `, ${day(f.commit_date)}`}
+          </div>
+        )}
+        {languages.length > 0 && (
+          <div class="line"><span class="label">Languages:</span> {languages.map(([l, n]) => `${l} (${n})`).join(", ")}</div>
+        )}
+        {sizes.length > 0 && <div class="line"><span class="label">Size:</span> {sizes.join(", ")}</div>}
+        <div class="line">
+          <span class="label">Software Heritage:</span>{" "}
+          {r.swh === 1 ? <span class="ok">archived</span> : r.swh === 0 ? "not archived" : "not checked"}
+        </div>
+        {r.where && <div class="line"><span class="label">Found in:</span> {r.where}</div>}
+        {features && features.has.length > 0 && <div class="line"><span class="label">Holds:</span> <Wrap text={features.has.join(", ")} /></div>}
+        {features && features.lacks.length > 0 && (
+          <div class="line"><span class="label">Not found:</span> {features.lacks.join(", ")}</div>
+        )}
+        {tools.length > 0 && (
+          <div class="line">
+            <span class="label">Tools:</span>{" "}
+            {tools.map((t, i) => <>{i > 0 && ", "}{t.url ? <a href={t.url}>{t.name}</a> : t.name} ({plural(t.files, "file")})</>)}
+          </div>
+        )}
+        {checks.length > 0 && (
+          <details>
+            <summary>
+              Availability: {plural(checks.length, "check")}, the latest on {dateInWords(checks[0].on)}: {checkWords(checks[0])}
+            </summary>
+            <ul>{checks.map((c) => <li>{dateInWords(c.on)}: {checkWords(c)}</li>)}</ul>
+          </details>
+        )}
+        {readable.length > 0 && (
+          <details>
+            <summary>{plural(readable.length, "file")}{e && !e.published && ", to read at the source"}</summary>
+            {e && !e.published && (
+              <p class="warning">{readable[0]?.note || "The license of this repository does not allow republishing its files: read them at the source."}</p>
+            )}
+            <ul>
+              {files.map((x) =>
+                x.kind === "note" ? (
+                  <li>{x.note}</li>
+                ) : (
+                  <li>
+                    <a class="code" href={x.source_url || r.url}><Wrap text={x.path} /></a> — {x.language || "text"}
+                    {x.lines ? `, ${plural(x.lines, "line")}` : ""}
+                    {matches(r.repo, x.path) > 0 && `, ${plural(matches(r.repo, x.path), "match", "matches")}`}
+                    {x.text !== null && <> [<a href={readHere(r.repo, x.path)}>read</a>]</>}
+                  </li>
+                ),
+              )}
+            </ul>
+          </details>
+        )}
+      </section>
+    );
+  })}
+
+  {p && kinds.has("code") && (
+    <Statements a={a} availability={p.availability} license={p.overview.license} kinds={["code"]} facts={["code"]} />
+  )}
+  {p && !kinds.has("code") && kinds.has("code_and_data") && (
+    <p>The paper's code and data availability statement is in the <a href="#data">Data</a> section.</p>
+  )}
+</section>

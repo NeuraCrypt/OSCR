@@ -1,0 +1,73 @@
+---
+// The Data section of a paper's page: the datasets it cites (with their pages), the other
+// data links found in it, and its data availability statement (decision D1: in full only
+// under an open license, otherwise a short summary built from facts).
+import type { Article } from "../../lib/catalog";
+import { datasetName, datasetOf, datasetUrl } from "../../lib/entities";
+import type { PaperPage } from "../../lib/paper";
+import Statements from "./Statements.astro";
+import Wrap from "./Wrap.astro";
+
+interface Props {
+  a: Article;
+  p?: PaperPage;
+}
+const { a, p } = Astro.props;
+const links = p?.data ?? [];
+/** The first data link of the paper that names a dataset: where it was found, and its address. */
+const linkOf = (id: string) => links.find((l) => l.dataset === id);
+const datasets = (a.datasets ?? []).map((id) => {
+  const d = datasetOf(id);
+  return {
+    id, name: d ? datasetName(d) : id, repository: d?.repository ?? linkOf(id)?.repository ?? "",
+    url: d?.url || linkOf(id)?.url || "", page: datasetUrl(id), license: d?.license ?? "", where: linkOf(id)?.where ?? "",
+  };
+});
+const cited = new Set(a.datasets ?? []);
+const others = links.filter((l) => !l.dataset || !cited.has(l.dataset));
+const kinds = new Set(p?.availability.statements.map((s) => s.kind) ?? []);
+---
+<section id="data">
+  <h2>Data</h2>
+  {datasets.length > 0 && (
+    <>
+      <h3>Datasets cited</h3>
+      <ul>
+        {datasets.map((d) => (
+          <li>
+            {d.page ? <a href={d.page}><Wrap text={d.name} /></a> : <Wrap text={d.name} />}
+            {d.name !== d.id && <> (<span class="code"><Wrap text={d.id} /></span>)</>}
+            {d.url ? <> — <a href={d.url}>{d.repository && d.repository !== "DOI" ? `at ${d.repository}` : "at the source"}</a></> : d.repository && ` — ${d.repository}`}
+            {d.license && `, ${d.license}`}
+            {d.where && `; found in ${d.where}`}
+          </li>
+        ))}
+      </ul>
+    </>
+  )}
+  {others.length > 0 && (
+    <>
+      <h3>{datasets.length > 0 ? "Other data links" : "Data links"}</h3>
+      <ul>
+        {others.map((l) => (
+          <li>
+            {l.url ? <a class="code" href={l.url}><Wrap text={l.repo} /></a> : <span class="code"><Wrap text={l.repo} /></span>}
+            {l.repository && ` — ${l.repository}`}
+            {l.where && `; found in ${l.where}`}
+          </li>
+        ))}
+      </ul>
+    </>
+  )}
+  {datasets.length === 0 && others.length === 0 && <p>No dataset and no data link were found in the paper.</p>}
+
+  {p && (kinds.has("data") || kinds.has("code_and_data")) && (
+    <Statements
+      a={a}
+      availability={p.availability}
+      license={p.overview.license}
+      kinds={["data", "code_and_data"]}
+      facts={kinds.has("code_and_data") ? ["data", "code"] : ["data"]}
+    />
+  )}
+</section>

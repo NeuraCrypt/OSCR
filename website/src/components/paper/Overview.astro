@@ -1,0 +1,166 @@
+---
+// The Overview section of a paper's page: its bibliographic record (oscr/paperpage.py) and,
+// only under the licenses of decision D1, its abstract. The authors link to their pages and
+// to their ORCID records; an affiliation is the institution's text, never an address.
+import { dateInWords, dayInWords, europePmcUrl, plural, status, type Article } from "../../lib/catalog";
+import { authorUrl, categoriesOf, institutionUrl, journalUrl, orcidUrl, rridUrl } from "../../lib/entities";
+import { languageLabel, licenseLabel, NOTICES, paragraphs, typeLabel, type PaperPage } from "../../lib/paper";
+import Wrap from "./Wrap.astro";
+
+interface Props {
+  a: Article;
+  p?: PaperPage;
+}
+const { a, p } = Astro.props;
+const o = p?.overview;
+const doiUrl = `https://doi.org/${a.doi}`;
+
+// The authors: the page's own list (with the affiliations) when the export has it, else the
+// names of catalog.json. A consortium paper lists hundreds: the first ones, then folded.
+const authors = o?.authors.length ? o.authors : (a.authors ?? []).map((x) => ({ ...x, affiliations: [] as number[] }));
+const SHOWN = 20;
+const folded = authors.length > SHOWN + 5 ? authors.slice(SHOWN) : [];
+const shown = folded.length ? authors.slice(0, SHOWN) : authors;
+const withOrcid = authors.filter((x) => x.orcid);
+const affiliations = (o?.affiliations ?? []).map((x) => ({ ...x, url: x.ror ? institutionUrl(x.ror) : "" }));
+
+const journal = journalUrl(a.journal_id);
+const where = [
+  o?.volume && `volume ${o.volume}`,
+  o?.issue && `issue ${o.issue}`,
+  o?.pages && (/[-–]/.test(o.pages) ? `pages ${o.pages}` : `article ${o.pages}`),
+].filter(Boolean);
+/** A date as precise as it is known: "7 September 2026", "September 2026", "2026". */
+const when = (d: string) => (/^\d{4}-\d{2}-\d{2}$/.test(d) ? dateInWords(d) : dayInWords(d));
+const dates = [
+  o?.dates.received && `received ${when(o.dates.received)}`,
+  o?.dates.accepted && `accepted ${when(o.dates.accepted)}`,
+  o?.dates.online && `published online ${when(o.dates.online)}`,
+  o?.dates.print && `in print ${when(o.dates.print)}`,
+].filter(Boolean) as string[];
+if (!o?.dates.online && !o?.dates.print && a.published) dates.push(`published ${when(a.published)}`);
+const s = status(a.status);
+const categories = categoriesOf(a);
+const license = o ? licenseLabel(o.license) : "";
+const pmcid = (a.fulltext_id || a.pmcid || "").toUpperCase();
+---
+<section id="overview">
+  <h2>Overview</h2>
+  {shown.length > 0 && (
+    <div class="line">
+      <span class="label">Authors:</span>{" "}
+      {shown.map((au, i) => {
+        const url = authorUrl(au.orcid);
+        return <>{i > 0 && ", "}{url ? <a href={url}>{au.name}</a> : au.name}{au.affiliations.length > 0 && <sup>{au.affiliations.join(",")}</sup>}</>;
+      })}
+      {folded.length > 0 && (
+        <details>
+          <summary>and {plural(folded.length, "other author")}</summary>
+          {folded.map((au, i) => {
+            const url = authorUrl(au.orcid);
+            return <>{i > 0 && ", "}{url ? <a href={url}>{au.name}</a> : au.name}{au.affiliations.length > 0 && <sup>{au.affiliations.join(",")}</sup>}</>;
+          })}
+        </details>
+      )}
+    </div>
+  )}
+  {withOrcid.length > 0 && (
+    <div class="line">
+      <span class="label">ORCID iDs:</span>{" "}
+      {withOrcid.map((au, i) => <>{i > 0 && ", "}<a href={orcidUrl(au.orcid)} title={`ORCID iD ${au.orcid}`}>{au.name}</a></>)}
+    </div>
+  )}
+  {affiliations.length > 0 && (affiliations.length > 12 ? (
+    <details>
+      <summary>{plural(affiliations.length, "affiliation")}</summary>
+      <ol>{affiliations.map((x) => <li>{x.url ? <a href={x.url}>{x.name}</a> : x.name}</li>)}</ol>
+    </details>
+  ) : (
+    <ol>{affiliations.map((x) => <li>{x.url ? <a href={x.url}>{x.name}</a> : x.name}</li>)}</ol>
+  ))}
+
+  <div class="line">
+    <span class="label">Journal:</span> {journal ? <a href={journal}>{a.journal || "—"}</a> : a.journal || "—"}{where.length > 0 && `, ${where.join(", ")}`}
+  </div>
+  {dates.length > 0 && <div class="line"><span class="label">Dates:</span> {dates.join("; ")}</div>}
+  {(o?.type || o?.language) && (
+    <div class="line">
+      {o?.type && <><span class="label">Type:</span> {typeLabel(o.type)}</>}{o?.type && o?.language && " · "}
+      {o?.language && <><span class="label">Language:</span> {languageLabel(o.language)}</>}
+    </div>
+  )}
+  {o && <div class="line"><span class="label">License:</span> {license || "none stated"}</div>}
+  <div class="line">
+    <span class="label">Identifiers:</span> DOI <a href={doiUrl}>{a.doi}</a>
+    {o?.pmid && <> · PMID <a href={`https://pubmed.ncbi.nlm.nih.gov/${o.pmid}/`}>{o.pmid}</a></>}
+    {/^PMC\d+$/.test(pmcid) && <> · PMCID <a href={europePmcUrl(a)}>{pmcid}</a></>}
+  </div>
+  <div class="line">
+    <span class="label">Status:</span> {s.tone ? <span class={s.tone}>{s.label}</span> : s.label}
+  </div>
+  {categories.length > 0 && (
+    <div class="line">
+      <span class="label">Categories:</span>{" "}
+      {categories.map((c, i) => <>{i > 0 && ", "}{c.url ? <a href={c.url}>{c.name}</a> : c.name} ({c.facet})</>)}
+    </div>
+  )}
+  {a.families.length > 0 && <div class="line"><span class="label">Methods:</span> {a.families.join(", ")}</div>}
+  {o && o.keywords.length > 0 && <div class="line"><span class="label">Keywords:</span> {o.keywords.join(", ")}</div>}
+  {o && o.mesh.length > 0 && (
+    <div class="line">
+      <span class="label">MeSH:</span> {o.mesh.map((m) => (m.major ? `${m.term}*` : m.term)).join(", ")}
+      {o.mesh.some((m) => m.major) && " (* major topic)"}
+    </div>
+  )}
+  {o && o.subjects.length > 0 && <div class="line"><span class="label">Journal subjects:</span> {o.subjects.join(", ")}</div>}
+  {o && o.funding.length > 0 && (
+    <div class="line">
+      <span class="label">Funding:</span>{" "}
+      {o.funding.map((f, i) => (
+        <>{i > 0 && "; "}{f.url ? <a href={f.url}>{f.funder}</a> : f.funder}{f.awards.length > 0 && ` (${f.awards.join(", ")})`}</>
+      ))}
+    </div>
+  )}
+  {o && (o.cited_by !== null || o.references !== null) && (
+    <div class="line">
+      <span class="label">Citations:</span>{" "}
+      {o.cited_by !== null && (o.cited_by > 0 ? `cited by ${plural(o.cited_by, "paper")}` : "not cited yet")}
+      {o.cited_by !== null && " (Europe PMC)"}
+      {o.cited_by !== null && o.references !== null && "; "}
+      {o.references !== null && `${plural(o.references, "reference")} in the paper`}
+    </div>
+  )}
+  {o && o.rrids.length > 0 && (
+    <div class="line">
+      <span class="label">Research resources:</span>{" "}
+      {o.rrids.map((r, i) => {
+        const url = rridUrl(r.rrid);
+        return <>{i > 0 && ", "}{r.name && `${r.name} `}{url ? <a class="code" href={url}>{r.rrid}</a> : <span class="code">{r.rrid}</span>}</>;
+      })}
+    </div>
+  )}
+  {o && o.notices.length > 0 && (
+    <div class="line">
+      <span class="label">Notices:</span>{" "}
+      {o.notices.map((n, i) => (
+        <>{i > 0 && "; "}{NOTICES[n.kind] ?? n.kind}{n.date && `, ${when(n.date)}`}{" "}
+        ({n.url ? <a href={n.url}>{n.id || "the notice"}</a> : n.id || "no identifier"}{n.source && `, from ${n.source}`})</>
+      ))}
+    </div>
+  )}
+
+  <h3>Abstract</h3>
+  {o?.abstract ? (
+    <>
+      {paragraphs(o.abstract).map((para) => <p><Wrap text={para} /></p>)}
+      <p class="summary">Reproduced under the paper's license ({license}), from the paper cited above.</p>
+    </>
+  ) : o?.has_abstract ? (
+    <p>
+      The abstract is not reproduced here: the paper's license ({license || "none stated"}) does not allow it. Read it
+      in the paper, <a href={doiUrl}>at the publisher</a> or <a href={europePmcUrl(a)}>on Europe PMC</a>.
+    </p>
+  ) : (
+    <p>No abstract was found for this paper: <a href={doiUrl}>the paper, at the publisher</a>.</p>
+  )}
+</section>

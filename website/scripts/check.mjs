@@ -2,8 +2,10 @@
 //
 //   npm run check                    every page the data asks for exists (a page for each
 //                                    paper of decision D2, and none for the others), every
-//                                    internal link leads to a file, every lookup shard is
-//                                    there, and no page shows an email address
+//                                    internal link leads to a file (and every "#" link to an
+//                                    element of its page), each paper's page has its
+//                                    sections, every lookup shard is there, and no page shows
+//                                    an email address
 //   npm run check -- --every-route   and every kind of page exists at least once: the CI
 //                                    builds from tests/fixtures/public-catalog, which
 //                                    exercises them all
@@ -48,16 +50,31 @@ for (const a of catalog.articles) {
 const shards = existsSync("public/lookup") ? readdirSync("public/lookup").filter((n) => n.endsWith(".json")) : [];
 for (const name of shards) if (!exists(`/lookup/${name}`)) problems.push(`missing lookup shard ${name}`);
 
-// 3. Every internal link and resource of every page leads to a file.
+// 3. Every internal link and resource of every page leads to a file, and every link within
+// a page ("#code") to an element of that page. A paper's page has its ten sections.
 const pages = files.filter((f) => f.endsWith(".html"));
+const SECTIONS = ["overview", "code", "map", "data", "versions", "cite", "similar", "discussion", "reproductions",
+  "activity"];
 let links = 0;
 for (const page of pages) {
   const html = readFileSync(join(DIST, page), "utf8");
+  const ids = new Set([...html.matchAll(/\sid="([^"]+)"/g)].map((m) => m[1]));
+  // The Code ↔ Paper reader's "#pair-N" is its script's state, not an element.
+  const reader = /^\/paper\/[^/]+\/code\//.test(page);
   for (const [, url] of html.matchAll(/\s(?:href|src)="([^"]*)"/g)) {
+    if (url.startsWith("#") && url.length > 1 && !reader) {
+      links += 1;
+      if (!ids.has(decodeURIComponent(url.slice(1)))) problems.push(`${page}: no element for the link ${url}`);
+      continue;
+    }
     if (!url.startsWith("/") || url.startsWith("//")) continue;
     links += 1;
     const path = decodeURI(url.split(/[?#]/)[0].replace(/&amp;/g, "&"));
     if (!exists(path)) problems.push(`${page}: broken link ${url}`);
+  }
+  if (/^\/paper\/[^/]+\/index\.html$/.test(page)) {
+    const missing = SECTIONS.filter((id) => !ids.has(id));
+    if (missing.length) problems.push(`${page}: no section ${missing.map((id) => `#${id}`).join(", ")}`);
   }
 }
 

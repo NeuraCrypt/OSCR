@@ -1,6 +1,7 @@
 """The website's CI catalogue (tests/fixtures/public-catalog) is what the exporter writes
 today: regenerate it with `uv run python tools/make_fixture.py` when the export changes."""
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -59,4 +60,43 @@ def test_the_fixture_exercises_every_page_of_the_site():
 
 
 def test_the_fixture_holds_no_email_address():
-    assert "@" not in _everything().replace("/@", "")
+    # A BibTeX entry starts with "@article{": not an address.
+    assert "@" not in re.sub(r"@(?:article|misc)\{", "", _everything()).replace("/@", "")
+
+
+def _pages() -> dict:
+    return {i: e for f in sorted((make_fixture.OUT / "papers").glob("*.json")) for i, e in json.loads(f.read_text()).items()}
+
+
+def test_the_fixture_exercises_every_section_of_a_paper_page():
+    catalog = json.loads((make_fixture.OUT / "catalog.json").read_text())
+    pages = _pages()
+    assert set(pages) == {a["id"] for a in catalog["articles"] if a["page"]}
+    assert all(isinstance(a["page_lot"], int) for a in catalog["articles"] if a["page"])
+    one, two, three, four = (pages[f"doi:10.5555/oscr.fixture.{n}"] for n in (1, 2, 3, 4))
+    # An open license: the abstract and the statements in full; closed ones: facts only.
+    assert one["overview"]["open"] and one["overview"]["abstract"].startswith("A synthetic abstract")
+    assert [s["kind"] for s in one["availability"]["statements"]] == ["code", "data"]
+    assert all(s.keys() == {"kind"} for s in two["availability"]["statements"] + three["availability"]["statements"])
+    assert two["overview"]["abstract"] == "" and two["overview"]["has_abstract"]
+    assert two["availability"]["on_request"]["data"] and three["availability"]["on_request"]["code"]
+    assert four["availability"]["statements"][0]["text"].startswith("The invented recordings")
+    # Code: features and checks; notices; versions with a real change; the validated map.
+    facts = one["code"]["github.com/oscr-fixture/eeg-analysis"]
+    assert facts["features"]["env_files"] == ["requirements.txt"] and len(facts["checks"]) == 2
+    assert [n["kind"] for n in one["overview"]["notices"]] == ["correction"]
+    assert [n["kind"] for n in two["overview"]["notices"]] == ["retraction"]
+    assert [v["version"] for v in one["versions"]] == [2, 1]          # 3 changed texts only
+    assert {c["field"] for c in one["versions"][0]["changes"]} == {"volume", "keywords", "funding", "references",
+                                                                    "integrity"}
+    assert one["map"]["status"] == "validated" and one["map"]["json_url"].endswith("tracing-map.json?download=1")
+    assert one["cite"]["map"] and one["cite"]["paper"]["bibtex"].startswith("@article{fixture2026")
+    assert two["map"]["status"] == "proposed" and four["map"]["status"] == "none"
+    assert [s["slug"] for s in one["similar"]] == ["doi_10.5555_oscr.fixture.4", "doi_10.5555_oscr.fixture.2",
+                                                   "doi_10.5555_oscr.fixture.3"]
+
+
+def test_nothing_private_reaches_the_fixture():
+    text = _everything().lower()
+    for secret in make_fixture.SECRETS:
+        assert secret.lower() not in text, secret

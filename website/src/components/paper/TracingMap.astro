@@ -1,0 +1,75 @@
+---
+// The Map section of a paper's page: its tracing map — the links between the paper and its
+// authors' code —, what it holds, and where it stands. Only a map validated by one of the
+// paper's authors (ORCID) receives a DOI on Zenodo; its JSON is then there.
+import { dateInWords, plural, type Article } from "../../lib/catalog";
+import { orcidUrl } from "../../lib/entities";
+import type { PaperPage } from "../../lib/paper";
+
+interface Props {
+  a: Article;
+  p?: PaperPage;
+}
+const { a, p } = Astro.props;
+// An export older than Phase 4 only says what catalog.json holds.
+const m = p?.map;
+const card = a.card && a.card.validated_by?.length ? a.card : null;
+const validated = m ? m.status === "validated" : card !== null;
+const people = m?.validated_by.length ? m.validated_by : (card?.validated_by ?? []).map((v) => ({ ...v, on: "" }));
+const doi = m?.doi || card?.doi || "";
+---
+<section id="map">
+  <h2>Tracing map</h2>
+  {a.code.length === 0 ? (
+    <p>
+      A tracing map links a paper to the code its authors published: this paper has none
+      {a.status === "on_request" ? " (its code is available on request)" : ""}, so it has no map.
+    </p>
+  ) : (
+    <>
+      {validated ? (
+        <p>
+          <span class="ok">Validated</span> by {people.map((v, i) => (
+            <>{i > 0 && ", "}{v.name} (<a href={orcidUrl(v.orcid)}>ORCID {v.orcid}</a>){v.on && `, on ${dateInWords(v.on)}`}</>
+          ))}.{" "}
+          {doi ? <>DOI of the map: <a href={`https://doi.org/${doi}`}>{doi}</a>.</> : "Its DOI is being registered."}
+        </p>
+      ) : (
+        <p>
+          Proposed by the machine: these links were found in the paper and verified at the source, without human review.
+          The map will receive a Zenodo DOI once one of the paper's authors has validated it with their ORCID.
+        </p>
+      )}
+      {m && (
+        <>
+          <p>What the map holds:</p>
+          <ul>
+            <li>
+              {plural(m.repositories, "repository", "repositories")} of the authors' code, each at its verified commit, with
+              its license and how the link was found in the paper;
+            </li>
+            <li>{plural(m.files, "script")}, each with its path and the digest of its content;</li>
+            <li>
+              {m.pairs > 0
+                ? `${plural(m.pairs, "match", "matches")} between paragraphs of the paper and lines of the code (method ${m.method})`
+                : "no match between paragraphs and code yet"};
+            </li>
+            <li>neither the text of the paper nor the code itself.</li>
+          </ul>
+          {m.json_url ? (
+            <p>
+              Its JSON: <a class="code" href={m.json_url}>tracing-map.json</a>, in <a href={m.record_url}>its Zenodo record</a>
+              {m.deposited_on && `, deposited on ${dateInWords(m.deposited_on)}`}
+              {m.concept_doi && <>; every version: <a href={`https://doi.org/${m.concept_doi}`}>{m.concept_doi}</a></>}.
+            </p>
+          ) : (
+            <p>
+              Its JSON (<span class="code">tracing-map.json</span>) is deposited on Zenodo with its DOI once the map is
+              validated.
+            </p>
+          )}
+        </>
+      )}
+    </>
+  )}
+</section>

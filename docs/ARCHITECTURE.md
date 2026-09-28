@@ -65,7 +65,8 @@ read before.
   catalogue, the scripts, the matches, the public database) and out of the statistics.
 - **No article text leaves** (`catalog.public_db`). Abstracts, the raw Europe PMC records and
   the versions are removed from the public database, and availability statements are kept
-  only under CC BY, CC0, CC BY-SA or CC BY-NC (D1).
+  only under CC BY, CC0, CC BY-SA or CC BY-NC (D1). The paper's page shows the abstract and the
+  statements under the same licenses only (Phase 4, below).
 - **Rates are computed on research articles** (`catalog.RESEARCH_TYPES`); reviews,
   conference abstracts, case reports and notices are counted apart.
 
@@ -99,7 +100,7 @@ ends with `SITE_NAME`; the only style is `science.css`.
 | route | what it shows | from the export |
 |---|---|---|
 | `/` | the papers with their authors' code, by day of publication | `catalog.json` |
-| `/paper/<slug>/` | a paper with code, code on request or data only (decision D2): its authors (those with an ORCID iD linked), journal, categories, tools, code and data | `catalog.json`, `entities/` |
+| `/paper/<slug>/` | a paper with code, code on request or data only (decision D2), in sections: Overview, Code, Map, Data, Versions, Cite, Similar (and Discussion, Reproductions, Activity, which open with sign-in); see "The paper's page" below | `catalog.json`, `entities/`, `papers/` |
 | `/paper/<slug>/code/` | the Code ↔ Paper reader, for the papers with code | `catalog.json`, `alignments/`, `scripts/` |
 | `/browse/` | the categories by facet, with their counts; the other ways in | `entities/categories.json` |
 | `/browse/<facet>/<value>/` | the papers of a category, by day | `entities/categories.json` |
@@ -124,6 +125,44 @@ ends with `SITE_NAME`; the only style is `science.css`.
   the entities with the most papers; beyond, pages will be rendered on demand by the Worker
   from D1 (Phase 3). `npm run check` (in CI with `--every-route`) checks every route and every
   internal link after the build, and prints the number of files.
+
+## The paper's page (Phase 4)
+
+One page per paper, in sections reached through a bar of in-page links (`#overview`,
+`#code`, `#map`, `#data`, `#versions`, `#cite`, `#similar`, `#discussion`, `#reproductions`,
+`#activity`): no route of their own, no JavaScript needed, so the number of files does not
+change (5,999 files for a 3,032-paper export, before and after). The Code ↔ Paper reader stays
+at `/paper/<slug>/code/`.
+
+`oscr/paperpage.py` writes what the sections need into `papers/NN.json` (lots keyed by paper
+id, like `alignments/`), for the papers with a page only; the site reads them when it is built
+(`website/src/lib/paper.ts`, `src/components/paper/`).
+
+| section | shows | from |
+|---|---|---|
+| Overview | authors in order (their pages, their ORCID records), affiliations (the institution's text; no email, no phone), journal, volume, issue, pages, dates, type, language, license, identifiers, categories, keywords, MeSH, journal subjects, funding, citation count, references, RRIDs, integrity notices (a retraction, a correction or an expression of concern is said first, under the title); the abstract **only under D1's licenses** | `article`, `paper_author`, `paper_subject`, `grant_award`, `funder`, `paper_rrid`, `integrity_notice` |
+| Code | each repository: state, license, commit and its date, languages, size, Software Heritage, where it was found, what it holds (README, license file, CITATION.cff, environment files, tests, CI, notebooks), the tools found in it, the history of its availability checks (the last 20: date, state, HTTP status; a check's error text stays on the Mac); the way into the reader; the code statement | `repository`, `repo_feature`, `repo_tool`, `alive_check`, `statement` |
+| Map | proposed or validated (ORCID only), what the map holds, its DOI and its JSON on Zenodo once deposited (never the sandbox) | `validation`, `card_doi`, `file`, `alignment` |
+| Data | the datasets cited (their pages), the other data links and where each was found, the data statement | `link`, `paper_dataset`, `dataset`, `statement` |
+| Versions | the record's history, newest first: date, and what changed in its public facts | `version` |
+| Cite | the paper in an APA-like text, BibTeX, RIS and CSL-JSON, built at export; the map's too once it has a DOI; a copy button (`src/scripts/cite.ts`) | `article`, `journal`, `paper_author` |
+| Similar | up to 10 papers with a page, ranked by the tools, categories, datasets, cited references (`paper_reference` DOIs) and authors (ORCID iD) they share, each weighed by its rarity, with the reasons in words ("shares FieldTrip, EEG, 3 references") | computed at export |
+
+**What never leaves**, tested on synthetic databases (`tests/test_paperpage.py`) and checked
+again by `website/scripts/data.mjs`:
+- **a paper's texts under a closed license** (decision D1, `catalog.statement_is_publishable`,
+  applied to the abstract as to the statements): the page then says, from facts only, what the
+  statements point to (datasets, repositories) and whether they say "on request", and links to
+  the paper. Under CC BY, CC0, CC BY-SA or CC BY-NC, the text is shown with its license;
+- **an email address** or a telephone number (`entities.scrub`, then a last check per lot);
+- **anything of an off-topic paper** (D7), which is nobody's similar paper either;
+- **from the versions, only `paperpage.VERSION_FIELDS`**: the digests of the abstract and of the
+  statements, the classification's raw values (`categories`, `on_topic`) and any field added
+  later stay on the Mac; a version that changed only those is not listed;
+- Retraction Watch's reasons (the notice itself is linked), the Zenodo sandbox's tests.
+
+The map's creators include the platform: the export writes it `{platform}` and the site puts
+`SITE_NAME` there, escaped for each format.
 
 ## The tracing map
 

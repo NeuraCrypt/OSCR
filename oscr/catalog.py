@@ -9,6 +9,8 @@ mode:
 - `scripts/NN.json`: the TEXT of the scripts, repository by repository, in lots loaded
   on demand by the reader;
 - `alignments/NN.json`: the paper ↔ code matches of each paper, for the reader;
+- in public mode, `entities/`, `lookup/` (oscr/entities.py) and `papers/NN.json`, the
+  sections of each paper's page (oscr/paperpage.py);
 - `articles.csv`, `repositories.csv`, `scripts.jsonl`, `alignments.jsonl`: the tables a
   Hugging Face dataset viewer displays and queries;
 - `oscr_public.db`: the SQLite database without excerpts, for Datasette or a service.
@@ -419,9 +421,11 @@ def generate(con: sqlite3.Connection, folder: Path, *, public: bool = False, mir
         else:
             _alignments_jsonl(con, lots, folder / "alignments.jsonl")
     if public:
-        # The website's navigation: entities/, lookup/, and each paper's page and its links.
-        from . import entities
+        # The website's navigation: entities/, lookup/, and each paper's page and its links;
+        # then the sections of each paper's page, papers/NN.json (Phase 4).
+        from . import entities, paperpage
         entities.generate(con, folder, d["articles"])
+        paperpage.generate(con, folder, d["articles"])
     (folder / "catalog.json").write_text(json.dumps(d, ensure_ascii=False, indent=1))
     _articles_csv(con, folder / "articles.csv")
     _repositories_csv(con, folder / "repositories.csv")

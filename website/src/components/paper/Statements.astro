@@ -1,0 +1,85 @@
+---
+// A paper's availability statements of some kinds (decision D1): in full under an open
+// license (CC BY, CC0, CC BY-SA, CC BY-NC), with their addresses made into links; under any
+// other, a short summary built from facts — what they point to, "on request" — never a
+// quotation, and a link to the paper.
+import { shortName, type Article } from "../../lib/catalog";
+import { datasetOf, datasetUrl } from "../../lib/entities";
+import { licenseLabel, linkify, paragraphs, STATEMENT_KINDS, type Availability } from "../../lib/paper";
+import Wrap from "./Wrap.astro";
+
+interface Props {
+  a: Article;
+  availability: Availability;
+  license: string;
+  /** The kinds shown here: ["code"] in the Code section, ["data", "code_and_data"] in Data. */
+  kinds: string[];
+  /** What the summary may say: the code facts, the data facts, or both. */
+  facts: ("code" | "data")[];
+}
+const { a, availability: av, license, kinds, facts } = Astro.props;
+const statements = av.statements.filter((s) => kinds.includes(s.kind));
+const label = licenseLabel(license) || "none stated";
+const doiUrl = `https://doi.org/${a.doi}`;
+
+// The summary, from facts only.
+const codeRepos = facts.includes("code")
+  ? av.points_to.code.map((repo) => {
+      const r = a.code.find((c) => c.repo === repo);
+      return { name: r ? shortName(r) : repo, url: r?.url ?? "" };
+    })
+  : [];
+const datasets = facts.includes("data")
+  ? av.points_to.data.map((d) => {
+      const known = d.dataset ? datasetOf(d.dataset) : undefined;
+      const accession = d.dataset.replace(/^[a-z0-9-]+:/i, "");
+      const name = known?.title || (d.dataset && accession !== d.dataset ? `${d.repository} ${accession}` : d.dataset || d.repository);
+      return { name, page: d.dataset ? datasetUrl(d.dataset) : "", url: known?.url ?? "" };
+    })
+  : [];
+const onRequest = [
+  facts.includes("data") && av.on_request.data && "that the data are available on request",
+  facts.includes("code") && av.on_request.code && "that the code is available on request",
+].filter(Boolean) as string[];
+const one = statements.length === 1;
+const capital = (t: string) => t.charAt(0).toUpperCase() + t.slice(1);
+const kindsInWords = statements.map((st) => `a ${STATEMENT_KINDS[st.kind] ?? "availability statement"}`).join(" and ");
+---
+{statements.length > 0 && (av.open ? (
+  statements.map((st) => (
+    <>
+      <h3>{st.title || STATEMENT_KINDS[st.kind]}</h3>
+      {paragraphs(st.text ?? "").map((para) => (
+        <p>{linkify(para).map((part) => (typeof part === "string" ? <Wrap text={part} /> : <a href={part.href}><Wrap text={part.text} /></a>))}</p>
+      ))}
+      <p class="summary">Reproduced under the paper's license ({label}), from the paper cited above.</p>
+    </>
+  ))
+) : (
+  <>
+    <h3>{one ? capital(STATEMENT_KINDS[statements[0].kind]) : "Availability statements"}</h3>
+    <p>
+      The paper has {kindsInWords}. Its license ({label}) does not allow reproducing {one ? "it" : "them"} here; in
+      short, from what the harvester recognized in {one ? "it" : "them"}:
+    </p>
+    <ul>
+      {datasets.length > 0 && (
+        <li>
+          {one ? "it points" : "they point"} to {datasets.length === 1 ? "a dataset" : `${datasets.length} datasets`}:{" "}
+          {datasets.map((d, i) => <>{i > 0 && ", "}{d.page ? <a href={d.page}><Wrap text={d.name} /></a> : d.url ? <a href={d.url}><Wrap text={d.name} /></a> : <Wrap text={d.name} />}</>)}
+        </li>
+      )}
+      {codeRepos.length > 0 && (
+        <li>
+          {one ? "it points" : "they point"} to the authors' code:{" "}
+          {codeRepos.map((r, i) => <>{i > 0 && ", "}{r.url ? <a class="code" href={r.url}><Wrap text={r.name} /></a> : <span class="code"><Wrap text={r.name} /></span>}</>)}
+        </li>
+      )}
+      {onRequest.map((what) => <li>{one ? "it says" : "they say"} {what}</li>)}
+      {datasets.length === 0 && codeRepos.length === 0 && onRequest.length === 0 && (
+        <li>no repository, dataset or request procedure was recognized in {one ? "it" : "them"}</li>
+      )}
+    </ul>
+    <p>Read {one ? "it" : "them"} in the paper: <a href={doiUrl}>doi.org/{a.doi}</a>.</p>
+  </>
+))}
