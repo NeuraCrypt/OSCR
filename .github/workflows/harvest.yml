@@ -50,9 +50,9 @@ jobs:
       HF_TOKEN: ${{ secrets.HF_TOKEN }}
       DOMAIN: ${{ inputs.domain || 'neuro' }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: astral-sh/setup-uv@v6
+      - uses: astral-sh/setup-uv@v7
         with:
           python-version: "3.12"
 
@@ -111,7 +111,7 @@ jobs:
           DATASET: ${{ vars.HF_DATASET }}
         run: uv run oscr --public --mirror mirror publish-hf "$DATASET"
 
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: data/export
 
@@ -123,4 +123,4 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
