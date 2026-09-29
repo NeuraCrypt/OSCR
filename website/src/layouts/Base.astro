@@ -39,12 +39,23 @@ const sections = [
     <meta property="og:site_name" content={SITE_NAME} />
     <meta property="og:title" content={title ?? fullTitle} />
     <meta property="og:description" content={description} />
-    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content={new URL("/og-image.png", Astro.site).href} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content={SITE_NAME} />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="icon" href="/favicon.ico" sizes="32x32" />
+    <link rel="icon" href="/favicon-32.png" type="image/png" sizes="32x32" />
+    <link rel="icon" href="/icon-512.png" type="image/png" sizes="512x512" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/site.webmanifest" />
   </head>
   <body>
     <header class="masthead">
       <div class="inner">
-        <a class="site" href="/" title={SITE_TAGLINE === SITE_NAME ? undefined : SITE_TAGLINE}>{SITE_NAME}</a>
+        <a class="site" href="/" title={SITE_TAGLINE === SITE_NAME ? undefined : SITE_TAGLINE}><img
+          src="/brand/logo-masthead.png" width="320" height="93" alt={SITE_NAME} /></a>
         <nav aria-label="Sections">{sections.map((s) => <a href={s.href}>{s.text}</a>)}</nav>
         <form action="/search/" method="get" role="search">
           <input type="search" name="q" placeholder="Search the catalogue" aria-label="Search the catalogue" />

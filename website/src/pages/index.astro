@@ -18,6 +18,8 @@ const oldest = latest.shown.at(-1)?.published ?? "";
 const firstDayTotal = latest.cut ? withCode.filter((a) => a.published === latest.shown[0].published).length : 0;
 const dayTotals = latest.cut ? new Map([[latest.shown[0].published, firstDayTotal]]) : undefined;
 const pct = (x: number, y: number) => (y > 0 ? `${Math.round((100 * x) / y)}%` : "");
+/** The word that goes with a figure shown apart from it. */
+const w = (n: number, one: string, many: string) => (n === 1 ? one : many);
 ---
 <Base breadcrumb={[{ text: "Catalogue" }]}>
   <h1>{SITE_TAGLINE}</h1>
@@ -33,7 +35,7 @@ const pct = (x: number, y: number) => (y > 0 ? `${Math.round((100 * x) / y)}%` :
   </p>
 
   <dl class="figures" id="summary">
-    <div><dt>{number(f.articles)}</dt><dd>open-access neuroscience papers read</dd></div>
+    <div><dt>{number(f.articles)}</dt><dd>open-access neuroscience {w(f.articles, "paper", "papers")} read</dd></div>
     <div>
       <dt>{number(withCode.length)}</dt>
       <dd>
@@ -41,10 +43,10 @@ const pct = (x: number, y: number) => (y > 0 ? `${Math.round((100 * x) / y)}%` :
           `; ${pct(f.research_with_code, f.research_articles)} of the research articles have it`}
       </dd>
     </div>
-    <div><dt>{number(f.repos_code)}</dt><dd>code repositories, {number(f.repos_code_alive)} answering at the last check</dd></div>
-    <div><dt>{number(f.scripts_read)}</dt><dd>scripts read at the source</dd></div>
+    <div><dt>{number(f.repos_code)}</dt><dd>code {w(f.repos_code, "repository", "repositories")}, {number(f.repos_code_alive)} answering at the last check</dd></div>
+    <div><dt>{number(f.scripts_read)}</dt><dd>{w(f.scripts_read, "script", "scripts")} read at the source</dd></div>
     {matched > 0 && (
-      <div><dt>{number(matched)}</dt><dd>papers with Code&nbsp;↔&nbsp;Paper matches ({plural(f.alignments, "match", "matches")})</dd></div>
+      <div><dt>{number(matched)}</dt><dd>{w(matched, "paper", "papers")} with Code&nbsp;↔&nbsp;Paper matches ({plural(f.alignments, "match", "matches")})</dd></div>
     )}
   </dl>
 

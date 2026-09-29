@@ -464,3 +464,16 @@ nav.pager {
 nav.pager span { color: var(--muted); }
 ol.columns { columns: 3 16em; column-gap: 2.5em; padding-left: 2.4em; }
 ol.columns li { break-inside: avoid; }
+
+/* The owner's logo (2026-09-29): the white wordmark in the masthead, in place of the name's text
+   (its alt is SITE_NAME); the blue wordmark on the About and Brand pages, and the white one on the
+   masthead's colour, as the Brand page shows both. */
+.masthead .site { display: block; line-height: 0; }
+.masthead .site img { display: block; height: 1.3em; width: auto; }
+img.wordmark { display: block; width: min(18em, 70%); height: auto; margin: 1.2em 0 1.4em; }
+.logo-samples { display: flex; flex-wrap: wrap; gap: 1em; margin: 1em 0; }
+.logo-samples figure { flex: 1 1 16em; margin: 0; border: 1px solid var(--rule); }
+.logo-samples figure > div { padding: 2em 1.5em; background: var(--bg); }
+.logo-samples figure > div.on-dark { background: var(--masthead); }
+.logo-samples img { display: block; width: 100%; max-width: 16em; height: auto; margin: 0 auto; }
+.logo-samples figcaption { padding: .4em .8em; border-top: 1px solid var(--rule); font-size: .9em; background: var(--bg-sidebar); }
