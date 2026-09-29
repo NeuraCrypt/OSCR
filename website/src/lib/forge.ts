@@ -40,15 +40,24 @@ export const GITHUB = "https://github.com";
  *  Phase 03 (editing in the browser, D03-*) adds GitHub's own editing shapes: edit/<branch>/<path…>
  *  (a file), new/<branch>/<dir…> (a new file; ?filename= and ?value= prefill it, as GitHub's),
  *  upload/<branch>/<dir…> (files uploaded into a folder), delete/<branch>/<path…> (a file or a
- *  folder). */
+ *  folder).
+ *  Phase 04 (forks and pull requests, D04-*) adds GitHub's own shapes: pulls (the list; ?q= the
+ *  filter), pull/<n>[/files|commits|checks|conflicts] (a pull request and its tabs; pull/new/<branch>
+ *  opens the creation form, as GitHub's), fork (the fork form), forks (the fork list). */
 export type RepoView =
   | "home" | "settings" | "branches" | "tree" | "blob" | "commits" | "commit" | "compare" | "find" | "search" | "docs"
-  | "edit" | "new" | "upload" | "delete";
+  | "edit" | "new" | "upload" | "delete"
+  | "pulls" | "pull" | "fork" | "forks";
 export const REPO_VIEWS: readonly RepoView[] = ["home", "settings", "branches"];
 /** The views that carry segments after their name (a ref, a path, a commit, a comparison). */
-export const CODE_VIEWS: readonly RepoView[] = ["tree", "blob", "commits", "commit", "compare", "find", "search", "docs", "edit", "new", "upload", "delete"];
+export const CODE_VIEWS: readonly RepoView[] = [
+  "tree", "blob", "commits", "commit", "compare", "find", "search", "docs", "edit", "new", "upload", "delete",
+  "pulls", "pull", "fork", "forks",
+];
 /** The editing views (phase 03): they act on a branch, and their changes are commits. */
 export const EDIT_VIEWS: readonly RepoView[] = ["edit", "new", "upload", "delete"];
+/** The pull request and fork views (phase 04). */
+export const PULL_VIEWS: readonly RepoView[] = ["pulls", "pull", "fork", "forks"];
 
 export interface RepoCoords {
   owner: string;
@@ -88,6 +97,10 @@ const SEGMENTS: Partial<Record<RepoView, [number, number]>> = {
   new: [1, 64],
   upload: [1, 64],
   delete: [2, 64],
+  pulls: [0, 0],
+  pull: [1, 64],
+  fork: [0, 0],
+  forks: [0, 0],
 };
 
 /** The repository and the view a path of the shell names, or null: /r/<owner>/<name>/ (the final
@@ -125,7 +138,7 @@ export function repoPath(repo: RepoCoords, view: RepoView = "home", rest: readon
   const segs = rest.flatMap((s) => s.split("/")).filter((s) => s !== "");
   if (!segs.every(isPathSegment)) throw new TypeError("not a path");
   const tail = segs.map(encodeURIComponent).join("/");
-  if (view === "blob" || view === "edit" || view === "delete") return `${base}${view}/${tail}`;
+  if (view === "blob" || view === "edit" || view === "delete" || view === "pull") return `${base}${view}/${tail}`;
   return tail ? `${base}${view}/${tail}/` : `${base}${view}/`;
 }
 
