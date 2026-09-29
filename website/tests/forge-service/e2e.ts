@@ -102,6 +102,28 @@ for (const page of ["/new/", "/new/link/", "/repositories/", "/r/oscr-fixture/ee
   const res = await anon.request(`${SITE}${page}`);
   check(`GET ${page}: 200, a static page`, res.status === 200 && /text\/html/.test(res.headers.get("Content-Type") ?? ""), res.status);
 }
+// Phase 02: the code views are the same static shell (no Worker, no D1), and the tracing maps a
+// static shard of 64, with the fixture's map and no paper text.
+for (const page of [
+  "/r/oscr-fixture/eeg-analysis/tree/main/docs/",
+  "/r/oscr-fixture/eeg-analysis/blob/main/analysis.py",
+  "/r/oscr-fixture/eeg-analysis/commits/main/",
+  "/r/oscr-fixture/eeg-analysis/commit/main/",
+  "/r/oscr-fixture/eeg-analysis/compare/main...main/",
+  "/r/oscr-fixture/eeg-analysis/docs/",
+  "/r/oscr-fixture/eeg-analysis/find/main/",
+  "/r/oscr-fixture/eeg-analysis/search/?q=band",
+]) {
+  const res = await anon.request(`${SITE}${page}`);
+  check(`GET ${page}: 200, the shell`, res.status === 200 && /text\/html/.test(res.headers.get("Content-Type") ?? ""), res.status);
+}
+{
+  const shard = String(createHash("sha256").update("oscr-fixture/eeg-analysis").digest()[0] % 64).padStart(2, "0");
+  const res = await anon.request(`${SITE}/forge/traced/${shard}.json`);
+  const body = res.status === 200 ? ((await res.json()) as Record<string, { commit: string; pairs: Record<string, unknown>[] }[]>) : {};
+  const maps = body["oscr-fixture/eeg-analysis"] ?? [];
+  check(`GET /forge/traced/${shard}.json: the fixture's map, its links only`, maps.length === 1 && maps[0].pairs.length === 2 && maps[0].pairs.every((p) => !("evidence" in p) && !("text" in p)), JSON.stringify(maps).slice(0, 200));
+}
 const csp = (await anon.request(`${SITE}/r/oscr-fixture/eeg-analysis/`)).headers.get("Content-Security-Policy") ?? "";
 check("the /r/ shell's CSP: scripts of the site only; GitHub's API and raw files to connect to", /script-src 'self'/.test(csp) && /connect-src 'self' https:\/\/api\.github\.com https:\/\/raw\.githubusercontent\.com/.test(csp), csp);
 

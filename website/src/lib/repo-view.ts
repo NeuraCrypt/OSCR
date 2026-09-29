@@ -123,8 +123,12 @@ export const isDataAttr = (name: string): boolean => /^data-[a-z]{1,20}(?:-[a-z]
 /** Whether a view may set this attribute. */
 export const allowedAttr = (name: string): boolean => (ATTRS as readonly string[]).includes(name) || isDataAttr(name);
 
+/** The attributes a reader sees or hears as text (a tooltip, an image's words, a label): masked
+ *  for email addresses like the text itself (phase 02: a repository's Markdown and notebooks). */
+const TEXT_ATTRS = new Set(["title", "alt", "aria-label", "placeholder", "value"]);
+
 /** An element: attributes outside ATTRS (and data-*) are dropped, an unsafe href is dropped (the
- *  text stays), and every text child is masked. */
+ *  text stays), and every text child is masked, and so is every attribute read as text. */
 export function h(tag: Tag, attrs: Record<string, string | null | undefined | false> | null, ...children: (Child | Child[])[]): El {
   const out: Record<string, string> = {};
   for (const [k, v] of Object.entries(attrs ?? {})) {
@@ -135,7 +139,7 @@ export function h(tag: Tag, attrs: Record<string, string | null | undefined | fa
     } else if (k === "src") {
       const safe = safeSrc(v);
       if (safe) out.src = safe;
-    } else out[k] = String(v);
+    } else out[k] = TEXT_ATTRS.has(k) ? maskEmails(String(v)) : String(v);
   }
   const kids: (string | El)[] = [];
   for (const c of children.flat()) {

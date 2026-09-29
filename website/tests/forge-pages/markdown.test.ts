@@ -251,6 +251,11 @@ describe("GitHub's tag filter", () => {
     assert.match(textOf(el), /\[email hidden\]/);
   });
 
+  test("email addresses are masked in titles and alternative texts too", async () => {
+    const el = await render('[a][r] <abbr title="ann@example.org">x</abbr> <img src="a.png" alt="bob@example.org">\n\n[r]: https://example.org "joe@example.org"\n');
+    assert.doesNotMatch(JSON.stringify(el), /@example/);
+  });
+
   test("HTML comments are hidden", async () => {
     const el = await render("a <!-- secret --> b\n\n<!--\nblock secret\n-->\n\nc");
     assert.doesNotMatch(textOf(el), /secret/);

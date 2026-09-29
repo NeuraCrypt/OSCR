@@ -10,7 +10,7 @@
 import { text as utf8Text } from "../../worker/forge/objects.ts";
 import { atSource, entryAt, githubLinks, licenceShows, refSegments, refSwitcher } from "../lib/code-nav.ts";
 import { finderFiles, finderList, findFiles, type Hit, parseQuery, SEARCH_LIMITS, searchPlan, searchResults, searchText } from "../lib/finder.ts";
-import { repoPath } from "../lib/forge.ts";
+import { isPathSegment, repoPath } from "../lib/forge.ts";
 import { type El, h } from "../lib/repo-view.ts";
 import { show } from "./dom.ts";
 import { type CodeEnv, codeViews, failed, openRef, type Opened, repoRef, sourceUrl, wireSwitcher } from "./repo-code.ts";
@@ -107,7 +107,9 @@ codeViews.find = async (slot, env) => {
 codeViews.search = async (slot, env) => {
   const params = new URLSearchParams(env.search);
   const q = params.get("q") ?? "";
-  const refAsked = params.get("ref") ?? "";
+  // A ref from the address: its segments must be path segments (repoPath's rule), else the default.
+  const asked = params.get("ref") ?? "";
+  const refAsked = asked.length <= 255 && asked.split("/").every(isPathSegment) ? asked : "";
   const caseSensitive = params.get("case") === "1";
   const form = (ref: string): El =>
     h(
