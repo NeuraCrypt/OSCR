@@ -103,8 +103,13 @@ A page of the website puts a paper and its authors' code side by side.
   or serves the text of a paper. Europe PMC's XML takes one to six seconds, sometimes more:
   each try has 20 seconds, the pane says that it is loading (and when it is slow), and a try
   that gets no answer, a network error or a server's error is made once more
-  (`website/src/lib/retry.ts`); a failure keeps links to doi.org and Europe PMC and a button
-  that tries again. The pane can be hidden, a choice kept in the browser.
+  (`website/src/lib/retry.ts`). When Europe PMC still does not give it, a paper in PubMed
+  Central is read from NCBI's copy (E-utilities, CORS allowed), whose paragraphs may be
+  numbered otherwise: each pair is placed by its section and its evidence terms
+  (`website/src/lib/anchor.ts`; 355 of 364 pairs where they belong on a sample of 40 papers,
+  against 325 by number alone), and the pane says so. A failure keeps links to doi.org and
+  Europe PMC and a button that tries again. The pane can be hidden, a choice kept in the
+  browser.
 - **Right, the code.** One view is prerendered at build time; the others are fetched on
   demand from the lot of their repository (`/scripts/NN.json`). A script whose license does
   not allow republication is not copied: the reader lists the file and links to it at the

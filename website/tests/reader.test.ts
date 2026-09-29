@@ -12,6 +12,7 @@ import {
 import { EMBEDS, LOADERS } from "../src/lib/hljs-languages.ts";
 import { decorate, lineClass, pairClass, sourceLines, splitLines, wholeFile } from "../src/lib/lines.ts";
 import { PREFS, readPref, writePref, type Store } from "../src/lib/prefs.ts";
+import { placePairs } from "../src/lib/anchor.ts";
 import { HttpError, TimeoutError, withRetry, worthRetrying } from "../src/lib/retry.ts";
 import {
   encodePath, fileHref, initialFile, mapPairs, readerFiles, sourceOf, sourceWhy, whyNotShown, type LotFileIn, type PairIn, type RepoIn,
@@ -496,5 +497,39 @@ describe("a file the reader does not show", () => {
   it("says, where it leads to the source, why one would go there", () => {
     assert.equal(sourceWhy("0123456789abcdef", true), "Shown here as the registry read it at commit 0123456. The source has the authors' latest version and its history.");
     assert.match(sourceWhy("", false), /^Not shown here\. The source has the file/);
+  });
+});
+
+describe("the pairs in PubMed Central's copy of a paper", () => {
+  const copy = [
+    { section: "Introduction", text: "Sleep is a state of reduced responsiveness." },
+    { section: "Data availability", text: "All data are in the supplementary files." },
+    { section: "Methods › Spike sorting", text: "Units were sorted with Kilosort 2.5 and curated in Phy." },
+    { section: "Methods › Ripples", text: "Ripples were detected between 150 and 250 Hz, at 3 SD above the mean." },
+    { section: "Methods › Ripples", text: "Ripple rates were compared with a Wilcoxon test." },
+  ];
+  const pair = (n: number, paragraph: number, section: string, evidence: string[]) => ({ pair: n, paragraph, section, evidence });
+
+  it("keeps a pair on its number when that paragraph has its section and its terms", () => {
+    const r = placePairs([pair(1, 2, "Methods › Spike sorting", ["Kilosort", "Phy", "curated"])], copy);
+    assert.deepEqual([...r.at], [[1, 2]]);
+    assert.deepEqual([r.moved, r.lost], [0, 0]);
+  });
+
+  it("moves a pair whose number is off (a paragraph less in this copy) to the one with its terms", () => {
+    // Europe PMC's copy had a second statement: its paragraph 4 is this copy's 3.
+    const r = placePairs([pair(1, 4, "Methods › Ripples", ["150 and 250 Hz", "3 SD", "ripples were detected"]), pair(2, 5, "Methods › Ripples", ["Wilcoxon", "ripple rates"])], copy);
+    assert.deepEqual([...r.at], [[1, 3], [2, 4]]);
+    assert.equal(r.moved, 2);
+  });
+
+  it("prefers the paragraph that holds more of its terms, and leaves out a pair no paragraph fits", () => {
+    const r = placePairs(
+      [pair(1, 4, "Methods › Ripples", ["ripple", "wilcoxon test"]), pair(2, 1, "Results", ["theta phase", "place cells", "decoding"])],
+      copy,
+    );
+    assert.equal(r.at.get(1), 4);
+    assert.equal(r.at.has(2), false);
+    assert.equal(r.lost, 1);
   });
 });

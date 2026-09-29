@@ -4,8 +4,8 @@
 // the same color on both sides, and a button that hides the paper so that the code takes the
 // whole width.
 //
-// LEFT, the paper: its text is NOT in this page; the reader's browser loads it from Europe PMC
-// (src/scripts/reader-paper.ts). RIGHT, the authors' code: the list of its files and one file,
+// LEFT, the paper: its text is NOT in this page; the reader's browser loads it from Europe PMC,
+// else from PubMed Central (src/scripts/reader-paper.ts). RIGHT, the authors' code: the list of its files and one file,
 // the one with the most matches, written here by the build (plain; the browser colors it); the
 // others are fetched on demand from /scripts/NN.json. A file whose license does not allow
 // republishing it has no text here: the reader says why and links to it at the source, which is
@@ -115,7 +115,7 @@ const json = JSON.stringify(data).replace(/</g, "\\u003c");
       <header>
         <h3 id="paper-title">Paper</h3>
         <p>
-          Loaded from Europe PMC by your browser, not stored by {SITE_NAME}: <a href={doiUrl}>doi.org</a> ·{" "}
+          Loaded from <span id="paper-source">Europe PMC</span> by your browser, not stored by {SITE_NAME}: <a href={doiUrl}>doi.org</a> ·{" "}
           <a href={epmcUrl}>Europe PMC</a>
         </p>
       </header>

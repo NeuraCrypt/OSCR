@@ -85,6 +85,8 @@ export type ReaderPair = {
   path: string;
   start: number;
   end: number;
+  /** The titles of its paragraph's sections ("Methods › Spike sorting"), as the harvester read them. */
+  section: string;
   /** The lines at the source (a forge's #L10-L20), or the file there. */
   source: string;
   label: string;
@@ -201,6 +203,7 @@ export function mapPairs(pairs: PairIn[], repos: ReaderRepo[], files: ReaderFile
         path: p.path,
         start: p.start_line,
         end: p.end_line,
+        section: p.section ?? "",
         source: f ? sourceLines(at, p.start_line, p.end_line) : at,
         label: `§ ${p.section || `paragraph ${p.paragraph}`}`,
         evidence: p.evidence ?? [],

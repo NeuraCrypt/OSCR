@@ -1,8 +1,8 @@
 // The Code ↔ Paper reader, first on a paper's page (src/components/paper/Reader.astro), in the
 // reader's browser.
 //
-// LEFT, the paper (reader-paper.ts): its text is fetched from Europe PMC by this browser, only
-// while its pane is shown; a button hides the pane (the choice is kept in this browser).
+// LEFT, the paper (reader-paper.ts): its text is fetched from Europe PMC (else PubMed Central)
+// by this browser, only while its pane is shown; a button hides the pane (the choice is kept in this browser).
 // RIGHT, the authors' code: the list of its files (file-tree.ts) and the viewer (code-view.ts).
 // The file shown first is written into the page by the build; the others are fetched from the
 // lot of their repository (/scripts/NN.json).
@@ -84,7 +84,7 @@ function start(data: ReaderData) {
   /** Once the paper is there: the pair or paragraph already chosen, in view. */
   function afterPaper() {
     const p = pairs.get(active);
-    const para = p && paper.paragraph(p.paragraph);
+    const para = p && paper.forPair(p);
     if (para) {
       para.classList.add("is-active");
       scrollInto(paperBody, para);
@@ -189,7 +189,7 @@ function start(data: ReaderData) {
     if (!quiet) history.replaceState(null, "", url(p.file >= 0 ? p.file : view.current, null, k));
     clearActive();
     document.querySelector(`#legend a[data-pair="${k}"]`)?.classList.add("is-active");
-    const para = paperShown() ? paper.paragraph(p.paragraph) : null;
+    const para = paperShown() ? paper.forPair(p) : null;
     para?.classList.add("is-active");
     const shown = p.file >= 0 && (await show(p.file));
     if (active !== k) return; // another pair was chosen meanwhile

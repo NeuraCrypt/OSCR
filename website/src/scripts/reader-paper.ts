@@ -4,9 +4,18 @@
 // never by the site, and shown as plain text. Its paragraphs are numbered the way the harvester
 // numbers them: the index of each <p> among all the <p> of the JATS <body>, in document order
 // (Python: `body.iter("p")`). The text is loaded only when the pane is shown.
+//
+// When Europe PMC does not answer (twice), a paper in PubMed Central is read from NCBI's copy
+// (E-utilities, CORS allowed), whose paragraphs may be numbered otherwise: each pair is then
+// placed by its section and its terms (src/lib/anchor.ts), and the pane says so.
+import { placePairs, type CopyParagraph } from "../lib/anchor";
 import { pairClass, type Part } from "../lib/lines";
-import type { ReaderData } from "../lib/reader";
+import type { ReaderData, ReaderPair } from "../lib/reader";
 import { HttpError, TimeoutError, withRetry } from "../lib/retry";
+
+type Source = "europepmc" | "pmc";
+const EUROPE_PMC = (id: string) => `https://www.ebi.ac.uk/europepmc/webservices/rest/${encodeURIComponent(id)}/fullTextXML`;
+const PMC = (id: string) => `https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pmc&id=${id.replace(/^PMC/i, "")}`;
 
 /** The link that activates pair k (the same markup on both sides, see code-view.ts). */
 export function pairLink(k: number, text: string, to: "code" | "paragraph"): HTMLAnchorElement {
@@ -87,18 +96,46 @@ function license(xml: Document): Part[] {
 /** The paper's pane: `load` fetches and renders the text once (then calls `loaded`);
  *  `paragraph` finds one. */
 export function paperPane(data: ReaderData, body: HTMLElement, status: HTMLElement, loaded: () => void) {
+  const sourceName = document.getElementById("paper-source");
   let state: "idle" | "loading" | "done" | "failed" = "idle";
   let pending: Promise<void> | null = null;
 
-  function render(xml: Document) {
-    const root = xml.documentElement;
-    const main = Array.from(root.children).find((e) => e.localName === "body") ?? xml.getElementsByTagName("body")[0];
+  /** Where each pair's paragraph is in the text shown (pair → index). */
+  let at = new Map<number, number>();
+
+  /** The titles of the sections around a paragraph, as the harvester joins them. */
+  function sectionOf(p: Element, main: Element): string {
+    const titles: string[] = [];
+    for (let e = p.parentElement; e && e !== main; e = e.parentElement) {
+      if (e.localName !== "sec") continue;
+      const t = child(e, "title");
+      const text = t ? clean(flatten(t)) : "";
+      if (text) titles.unshift(text);
+    }
+    return titles.join(" \u203a ");
+  }
+
+  function render(xml: Document, source: Source) {
+    // NCBI's copy holds the article in a <pmc-articleset>.
+    const top = xml.documentElement;
+    const root = top.localName === "pmc-articleset" ? (Array.from(top.children).find((e) => e.localName === "article") ?? top) : top;
+    const main = Array.from(root.children).find((e) => e.localName === "body");
     if (!main) throw new Error("the full text has no body");
     const list = Array.from(main.getElementsByTagName("p"));
+    let placed = { moved: 0, lost: 0 };
+    if (source === "europepmc") at = new Map(data.pairs.filter((p) => p.paragraph < list.length).map((p) => [p.pair, p.paragraph]));
+    else {
+      const copy: CopyParagraph[] = list.map((p) => ({ section: sectionOf(p, main), text: clean(flatten(p)) }));
+      const r = placePairs(data.pairs, copy);
+      at = r.at;
+      placed = r;
+    }
     const byParagraph = new Map<number, number[]>();
     for (const p of data.pairs) {
-      if (!byParagraph.has(p.paragraph)) byParagraph.set(p.paragraph, []);
-      byParagraph.get(p.paragraph)!.push(p.pair);
+      const i = at.get(p.pair);
+      if (i === undefined) continue;
+      if (!byParagraph.has(i)) byParagraph.set(i, []);
+      byParagraph.get(i)!.push(p.pair);
     }
     const out = document.createDocumentFragment();
     const headed = new Set<Element>();
@@ -133,6 +170,20 @@ export function paperPane(data: ReaderData, body: HTMLElement, status: HTMLEleme
     });
     body.append(out);
     const lic = license(xml);
+    if (source === "pmc") {
+      if (sourceName) sourceName.textContent = "PubMed Central";
+      const n = data.pairs.length;
+      status.replaceChildren(
+        "Europe PMC did not answer: this is PubMed Central's copy of the paper, whose paragraphs may be numbered otherwise. ",
+        n === 0
+          ? ""
+          : placed.lost === 0
+            ? `${n === 1 ? "The match was" : `The ${n} matches were`} placed by their sections and their terms. `
+            : `The matches were placed by their sections and their terms; ${placed.lost} of ${n} could not be. `,
+        ...(lic.length ? nodes(lic) : []),
+      );
+      return;
+    }
     const beyond = data.pairs.filter((p) => p.paragraph >= list.length).length;
     status.replaceChildren(
       ...(lic.length ? nodes(lic) : ["Loaded from Europe PMC."]),
@@ -167,41 +218,63 @@ export function paperPane(data: ReaderData, body: HTMLElement, status: HTMLEleme
     );
   }
 
+  /** The text at `url`: `tries` tries of 20 seconds, the pane saying what it waits for. */
+  function get(url: string, tries: number, where: string): Promise<string> {
+    return withRetry(
+      async (signal) => {
+        const r = await fetch(url, { signal, credentials: "omit", referrerPolicy: "no-referrer" });
+        if (!r.ok) throw new HttpError(r.status);
+        return r.text();
+      },
+      {
+        tries,
+        timeout: 20_000,
+        pause: 1_500,
+        slowAfter: 7_000,
+        onSlow: (n) => waiting(n === 1 ? `Loading the paper from ${where}… it is slow to answer; still waiting.` : `Still waiting for ${where}…`),
+        onRetry: () => waiting(`${where} did not answer; trying again…`),
+      },
+    );
+  }
+
+  function parse(text: string): Document {
+    const xml = new DOMParser().parseFromString(text, "application/xml");
+    if (xml.getElementsByTagName("parsererror").length > 0) throw new Error("the full text is not valid XML");
+    return xml;
+  }
+
+  function show(xml: Document, source: Source) {
+    status.className = "";
+    render(xml, source);
+    state = "done";
+    loaded();
+  }
+
   async function fetchText() {
     if (!data.fulltextId) return fail("Europe PMC has no full text for it");
     state = "loading";
     waiting("Loading the paper from Europe PMC…");
-    const url = `https://www.ebi.ac.uk/europepmc/webservices/rest/${encodeURIComponent(data.fulltextId)}/fullTextXML`;
+    let first: unknown = null;
     try {
       // Europe PMC's XML takes one to six seconds, sometimes more: 20 seconds a try, and one
       // more try when the first gets no answer, a network error or a server's error.
-      const text = await withRetry(
-        async (signal) => {
-          const r = await fetch(url, { signal, credentials: "omit", referrerPolicy: "no-referrer" });
-          if (!r.ok) throw new HttpError(r.status);
-          return r.text();
-        },
-        {
-          tries: 2,
-          timeout: 20_000,
-          pause: 1_500,
-          slowAfter: 7_000,
-          onSlow: (n) => waiting(n === 1 ? "Loading the paper from Europe PMC… it is slow to answer; still waiting." : "Still waiting for Europe PMC…"),
-          onRetry: () => waiting("Europe PMC did not answer; trying again…"),
-        },
-      );
-      const xml = new DOMParser().parseFromString(text, "application/xml");
-      if (xml.getElementsByTagName("parsererror").length > 0) throw new Error("the full text is not valid XML");
-      status.className = "";
-      render(xml);
-      state = "done";
-      loaded();
+      return show(parse(await get(EUROPE_PMC(data.fulltextId), 2, "Europe PMC")), "europepmc");
     } catch (err) {
-      const e = err as Error;
-      if (e instanceof HttpError && e.status === 404) return fail("it has no full text for this paper");
-      if (e instanceof TimeoutError) return fail(`no answer within ${e.seconds} seconds, tried twice`);
-      fail(e instanceof TypeError ? "the network did not let the request through" : e.message);
+      first = err;
     }
+    // Europe PMC did not give it: PubMed Central's copy, for a paper there.
+    if (/^PMC\d+$/i.test(data.fulltextId)) {
+      waiting("Europe PMC did not answer; loading the paper from PubMed Central…");
+      try {
+        return show(parse(await get(PMC(data.fulltextId), 1, "PubMed Central")), "pmc");
+      } catch {
+        // The first failure is the one told.
+      }
+    }
+    const e = first as Error;
+    if (e instanceof HttpError && e.status === 404) return fail("it has no full text for this paper");
+    if (e instanceof TimeoutError) return fail(`no answer within ${e.seconds} seconds, tried twice`);
+    fail(e instanceof TypeError ? "the network did not let the request through" : e.message);
   }
 
   function load(): Promise<void> {
@@ -215,6 +288,12 @@ export function paperPane(data: ReaderData, body: HTMLElement, status: HTMLEleme
     get loaded() {
       return state === "done";
     },
+    /** Paragraph n of the text shown (an address's #p-12). */
     paragraph: (n: number) => document.getElementById(`p-${n}`),
+    /** The paragraph of a pair, where it was placed in the text shown. */
+    forPair(p: ReaderPair): HTMLElement | null {
+      const i = at.get(p.pair);
+      return i === undefined ? null : document.getElementById(`p-${i}`);
+    },
   };
 }

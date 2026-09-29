@@ -24,11 +24,13 @@ const el = <K extends keyof HTMLElementTagNameMap>(tag: K, cls = "", text = "") 
 };
 const motion: ScrollBehavior = matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth";
 
-/** Scroll a pane's scrolling box to put `target` near its top (or its middle), with context. */
+/** Scroll a pane's scrolling box to put `target` near its top (or its middle), with context:
+ *  smoothly over a short way, at once over a long one (a long glide shows nothing). */
 export function scrollInto(box: HTMLElement, target: HTMLElement, where: "top" | "center" = "top") {
   const offset = target.getBoundingClientRect().top - box.getBoundingClientRect().top + box.scrollTop;
-  const top = where === "center" ? offset - box.clientHeight / 3 : offset - 48;
-  box.scrollTo({ top: Math.max(0, top), behavior: motion });
+  const top = Math.max(0, where === "center" ? offset - box.clientHeight / 3 : offset - 48);
+  const far = Math.abs(top - box.scrollTop) > box.clientHeight * 3;
+  box.scrollTo({ top, behavior: far ? "auto" : motion });
 }
 
 /** Copy a text: the Clipboard API, else a selection copied the old way. */

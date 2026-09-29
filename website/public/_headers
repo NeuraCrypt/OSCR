@@ -3,7 +3,8 @@
 # site may frame them, and they run this site's own files only (no inline script or style: Astro
 # writes every script as a file, astro.config.mjs). The account page (Phase 5); /submit/ and a
 # paper's page (Phase 6), which holds the Code ↔ Paper reader since 2026-09-28: its browser reads the
-# paper's text from Europe PMC (www.ebi.ac.uk, connect-src), and nothing else outside the site.
+# paper's text from Europe PMC (www.ebi.ac.uk, connect-src), else PubMed Central's copy (NCBI's
+# E-utilities, eutils.ncbi.nlm.nih.gov), and nothing else outside the site.
 # worker/pages.ts gives the pages it renders the same headers (a test checks that they agree).
 /account/
   X-Frame-Options: DENY
@@ -17,5 +18,5 @@
 
 /paper/:slug/
   X-Frame-Options: DENY
-  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self' https://www.ebi.ac.uk; form-action 'self'; frame-ancestors 'none'; base-uri 'none'; object-src 'none'
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self' https://www.ebi.ac.uk https://eutils.ncbi.nlm.nih.gov; form-action 'self'; frame-ancestors 'none'; base-uri 'none'; object-src 'none'
   Referrer-Policy: same-origin
