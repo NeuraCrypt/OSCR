@@ -770,3 +770,38 @@ on GitHub); notifications stay in the site, never an email (D5).
   `social/` files (65): none per person, star or follow.
 - **The screenshots**: `docs/night-screenshots/phase-08/` (21 desktop 1280×860, 21 phone 390×844,
   against the fake GitHub and `wrangler dev`, every outside address blocked, signed out and signed in).
+
+### Automation and integrations (phase 10): the registry's checks, its API, its webhooks
+
+Built on the night of 2026-09-29, before phase 16 (the owner's order change); the details are
+[API.md](API.md) and [AUTOMATION.md](AUTOMATION.md), the decisions D10-1 to D10-17 in
+[DECISIONS.md](DECISIONS.md). No code is ever executed by the registry: its checks read files as text,
+and the researcher's tests run on their own GitHub Actions, which the registry shows.
+
+- **Personal tokens** (D10-1): `api_tokens` in `oscr_forge` (`migrations/d1-forge/0009_automation.sql`)
+  keeps a token's SHA-256, never the token; scoped by area, 1–366 days, revocable at once, last use to
+  the day; made on `/settings/tokens/` only (`tokens-core.ts`, `tokens.ts`).
+- **The public API** (D10-2 to D10-4): `/api/v1/*` (`api.ts`): bearer tokens only (`bearer.ts`; the
+  Cookie header stripped), CORS for any origin without credentials, dated versions, request ids, the
+  site's error model, ETag and 304, `Link` pagination, per-token rate limits in the isolate's memory;
+  its routes are the site's own handlers, the person read through `who.ts`: one write path. The
+  reference `/developers/` and `/developers/openapi.json` are built from the routes.
+- **Outgoing webhooks** (D10-5 to D10-7): on a paper or a repository, for the inbox's events; pinged
+  before they are active; signed as GitHub signs (`X-Hub-Signature-256`) with a secret derived from the
+  server key, never stored; delivered in `waitUntil` after the batch that wrote the event, retried
+  within the request (no Queues, no Cron); 1 row a delivery; never to a private network, this machine
+  or a local name, no redirection followed (`hooks-core.ts`, `hooks.ts`, `/settings/hooks/`).
+- **The registry's checks** (D10-8 to D10-10): one pure module (`worker/forge/checks-core.ts`: licence,
+  environment, the paper's DOI, `CITATION.cff`, the tracing maps' coherence, file sizes, README), posted
+  as ONE check run on every pull request from the App's `pull_request` deliveries with the installation
+  token (`pr-checks.ts`, 0 rows), and computed in the reader's browser at any commit on the repository's
+  Checks tab (`checks/<ref>`), with the papers' cited commits, the researcher's own CI as GitHub reports
+  it, the statuses posted to the registry and the environments the workflows test.
+- **Commit statuses** (D10-11, D10-12): `statuses`, posted with a token or with GitHub Actions' own OIDC
+  token (verified by the Worker: no secret in the repository), the latest of each context.
+- **Safety**: `FORGE_OPEN` on every new write (never on revoking a token, pausing or deleting a
+  webhook); Origin and CSRF on the site's routes, bearer tokens on the API's; no token, secret or email
+  address stored; tokens redacted from every log line.
+- **Files added to the site**: 3 pages and the OpenAPI file: none per token, webhook or status.
+- **The screenshots**: `docs/night-screenshots/phase-10/` (15 desktop 1280×860, 15 phone 390×844,
+  against the fake GitHub and `wrangler dev`, every outside address blocked, signed out and signed in).

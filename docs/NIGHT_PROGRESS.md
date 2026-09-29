@@ -40,8 +40,8 @@ from "Next step".
 | 05 Issues | night/phase-05-issues | **done** 2026-09-29, pushed (8 commits: E1 to E6, the close in two parts) |
 | 07 Releases, packages and environments | night/phase-07-releases | **done** 2026-09-29, pushed (10 commits: E1 to E6, E4's fixes after the browser, the close in three parts) |
 | 08 Social, discovery, notifications and search | night/phase-08-social | **done** 2026-09-29, pushed (7 commits: E1 to E5, the close in two parts) |
-| 10 Automation and integrations | night/phase-10-automation | next: branch created from night/phase-08-social |
-| 16 Content, abuse and rules | night/phase-16-content-rules | later (the owner's order change): its branch, created from night/phase-07-releases, holds nothing yet; phase 16 will be rebuilt on the last phase before it |
+| 10 Automation and integrations | night/phase-10-automation | **done** 2026-09-29, pushed (7 commits: E1 to E5, the close in two parts) |
+| 16 Content, abuse and rules | night/phase-16-rules | **next, awaiting the owner's go**: branch created from night/phase-10-automation, nothing built on it. (The older `night/phase-16-content-rules`, made from phase 07 and empty, is superseded.) |
 
 ## Phase 00: what it produced
 
@@ -281,14 +281,44 @@ from "Next step".
   files add 65 with a real export); `check --every-route` ok; strict `tsc` clean (worker and tests;
   page scripts); the end-to-end run: every check passed (161).
 
+## Phase 10: what it produced
+
+- **Built before phase 16** (the owner's order change): every write it adds stays behind `FORGE_OPEN`
+  (the owner only), and D10-14 lists what phase 16 must cover.
+- OSCR's personal tokens (E1): `migrations/d1-forge/0009_automation.sql` (`api_tokens`, `hooks`,
+  `hook_deliveries`, `statuses`; `actions` with the kinds `token`, `hook`, `status`), `tokens-core.ts`,
+  `tokens.ts` (made and revoked on the site only; the token answered once, its SHA-256 kept; scoped,
+  1–366 days, last use to the day), `bearer.ts` (a request's token; 60 a minute and 1,000 a day per
+  token, in the isolate's memory).
+- The public API v1 (E2): `api.ts` (bearer only, the Cookie header stripped, CORS for any origin
+  without credentials, dated versions, request ids, the error model, ETag and 304, `Link`), its routes
+  the site's own handlers through `who.ts`; `openapi.ts` and `public/developers/openapi.json`, checked
+  against the routes by a test.
+- Outgoing webhooks (E3): `hooks-core.ts`, `hooks.ts`: on a paper or a known repository, pinged before
+  they are active, signed as GitHub signs with a secret derived from the server key (never stored),
+  delivered in `waitUntil` after the batch that wrote the event, retried within the request, 1 row a
+  delivery, never to a private network, loopback or a local name, no redirection followed.
+- Statuses and the registry's checks (E4): `worker/forge/checks-core.ts` (licence, environment, DOI,
+  `CITATION.cff`, the tracing maps' coherence, file sizes, README: files read as text, never run),
+  `pr-checks.ts` (one check run on every pull request's new head from the App's delivery, 0 rows,
+  `skip-checks` honoured), `statuses.ts` (with a token, or GitHub Actions' OIDC token verified by the
+  Worker: no secret in the repository).
+- The pages (E5): `/settings/tokens/`, `/settings/hooks/`, `/developers/` (the reference built from
+  the routes), the repository's Checks tab and `checks/<ref>` view (the registry's checks at any commit,
+  the papers' cited commits, the researcher's own CI as GitHub reports it, the statuses posted to the
+  registry, the environments the workflows test), the pull request's Checks tab linking to it.
+- The close: the end-to-end run's phase 10 checks (186 in all, every one passed); the security review;
+  docs `docs/API.md`, `docs/AUTOMATION.md`, `FORGE.md`, `ARCHITECTURE.md`, decisions D10-1 to D10-17;
+  screenshots `docs/night-screenshots/phase-10/` (30: desktop and phone).
+- Tests at the close: pytest 489 passed; ruff clean; `npm test` 1,296 passed under Node 26 and Node 22;
+  build 54 pages, 325 files with the fixture (3 pages, the OpenAPI file and their scripts added);
+  `check --every-route` ok; strict `tsc` clean (worker and tests; page scripts, but for `src/config.ts`'s
+  `import.meta.env`, as before); the end-to-end run: every check passed (186).
+
 ## Next step
 
-Phase 10, automation and integrations, on branch `night/phase-10-automation` (created from
-`night/phase-08-social`): follow `docs/PLATFORM_PLAN.md` §15.6 "Phase 10" (the order, changed by the
-owner on 2026-09-29: 01 → 02 → 03 → 04 → 05 → 07 → 08 → 10, then phase 16 later). OSCR's checks that
-run no code on every pull request, the researcher's CI results, the public API over OSCR's layer (the
-objects of 01–08: repositories and their papers, pull requests' research layer, issues, releases'
-paper versions, notifications, stars, search), webhooks and paper webhooks, integrations. `FORGE_OPEN`
-stays unset: phase 16 will cover what 08 and 10 add (D08-17). The owner's actions are in
-`docs/NIGHT_REPORT.md` §2; until the App exists, everything runs against the fake GitHub and the
-in-memory double.
+Phase 16, content, abuse and rules, on branch `night/phase-16-rules` (created from
+`night/phase-10-automation`, nothing built on it): **it awaits the owner's go**. It must cover what
+phases 08 and 10 added (DECISIONS.md D08-17 and D10-14) before `FORGE_OPEN` opens anything. The owner's
+actions are in `docs/NIGHT_REPORT.md` §2; until the App exists, everything runs against the fake GitHub
+and the in-memory double.

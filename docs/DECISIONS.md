@@ -2070,3 +2070,216 @@ Reads: ≤ 1,800 an inbox, bounded feeds and calendars; 5 statements a search.
 
 **Why.** Events feed the inbox that phases 04 and 05 wanted; the per-thread follow is what makes
 "participating" possible without a row per recipient.
+
+## Phase 10: automation and integrations (2026-09-29)
+
+Built on `night/phase-08-social`, before phase 16 (the owner's order change): every write this phase
+adds stays behind `FORGE_OPEN` (the owner only), and D10-14 lists what phase 16 must cover. The
+contracts are [API.md](API.md) (the public API and its tokens) and [AUTOMATION.md](AUTOMATION.md)
+(checks, statuses, webhooks). The GitHub side was at its 5,000-row cap (D08-18): this phase writes
+little.
+
+### D10-1. The registry's own personal tokens: a SHA-256 in D1, scoped, expiring, revocable, made on the site only
+
+**Decision.** A token is `oscr_pat_` and 43 base64url characters (256 random bits), answered once;
+`oscr_forge` `api_tokens` keeps its SHA-256 (the key), a public id, a name, its scopes, its expiry
+(1–366 days, 30 by default: none lives for ever) and the day of its last use (written at most once a
+day). Ten scopes by area (`repos:read`, `research:read|write`, `social:read|write`,
+`notifications:read|write`, `hooks:read|write`, `statuses:write`), a write granting its area's read.
+20 an account. Made and revoked only on `/settings/tokens/` (cookie, Origin, CSRF): a token never makes
+or lists tokens. Making one is behind `FORGE_OPEN` and the `automation` cap (50 changes a day);
+revoking deletes the row at once and is never refused by a cap or `FORGE_OPEN`. The prefix is a
+technical identifier, like the cookies' `__Host-oscr_*`, so that secret scanners (GitHub's push
+protection included) recognise a leaked token; `redact` removes it from every log line.
+
+**Options compared.** GitHub-style tokens hashed with a salt or a slow hash (no gain for 256 random
+bits); tokens stored encrypted (a secret at rest); OAuth apps with the registry as the provider (a
+consent screen, client registrations, refresh tokens: deferred, D10-13); tokens in `oscr_community`
+(the forge's caps and day's rows would not see them).
+
+**Why.** CLAUDE.md: no secret stored; the plan's model (phase 01, D01-18).
+
+### D10-2. The public API is the site's own handlers; the person comes from the token
+
+**Decision.** `/api/v1/*` (`api.ts`) maps its routes to the handlers of the site's routes
+(`read.ts`, `research.ts`, `social.ts`, `inbox.ts`, and phase 10's `hooks.ts`, `statuses.ts`), which
+read the person through `who.ts`: the principal the router set after the token, its scope and its rate
+limit, or else the site's session. One write path: the same payloads, validation, `FORGE_OPEN`, caps
+and rows. The authorized actions on GitHub (`start`, `act`, `asset`) are not in the API: they need the
+person's own authorization on GitHub, in their browser (D00-4); GitHub's API serves GitHub's objects.
+
+**Options compared.** A separate REST layer with its own handlers (two write paths to secure and
+cap); GitHub-shaped paths (`/repos/{owner}/{repo}/…`) for the registry's layer (they would suggest
+GitHub's objects are served).
+
+### D10-3. Bearer tokens only; no cookie; CORS for any origin; dated versions; request ids; ETag
+
+**Decision.** The router strips the Cookie header before any route: a browser's session never acts
+through the API, so it needs no CSRF token and answers `Access-Control-Allow-Origin: *` without
+credentials (a preflight is answered without a token, cached a day). `X-Api-Version: <date>` pins a
+version (unknown: 400); errors keep the site's model with `request_id` and `documentation_url`;
+`X-Request-Id`, `X-Token-Scopes`, `X-Accepted-Scopes`, `X-Token-Expires`, `X-RateLimit-*` on every
+answer; a weak ETag (the SHA-256 of the body) and 304, not counted; `Link: rel="next"` from a list's
+`next` cursor. Only the index answers without a token.
+
+### D10-4. Rate limits in the isolate's memory; no row per request
+
+**Decision.** Per token, 60 requests a minute and 1,000 a day, counted in the Worker isolate's memory
+(`bearer.ts`); `GET /rate_limit` never counts, a 304 is given back. When the owner binds Cloudflare's
+rate-limiting binding as `API_LIMITER`, it is asked too (not in `wrangler.toml`: whether it is free is
+the owner's to confirm). The Worker's own daily quota stays the last word (429 on `/api/*`).
+
+**Options compared.** A row per request, or a counter row per token and day (1 row written per call:
+8,000 a day against the GitHub side's 5,000, D08-18); the Cache API as a counter (per data centre,
+racy); Durable Objects (not in the plan's free budget).
+
+**Why.** Zero cost and no row. The cost: a ceiling per isolate, not an exact global count, said in
+API.md.
+
+### D10-5. Outgoing webhooks on a paper or a known repository, for the inbox's events; pinged before they are active
+
+**Decision.** `hooks` (the person's key, and ONE index `hooks_subject` for the deliveries) on
+`paper:doi:10.…` (any DOI: a paper's events are public in the registry) or `repo:<forge>:<id>` (a
+repository the registry follows, alive), for the events of `events.ts` a subject has (a paper's six,
+a repository's eleven) or `*`. 10 an account, 10 a subject. A ping is sent when a hook is made; the
+hook is active once a ping is answered 2xx; ten failed deliveries in a row pause it. Pausing and
+deleting are never refused by a cap or `FORGE_OPEN`.
+
+**Why.** The ping proves the receiver wants the traffic (a hook cannot be pointed at someone else's
+service to flood it); the events are the ones the in-site inbox already shows, so a webhook carries
+nothing a signed-in reader could not see.
+
+### D10-6. A webhook's secret is derived from the server key, never stored; GitHub's signature scheme
+
+**Decision.** `secret = "whsec_" + HMAC-SHA-256(SESSION_KEY, "hook\n" + id + "\n" + salt)`, answered
+when the hook is made or its secret rotated (a new salt, 1 row). Deliveries carry `X-Hub-Signature-256:
+sha256=<hex>` (the HMAC of the raw body), as GitHub's do, so receivers reuse their code; `sent_at` in
+the body lets them refuse old deliveries.
+
+**Options compared.** The secret stored in D1 (a secret at rest, readable by anyone who reads the
+database); encrypted with a key of the Worker (the same key's reach, plus a column of ciphertext).
+
+**What would change it.** A rotation of `SESSION_KEY` changes every secret: its owners rotate theirs
+again (said in AUTOMATION.md).
+
+### D10-7. Deliveries leave from the request that wrote the event; retries within it; no Queues, no Cron
+
+**Decision.** `queueHooks` after the batch of `act.ts`, `research.ts` and `webhook.ts`, in `waitUntil`:
+the subject's active hooks (one indexed query: 0 rows when there are none), the event read back by
+its key (an event another path wrote first is not delivered twice), one signed POST per hook, 5 s for
+an answer, again after 1 s and 4 s on no answer, a 5xx, 408 or 429, never on another 4xx or a 3xx
+(`redirect: "manual"`), at most 20 sends a request. One row a delivery in `hook_deliveries`, keyed by
+the day first (its status, time, tries, a few fixed words; never the answer's body), counted in the
+day's rows by a third key range of `globalRowsToday`; past the cap the delivery is made and not
+logged. The address is checked before every delivery against private networks, loopback, link-local
+and reserved addresses, IPv6 literals, local names and rebinding domains, and the registry itself;
+development's `HOOKS_ALLOW_LOCAL=1` lets localhost through and a test keeps it out of `wrangler.toml`.
+A person redelivers an event's delivery from its last 7 days.
+
+**Options compared.** Queues or Cron Triggers for automatic redelivery (not in the free plan's
+budget, §15.4); the Mac as a redelivery engine (the Mac never posts to people's services: an outside
+contact from the owner's machine and network).
+
+### D10-8. The registry's checks run no code: one pure module for the Worker and the browser
+
+**Decision.** `worker/forge/checks-core.ts`: a licence (recognised from its text), an environment file,
+the paper's DOI, `CITATION.cff`, the tracing maps' coherence, file sizes, the README; each finding in
+words with its way out; `failure` only when the change breaks traceability (a traced file deleted or
+renamed, the licence deleted, `CITATION.cff` made unusable), `neutral` when something is missing. It
+reads a tree listing and three files as text; nothing is built, installed, imported or run.
+
+**Why.** D00-11; the inventory's "AI review" items become rules (automatic, never a model).
+
+### D10-9. One check run on every pull request, from the App's delivery, 0 D1 rows
+
+**Decision.** `pull_request` `opened`, `synchronize`, `reopened` and `ready_for_review` on a public
+repository the registry follows, covered by the installation that sent them, start `pr-checks.ts` in
+`waitUntil`: the installation token (the repository's `read`, then `checks: write`) reads the head,
+checks, and posts one completed check run whose details page is the registry's own
+`/r/<owner>/<name>/checks/<sha>`. `skip-checks: true` in the head commit's message skips it. The
+installation is the repository row's, or else the delivery's (an installation on all of an account's
+repositories). The run's name is `<SITE_NAME>: research checks` when the Worker has the variable
+`SITE_NAME`, else "Research code checks".
+
+**Why.** D04-12 deferred it here; the result lives on GitHub and in the registry's view, so no row.
+
+### D10-10. The Checks view at any commit, the papers' cited commits first
+
+**Decision.** `checks/<ref>` in the one `/r/` shell and a Checks tab: the registry's checks computed in
+the reader's browser, links to the checks at the commits the papers' maps cite, the researcher's own
+CI as GitHub reports it (check runs, statuses; the registry's own run named as such), the statuses
+posted to the registry (signed in only), the environments the workflow files test, read as text. The
+logs stay GitHub's (a download needs a GitHub sign-in): the one link to GitHub, said so. A pull
+request's Checks tab links to its head's view.
+
+### D10-11. Commit statuses posted by outside services: the latest of each context, 20 a commit
+
+**Decision.** `statuses` keyed (forge, repo_id, sha, context), upserted: 2 rows a status with its
+action row (kind `status`, the `statuses` cap: 300 a day). A repository the registry knows, alive; a
+target page https without a user part; texts masked. Read by the API and, signed in, by the Checks
+view, with GitHub's combined state.
+
+### D10-12. GitHub Actions posts statuses with its own OIDC token: no secret in the repository
+
+**Decision.** `POST /api/v1/statuses/actions` takes GitHub's OIDC token as the bearer: RS256 against
+GitHub's published keys (`account/jwt.ts` gains `verifySignature`, `verifyIdToken` unchanged; an
+unknown key refetches the keys at most once a minute, opt-in, for this caller only), the issuer, the
+audience (the site's origin), the times, `repository_id` of a public repository the registry follows.
+The status is the repository's own ("GitHub Actions: <workflow>"); the action row's account is
+`oidc:github:<repository id>`, so the daily cap counts per repository; until phase 16, only
+repositories whose owner is the registry's owner (`FORGE_OPEN` on `repository_owner_id`).
+`GITHUB_OIDC_ISSUER` points at a mock in development only.
+
+### D10-13. What is deferred
+
+- Third-party apps authorized against the registry's API (OAuth with the registry as the provider),
+  the Marketplace, Slack and Teams subscriptions (a webhook to a relay the person runs does it now).
+- The command line's OSCR device flow (phase 14 builds on these tokens).
+- Automatic redelivery of failed webhook deliveries (no Queues, no Cron: D10-7); organization-wide
+  webhooks (phase 09).
+- The Mac's own paper events for webhooks: a map proposed, validated or flagged, a retraction, a
+  reproduction report outside a research issue (they are not `events` rows yet).
+- Re-running the researcher's CI from the registry (a person's authorized action on GitHub), check
+  suites, required checks (GitHub's branch protection, the person's own settings), the status badge
+  (an image from GitHub: D02-6).
+- A `status` event for webhooks and the inbox.
+
+### D10-14. What phase 16 must cover of this phase
+
+- **abuse**: webhook addresses (a ping is a request to an address a person names: Turnstile on
+  making hooks, a per-account cap on pings), statuses' contexts and descriptions and target pages
+  (moderation, reports), token names; the API's unauthenticated requests (a bad token costs one read:
+  a per-IP limit if they grow);
+- **retention**: `hook_deliveries` beyond 7 days, deleted webhooks' deliveries, statuses of commits
+  no longer in the repository, expired tokens (the Mac's retention job, within its row budget);
+- **a hidden or blocked account**: its tokens revoked, its hooks paused, its statuses hidden;
+- **privacy statement**: tokens (a fingerprint, a name, scopes, the day of last use), webhooks (the
+  address, as given, shown to its owner only: an address that carries a receiver's own token is kept
+  as given), deliveries' log, statuses (public, with the poster's handle);
+- **FORGE_OPEN**: this phase's writes open with the rest, not before.
+
+### D10-15. What it costs, measured
+
+**Decision.** Rows: a token made or revoked 3; a webhook made 4, pinged 2 (3 when it becomes active),
+rotated 2, paused or deleted 2–3; a delivery 1; a status 2; an API read 0 (a token's last use 1 a
+day); a check run 0. Requests: a webhook's deliveries and a check run ride inside the request that
+caused them (subrequests, ≤ 20 sends and ~10 GitHub calls). At the plan's day (~8,000 API calls, a few
+hundred deliveries and statuses) that is well under the plan's 800 rows, inside the GitHub side's
+5,000.
+
+### D10-16. The reference and the OpenAPI file are built from the routes
+
+**Decision.** `/developers/` (the reference: authentication and scopes, rate limits, pagination,
+errors, versions and breaking changes, every route with its parameters and body, webhooks and their
+signatures with receivers' code, statuses with a GitHub Actions workflow, the checks) is rendered at
+build time from `API_ROUTES`; `public/developers/openapi.json` is written by `scripts/openapi.ts` from
+the same routes, and a test fails when the file differs. The site gains 4 files (3 pages, the OpenAPI
+file) and their scripts: none per token, hook or status.
+
+### D10-17. The test world: the fake GitHub installs the App; a throwaway key; a local receiver
+
+**Decision.** The fake GitHub server gains `POST /control/install` (the App installed on an account,
+its id answered); the end-to-end run makes a throwaway RSA key for the App (the fake accepts any signed
+JWT), runs a local receiver on `RECEIVER_PORT` for the webhooks and sets `HOOKS_ALLOW_LOCAL=1` for the
+local Worker only. The sign-in mock serves GitHub Actions' keys (`/actions/.well-known/jwks`) for the
+OIDC tests.

@@ -11,7 +11,8 @@ registry's own research issues and their routes, the issue pages, the `/research
 route, the tie of a release to a paper's version, the Mac's `release` and `deposit` jobs, the release
 pages) in [RELEASES.md](RELEASES.md), phase 08's social layer (stars, lists, follows and watch levels,
 profiles, the events and the in-site inbox, the feed, Explore, the search of the registry's objects) in
-[SOCIAL.md](SOCIAL.md). This
+[SOCIAL.md](SOCIAL.md), phase 10's public API and personal tokens in [API.md](API.md) and its checks,
+commit statuses and outgoing webhooks in [AUTOMATION.md](AUTOMATION.md). This
 page is the contract the parts of phase 01 build on: the routes, the authorized actions and their
 payloads, the rows each writes, the caps, the switch `FORGE_OPEN`, the pages, the static layer,
 the Mac's jobs and the budget. The decisions behind it: [DECISIONS.md](DECISIONS.md) D00-1 to
@@ -61,6 +62,18 @@ the accounts set up (`COMMUNITY` and `SESSION_KEY`, else 503 `not_configured`).
 | `POST /api/forge/research/edit` | signed in; Origin and CSRF; `FORGE_OPEN` | title, text, close with a reason and a research resolution, reopen, labels, lock, pin | 2 rows | phase 05 |
 | `GET /api/forge/social`, `…/social/mine`, `…/social/person`, `…/social/inbox`, `…/social/feed`, `…/social/activity` | signed in | phase 08: the buttons' state, the reader's own stars, lists, follows and profile, a person's public profile, the in-site notifications (computed on read), the feed, a person's activity ([SOCIAL.md](SOCIAL.md)) | reads by the person's key, 0 written | phase 08 |
 | `POST /api/forge/social/star`, `…/follow`, `…/list`, `…/profile`, `…/notices` | signed in; Origin and CSRF; `FORGE_OPEN` | phase 08: a star, a follow or watch level, a star list, the profile, notifications' states | 2 rows each (a notices change: 1 per thread + 1) | phase 08 |
+| `GET /api/forge/tokens` | signed in | phase 10: the reader's personal tokens (never a token, never a digest), the scopes in words ([API.md](API.md)) | the account's tokens (index `api_tokens_user`), 0 written | phase 10 |
+| `POST /api/forge/tokens/write` | signed in; Origin and CSRF; `FORGE_OPEN` to make one (never to revoke) | `{op: "create", name, scopes, days}` → the token, answered once (201); `{op: "revoke", id}` | 3 rows each | phase 10 |
+| `GET /api/forge/hooks`, `…/hooks/deliveries?id=` | signed in | phase 10: the reader's outgoing webhooks, a hook's deliveries of the last 7 days ([AUTOMATION.md](AUTOMATION.md)) | by the person's key, 0 written | phase 10 |
+| `POST /api/forge/hooks/write` | signed in; Origin and CSRF; `FORGE_OPEN` (never to pause or delete) | `{op: create \| update \| ping \| redeliver \| rotate \| delete, …}`: made after a ping, its secret answered once | 4 rows to make one; 2–3 otherwise; each delivery 1 | phase 10 |
+| `GET /api/forge/statuses?path=&sha=` | signed in | phase 10: a commit's statuses posted by outside services, combined | the commit's statuses, 0 written | phase 10 |
+| `/api/v1`, `/api/v1/*` | a personal token (bearer; no cookie is read) | phase 10: the public API over the same handlers ([API.md](API.md)); `POST /api/v1/statuses/post` and `/statuses/actions` (GitHub Actions' OIDC token) post commit statuses | the routes' own rows; a status 2 | phase 10 |
+
+Phase 10 adds work, not rows, to earlier routes: after the batch that wrote an event (`act.ts`,
+`research.ts`, `webhook.ts`), its outgoing webhooks are delivered in `waitUntil` (1 row a delivery,
+AUTOMATION.md); a `pull_request` delivery (`opened`, `synchronize`, `reopened`, `ready_for_review`) on a
+repository the registry follows posts the registry's check run with the installation token, in
+`waitUntil` (0 rows, D10-9).
 
 Phase 08 adds rows to earlier routes: a research issue opened also writes its event and the author's
 follow of the thread (5 rows), a comment its event (4, or 5 for a first comment on the thread), a close
@@ -195,10 +208,11 @@ authorized actions an account may make in 24 hours.
 04, `0004_issues.sql` and `0005_research.sql`, phase 05, `0006_releases.sql` and
 `0007_packages.sql`, phase 07: `actions` rebuilt with the kinds `commit`, then `fork` … `pull_revert`,
 then `issue_open` … `issue_milestone`, then `research_copy`, then `release_create` … `asset_delete`
-and `package_confirm`, then the research writes; `jobs` rebuilt with `release`, `deposit`, `paper_id`
-and `proof`): WITHOUT ROWID where the key is text, two indexes in the whole database (`repos_path`,
-and phase 05's `research_paper`), Unix seconds, no email, token or Git object column, public
-repositories only.
+and `package_confirm`, then the research writes, then phase 08's social kinds and phase 10's `token`,
+`hook`, `status`; `jobs` rebuilt with `release`, `deposit`, `paper_id` and `proof`): WITHOUT ROWID where
+the key is text, four indexes in the whole database (`repos_path`, phase 05's `research_paper`, phase
+10's `api_tokens_user` and `hooks_subject`), Unix seconds, no email, token or Git object column (a
+token's digest, a webhook's salt), public repositories only.
 
 | table | key | what | written by |
 |---|---|---|---|
@@ -214,6 +228,10 @@ repositories only.
 | `release_papers` | (forge, repo_id, tag, paper_id) | phase 07: a release tied to a version of a paper: the release's id, the repository's path, the version and its label, the commit the tag named, the digest of the map the person saw (the Mac answers the version's), `linked` or `proposed`, who (never answered) | the Worker; the Mac answers the digest |
 | `repo_packages` | (forge, repo_id, registry, name) | phase 07: a package the manifests declare, confirmed or declined by a person who may push: the version and the manifest they said | the Worker |
 | `stars`, `star_lists`, `star_list_items`, `follows`, `events`, `notice_state`, `notice_marks`, `profiles` | the person's key; an event (subject, at, nonce) | phase 08 (`0008_social.sql`, no index): the social layer ([SOCIAL.md](SOCIAL.md)); `actions` rebuilt with the social kinds and a `subject` | the Worker; the Mac reads them each night, and decides collections |
+| `api_tokens` | digest (the token's SHA-256); index `api_tokens_user` (user_id) | phase 10 (`0009_automation.sql`): a personal token's public id, name, scopes, expiry, day of last use — never the token ([API.md](API.md)) | the Worker |
+| `hooks` | (user_id, id); index `hooks_subject` (subject) | phase 10: an outgoing webhook: its subject, address, events, whether active, the salt its secret is derived from — never the secret | the Worker |
+| `hook_deliveries` | (day, hook_id, at, guid) | phase 10: a delivery: the event's key, the answer's status, the time, the tries, a few fixed words — never the answer's body | the Worker |
+| `statuses` | (forge, repo_id, sha, context) | phase 10: a commit status posted by an outside service (a token, or GitHub Actions' OIDC token) | the Worker |
 
 - A repository made private on GitHub leaves OSCR: state `hidden`, its owner and name blanked
   (D00-14); nothing finds it by path.
@@ -236,14 +254,16 @@ repositories only.
 | `COMMIT_FILES` | 100 | files in one web commit (phase 03) |
 | `PR_FILES_CHECKED` | 300 | files OSCR's pull-request check reads (phase 04) |
 | `FORGE_ROWS_PER_DAY` | 5,000 | the forge service's D1 writes in a UTC day, inside the Worker's 10,000, until the owner confirms C3 |
-| per account, 24 hours | 100 authorized actions (the research writes included), 10 repositories created, 20 linked, 20 research issues opened; phase 08: 300 social writes and 500 notification changes, counted apart from the 100 | abuse, and the rows |
+| per account, 24 hours | 100 authorized actions (the research writes included), 10 repositories created, 20 linked, 20 research issues opened; phase 08: 300 social writes and 500 notification changes, counted apart from the 100; phase 10: 50 token and webhook changes and 300 commit statuses (a repository's GitHub Actions: 300 of its own), apart too | abuse, and the rows |
+| phase 10 | 20 tokens and 10 webhooks an account, 10 webhooks a subject, 20 contexts a commit; the API's 60 requests a minute and 1,000 a day per token (the isolate's count, D10-4); 20 webhook sends a request | abuse, the free plan's subrequests |
 | `GRACE_SECONDS` | 30 days | a deletion's grace period (D00-10) |
 | `FLOW_SECONDS` | 10 minutes | the flow cookie |
 
 - **Counted from the rows, with no counter row** (D01-11). The per-account caps read the account's
   action rows of the last 24 hours: two key ranges, (yesterday, user) and (today, user). Over a cap:
   429 `too_many`, the cap in words.
-- **The global cap** reads the `rows` of today's action and delivery rows: one key range of each,
+- **The global cap** reads the `rows` of today's action and delivery rows, and (phase 10) counts
+  today's outgoing webhook deliveries: one key range of each,
   at most 5,000 rows each (every row counts at least itself). It is asked once per authorized
   action, at `act`, just before anything is written (D01-12). A webhook writes at most 2 rows and
   does not ask; its rows count in the total the next action sees. Over the cap: 503 `quota` with
@@ -390,7 +410,7 @@ the App first: [ARCHITECTURE.md](ARCHITECTURE.md), "The owner's steps".
 
 ```sh
 cd website && npm ci
-SITE_PORT=8791 MOCK_PORT=9491 FAKE_PORT=9490 sh tests/forge-service/e2e.sh   # KEEP=1 keeps the servers
+SITE_PORT=8791 MOCK_PORT=9491 FAKE_PORT=9490 RECEIVER_PORT=9492 sh tests/forge-service/e2e.sh   # KEEP=1 keeps the servers
 ```
 
 It makes a throwaway local D1 (the fixture's facts in `oscr_community`, `oscr_forge`'s
@@ -428,7 +448,15 @@ App's webhook, is one event row with its delivery row and a notification in Ada'
 mentioned), which she marks read (2 rows); Bob's star and follow are refused; then the Mac's night on
 the local databases (`oscr forge layer`, `oscr social layer`, `oscr social search`, `oscr_search`
 migrated) and the search of repositories, research issues and people, and the static social shards
-(`e2e.ts after-social`). 161 checks in all. A test browser that shows the
+(`e2e.ts after-social`). Phase 10's checks: the tokens, webhooks, reference and Checks pages are static;
+Ada makes a personal token (3 rows, answered once, listed without it), calls the public API with it
+(her cookie alone opens nothing; an ETag's 304; a scope refused), posts a commit status (2 rows);
+a webhook to a local receiver (`RECEIVER_PORT`, `HOOKS_ALLOW_LOCAL=1` for the local Worker only) is
+pinged and then delivered GitHub's issue comment as an event, both signatures checked by the
+receiver, an address on a private network refused; the App installed on the fixture's organization
+(the fake's `POST /control/install`, a throwaway App key made by the run) posts the registry's check
+run on Bob's pull request from its `synchronize` delivery, with 0 rows; Bob's token refused. 186
+checks in all. A test browser that shows the
 `/r/` pages against the fake needs the Content-Security-Policy bypassed for them (it allows
 GitHub's own hosts, not the fake's): the screenshots in `docs/night-screenshots/phase-01/` were
 taken so, in headless Chrome only.
