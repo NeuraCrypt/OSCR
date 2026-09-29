@@ -328,7 +328,9 @@ ol.lines li.cell {
 ol.lines li.cell:first-child { margin-top: 0; border-top: 0; }
 ol.lines li.prose {
   font-family: var(--font); font-size: .86rem; white-space: pre-wrap; overflow-wrap: anywhere;
-  max-width: calc(100cqi - 1em);
+  max-width: calc(100cqi - 1em); box-sizing: border-box;
+  /* A long line of prose wraps beside the gutter, never under it */
+  padding-left: calc(var(--gutter) + 1.9em); text-indent: calc(-1 * (var(--gutter) + 1.9em));
 }
 
 /* The syntax, by highlight.js's classes (hljs-…): a light palette, dark enough on the pairs'
