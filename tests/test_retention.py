@@ -21,6 +21,10 @@ def _seed(d1) -> None:
         f"INSERT INTO interaction_limits (scope, level, until, by_user, at) VALUES ('account:u', 'managers', {T - 1}, 'u', {T - DAY}), ('account:v', 'managers', {T + DAY}, 'v', {T})",
         f"INSERT INTO content_reports (day, at, kind, target, reason, state, decided_at) VALUES ({(T - 400 * DAY) // DAY}, {T - 400 * DAY}, 'repo', 'repo:github:1', 'spam', 'dismissed', {T - 390 * DAY}), "
         f"({(T - 400 * DAY) // DAY}, {T - 400 * DAY}, 'repo', 'repo:github:2', 'spam', 'open', NULL)",
+        # Night phase 14: a sign-in decided three days ago goes; today's stays.
+        "INSERT INTO device_grants (day, ref, user_id, scopes, days, name, state, decided_at, expires_at) VALUES "
+        f"({T // DAY - 3}, '{'a' * 64}', 'u', 'repos:read', 30, 'Command line', 'collected', {T - 3 * DAY}, {T - 3 * DAY + 900}), "
+        f"({T // DAY}, '{'b' * 64}', 'u', 'repos:read', 30, 'Command line', 'approved', {T}, {T + 900})",
     ])
 
 
@@ -35,6 +39,7 @@ def test_what_is_past_its_time_goes_and_the_rest_stays(forge_d1):
     assert [r["name"] for r in q("SELECT name FROM api_tokens")] == ["fresh"]
     assert [r["scope"] for r in q("SELECT scope FROM interaction_limits")] == ["account:v"]
     assert [r["state"] for r in q("SELECT state FROM content_reports")] == ["open"], "an open report is never deleted"
+    assert [r["ref"][0] for r in q("SELECT ref FROM device_grants")] == ["b"], "a sign-in past its day goes"
     assert retention.run(forge_d1, now=T) == "retention: nothing past its time"
 
 

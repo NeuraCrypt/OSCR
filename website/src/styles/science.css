@@ -1365,3 +1365,8 @@ form.lookup input[type="text"] { width: min(28em, 100%); }
 @media (max-width: 640px) {
   .policy table { display: block; overflow-x: auto; }
 }
+/* Night phase 14: a command line's sign-in, approved on /device/. The code the person types from their
+   terminal is set in the code font, its letters spaced, as the terminal prints it; the request is the
+   settings' own list. */
+input.device-code { font-family: var(--font-code); font-size: 1.25em; letter-spacing: .12em; text-transform: uppercase; width: 9em; max-width: 100%; padding: .15em .4em; border: 1px solid #777; border-radius: 0; }
+.panel dl.settings dd ul { margin: .2em 0; padding-left: 1.2em; }

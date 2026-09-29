@@ -24,7 +24,9 @@ TABLES = {"repos", "repo_papers", "installations", "traced_paths", "actions", "d
           # Phase 10: automation and integrations (0009_automation.sql).
           "api_tokens", "hooks", "hook_deliveries", "statuses",
           # Phase 16: content, abuse and rules (0010_moderation.sql).
-          "content_reports", "moderation", "blocks", "interaction_limits", "rights_requests"}
+          "content_reports", "moderation", "blocks", "interaction_limits", "rights_requests",
+          # Phase 14: the command line's sign-in (0011_device.sql).
+          "device_grants"}
 T = 1_790_596_800
 
 

@@ -11,7 +11,9 @@ within a budget of rows (every deletion is a row written for D1, and a table's i
 - personal tokens expired for 30 days (``api_tokens``: the settings page says "expired" meanwhile);
 - interaction limits past their end (``interaction_limits``);
 - reports decided more than a year ago (``content_reports``), and data-rights requests answered more
-  than three years ago (``rights_requests``: the proof that a request was answered).
+  than three years ago (``rights_requests``: the proof that a request was answered);
+- a command line's sign-in decisions the day after their code expired (``device_grants``, night phase 14:
+  a code lives 15 minutes).
 
 The moderation decisions themselves (``moderation``) are kept, restored or not: their notices are
 public, and a decision can be appealed. Nothing here runs anything, reads GitHub, or writes
@@ -46,6 +48,9 @@ RULES: tuple[Rule, ...] = (
     Rule("interaction_limits", "scope", "until < {now}", "interaction limits past their end"),
     Rule("content_reports", "id", "state != 'open' AND decided_at < {now} - 365 * 86400", "reports decided more than a year ago"),
     Rule("rights_requests", "user_id, id", "state != 'open' AND answered_at < {now} - 3 * 365 * 86400", "data-rights requests answered more than 3 years ago"),
+    # Night phase 14: a command line's sign-in decided (approved, refused, collected) lives the 15 minutes
+    # of its code; the day after its code expired, its row goes (a key range: the day comes first).
+    Rule("device_grants", "day, ref", "day < {day} - 1", "command-line sign-ins past their day"),
 )
 
 

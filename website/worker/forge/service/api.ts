@@ -16,7 +16,9 @@
 //   6. The route: most are the site's own handlers (read.ts, research.ts, social.ts, inbox.ts), which
 //      read the person through who.ts: one write path, the same FORGE_OPEN (until phase 16, only the
 //      owner's token can write), the same caps, the same rows. Tokens are never made or listed here:
-//      that is the site's settings page only (tokens.ts).
+//      that is the site's settings page only (tokens.ts), or the command line's device flow, which a
+//      signed-in person approves on the site's own page (device.ts, night phase 14); a token may revoke
+//      itself (POST /api/v1/token/revoke), never another.
 //   7. The answer: JSON; an error `{error: {code, message, request_id, documentation_url, …}}`; the
 //      headers X-Request-Id, X-Api-Version, X-RateLimit-*, X-Token-Scopes, X-Accepted-Scopes,
 //      X-Token-Expires; a GET's ETag (weak, the SHA-256 of the body), and 304 to If-None-Match (a 304
@@ -32,6 +34,7 @@ import { randomToken, sha256Hex } from "../../account/crypto.ts";
 import { handleSearch } from "../../api.ts";
 import type { Env } from "../../env.ts";
 import { API_RATE, bearer, giveBack, peekRate, rateHeaders, sharedLimit, takeRequest, type Principal, type RateState } from "./bearer.ts";
+import { handleCli, handleDeviceCode, handleDeviceToken, handleSelfRevoke } from "./device.ts";
 import { handleHookDeliveries, handleHooks, handleHookWrite } from "./hooks.ts";
 import { handleActionsStatus, handleStatuses, handleStatusPost } from "./statuses.ts";
 import { handleActivity, handleFeed, handleInbox, handleNotices } from "./inbox.ts";
@@ -142,6 +145,37 @@ export const API_ROUTES: Record<string, ApiRoute> = {
   [API_PREFIX]: { method: "GET", scope: null, handle: index, tokenless: true, bare: true, words: "This index: the version, the routes, how to authenticate." },
   [`${API_PREFIX}/user`]: { method: "GET", scope: null, handle: user, words: "Whose token this is (public handles), its scopes, its expiry." },
   [`${API_PREFIX}/rate_limit`]: { method: "GET", scope: null, handle: rateLimit, uncounted: true, words: "The token's use of its rate limits (never counted)." },
+  // Night phase 14: the command line's sign-in (device.ts, device-core.ts; D14-2).
+  [`${API_PREFIX}/cli`]: {
+    method: "GET",
+    scope: null,
+    handle: handleCli,
+    tokenless: true,
+    words: "What a command line needs to sign in: the GitHub App's public client id (for GitHub's own device flow, asked of GitHub directly), the device flow's routes, the scopes.",
+  },
+  [`${API_PREFIX}/device/code`]: {
+    method: "POST",
+    scope: null,
+    handle: handleDeviceCode,
+    tokenless: true,
+    words: "Start a command line's sign-in: a device code (kept by the command line), a user code of 8 letters, and the approval page's address; it lives 15 minutes and writes nothing.",
+    body: { scopes: "What the token may do, as scopes (required).", days: "Its life, 1 to 366 days (30 by default).", name: "Its name in your settings (40 characters)." },
+  },
+  [`${API_PREFIX}/device/token`]: {
+    method: "POST",
+    scope: null,
+    handle: handleDeviceToken,
+    tokenless: true,
+    words: "Poll a sign-in (at most every 5 seconds): 400 authorization_pending, slow_down, access_denied or expired_token; once approved on the page, the token, answered once.",
+    body: { device_code: "The device code (required)." },
+  },
+  [`${API_PREFIX}/token/revoke`]: {
+    method: "POST",
+    scope: null,
+    handle: handleSelfRevoke,
+    words: "The token that makes this call revokes itself at once (a command line's sign-out). It never revokes another.",
+    body: { "(none)": "An empty object: the token in the Authorization header is the one revoked." },
+  },
   [`${API_PREFIX}/search`]: {
     method: "GET",
     scope: null,

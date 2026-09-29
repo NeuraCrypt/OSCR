@@ -287,6 +287,240 @@
         }
       }
     },
+    "/api/v1/cli": {
+      "get": {
+        "summary": "What a command line needs to sign in: the GitHub App's public client id (for GitHub's own device flow, asked of GitHub directly), the device flow's routes, the scopes.",
+        "operationId": "getCli",
+        "x-scope": null,
+        "security": [],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ApiVersion"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The answer, JSON.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/device/code": {
+      "post": {
+        "summary": "Start a command line's sign-in: a device code (kept by the command line), a user code of 8 letters, and the approval page's address; it lives 15 minutes and writes nothing.",
+        "operationId": "postDeviceCode",
+        "x-scope": null,
+        "security": [],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ApiVersion"
+          }
+        ],
+        "responses": {
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error"
+          },
+          "2XX": {
+            "description": "The answer, JSON.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "scopes": {
+                    "description": "What the token may do, as scopes (required)."
+                  },
+                  "days": {
+                    "description": "Its life, 1 to 366 days (30 by default)."
+                  },
+                  "name": {
+                    "description": "Its name in your settings (40 characters)."
+                  }
+                },
+                "required": [
+                  "scopes"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/device/token": {
+      "post": {
+        "summary": "Poll a sign-in (at most every 5 seconds): 400 authorization_pending, slow_down, access_denied or expired_token; once approved on the page, the token, answered once.",
+        "operationId": "postDeviceToken",
+        "x-scope": null,
+        "security": [],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ApiVersion"
+          }
+        ],
+        "responses": {
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error"
+          },
+          "2XX": {
+            "description": "The answer, JSON.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "device_code": {
+                    "description": "The device code (required)."
+                  }
+                },
+                "required": [
+                  "device_code"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/token/revoke": {
+      "post": {
+        "summary": "The token that makes this call revokes itself at once (a command line's sign-out). It never revokes another.",
+        "operationId": "postTokenRevoke",
+        "x-scope": null,
+        "security": [
+          {
+            "token": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ApiVersion"
+          }
+        ],
+        "responses": {
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error"
+          },
+          "2XX": {
+            "description": "The answer, JSON.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "(none)": {
+                    "description": "An empty object: the token in the Authorization header is the one revoked."
+                  }
+                },
+                "required": []
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/search": {
       "get": {
         "summary": "The registry's search, as its search page asks it.",

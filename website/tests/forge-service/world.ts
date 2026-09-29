@@ -52,6 +52,7 @@ export const HUMAN_TOKEN = "XXXX.DUMMY.TOKEN.XXXX";
 export const HUMAN_ROUTES = new Set([
   "/api/forge/research/open", "/api/forge/research/comment", "/api/forge/social/profile", "/api/forge/social/list",
   "/api/forge/tokens/write", "/api/forge/hooks/write", "/api/forge/report", "/api/forge/appeal", "/api/forge/rights",
+  "/api/forge/device/decide",
 ]);
 
 /** A fresh world. `env` overrides the environment (FORGE_OPEN, FORGE_OWNER_GITHUB_ID: undefined to

@@ -108,10 +108,12 @@ def device_login(ctx: Any, *, scopes: list[str], days: int, open_browser: bool =
 
 def _account(ctx: Any, token: str, made: dict[str, Any] | None = None) -> dict[str, Any]:
     me = oscr_api.call(ctx, "GET", "/user", token=token).body or {}
-    user = str(me.get("github") or me.get("orcid") or "")
-    if not user or "@" in user:
-        raise AuthError("The registry did not say whose token this is.")
     tok = me.get("token") or {}
+    # The account's public handle: its GitHub login, else its ORCID iD, else (signed in with Google
+    # only) the token's public id.
+    user = str(me.get("github") or me.get("orcid") or (f"account-{tok.get('id')}" if tok.get("id") else ""))
+    if not user or "@" in user or any(c.isspace() for c in user):
+        raise AuthError("The registry did not say whose token this is.")
     expires = (made or {}).get("expires_at") or tok.get("expires_at")
     facts: dict[str, Any] = {"github": me.get("github"), "orcid": me.get("orcid"), "scopes": tok.get("scopes") or (made or {}).get("scopes") or [],
                              "token_id": tok.get("id"), "signed_in_at": int(now())}
