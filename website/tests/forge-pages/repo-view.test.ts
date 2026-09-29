@@ -419,7 +419,7 @@ describe("the shell's paths", () => {
     assert.deepEqual(shellTarget("/r/oscr-fixture/eeg-analysis/tree/main/"), { ...EEG, view: "tree", rest: ["main"] });
     for (const path of [
       "/r/", "/r/ada/", "/r/ada/eeg.git/", "/r/../eeg/", "/r/ada/../", "/r/a%2Fb/eeg/", "/r/ada/e%20g/",
-      "/r/ada/eeg/issues/", "/r/ada/eeg/tree/", `/r/${"a".repeat(101)}/eeg/`, "/r/ada/e<script>/",
+      "/r/ada/eeg/wiki/", "/r/ada/eeg/tree/", `/r/${"a".repeat(101)}/eeg/`, "/r/ada/e<script>/",
       "/r/ada@example.org/eeg/", "/r/ada/%E0%A4%A/", "/paper/x/",
     ]) {
       assert.equal(shellTarget(path), null, path);

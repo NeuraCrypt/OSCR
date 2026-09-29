@@ -407,7 +407,7 @@ describe("the pure parts", () => {
   });
 
   test("texts lose addresses and hidden characters; a person is named by a public handle only", () => {
-    assert.equal(clean("mail ada@example.org\r\nnow‮"), "mail [email hidden]\nnow");
+    assert.equal(clean("mail ada@example.org\r\nnow\u202e"), "mail [email hidden]\nnow");
     assert.deepEqual(personOf({ id: "u1", display_name: "Ada", orcid: "0000-0002-1825-0097", github_login: null, created_at: 0 }), { id: "u1", author: "0000-0002-1825-0097", via: "orcid" });
     assert.deepEqual(personOf({ id: "u1", display_name: "Ada <ada@example.org>", orcid: null, github_login: null, created_at: 0 }).author.includes("@"), false);
   });

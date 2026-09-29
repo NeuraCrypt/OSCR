@@ -69,6 +69,13 @@ describe("the URL scheme of the repository pages", () => {
       ["/r/oscr-fixture/eeg-analysis/new/main/docs", "new", ["main", "docs"], "/r/oscr-fixture/eeg-analysis/new/main/docs/"],
       ["/r/oscr-fixture/eeg-analysis/upload/main/data/", "upload", ["main", "data"], "/r/oscr-fixture/eeg-analysis/upload/main/data/"],
       ["/r/oscr-fixture/eeg-analysis/delete/main/docs/old.md", "delete", ["main", "docs", "old.md"], "/r/oscr-fixture/eeg-analysis/delete/main/docs/old.md"],
+      // Phase 05: GitHub's issue shapes.
+      ["/r/oscr-fixture/eeg-analysis/issues", "issues", [], "/r/oscr-fixture/eeg-analysis/issues/"],
+      ["/r/oscr-fixture/eeg-analysis/issues/12", "issues", ["12"], "/r/oscr-fixture/eeg-analysis/issues/12"],
+      ["/r/oscr-fixture/eeg-analysis/issues/new/choose", "issues", ["new", "choose"], "/r/oscr-fixture/eeg-analysis/issues/new/choose"],
+      ["/r/oscr-fixture/eeg-analysis/labels", "labels", [], "/r/oscr-fixture/eeg-analysis/labels/"],
+      ["/r/oscr-fixture/eeg-analysis/milestones/", "milestones", [], "/r/oscr-fixture/eeg-analysis/milestones/"],
+      ["/r/oscr-fixture/eeg-analysis/milestone/3", "milestone", ["3"], "/r/oscr-fixture/eeg-analysis/milestone/3"],
     ];
     for (const [path, view, rest, canonical] of cases) {
       const parsed = parseRepoPath(path);
@@ -84,9 +91,9 @@ describe("the URL scheme of the repository pages", () => {
   test("anything else is not a repository page", () => {
     for (const path of [
       "/r/", "/r/ada/", "/r/ada", "/repositories/", "/x/ada/eeg/", "r/ada/eeg/",
-      "/r/ada/eeg/home/", "/r/ada/eeg/issues/", "/r/ada/eeg/settings/x/", "/r/ada/eeg/tree/", "/r/ada/eeg/blob/main/",
+      "/r/ada/eeg/home/", "/r/ada/eeg/wiki/", "/r/ada/eeg/settings/x/", "/r/ada/eeg/tree/", "/r/ada/eeg/blob/main/",
       "/r/ada/eeg/commit/", "/r/ada/eeg/commit/a/b/", "/r/ada/eeg/search/x/", "/r/ada/eeg/tree/main/../x/", "/r/ada/eeg/blob/main/a%2Fb",
-      "/r/ada/eeg/blob/main/a%00b", "/r/ada/eeg/tree/main/./x/",
+      "/r/ada/eeg/blob/main/a%00b", "/r/ada/eeg/tree/main/./x/", "/r/ada/eeg/issues/1/2/3", "/r/ada/eeg/milestone/", "/r/ada/eeg/labels/x",
       "/r/ada/eeg.git/", "/r/../eeg/", "/r/ada/../", "/r/a%2Fb/eeg/", "/r/ada/e%20g/", "/r/ada/%E0%A4%A/",
       `/r/${"a".repeat(101)}/eeg/`, "/r/ada/e<script>/",
     ]) {

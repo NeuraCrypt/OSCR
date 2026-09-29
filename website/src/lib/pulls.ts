@@ -101,6 +101,11 @@ function tokens(q: string): string[] {
  *  values allowed), free words, `-` to negate, `AND`, `OR` and parentheses (AND binds tighter; a
  *  space is AND). */
 export function parsePullQuery(q: string): ParsedQuery {
+  return parseQuery(q, QUALIFIERS);
+}
+
+/** GitHub's query language with these qualifiers (phase 05's issues read more of them). */
+export function parseQuery(q: string, qualifiers: readonly string[]): ParsedQuery {
   const errors: string[] = [];
   const list = tokens(q.slice(0, 1000));
   let i = 0;
@@ -124,7 +129,7 @@ export function parsePullQuery(q: string): ParsedQuery {
     if (m) {
       const key = m[1].toLowerCase();
       const value = m[2].replace(/^"(.*)"$/, "$1");
-      if (!(QUALIFIERS as readonly string[]).includes(key)) errors.push(`${key}: is not a qualifier the registry reads.`);
+      if (!qualifiers.includes(key)) errors.push(`${key}: is not a qualifier the registry reads.`);
       node = { op: "term", key, value };
     } else node = { op: "text", value: body.replace(/^"(.*)"$/, "$1") };
     return neg ? { op: "not", item: node } : node;
@@ -157,7 +162,7 @@ export function parsePullQuery(q: string): ParsedQuery {
   return { node, errors };
 }
 
-function terms(node: QueryNode, out: { key: string; value: string; negated: boolean; nested: boolean }[] = [], negated = false, nested = false): typeof out {
+export function terms(node: QueryNode, out: { key: string; value: string; negated: boolean; nested: boolean }[] = [], negated = false, nested = false): typeof out {
   if (node.op === "term") out.push({ key: node.key, value: node.value, negated, nested });
   else if (node.op === "not") terms(node.item, out, !negated, nested);
   else if (node.op === "and") node.items.forEach((x) => terms(x, out, negated, nested));
@@ -204,7 +209,7 @@ export function searchQuery(q: string): string {
 }
 
 /** A date condition: "2026-01-01", ">2026-01-01", "<=2026-01-01", "2026-01-01..2026-02-01". */
-function dateMatches(iso: string | null, cond: string): boolean {
+export function dateMatches(iso: string | null, cond: string): boolean {
   if (!iso) return false;
   const day = iso.slice(0, 10);
   const range = /^(\d{4}-\d{2}-\d{2})\.\.(\d{4}-\d{2}-\d{2}|\*)$/.exec(cond);

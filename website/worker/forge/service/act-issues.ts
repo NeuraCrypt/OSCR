@@ -725,7 +725,7 @@ export interface IssueBranchParsed {
 
 /** GitHub's name for an issue's branch: "12-results-differ-from-table-2". */
 export function issueBranchName(number: number, title: string): string {
-  const slug = title.toLowerCase().normalize("NFKD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 60).replace(/-+$/, "");
+  const slug = title.toLowerCase().normalize("NFKD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 60).replace(/-+$/, "");
   return `${number}${slug ? `-${slug}` : ""}`;
 }
 
