@@ -5,6 +5,7 @@ import { describe, it } from "node:test";
 import { latestDays, listPaging, listUrl, newestFirst, pagerPages } from "../src/lib/lists.ts";
 import { listing, type Row } from "../src/lib/render.ts";
 import { HOME_PAPERS, LIST_PAGE, LIST_PAGES_MAX } from "../src/lib/shards.ts";
+import { shardName, sitemapIndex, sitemapShards, urlset } from "../src/lib/sitemap-xml.ts";
 
 const paper = (slug: string, published: string) => ({ slug, published });
 
@@ -62,5 +63,23 @@ describe("the lists", () => {
     assert.ok(html.includes('<span class="num">[102]</span>'));
     assert.ok(html.includes("(5 papers, 2 on this page)"));
     assert.ok(listing([row("a", "2026-09-21")]).includes("(1 paper)"));
+  });
+});
+
+describe("the sitemap", () => {
+  it("splits the addresses into shards of 50,000 at most, a bounded number of them", () => {
+    const paths = Array.from({ length: 120_001 }, (_, i) => `/paper/p${i}/`);
+    const shards = sitemapShards(paths);
+    assert.deepEqual(shards.map((s: string[]) => s.length), [50_000, 50_000, 20_001]);
+    assert.throws(() => sitemapShards(paths, 10, 3), /SITEMAP_SHARDS/);
+    assert.deepEqual(sitemapShards([]), [[]]);
+    assert.equal(shardName(3), "03.xml");
+  });
+
+  it("writes absolute, escaped addresses", () => {
+    const site = new URL("https://oscr.example/");
+    const xml = urlset(["/paper/a&b/"], site);
+    assert.ok(xml.includes("<loc>https://oscr.example/paper/a&amp;b/</loc>"));
+    assert.ok(sitemapIndex(2, site).includes("<loc>https://oscr.example/sitemaps/01.xml</loc>"));
   });
 });

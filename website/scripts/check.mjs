@@ -22,7 +22,8 @@ import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { allowsHash, headersFor, parseHeaders } from "../src/lib/headers.ts";
 import {
-  ENTITY_TYPES, FILE_LIMIT, FILE_MARGIN, FIXED_FILES_MAX, keyOf, LIST_PAGES_MAX, LOOKUP_HEX, SHARDS, shardOf, STATIC_PAPERS,
+  ENTITY_TYPES, FILE_LIMIT, FILE_MARGIN, FIXED_FILES_MAX, keyOf, LIST_PAGES_MAX, LOOKUP_HEX, SHARDS, shardOf, SITEMAP_SHARDS,
+  SITEMAP_URLS, STATIC_PAPERS,
 } from "../src/lib/shards.ts";
 
 const DIST = "dist";
@@ -47,7 +48,7 @@ const json = (f) => JSON.parse(readFileSync(join(DIST, f), "utf8"));
 
 // 1. The fixed pages, the shells of the pages rendered on demand, and the rewrites that serve
 // an entity's shell for its address (public/_redirects).
-const FIXED = ["/", "/about/", "/help/", "/policies/", "/privacy/", "/brand/", "/labs/", "/taxonomy/", "/list/", "/browse/", "/authors/", "/journals/", "/institutions/", "/tools/", "/datasets/",
+const FIXED = ["/", "/about/", "/help/", "/policies/", "/privacy/", "/brand/", "/labs/", "/taxonomy/", "/list/", "/sitemap.xml", "/robots.txt", "/browse/", "/authors/", "/journals/", "/institutions/", "/tools/", "/datasets/",
   "/lookup/", "/search/", "/404.html", "/account/", "/submit/", "/removal/", "/badge.svg", "/paper/404.html",
   ...ENTITY_TYPES.map((t) => `/${t}/`)];
 for (const route of FIXED) if (!exists(route)) problems.push(`missing page ${route}`);
@@ -245,6 +246,27 @@ for (const a of [...staticPapers, ...onDemand]) {
 }
 const listPages = files.filter((f) => /^\/list\/(\d+\/)?index\.html$/.test(f)).length;
 if (listPages > LIST_PAGES_MAX) problems.push(`/list/: ${n(listPages)} pages, more than ${n(LIST_PAGES_MAX)}`);
+// The sitemap: its index names its shards, SITEMAP_SHARDS at most, each of SITEMAP_URLS addresses at
+// most, every address leads to a page, and every paper with a page is there.
+if (all.has("/sitemap.xml")) {
+  const shardsListed = [...readFileSync(join(DIST, "sitemap.xml"), "utf8").matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => new URL(m[1]).pathname);
+  const shardFiles = files.filter((f) => f.startsWith("/sitemaps/"));
+  if (shardsListed.length > SITEMAP_SHARDS || shardFiles.length > SITEMAP_SHARDS) problems.push(`the sitemap has more than ${SITEMAP_SHARDS} shards`);
+  const listed = new Set();
+  for (const shard of shardsListed) {
+    if (!all.has(shard)) {
+      problems.push(`/sitemap.xml names ${shard}, which does not exist`);
+      continue;
+    }
+    const locs = [...readFileSync(join(DIST, shard), "utf8").matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => new URL(m[1].replace(/&amp;/g, "&")).pathname);
+    if (locs.length > SITEMAP_URLS) problems.push(`${shard}: ${n(locs.length)} addresses, more than ${n(SITEMAP_URLS)}`);
+    for (const path of locs) {
+      listed.add(path);
+      if (!leads(decodeURI(path))) problems.push(`${shard}: ${path} leads nowhere`);
+    }
+  }
+  for (const a of [...staticPapers, ...onDemand]) if (!listed.has(`/paper/${a.slug}/`)) problems.push(`${a.doi}: not in the sitemap`);
+}
 // The links the records hold, which the browser or the Worker will render.
 const hrefs = (value, out = []) => {
   if (Array.isArray(value)) for (const v of value) hrefs(v, out);

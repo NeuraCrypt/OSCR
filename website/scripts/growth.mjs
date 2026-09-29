@@ -7,7 +7,8 @@
 // institutions, tools, datasets, journals, papers with a page and DOIs read. Each build must pass
 // `npm run check`; then every folder must hold the same number of files in both, but the shards
 // (/records/<type>/, at most SHARDS[type]; /lookup/, at most 256) and the authors' list (one page a
-// letter, 27 at most) and the list of every paper by date (/list/, LIST_PAGES_MAX pages at most),
+// letter, 27 at most), the list of every paper by date (/list/, LIST_PAGES_MAX pages at most) and
+// the sitemap's shards (/sitemaps/, SITEMAP_SHARDS at most),
 // which are bounded whatever the catalogue. It leaves dist/ built from the
 // grown fixture; the synthetic export is written to a temporary folder, removed afterwards.
 import { execFileSync } from "node:child_process";
@@ -15,7 +16,7 @@ import { createHash } from "node:crypto";
 import { cpSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { FILE_MARGIN, LIST_PAGES_MAX, LOOKUP_HEX, SHARDS } from "../src/lib/shards.ts";
+import { FILE_MARGIN, LIST_PAGES_MAX, LOOKUP_HEX, SHARDS, SITEMAP_SHARDS } from "../src/lib/shards.ts";
 
 const FIXTURE = new URL("../../tests/fixtures/public-catalog/", import.meta.url).pathname;
 /** How much the fixture grows: a few times today's real catalogue for each kind. */
@@ -138,6 +139,7 @@ const bounded = (folder) => {
   if (folder === "lookup/") return 16 ** LOOKUP_HEX + 1; // and the lookup's own page
   if (folder === "authors/") return 28; // A to Z, "Other", and the list's own page
   if (folder === "list/") return LIST_PAGES_MAX; // every paper by date, a bounded number of pages
+  if (folder === "sitemaps/") return SITEMAP_SHARDS; // the sitemap's shards, 50,000 addresses each
   return undefined;
 };
 const problems = [];
