@@ -27,6 +27,7 @@ citation count whose source the page names.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import shutil
 import sqlite3
@@ -194,8 +195,10 @@ def database(path: Path) -> sqlite3.Connection:
     _code(con, b, "https://github.com/oscr-fixture/unlicensed",
           {"state": "alive", "http_status": 200, "license": "", "redistributable": "no", "commit_id": COMMIT,
            "n_files": 1, "n_scripts": 1, "languages": {"MATLAB": 1}, "files": ["run.m"]},
-          [{"path": "run.m", "language": "MATLAB", "kind": "script", "size": 12, "lines": 1, "digest": "",
-            "text": "disp('run')\n"}])
+          # Its digest (of the file's bytes) is published: a reader's browser fetches the file from GitHub
+          # itself, at the commit, and shows it only when the digests agree ("shown from the source").
+          [{"path": "run.m", "language": "MATLAB", "kind": "script", "size": 12, "lines": 1,
+            "digest": hashlib.sha256(b"disp('run')\n").hexdigest(), "text": "disp('run')\n"}])
     db.mark_scanned(con, b, has_fulltext=True, has_statement=True, code_on_request=False,
                     data_on_request=True, families=[], methods=[])
     con.execute("UPDATE article SET status = 'code_verified' WHERE id = ?", (b,))
