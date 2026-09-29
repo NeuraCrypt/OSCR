@@ -11,6 +11,9 @@ export interface Attributes {
   detectable?: boolean;
   /** `binary` or `-diff`: git shows no text diff. */
   binary?: boolean;
+  /** `filter=lfs`: git stores the file with Git LFS (phase 03: the upload page refuses it, since a
+   *  commit made by GitHub from the browser would store the bytes themselves). */
+  lfs?: boolean;
 }
 
 interface Rule {
@@ -96,6 +99,9 @@ export function parseAttributes(text: string): Rule[] {
           break;
         case "diff":
           if (neg) attrs.binary = true;
+          break;
+        case "filter":
+          attrs.lfs = !neg && value === "lfs";
           break;
       }
     }

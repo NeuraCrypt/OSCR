@@ -280,8 +280,10 @@ export async function mountTree(slot: HTMLElement, env: CodeEnv, segments: reado
     h("a", { href: repoPath(env.repo, "find", refSegments(opened.ref.ref)) }, "Go to file"),
     // Phase 03: files are added on a branch, in the registry's own editor.
     onBranch ? h("a", { href: repoPath(env.repo, "new", refSegments(opened.ref.ref, dir)), id: "add-file" }, "Add a file") : null,
+    onBranch ? h("a", { href: repoPath(env.repo, "upload", refSegments(opened.ref.ref, dir)), id: "upload-files" }, "Upload files") : null,
     h("a", { href: `${repoPath(env.repo, "search")}?${new URLSearchParams({ ref: opened.ref.ref })}` }, "Search"),
     h("a", { href: repoPath(env.repo, "commits", refSegments(opened.ref.ref, dir)) }, "History"),
+    onBranch && dir ? h("a", { href: repoPath(env.repo, "delete", refSegments(opened.ref.ref, dir)), id: "delete-folder" }, "Delete this folder") : null,
   ];
   const main: (El | null)[] = [
     codeHead(env, opened, "tree", dir, actions),
@@ -395,6 +397,7 @@ export async function mountBlob(slot: HTMLElement, env: CodeEnv, segments: reado
   const headOf = (what: "text" | "bytes" | "none"): El =>
     codeHead(env, opened, "blob", path, [
       what === "text" && onBranch ? h("a", { href: repoPath(env.repo, "edit", refSegments(opened.ref.ref, path)), id: "edit-file" }, "Edit") : null,
+      what !== "none" && onBranch ? h("a", { href: repoPath(env.repo, "delete", refSegments(opened.ref.ref, path)), id: "delete-file" }, "Delete") : null,
       what === "text" ? (raw ? h("strong", null, "Raw") : h("a", { href: `${here}?raw=1` }, "Raw")) : null,
       what !== "none" ? h("button", { type: "button", class: "link", id: "download-file" }, "Download") : null,
       what === "text" ? h("button", { type: "button", class: "link", id: "copy-file" }, "Copy") : null,

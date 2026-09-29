@@ -655,6 +655,18 @@ section.commit-dialog label .explain { display: block; margin: .05em 0 0 1.7em; 
 .secret-warning { margin: .5em 0; padding: .2em .7em; border: 1px solid var(--warning); background: var(--bg); }
 .secret-warning ul { margin: .2em 0; padding-left: 1.3em; font-family: var(--font-code); font-size: .9em; }
 
+/* Uploads and deletions (night phase 03, E4): a ruled drop area, the files listed with what happens
+   to each in words; a refused file keeps its row, its reason in the warning colour */
+.upload-drop { margin: .6em 0; padding: .6em .9em; border: 1px dashed var(--muted); background: var(--bg-sidebar); }
+.upload-drop.over { border-style: solid; border-color: var(--masthead); background: var(--highlighter); }
+.upload-drop p { margin: .3em 0; }
+.upload-drop input[type="file"] { font: inherit; font-size: .92em; max-width: 100%; }
+table.upload-files td:last-child { font-size: .92em; }
+table.upload-files tr.refused td.name { color: var(--muted); text-decoration: line-through; }
+ul.delete-files { margin: .3em 0 .8em; padding-left: 1.3em; font-family: var(--font-code); font-size: .9em; max-height: 20em; overflow: auto; }
+ul.delete-files li { overflow-wrap: anywhere; }
+p.editor-extra { margin: .3em 0; font-size: .9em; color: var(--muted); }
+
 footer {
   max-width: var(--width); margin: 0 auto; padding: 1em;
   border-top: 1px solid var(--rule); font-size: .85em; color: var(--muted);
