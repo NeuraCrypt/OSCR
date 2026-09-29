@@ -93,6 +93,8 @@ export function madeToken(token: string, name: string, expires: string): El {
 export interface HookItem {
   id: string;
   subject: string;
+  /** A repository's path, as the registry knows it (the list's words). */
+  label?: string | null;
   url: string;
   events: "*" | string[];
   active: boolean;
@@ -116,10 +118,11 @@ export interface DeliveryItem {
 /** An event kind in words: "research_opened" → "research opened". */
 export const eventWords = (kind: string): string => kind.replace(/_/g, " ");
 
-/** What a hook follows, in words. */
-export function subjectWords(subject: string): string {
+/** What a hook follows, in words (a repository by its path when the registry knows it). */
+export function subjectWords(subject: string, label?: string | null): string {
   if (subject.startsWith("paper:doi:")) return `the paper ${subject.slice("paper:doi:".length)}`;
   const m = /^repo:([a-z]+):(\d+)$/.exec(subject);
+  if (m && label) return `the repository ${label}`;
   return m ? `the repository ${m[1]}:${m[2]}` : subject;
 }
 
@@ -146,7 +149,7 @@ export function hooksList(hooks: readonly HookItem[]): El {
       h(
         "li",
         { "data-hook": k.id },
-        h("p", null, h("strong", null, k.url), " — ", subjectWords(k.subject), ", ", k.events === "*" ? "every event" : k.events.map(eventWords).join(", "), "."),
+        h("p", null, h("strong", null, k.url), " — ", subjectWords(k.subject, k.label), ", ", k.events === "*" ? "every event" : k.events.map(eventWords).join(", "), "."),
         h("p", { class: k.active ? "ok" : "warning" }, k.active ? "Active: it receives its events." : "Paused: it receives nothing until a ping is answered (2xx)."),
         h(
           "p",
@@ -208,7 +211,7 @@ export function deliveriesTable(deliveries: readonly DeliveryItem[]): El {
   return h(
     "table",
     { class: "branches deliveries" },
-    h("thead", null, h("tr", null, h("th", null, "When"), h("th", null, "Event"), h("th", null, "Answer"), h("th", null, "Attempts"), h("th", null, ""))),
+    h("thead", null, h("tr", null, h("th", null, "When"), h("th", null, "Event"), h("th", null, "Answer"), h("th", null, "Tries"), h("th", null, ""))),
     h(
       "tbody",
       null,

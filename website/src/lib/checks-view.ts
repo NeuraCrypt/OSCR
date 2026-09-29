@@ -6,7 +6,7 @@
 // testable in Node (tests/forge-pages/checks-view.test.ts). Like every browser script, it never names
 // the platform.
 
-import { CHECK_WORDS, type Finding, type Report } from "../../worker/forge/checks-core.ts";
+import { CHECK_WORDS, isRegistryCheckRun, type Finding, type Report } from "../../worker/forge/checks-core.ts";
 import type * as T from "../../worker/forge/types.ts";
 import { parseYaml, type Yaml } from "./citation.ts";
 import { checkWords, statusWords } from "./pull-page.ts";
@@ -134,7 +134,9 @@ export function ciView(runs: readonly T.CheckRun[], status: T.CombinedStatus | n
   const items: El[] = [
     ...runs.map((r) => {
       const w = checkWords(r);
-      return h("li", { class: w.tone }, w.text, r.output.title ? ` — ${r.output.title}` : "", r.output.annotations ? ` (${r.output.annotations} ${r.output.annotations === 1 ? "annotation" : "annotations"})` : "");
+      // The registry's own check run (pr-checks.ts names it so) is said to be the registry's.
+      const ours = isRegistryCheckRun(r.name);
+      return h("li", { class: w.tone }, w.text, r.output.title ? ` — ${r.output.title}` : "", r.output.annotations ? ` (${r.output.annotations} ${r.output.annotations === 1 ? "annotation" : "annotations"})` : "", ours ? " — the registry's checks, posted by its App on GitHub" : "");
     }),
     ...(status?.statuses ?? []).map((s) => {
       const w = statusWords(s);
@@ -214,7 +216,8 @@ export function citedCommits(maps: readonly { paper: string; title: string; doi:
   const seen = new Set<string>();
   const out: { paper: string; title: string; commit: string }[] = [];
   for (const m of maps) {
-    if (!/^[0-9a-f]{40}$/.test(m.commit) || seen.has(`${m.doi}\n${m.commit}`)) continue;
+    // A map pinned to no real commit (all zeros: a placeholder) has no checks to show.
+    if (!/^[0-9a-f]{40}$/.test(m.commit) || /^0+$/.test(m.commit) || seen.has(`${m.doi}\n${m.commit}`)) continue;
     seen.add(`${m.doi}\n${m.commit}`);
     out.push({ paper: m.paper, title: m.title || m.doi, commit: m.commit });
   }

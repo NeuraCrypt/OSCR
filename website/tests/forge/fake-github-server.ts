@@ -15,6 +15,8 @@
 //
 // GET /control/seed: the people and repositories made at start. POST /control {"login": "…"}: who
 // approves next. POST /control {"offline": true}: every answer becomes 503 (the degraded state).
+// POST /control/install {"account": "…"}: the App installed on that account (night phase 10's check
+// runs), its installation's id answered.
 // Development values only: the App's client id and secret are the e2e's own (FAKE_CLIENT_ID,
 // FAKE_CLIENT_SECRET), never real ones.
 import { createServer } from "node:http";
@@ -79,6 +81,12 @@ const HOSTS: Record<string, string> = { api: "api.github.com", web: "github.com"
 async function answer(method: string, url: URL, headers: Headers, body: Uint8Array): Promise<Response> {
   if (url.pathname === "/control/seed") {
     return Response.json({ ada: { id: ada.user.id, login: "ada-fixture" }, bob: { id: bob.user.id, login: "bob-fixture" }, repos: ["oscr-fixture/eeg-analysis", "oscr-fixture/empty-repo", "ada-fixture/compendium"], pulls, issues, releases });
+  }
+  // Night phase 10: the App installed on an account (every repository), as GitHub's installation page
+  // does it; the end-to-end run then tells the Worker through the installation webhook.
+  if (url.pathname === "/control/install" && method === "POST") {
+    const c = JSON.parse(new TextDecoder().decode(body) || "{}") as { account?: string };
+    return Response.json({ id: double.install(c.account ?? "oscr-fixture") });
   }
   if (url.pathname === "/control" && method === "POST") {
     const c = JSON.parse(new TextDecoder().decode(body) || "{}") as { login?: string; offline?: boolean };

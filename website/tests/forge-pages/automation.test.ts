@@ -43,6 +43,7 @@ describe("webhooks", () => {
     for (const bad of ["", "just words", "a/b/c", "../x"]) assert.equal(readHookSubject(bad), null, bad);
     assert.equal(subjectWords("paper:doi:10.1/x"), "the paper 10.1/x");
     assert.equal(subjectWords("repo:github:5"), "the repository github:5");
+    assert.equal(subjectWords("repo:github:5", "ada/eeg"), "the repository ada/eeg");
     assert.equal(eventWords("research_opened"), "research opened");
   });
 

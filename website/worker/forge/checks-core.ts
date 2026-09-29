@@ -28,6 +28,12 @@ import { environmentFiles, KIND_WORDS } from "../../src/lib/environments.ts";
 import { citationOfCff, doiOf, parseYaml } from "../../src/lib/citation.ts";
 import { maskEmails } from "./mask.ts";
 
+/** The check run's name on GitHub: "<SITE_NAME>: research checks", or this without SITE_NAME
+ *  (service/pr-checks.ts names it; the pages recognise it). */
+export const CHECK_RUN_NAME = "Research code checks";
+export const CHECK_RUN_SUFFIX = ": research checks";
+export const isRegistryCheckRun = (name: string): boolean => name === CHECK_RUN_NAME || name.endsWith(CHECK_RUN_SUFFIX);
+
 export type Level = "failure" | "warning" | "notice" | "ok";
 export type CheckId = "licence" | "environment" | "doi" | "citation" | "map" | "sizes" | "readme";
 export const CHECK_IDS: readonly CheckId[] = ["licence", "environment", "doi", "citation", "map", "sizes", "readme"];
@@ -151,7 +157,7 @@ function licenceCheck(x: CheckInput, paths: string[], files: ReturnType<typeof c
       annotations: text ? [{ path: files.licence, line: 1, level: "warning", title: "Licence not recognised", message: "This text is not a standard licence the registry recognises." }] : [],
     };
   }
-  return { id: "licence", level: "ok", words: `Licence: ${spdx} (${files.licence}).`, fix: "", annotations: [] };
+  return { id: "licence", level: "ok", words: `${spdx}, in ${files.licence}.`, fix: "", annotations: [] };
 }
 
 function environmentCheck(paths: string[]): Finding {
@@ -167,7 +173,7 @@ function environmentCheck(paths: string[]): Finding {
     };
   }
   const words = main.slice(0, 4).map((f) => `${f.path} (${KIND_WORDS[f.kind]})`).join(", ");
-  return { id: "environment", level: "ok", words: `Environment: ${words}${main.length > 4 ? `, and ${main.length - 4} more` : ""}.`, fix: "", annotations: [] };
+  return { id: "environment", level: "ok", words: `${words}${main.length > 4 ? `, and ${main.length - 4} more` : ""}.`, fix: "", annotations: [] };
 }
 
 function doiCheck(x: CheckInput, files: ReturnType<typeof checkFiles>): Finding {

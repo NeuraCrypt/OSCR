@@ -30,7 +30,7 @@ describe("the checks", () => {
     assert.equal(r.conclusion, "success", r.summary);
     assert.equal(r.title, "All 7 checks passed");
     assert.match(r.summary, /never run its code/);
-    assert.match(r.findings[0].words, /Licence: MIT \(LICENSE\)/);
+    assert.match(r.findings[0].words, /^MIT, in LICENSE\.$/);
     assert.match(r.findings.find((f) => f.id === "environment")!.words, /requirements\.txt/);
     assert.deepEqual(r.annotations, []);
   });

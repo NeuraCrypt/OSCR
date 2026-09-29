@@ -34,6 +34,10 @@
 // event row (events.ts `eventOfDelivery`: the title, the actor, the logins named; never the text),
 // written with the delivery's row, for the in-site notifications; ping, ref and the rest:
 // acknowledged, nothing stored. Refs under refs/pull/ are never mirrored by the registry.
+// Phase 10: after the batch, the event's outgoing webhooks are delivered (hooks.ts `queueHooks`), and a
+// pull request's new head (opened, synchronize, reopened, ready_for_review) on a repository the
+// registry follows gets the registry's check run (pr-checks.ts), both in waitUntil: 0 rows of their own
+// here (a hook's delivery logs its own row).
 
 import { GitBackendError } from "../errors.ts";
 import type { ForgeEvent, RepoStub } from "../types.ts";

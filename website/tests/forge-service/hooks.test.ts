@@ -5,6 +5,7 @@
 // redelivered, rotated, paused and deleted by its person; FORGE_OPEN on every new write.
 import assert from "node:assert/strict";
 import { createHmac } from "node:crypto";
+import { readFileSync } from "node:fs";
 import { afterEach, beforeEach, describe, test } from "node:test";
 import { ORIGIN } from "../account/browser.ts";
 import { handleApi } from "../../worker/forge/service/api.ts";
@@ -117,6 +118,11 @@ describe("the address (SSRF)", () => {
     // Development only: the local receiver.
     assert.equal(hookUrl("http://127.0.0.1:9492/hook", { allowLocal: true }), "http://127.0.0.1:9492/hook");
     assert.ok(hookUrl("http://10.0.0.1/hook", { allowLocal: true }) instanceof ForgeProblem);
+  });
+
+  test("the development switches are never in the Worker's configuration", () => {
+    const toml = readFileSync(new URL("../../wrangler.toml", import.meta.url), "utf8");
+    for (const name of ["HOOKS_ALLOW_LOCAL", "GITHUB_OIDC_ISSUER", "FORGE_OPEN =", "API_LIMITER"]) assert.ok(!toml.includes(name), name);
   });
 
   test("a hook's subject and events: a repository's or a paper's own", () => {
@@ -246,6 +252,8 @@ describe("delivering events", () => {
     const b = await signIn(w);
     const res = await b.post("/api/forge/hooks/write", { op: "create", subject: "repo:memory:101", url: RECEIVER, events: ["issue_comment"] });
     assert.equal(res.status, 201);
+    // The list names the repository by its path.
+    assert.equal((await body(await b.fetch("/api/forge/hooks"))).hooks[0].label, "lab/eeg");
     rx.got.length = 0;
     const stub: RepoStub = { key: { forge: "memory", id: "101" }, ref: { forge: "memory", owner: "lab", name: "eeg" }, visibility: "public", defaultBranch: "main" };
     const bob = { name: "bob-fixture", login: "bob-fixture", id: "77" };

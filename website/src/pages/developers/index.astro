@@ -130,7 +130,7 @@ const ERRORS: [string, number, string][] = [
 
   <h2 id="authentication">Authentication and scopes</h2>
   <p>
-    Every route but the index takes a personal token, made on <a href="/settings/tokens/">your settings page</a>:
+    Every route but the index takes a personal token, made on <a href="/settings/tokens/">your settings page</a>:{" "}
     <code>Authorization: Bearer oscr_pat_…</code>. A token is scoped, expires after {EXPIRY.min} to {EXPIRY.max} days
     ({EXPIRY.default} by default; none lives for ever), can be revoked at once, and is listed with its last use. An
     account holds {TOKENS_PER_ACCOUNT} at most. {SITE_NAME} keeps only its SHA-256: it is shown once. A token never
@@ -154,8 +154,8 @@ const ERRORS: [string, number, string][] = [
   <h2 id="rate-limits">Rate limits</h2>
   <p>
     A token may make {API_RATE.perMinute} requests a minute and {API_RATE.perDay.toLocaleString("en-GB")} a day. Every
-    answer carries <code>X-RateLimit-Limit</code>, <code>X-RateLimit-Remaining</code>, <code>X-RateLimit-Used</code>
-    and <code>X-RateLimit-Reset</code> (Unix seconds, the next 00:00 UTC); past a limit, 429 with
+    answer carries <code>X-RateLimit-Limit</code>, <code>X-RateLimit-Remaining</code>, <code>X-RateLimit-Used</code>{" "}
+    and <code>X-RateLimit-Reset</code> (Unix seconds, the next 00:00 UTC); past a limit, 429 with{" "}
     <code>Retry-After</code>. <code>GET /api/v1/rate_limit</code> says where the token stands and is never counted.
     Writes also count toward your account's daily caps, as on the site. {SITE_NAME} runs on a free plan: when its day's
     requests are spent, every route answers 429 until 00:00 UTC, and the pages stay up.
@@ -225,9 +225,9 @@ const ERRORS: [string, number, string][] = [
   </ul>
   <p>
     When it is made, {SITE_NAME} sends a <code>ping</code>: the webhook is active once the ping is answered 2xx. Each
-    delivery waits {HOOK_TIMEOUT_MS / 1000} seconds for an answer and is tried again after {RETRY_WAITS_MS.map((ms) => `${ms / 1000} s`).join(" and ")}
-    when there is none, or on a 5xx, 408 or 429; never on another 4xx, and a redirection is not followed. After
-    {PAUSE_AFTER_FAILURES} failures in a row the webhook pauses; a ping makes it active again. The last {DELIVERY_DAYS}
+    delivery waits {HOOK_TIMEOUT_MS / 1000} seconds for an answer and is tried again after {RETRY_WAITS_MS.map((ms) => `${ms / 1000} s`).join(" and ")}{" "}
+    when there is none, or on a 5xx, 408 or 429; never on another 4xx, and a redirection is not followed. After{" "}
+    {PAUSE_AFTER_FAILURES} failures in a row the webhook pauses; a ping makes it active again. The last {DELIVERY_DAYS}{" "}
     days of deliveries are listed, and each event's delivery can be sent again. The address is https; it is never a
     private network, this machine, a local name or {SITE_NAME} itself.
   </p>
@@ -240,9 +240,9 @@ const ERRORS: [string, number, string][] = [
 
   <h2 id="statuses">Commit statuses</h2>
   <p>
-    A lab's CI, another forge or a reproduction service says how a commit of a repository {SITE_NAME} knows fared:
+    A lab's CI, another forge or a reproduction service says how a commit of a repository {SITE_NAME} knows fared:{" "}
     <code>error</code>, <code>failure</code>, <code>pending</code> or <code>success</code>, under a context of its own.
-    The latest of each context is kept, {CONTEXTS_PER_COMMIT} contexts a commit at most; the repository's
+    The latest of each context is kept, {CONTEXTS_PER_COMMIT} contexts a commit at most; the repository's{" "}
     <a href="/r/">Checks</a> page shows them beside its tests. With a token that may <code>statuses:write</code>:
   </p>
   <pre class="commands">{curlStatus}</pre>

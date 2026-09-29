@@ -70,6 +70,7 @@ describe("the views", () => {
 
   test("the researcher's CI: runs and statuses counted, the logs at the source, said why", () => {
     const run = (name: string, conclusion: T.CheckRun["conclusion"]): T.CheckRun => ({ id: "1", name, headSha: "a".repeat(40), status: "completed", conclusion, startedAt: null, completedAt: null, detailsUrl: null, app: null, output: { title: "", summary: "", annotations: 0 } });
+    assert.match(textOf(ciView([run("Research code checks", "neutral")], null, "https://github.com/o/r")), /the registry's checks, posted by its App on GitHub/);
     const el = ciView([run("tests", "success"), run("lint", "failure")], { state: "pending", statuses: [{ context: "ci/lab", state: "pending", description: "", targetUrl: null }] }, "https://github.com/o/r/commit/abc/checks");
     const text = textOf(el);
     assert.match(text, /1 passed, 1 failed, 1 running/);
@@ -91,6 +92,7 @@ describe("the views", () => {
       { paper: "eeg", title: "EEG", doi: "10.1/a", commit: "a".repeat(40) },
       { paper: "meg", title: "", doi: "10.1/b", commit: "b".repeat(40) },
       { paper: "x", title: "X", doi: "10.1/c", commit: "not-a-commit" },
+      { paper: "z", title: "Z", doi: "10.1/z", commit: "0".repeat(40) },
     ];
     assert.deepEqual(citedCommits(maps), [{ paper: "eeg", title: "EEG", commit: "a".repeat(40) }, { paper: "meg", title: "10.1/b", commit: "b".repeat(40) }]);
   });

@@ -27,8 +27,13 @@
 # 6. phase 08 (in 4: stars, a follow by ORCID iD, a watch, Bob's comment by webhook into Ada's inbox,
 #    marked read, Bob's star refused): the Mac's forge and social layers and the search's index, then
 #    the search of repositories, research issues and people, and the static social shards.
+# Phase 10 (in 4): a personal token made on the site, the public API called with it, a commit status
+#    posted, an outgoing webhook to a local receiver (RECEIVER_PORT, this run's own; HOOKS_ALLOW_LOCAL=1,
+#    development only) pinged then delivered an event, both signatures checked; the App installed on
+#    the fixture's organization (the fake) posts the registry's check run on a pull request from its
+#    pull_request delivery (the App's key: a throwaway key made for this run, never a real one).
 #
-#   cd website && SITE_PORT=8791 MOCK_PORT=9491 FAKE_PORT=9490 sh tests/forge-service/e2e.sh
+#   cd website && SITE_PORT=8791 MOCK_PORT=9491 FAKE_PORT=9490 RECEIVER_PORT=9492 sh tests/forge-service/e2e.sh
 #   (KEEP=1 leaves the three servers running, for screenshots; kill them after.)
 #
 # Nothing is remote: no real GitHub, provider or Cloudflare database is asked.
@@ -40,6 +45,7 @@ TMP=$(mktemp -d)
 SITE_PORT=${SITE_PORT:-8791}
 MOCK_PORT=${MOCK_PORT:-9491}
 FAKE_PORT=${FAKE_PORT:-9490}
+RECEIVER_PORT=${RECEIVER_PORT:-9492}
 SITE="http://localhost:$SITE_PORT"
 MOCK="http://127.0.0.1:$MOCK_PORT"
 FAKE="http://127.0.0.1:$FAKE_PORT"
@@ -56,6 +62,11 @@ cleanup() {
   fi
 }
 trap cleanup EXIT INT TERM
+
+# Phase 10: the App's private key for this run only (the fake GitHub accepts any signed JWT), with its
+# line breaks written as \n, as the Worker reads a key pasted on one line.
+openssl genrsa -traditional -out "$TMP/app-key.pem" 2048 2>/dev/null || openssl genrsa -out "$TMP/app-key.pem" 2048 2>/dev/null
+APP_KEY=$(awk '{printf "%s\\n", $0}' "$TMP/app-key.pem")
 
 # 1. The databases.
 "$PYTHON" "$ROOT/tools/make_fixture.py" --database "$TMP/mac.db" >/dev/null
@@ -95,7 +106,8 @@ WRANGLER_SEND_METRICS=false npx wrangler dev --env local --port "$SITE_PORT" --p
   --var "GITHUB_APP_CLIENT_ID:$CLIENT_ID" --var "GITHUB_APP_CLIENT_SECRET:$CLIENT_SECRET" \
   --var "GITHUB_APP_WEBHOOK_SECRET:$WEBHOOK_SECRET" --var "FORGE_OWNER_GITHUB_ID:$ADA_ID" \
   --var "FORGE_GITHUB_API_URL:$FAKE/api" --var "FORGE_GITHUB_WEB_URL:$FAKE/web" --var "FORGE_GITHUB_RAW_URL:$FAKE/raw" \
-  --var "FORGE_GITHUB_UPLOADS_URL:$FAKE/uploads" >"$TMP/dev.log" 2>&1 &
+  --var "FORGE_GITHUB_UPLOADS_URL:$FAKE/uploads" \
+  --var "GITHUB_APP_PRIVATE_KEY:$APP_KEY" --var "HOOKS_ALLOW_LOCAL:1" >"$TMP/dev.log" 2>&1 &
 PIDS="$PIDS $!"
 i=0
 until curl -fs "$SITE/api/account/me" >/dev/null 2>&1; do
@@ -107,7 +119,7 @@ done
 # release form shows), for the release's tie and its deposit.
 MAP_DIGEST=$(cd "$ROOT" && "$PYTHON" -c "import sqlite3; from oscr import zenodo; con = sqlite3.connect('$TMP/mac.db'); con.row_factory = sqlite3.Row; print(zenodo.map_digest(zenodo.map_of(con, 'doi:10.5555/oscr.fixture.1')))")
 SITE="$SITE" MOCK="$MOCK" FAKE="$FAKE" WEBHOOK_SECRET="$WEBHOOK_SECRET" MAP_DIGEST="$MAP_DIGEST" E2E_STATE="$TMP/phase07.json" \
-  node --experimental-strip-types tests/forge-service/e2e.ts
+  RECEIVER_PORT="$RECEIVER_PORT" node --experimental-strip-types tests/forge-service/e2e.ts
 
 # 5. Phase 07: the Mac's forge jobs, offline (no GitHub, no Software Heritage: those jobs wait), its Zenodo
 # the MOCK sandbox (an explicit sandbox, whatever the settings say; a token that is none), on the same

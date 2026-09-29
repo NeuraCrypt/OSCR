@@ -21,7 +21,7 @@
 
 import { GitBackendError } from "../errors.ts";
 import type { GitBackend } from "../gitbackend.ts";
-import { checkFiles, CHECK_TEXT_BYTES, runChecks, skipsChecks, type ChangedFile, type Report } from "../checks-core.ts";
+import { checkFiles, CHECK_RUN_NAME, CHECK_RUN_SUFFIX, CHECK_TEXT_BYTES, runChecks, skipsChecks, type ChangedFile, type Report } from "../checks-core.ts";
 import { PR_FILES_CHECKED } from "./caps.ts";
 import { redact } from "./http.ts";
 import { all, papersOf } from "./store.ts";
@@ -34,10 +34,13 @@ export const CHECK_ACTIONS: ReadonlySet<string> = new Set(["opened", "synchroniz
 /** The check run's name, shown on GitHub. */
 export function checkRunName(env: Pick<ForgeServiceEnv, "SITE_NAME">): string {
   const site = (env.SITE_NAME ?? "").trim().slice(0, 60);
-  return site ? `${site}: research checks` : "Research code checks";
+  return site ? `${site}${CHECK_RUN_SUFFIX}` : CHECK_RUN_NAME;
 }
 
 export interface PullCheck {
+  /** The installation that sent the delivery (covering the repository's account: webhook.ts checked
+   *  it), when the repository's row names none (an installation on "all" repositories). */
+  installation?: string | null;
   backend: GitBackend;
   db: D1Database;
   env: ForgeServiceEnv;
@@ -60,8 +63,9 @@ const decoder = new TextDecoder();
 
 /** The registry's checks of one pull request's head, posted as ONE check run. */
 export async function checkPullRequest(o: PullCheck): Promise<{ posted: boolean; skipped?: string; report?: Report }> {
-  if (!o.repo.installation_id) return { posted: false, skipped: "the App is not installed on it" };
-  const s = o.backend.session({ kind: "installation", installationId: o.repo.installation_id });
+  const installationId = o.repo.installation_id ?? o.installation ?? null;
+  if (!installationId) return { posted: false, skipped: "the App is not installed on it" };
+  const s = o.backend.session({ kind: "installation", installationId });
   const head = await s.git.commit(o.ref, o.headSha, { perPage: 1 });
   if (skipsChecks(head.message)) return { posted: false, skipped: "skip-checks: true" };
   const tree = await s.git.tree(o.ref, o.headSha, { recursive: true });
@@ -109,7 +113,7 @@ export async function checkPullRequest(o: PullCheck): Promise<{ posted: boolean;
 /** After a pull request's delivery: its checks, in waitUntil (the delivery's answer does not wait). */
 export function queuePullChecks(r: ForgeRequest, event: Extract<ForgeEvent, { kind: "pull_request" }>, repo: RepoRow): void {
   if (!CHECK_ACTIONS.has(event.action)) return;
-  const run = checkPullRequest({ backend: r.backend(), db: r.db, env: r.env, origin: r.url.origin, repo, ref: event.repo.ref, number: event.number, headSha: event.head.sha }).catch((e: unknown) => {
+  const run = checkPullRequest({ installation: event.installation, backend: r.backend(), db: r.db, env: r.env, origin: r.url.origin, repo, ref: event.repo.ref, number: event.number, headSha: event.head.sha }).catch((e: unknown) => {
     const code = e instanceof GitBackendError ? e.code : "error";
     console.error(`forge checks ${event.repo.ref.owner}/${event.repo.ref.name}#${event.number}: ${code}: ${redact(String((e as Error)?.message ?? e)).slice(0, 200)}`);
     return { posted: false };

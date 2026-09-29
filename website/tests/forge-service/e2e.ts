@@ -519,6 +519,111 @@ for (const page of ["/notifications/", "/stars/", "/feed/", "/explore/", "/u/ada
   check("still no email address on the account", !/@example\.org/.test(await noEmail.text()), "");
 }
 
+// 5d. Phase 10: automation. Ada makes a personal token on the site (shown once, only its SHA-256
+// kept), calls the public API with it (bearer only: her cookie alone opens nothing there), posts a
+// commit status; a webhook to a local receiver (HOOKS_ALLOW_LOCAL=1, development only) is pinged and
+// then delivered an event, both signed; the App installed on the fixture's organization posts the
+// registry's check run on a pull request from its pull_request delivery (read as text, never run).
+const RECEIVER_PORT = Number(process.env.RECEIVER_PORT ?? 9492);
+const received: { headers: Record<string, string>; body: string }[] = [];
+const { createServer } = await import("node:http");
+const receiver = createServer((req, res) => {
+  const chunks: Buffer[] = [];
+  req.on("data", (c: Buffer) => chunks.push(c));
+  req.on("end", () => {
+    received.push({ headers: Object.fromEntries(Object.entries(req.headers).map(([k, v]) => [k, String(v)])), body: Buffer.concat(chunks).toString("utf8") });
+    res.writeHead(204).end();
+  });
+});
+await new Promise<void>((ok) => receiver.listen(RECEIVER_PORT, "127.0.0.1", () => ok()));
+const waitFor = async (what: () => boolean, ms = 8000) => {
+  for (let t = 0; t < ms && !what(); t += 100) await new Promise((ok) => setTimeout(ok, 100));
+  return what();
+};
+{
+  for (const page of ["/settings/tokens/", "/settings/hooks/", "/developers/", "/developers/openapi.json", "/r/oscr-fixture/eeg-analysis/checks/main/"]) {
+    const res = await anon.request(`${SITE}${page}`);
+    check(`GET ${page}: 200, a static file`, res.status === 200, res.status);
+  }
+  const made = await ada.post("/api/forge/tokens/write", { op: "create", name: "e2e lab CI", scopes: ["repos:read", "social:read", "statuses:write", "hooks:write", "notifications:read"], days: 7 });
+  const token = String(made.data.token ?? "");
+  check("a personal token made on the site: answered once, 3 rows", made.status === 201 && /^oscr_pat_[A-Za-z0-9_-]{43}$/.test(token) && ada.written === 3, [made.status, ada.written]);
+  const listed = (await (await ada.request(`${SITE}/api/forge/tokens`)).json()) as Json;
+  check("the token listed without its value, never used yet", listed.tokens?.length === 1 && listed.tokens[0].last_used === null && !JSON.stringify(listed).includes(token), listed.tokens);
+  const bearer = (path: string, init: RequestInit = {}) => fetch(`${SITE}${path}`, { ...init, headers: { ...(init.headers as Record<string, string>), Authorization: `Bearer ${token}` } });
+  const user = await bearer("/api/v1/user");
+  const u = (await user.json()) as Json;
+  check("GET /api/v1/user with the token: Ada, her scopes, the rate limit's headers, a request id", user.status === 200 && u.github === "ada-fixture" && user.headers.get("X-RateLimit-Limit") === "1000" && !!user.headers.get("X-Request-Id") && user.headers.get("Access-Control-Allow-Origin") === "*", [user.status, u]);
+  const cookieOnly = await fetch(`${SITE}/api/v1/user`, { headers: { Cookie: [...ada.jar].map(([k, v]) => `${k}=${v}`).join("; ") } });
+  check("the API: Ada's cookie alone opens nothing (401)", cookieOnly.status === 401, cookieOnly.status);
+  const layer = await bearer("/api/v1/repos?path=oscr-fixture/eeg-analysis");
+  const l = (await layer.json()) as Json;
+  check("GET /api/v1/repos: the registry's layer over the linked repository, its paper", layer.status === 200 && l.id === id && (l.papers ?? []).length >= 1, [layer.status, l.id]);
+  const again = await bearer("/api/v1/repos?path=oscr-fixture/eeg-analysis", { headers: { "If-None-Match": layer.headers.get("ETag") ?? "" } });
+  check("the same GET with its ETag: 304", again.status === 304, again.status);
+  const scope = await bearer("/api/v1/social/star", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ subject: "topic:eeg", on: true }) });
+  check("a route the token's scopes do not grant: 403 insufficient_scope", scope.status === 403 && ((await scope.json()) as Json).error?.code === "insufficient_scope", scope.status);
+  const head = String(((await (await fetch(`${FAKE}/api/repos/oscr-fixture/eeg-analysis/branches/main`)).json()) as Json).commit?.sha ?? "");
+  const status = await bearer("/api/v1/statuses/post", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ repo: "oscr-fixture/eeg-analysis", sha: head, state: "success", context: "lab-ci/tests", description: "212 tests passed", target_url: "https://ci.lab.example/runs/1" }) });
+  check("a commit status posted with the token: 201, 2 rows", status.status === 201 && Number(status.headers.get("X-D1-Forge-Rows-Written")) === 2, [status.status, status.headers.get("X-D1-Forge-Rows-Written")]);
+  const statuses = (await (await bearer(`/api/v1/statuses?path=oscr-fixture/eeg-analysis&sha=${head}`)).json()) as Json;
+  check("the commit's statuses: success, posted by ada-fixture", statuses.state === "success" && statuses.statuses?.[0]?.by === "ada-fixture", statuses);
+  // An outgoing webhook to the local receiver: pinged, signed.
+  const hook = await bearer("/api/v1/hooks/write", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ op: "create", subject: `repo:github:${id}`, url: `http://127.0.0.1:${RECEIVER_PORT}/hook`, events: "*" }) });
+  const h = (await hook.json()) as Json;
+  const secret = String(h.secret ?? "");
+  const sign = (body: string) => `sha256=${createHmac("sha256", secret).update(body).digest("hex")}`;
+  check("a webhook made with the token: pinged, active, its secret answered once", hook.status === 201 && h.hook?.active === true && /^whsec_/.test(secret), [hook.status, h.ping, h.hook]);
+  const ping = received.find((r) => r.headers["x-hook-event"] === "ping");
+  check("the receiver got the ping, its signature is the secret's", !!ping && ping.headers["x-hub-signature-256"] === sign(ping.body), ping?.headers);
+  const unsafe = await bearer("/api/v1/hooks/write", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ op: "create", subject: `repo:github:${id}`, url: "http://10.0.0.8/hook" }) });
+  check("a webhook to a private network is refused (400)", unsafe.status === 400, unsafe.status);
+  // An event on the repository (GitHub's issue comment, by the App's webhook), delivered to the receiver.
+  const bobUser = { login: "bob-fixture", id: Number(seed.bob.id) };
+  await deliver("issue_comment", {
+    action: "created",
+    issue: { number: 1, title: "The filter's order", user: bobUser },
+    comment: { id: 434343, body: "A second look at the order.", user: bobUser },
+    repository: { id: Number(id), name: "eeg-analysis", full_name: "oscr-fixture/eeg-analysis", owner: { login: "oscr-fixture", id: repoJson.owner.id }, visibility: "public", default_branch: "main" },
+    sender: bobUser,
+    installation: { id: 777 },
+  });
+  const delivered = await waitFor(() => received.some((r) => r.headers["x-hook-event"] === "issue_comment"));
+  const event = received.find((r) => r.headers["x-hook-event"] === "issue_comment");
+  const payload = event ? (JSON.parse(event.body) as Json) : {};
+  check("the event delivered to the receiver after the webhook's answer, signed with the secret", delivered && !!event && event.headers["x-hub-signature-256"] === sign(event.body) && payload.event === "issue_comment", event?.headers);
+  check("the delivery holds the event's words and page, never the comment's text", payload.url === `${SITE}/r/oscr-fixture/eeg-analysis/issues/1` && !/second look/.test(event?.body ?? ""), payload);
+  const deliveries = (await (await bearer(`/api/v1/hooks/deliveries?id=${h.hook?.id}`)).json()) as Json;
+  check("the hook's recent deliveries: the ping and the event, both answered 204", (deliveries.deliveries ?? []).length === 2 && (deliveries.deliveries as Json[]).every((d) => d.ok && d.status === 204), deliveries.deliveries);
+  // The registry's check run on a pull request: the App installed on the organization (the fake), its
+  // installation webhook, then the pull request's delivery.
+  const installed = (await (await post(`${FAKE}/control/install`, { account: "oscr-fixture" })).json()) as { id: string };
+  const orgInstallation = { id: Number(installed.id), account: { login: "oscr-fixture", id: repoJson.owner.id, type: "Organization" }, repository_selection: "all" };
+  const inst2 = await deliver("installation", { action: "created", installation: orgInstallation, sender: { login: "ada-fixture", id: Number(seed.ada.id) } });
+  check("webhook: the App's installation on the organization recorded", inst2.status === 200, inst2);
+  const number = (seed as unknown as { pulls: { pull: number } }).pulls.pull;
+  const pr = (await (await fetch(`${FAKE}/api/repos/oscr-fixture/eeg-analysis/pulls/${number}`)).json()) as Json;
+  const prSha = String(pr.head?.sha ?? "");
+  const sync = await deliver("pull_request", {
+    action: "synchronize",
+    number,
+    pull_request: { number, title: String(pr.title ?? ""), merged: false, head: { ref: String(pr.head?.ref ?? "hann-window"), sha: prSha }, base: { ref: "main" }, user: { login: "bob-fixture", id: Number(seed.bob.id) }, body: "" },
+    repository: { id: Number(id), name: "eeg-analysis", full_name: "oscr-fixture/eeg-analysis", owner: { login: "oscr-fixture", id: repoJson.owner.id }, visibility: "public", default_branch: "main" },
+    sender: { login: "bob-fixture", id: Number(seed.bob.id) },
+    installation: { id: Number(installed.id) },
+  });
+  check("webhook: the pull request's new head acknowledged, nothing written for the checks", sync.status === 200 && sync.written === 0, sync);
+  let runs: Json[] = [];
+  for (let t = 0; t < 100 && !runs.length; t++) {
+    runs = (((await (await fetch(`${FAKE}/api/repos/oscr-fixture/eeg-analysis/commits/${prSha}/check-runs`)).json()) as Json).check_runs ?? []) as Json[];
+    if (!runs.length) await new Promise((ok) => setTimeout(ok, 100));
+  }
+  const run = runs.find((r) => r.name === "Research code checks");
+  check("the registry's check run on the pull request: completed, its conclusion and words, never run", !!run && run.status === "completed" && ["success", "neutral", "failure"].includes(String(run.conclusion)) && /never run its code/.test(String(run.output?.summary)), run ?? runs);
+  check("its details page is the registry's own view of the commit", String(run?.details_url ?? "") === `${SITE}/r/oscr-fixture/eeg-analysis/checks/${prSha}`, run?.details_url);
+}
+receiver.close();
+
 // 6. FORGE_OPEN unset: Bob may read, not act.
 await post(`${MOCK}/control`, { who: { github: { id: Number(seed.bob.id), login: "bob-fixture", name: "Bob Fixture" } } });
 await post(`${FAKE}/control`, { login: "bob-fixture" });
@@ -554,6 +659,9 @@ const bobStar = await bob.post("/api/forge/social/star", { subject: `repo:github
 check("FORGE_OPEN unset: Bob's star is refused (403 forge_closed), nothing written", bobStar.status === 403 && bobStar.data.error?.code === "forge_closed" && bob.written === 0, [bobStar.status, bobStar.data]);
 const bobFollow = await bob.post("/api/forge/social/follow", { target: `github:${seed.ada.id}`, on: true });
 check("FORGE_OPEN unset: Bob's follow is refused (403 forge_closed)", bobFollow.status === 403 && bobFollow.data.error?.code === "forge_closed", [bobFollow.status, bobFollow.data]);
+// Phase 10: Bob cannot make a token (FORGE_OPEN unset), so the API's writes are the owner's only.
+const bobToken = await bob.post("/api/forge/tokens/write", { op: "create", name: "bob", scopes: ["social:write"] });
+check("FORGE_OPEN unset: Bob's token is refused (403 forge_closed), nothing written", bobToken.status === 403 && bobToken.data.error?.code === "forge_closed" && bob.written === 0, [bobToken.status, bobToken.data]);
 const bobInbox = await bob.request(`${SITE}/api/forge/social/inbox`);
 check("Bob reads his own inbox, empty: nothing of Ada's", bobInbox.status === 200 && ((await bobInbox.json()) as Json).threads?.length === 0, bobInbox.status);
 await post(`${FAKE}/control`, { login: "ada-fixture" });

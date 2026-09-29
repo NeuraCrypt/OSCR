@@ -101,6 +101,14 @@ describe("a check run on every pull request", () => {
     assert.equal((await runs(other.head)).length, 0);
   });
 
+  test("an installation on all of an account's repositories: the delivery's installation posts it", async () => {
+    w.forge.sqlite.prepare("UPDATE repos SET mode = 'public', installation_id = NULL WHERE repo_id = ?").run(repoId);
+    const pr = await pullRequest([put("NEWS.md", "z\n")]);
+    await deliver(pr);
+    const [run] = await runs(pr.head);
+    assert.equal(run?.conclusion, "success");
+  });
+
   test("the run's name comes from SITE_NAME, never hard-coded", () => {
     assert.equal(checkRunName({}), "Research code checks");
     assert.equal(checkRunName({ SITE_NAME: "Lab registry" }), "Lab registry: research checks");

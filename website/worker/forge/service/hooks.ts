@@ -63,7 +63,7 @@ import {
   type Payload,
 } from "./hooks-core.ts";
 import { eventByKey, type EventRow } from "./events.ts";
-import { json, problemAnswer } from "./http.ts";
+import { json, problemAnswer, redact } from "./http.ts";
 import { actionRow, all, first, newNonce, repoByKey, statements } from "./store.ts";
 import { ForgeProblem, type D1Database, type ForgeRequest, type ForgeServiceEnv, type RepoRow, type Write } from "./types.ts";
 import { who } from "./who.ts";
@@ -209,7 +209,8 @@ export function queueHooks(r: ForgeRequest, keys: EventKey[]): void {
   const real = keys.filter((k) => k.subject && k.nonce);
   if (!real.length) return;
   const run = deliverEvents({ db: r.db, env: r.env, origin: r.url.origin, t: r.t, sender: senderOf(r) }, real).catch((e: unknown) => {
-    console.error(`forge hooks: ${String((e as Error)?.message ?? e).slice(0, 200)}`);
+    // Redacted like every log line: an address may carry a token of the receiver's.
+    console.error(`forge hooks: ${redact(String((e as Error)?.message ?? e)).slice(0, 200)}`);
     return 0;
   });
   r.ctx.waitUntil(run);
@@ -225,9 +226,17 @@ export async function handleHooks(r: ForgeRequest): Promise<Response> {
   const s = await who(r, { post: false, touch: false });
   if (s instanceof Response) return s;
   const rows = await all<HookRow>(hooksOf(r.db, s.user.id));
+  // A repository's path, for the list's words (by its key: one read each, ten at most).
+  const labels = new Map<string, string>();
+  for (const h of rows) {
+    const m = /^repo:(github|memory):(\d+)$/.exec(h.subject);
+    if (!m || labels.has(h.subject)) continue;
+    const row = await first<RepoRow>(repoByKey(r.db, m[1], m[2]));
+    if (row?.name) labels.set(h.subject, `${row.owner_login}/${row.name}`);
+  }
   return json(
     {
-      hooks: rows.map(hookView),
+      hooks: rows.map((h) => ({ ...hookView(h), label: labels.get(h.subject) ?? null })),
       events: { repository: eventsFor("repo:github:1"), paper: eventsFor("paper:doi:10.1/x") },
       limits: { hooks: HOOKS_PER_ACCOUNT, perSubject: HOOKS_PER_SUBJECT, timeoutSeconds: HOOK_TIMEOUT_MS / 1000, attempts: RETRY_WAITS_MS.length + 1 },
     },
