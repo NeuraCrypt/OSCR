@@ -16,7 +16,17 @@ Mis à jour au fil de la nuit. La mission est dans `docs/NIGHT_RUN.md`, le journ
   - **Le Mac** : `oscr forge poll|mirrors|layer|status` (les tâches, les têtes des miroirs publics, les chemins tracés, la couche statique).
   - **Essai de bout en bout** local (`website/tests/forge-service/e2e.sh`) : connexion, création, liaison, réglages, branches, autoliens, webhooks signés, refus d'un autre compte : tout passe. Captures : `docs/night-screenshots/phase-01/` (48 images, bureau et téléphone).
   - **Tests à la clôture** : pytest 470 ; ruff propre ; `npm test` 779 sous Node 26 et Node 22 ; build 45 pages ; `check --every-route` ok ; `tsc --strict` propre.
-- **Suite** : phase 02 (navigation dans le code) sur la branche `night/phase-02-code-navigation`, créée et poussée.
+- **Phase 02 (navigation dans le code) : terminée**, branche `night/phase-02-code-navigation`, poussée (9 commits : les éléments E1 à E7, les corrections de la revue de sécurité, la clôture). Rien fusionné, rien déployé.
+  - **La visionneuse de code d'OSCR, GitHub en dernier recours seulement** (ta consigne du 29/09) : dossiers, fichiers colorés par highlight.js (classes stylées dans `science.css`), gouttière de numéros, indentation exacte, ancres de lignes et de plages dans OSCR, menu de ligne, permaliens, arbre des fichiers, copie, téléchargement ; historique, commits, diffs unifiés et côte à côte, comparaisons, diffs d'images. GitHub n'est proposé que pour ce qu'OSCR ne peut pas montrer (blame, fichier trop gros, licence qui interdit, quota épuisé, recherche d'un gros dépôt), par un lien discret « At the source » après une phrase qui dit pourquoi.
+  - **Un seul moteur Markdown** écrit ici (GFM, filtre de balises de GitHub), avec les maths (TeX vers MathML, sans bibliothèque) ; les README sur l'accueil et dans les dossiers.
+  - **Les cartes de traçage dans le code** (le cœur recherche) : 64 fragments statiques sans texte d'article ; les lignes liées aux couleurs du lecteur, « expliquer ces lignes » (les paragraphes des Méthodes que la carte relie, sans modèle), « interroger un commit » (les liens de carte que le commit a modifiés) ; permaliens lus pareil par le site et le Mac.
+  - **Fichiers riches** : notebooks Jupyter rendus sans jamais être exécutés, tableaux CSV/TSV, SVG, PDF dans le lecteur du navigateur, cartes et modèles 3D décrits en mots, et la vue Docs (GitHub Pages adapté : le Markdown de `docs/` en pages).
+  - **À propos** : langages calculés depuis l'arbre (façon Linguist, `.gitattributes` respecté), fichiers communautaires, « Citer ce dépôt » (APA et BibTeX depuis `CITATION.cff` ou `codemeta.json`).
+  - **Recherche** : le chercheur de fichiers (touche `t`) et la recherche dans le texte d'un petit dépôt, dans le navigateur, à l'envoi du formulaire.
+  - **Coût** : zéro requête Worker et zéro ligne D1 hors connexion ; les fichiers sont lus en brut (hors quota GitHub du lecteur).
+  - **Essai de bout en bout** : tout passe, avec les adresses de la phase 02 et le fragment des cartes. Captures : `docs/night-screenshots/phase-02/` (31 images, bureau et téléphone).
+  - **Tests à la clôture** : pytest 472 ; ruff propre ; `npm test` 924 sous Node 26 et Node 22 ; build 45 pages, 227 fichiers ; `check --every-route` ok ; `tsc --strict` propre.
+- **Suite** : phase 03 (édition web) sur la branche `night/phase-03-web-editing`, créée et poussée.
 
 ## 2. À valider par Yann
 
@@ -59,9 +69,18 @@ Mis à jour au fil de la nuit. La mission est dans `docs/NIGHT_RUN.md`, le journ
 21. **À tester avec la vraie App** : si GitHub renvoie bien `state` au retour d'installation ; qu'une personne déjà autorisée repasse sans invite ; `POST /user/repos` et `…/generate` avec le jeton utilisateur de l'App ; les réponses réelles de `/repos/{o}/{r}/autolinks` (préfixe en double : 422 `already_exists`).
 22. **Facultatif** : une fois le dépôt modèle de compendium créé, poser la variable de build `COMPENDIUM_TEMPLATE=<compte>/<nom>` : `/new/` le proposera (D01-9).
 
+**Phase 02, à relire (décisions prises, D02-1 à D02-19) — aucune action requise de ta part :**
+
+23. **Porte de licence** (D02-7) : sans licence ouverte détectée par GitHub, les fichiers d'un dépôt sont listés mais pas montrés (le README non plus ; l'accueil garde son court extrait de la phase 01), avec un lien « At the source » et une phrase qui invite les auteurs à ajouter une licence.
+24. **Moteur Markdown et maths maison** (D02-9) : l'inventaire citait Temml ; le MathML est écrit directement (aucune bibliothèque, aucune feuille de style, aucune police), et une commande TeX inconnue s'affiche telle quelle.
+25. **Images d'autres sites** (D02-6) : jamais chargées par la page (pas de proxy) ; un lien qui nomme l'hôte. Les images du dépôt lui-même, y compris ses adresses brutes GitHub, sont lues et affichées.
+26. **Fichiers communautaires par défaut** (D02-18) : l'accueil essaie au plus 4 lectures brutes à la racine de `<compte>/.github` (gratuites) plutôt que l'API « community profile » (qui coûterait une requête du quota du lecteur).
+27. **Blame** (D02-5) : reste la page de GitHub (elle exige une connexion GitHub), en dernier recours, avec la phrase.
+28. **Recherche** (D02-16) : dans le navigateur, pour les dépôts de moins de 300 fichiers et 4 Mo de texte ; au-delà, la recherche de code de GitHub, en dernier recours.
+
 ## 3. Décisions prises
 
-Voir [`docs/DECISIONS.md`](DECISIONS.md) (entrées D00-1 à D00-16, puis D01-1 à D01-29 pour la phase 01 : les dix du plan, et dix-neuf prises en construisant).
+Voir [`docs/DECISIONS.md`](DECISIONS.md) (entrées D00-1 à D00-16, puis D01-1 à D01-29 pour la phase 01 : les dix du plan, et dix-neuf prises en construisant ; D02-1 à D02-19 pour la phase 02, décrites dans [`docs/CODE_NAVIGATION.md`](CODE_NAVIGATION.md)).
 
 Décision de stockage : aucune option ne permet à OSCR d'héberger lui-même des dépôts Git à coût nul avec une conformité certaine aux conditions des services (D00-1). Les dépôts vivent donc dans le compte GitHub du chercheur, créés et pilotés par l'App GitHub d'OSCR avec son autorisation, une autorisation par action, plus le mode miroir pour les dépôts existants ; OSCR ne garde que sa propre couche (articles, DOI, cartes de traçage, revues) dans une nouvelle base D1 `oscr_forge` et sur le Mac (D00-2).
 
@@ -99,11 +118,20 @@ Décision de stockage : aucune option ne permet à OSCR d'héberger lui-même de
 27. **Autoliens** : GitHub ne les liste qu'aux administrateurs du dépôt ; la page des réglages permet d'en ajouter et d'en supprimer, et renvoie à la page de GitHub pour la liste.
 28. **Non mesuré dans workerd** : le temps CPU des routes de la forge (à mesurer une fois déployé).
 
+**Phase 02 :**
+
+29. **Reporté** (dans le plan, faute de temps ou par choix de sécurité) : lignes collantes et repli du code ; volet des symboles, aller à la définition, références ; recherche dans le fichier ; visionneuse 3D STL ; cartes GeoJSON (il faudrait un service de tuiles) ; dessin des diagrammes Mermaid (styles en ligne interdits par la CSP) ; reStructuredText rendu sur le Mac ; aperçu social ; DOI d'une release dans la citation ; « branches qui contiennent un commit » (pas d'API REST) ; copies identiques (empreintes du stock de scripts) ; diffs rendus de prose et de notebooks ; fichiers `linguist-generated` repliés dans les diffs.
+30. **Travail interrompu repris** : `markdown.ts` et `mathml.ts` d'E2, laissés non commités par la session précédente, ont été gardés et terminés (performance bornée sur les textes pathologiques, liens autos, maths « prix », tests).
+31. **Espace de travail partagé** : le brouillon de cette session est partagé avec l'agent de la branche `code-first` (qui fait tourner son propre Chrome sur le port 9396) ; mes fichiers étaient dans un sous-dossier, rien de lui n'a été touché. Le faux GitHub sur le port 9492, laissé par une session précédente de la phase 02, a été arrêté à la fin, comme mon Chrome (9390) et mon serveur statique (8793).
+32. **Captures** : servies par un petit serveur statique qui applique les en-têtes du site et autorise en plus le faux GitHub local dans `connect-src` (outil de test seulement ; les en-têtes du site sont inchangés, D01-29).
+33. **Point de rencontre avec `code-first`** : les classes `.hljs-*`, `ol.lines.code`, `nav.file-tree`, `.pair-1` à `.pair-6` et l'ancre `#pair-N` du lecteur ; `traced.ts` répète `pairClass` de `lines.ts` (qui ne se charge pas dans les tests Node). À la fusion, garder une seule définition.
+
 ## 5. Branches, dans l'ordre de fusion
 
 1. `night/phase-00-research` : terminée et poussée.
 2. `night/phase-01-git-hosting` : terminée et poussée (construite sur la précédente).
-3. `night/phase-02-code-navigation` : créée à partir de `night/phase-01-git-hosting`, poussée, à construire.
+3. `night/phase-02-code-navigation` : terminée et poussée (construite sur la précédente).
+4. `night/phase-03-web-editing` : créée à partir de `night/phase-02-code-navigation`, poussée, à construire.
 
 ## 6. Ajouts à `science.css`
 
@@ -118,3 +146,12 @@ Décision de stockage : aucune option ne permet à OSCR d'héberger lui-même de
   - `table.branches`, `dl.settings` (deux colonnes à partir de 641 px), `.panel` (le panneau du bouton Code), `.confirm` (la phrase d'une action à confirmer) ;
   - les champs `input[type="url"]` et `input[type="search"]` des formulaires, comme les champs texte ;
   - leurs réglages pour le téléphone (moins de 641 px).
+- Phase 02, dans le même esprit :
+  - la visionneuse : `.hljs-*` (les couleurs de highlight.js), `ol.lines.code` (gouttière, lignes choisies), `nav.file-tree`, `p.at-source` (le lien discret vers la source), `.line-menu`, `.code-layout`, les en-têtes de fichier ;
+  - l'historique et les diffs : `ol.commit-list`, `section.file-diff`, `table.diff` (unifié et côte à côte), `.image-diff` (côte à côte, balayage, pelure d'oignon en onze pas) ;
+  - le rendu Markdown : `.markdown-body` (titres et leur « § », alertes dites en mots, tableaux, listes de tâches, notes, blocs de maths), `details.outline`, `section.readme` ;
+  - les cartes de traçage : `li.traced` (barre dans la gouttière), `.traced-note`, `p.traced-explain` ;
+  - les fichiers riches : `.notebook` et ses cellules, `table.data` et son filtre, `p.rich-note` ;
+  - la vue Docs : `.docs-layout`, `nav.docs-nav` ; l'À propos : `p.languages`, `ul.community`, `details.cite-repo` ;
+  - la recherche : `form.finder`, `ol.finder-results`, `form.repo-search`, `ol.search-results` ;
+  - leurs réglages pour le téléphone.

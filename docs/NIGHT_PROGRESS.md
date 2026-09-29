@@ -34,7 +34,8 @@ from "Next step".
 |---|---|---|
 | 00 research and architecture | night/phase-00-research | **done** 2026-09-29, pushed (last code commit 831deaf) |
 | 01 Git hosting | night/phase-01-git-hosting | **done** 2026-09-29, pushed (13 commits, the foundation, E1 to E12, the end-to-end run) |
-| 02 Code navigation | night/phase-02-code-navigation | next: branch created from night/phase-01-git-hosting |
+| 02 Code navigation | night/phase-02-code-navigation | **done** 2026-09-29, pushed (9 commits: E1 to E7, the security review, the close) |
+| 03 Web editing | night/phase-03-web-editing | next: branch created from night/phase-02-code-navigation |
 
 ## Phase 00: what it produced
 
@@ -80,10 +81,33 @@ from "Next step".
   Node 22; build 45 pages; `check --every-route` ok; strict `tsc` clean (the command now lists
   `$(find worker tests -maxdepth 3 -name "*.ts")`: `tests/*/*/*.ts` matches no file).
 
+## Phase 02: what it produced
+
+- The registry's own code viewer in the `/r/` shell, GitHub only as a last resort (the owner's
+  directive, D02-2): directories, files (highlight.js, the line gutter, line and range anchors, the
+  line menu, permalinks, the file tree, copy, download), history, commits, unified and split diffs,
+  comparisons, image diffs (E1, E3).
+- One Markdown renderer with math (TeX to MathML, no library), READMEs on the home and in
+  directories (E2); tracing maps in the code view: 64 static shards, the lines a map links, "explain
+  these lines", a commit's map links, permalinks read alike by the site and the Mac (E4); notebooks
+  never run, CSV and TSV tables, SVG, PDF, maps and models in words, the Docs view (E5); languages,
+  community files, "Cite this repository" (E6); the file finder `t` and the search of a small
+  repository (E7).
+- The security review's fixes (email addresses masked in attributes, a search's ref checked); the
+  end-to-end run checks phase 02's addresses and the maps' shard.
+- Docs: `docs/CODE_NAVIGATION.md`, `ARCHITECTURE.md` ("Code navigation (phase 02)"), decisions
+  D02-1 to D02-19; screenshots `docs/night-screenshots/phase-02/` (31: desktop and phone).
+- Tests at the close: pytest 472 passed; ruff clean; `npm test` 924 passed under Node 26 and
+  Node 22; build 45 pages, 227 files; `check --every-route` ok (the 64 tracing-map shards held);
+  strict `tsc` clean (worker and tests; page scripts with `--module esnext --moduleResolution
+  bundler`); the end-to-end run: every check passed.
+
 ## Next step
 
-Phase 02, code navigation, on branch `night/phase-02-code-navigation` (created from
-`night/phase-01-git-hosting`): follow `docs/PLATFORM_PLAN.md` §15.6 "Phase 02"; the code view is
-built inside the `/r/` shell (`website/src/scripts/repo-shell.ts`, `src/lib/repo-view.ts`), which
-keeps phase 01's URL scheme (D01-5). The owner's actions are in `docs/NIGHT_REPORT.md` §2; until
-the App exists, everything runs against the fake GitHub and the in-memory double.
+Phase 03, web editing, on branch `night/phase-03-web-editing` (created from
+`night/phase-02-code-navigation`): follow `docs/PLATFORM_PLAN.md` §15.6 "Phase 03". The code views'
+hooks (`website/src/scripts/repo-code.ts`: `codeViews`, `renderers`, `treeExtras`, `lineMarkers`,
+`blobNotes`, `lineMenuExtras`, `binaryViews`, `languageOverrides`) are where an editor plugs in; the
+one Markdown renderer (`src/lib/markdown.ts`) serves the previews. The owner's actions are in
+`docs/NIGHT_REPORT.md` §2; until the App exists, everything runs against the fake GitHub and the
+in-memory double.

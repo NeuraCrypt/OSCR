@@ -550,3 +550,44 @@ their payloads, rows, caps, pages, jobs) is [FORGE.md](FORGE.md), the decisions 
   built to read it, `wrangler dev` with development values only; `e2e.ts` drives sign-in, creation,
   linking, settings, branches, autolinks, webhooks and `FORGE_OPEN`'s refusal over real HTTP. The
   screenshots of the pages: `docs/night-screenshots/phase-01/`.
+
+### Code navigation (phase 02): the registry's own code viewer
+
+Built on the night of 2026-09-29; the details are [CODE_NAVIGATION.md](CODE_NAVIGATION.md), the
+decisions D02-1 to D02-19 in [DECISIONS.md](DECISIONS.md). GitHub is the competitor: every view is
+the registry's own, and GitHub is only a last resort, said as such (D02-2).
+
+- **The views** are GitHub's address shapes inside the one static shell `/r/*` (D02-1): `tree`,
+  `blob`, `commits`, `commit`, `compare`, `docs`, `find`, `search`. The shell's script
+  (`src/scripts/repo-shell.ts`) imports one module per concern, each registering into
+  `repo-code.ts`'s hooks (`codeViews`, `renderers`, `treeExtras`, `lineMarkers`, `blobNotes`,
+  `lineMenuExtras`, `binaryViews`, `languageOverrides`) and `repo-history.ts`'s `commitExtras`:
+  `repo-code.ts` (directories and files), `repo-history.ts` (history, diffs, comparisons),
+  `repo-markdown.ts` (Markdown files and READMEs), `repo-traced.ts` (tracing maps), `repo-rich.ts`
+  (notebooks, tables, SVG, PDF, maps and models in words), `repo-docs.ts` (the Docs view),
+  `repo-about.ts` (languages, community files, the citation), `repo-find.ts` (the finder and the
+  search). Their pure parts are in `src/lib/` (`code-nav`, `highlight`, `history`, `markdown`,
+  `mathml`, `traced`, `notebook`, `table`, `rich`, `docs`, `attributes`, `about`, `citation`,
+  `finder`), each tested in Node (`tests/forge-pages/`).
+- **Reading** (D02-3): the reader's browser, GitHub's anonymous API on the reader's quota, the
+  files from `raw.githubusercontent.com` (not counted), GitHub's immutable answers kept for the tab
+  (`gitcache.ts`). Signed out, the Worker is asked nothing; D1 is not touched.
+- **Safety**: every view is a view tree of allowed elements and attributes (`repo-view.ts` `h`,
+  `TAGS`, `ATTRS`, `safeHref`, `safeSrc`), turned into DOM nodes by `dom.ts` (MathML in its
+  namespace), never an HTML string; highlight.js's output is parsed strictly; Markdown goes through
+  GitHub's tag filter; notebooks are never run (D02-12); images load from object URLs or `data:`,
+  never from another site (D02-6); email addresses are masked in text and in attributes read as
+  text (D02-17). The `/r/*` CSP: `script-src 'self'`, `style-src 'self'`, `img-src 'self' data:
+  blob:`, `connect-src 'self'` and GitHub's API and raw files, `object-src 'none'`,
+  `frame-ancestors 'none'`.
+- **Tracing maps** (D02-10): 64 static shards `/forge/traced/NN.json` built from the catalogue at
+  build time (a fixed number of files), no paper text; the code view marks the lines, "explain
+  these lines" names the paragraphs, a commit's page lists the map links it changed. Permalinks are
+  read the same way by the site and the Mac (`tests/fixtures/permalinks.json`, D02-11).
+- **Files added to the site**: the 64 tracing-map shards; the page scripts' chunks (one per
+  highlight.js language, loaded when needed). No file per repository.
+- **The meeting points with the `code-first` branch** (the paper reader rebuilt on the same model):
+  `.hljs-*`, `ol.lines.code`, `nav.file-tree`, `.pair-1` … `.pair-6` and the reader's `#pair-N`
+  anchor (CODE_NAVIGATION.md, "Where it meets the code-first branch").
+- **The screenshots**: `docs/night-screenshots/phase-02/` (desktop 1280×860, phone 390×844, against
+  the fake GitHub).

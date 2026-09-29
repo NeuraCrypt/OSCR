@@ -1,6 +1,8 @@
 # The forge service: the contract of the GitHub side (night phase 01)
 
-The "GitHub" side of OSCR: hosting, versioning and evolving research code, linked to papers. This
+The "GitHub" side of OSCR: hosting, versioning and evolving research code, linked to papers.
+Phase 02's code views (the registry's own viewer, history, Markdown, tracing maps, notebooks,
+search) are described in [CODE_NAVIGATION.md](CODE_NAVIGATION.md). This
 page is the contract the parts of phase 01 build on: the routes, the authorized actions and their
 payloads, the rows each writes, the caps, the switch `FORGE_OPEN`, the pages, the static layer,
 the Mac's jobs and the budget. The decisions behind it: [DECISIONS.md](DECISIONS.md) D00-1 to

@@ -900,3 +900,182 @@ development address is ever in them.
 
 **Why.** Security: the production policy stays as strict as it is; the test browser, not the
 site, makes the exception.
+
+## Phase 02: code navigation (2026-09-29)
+
+Taken while building the registry's own code viewer (`docs/CODE_NAVIGATION.md`), under the owner's
+directive of 2026-09-29: GitHub is OSCR's competitor; everything is shown inside OSCR, and a reader
+is sent to GitHub only as a last resort.
+
+### D02-1. GitHub's own address shapes, in the one /r/ shell
+
+**Decision.** The code views take GitHub's shapes after `/r/<owner>/<name>/`: `tree/<ref>/<path>`,
+`blob/<ref>/<path>`, `commits/<ref>/<path>`, `commit/<sha>`, `compare/<base>...<head>` (and two
+dots), `find/<ref>`, `search/?q=`, and `docs/<ref>/<page>` for the documentation. The longest branch
+or tag that prefixes the segments is the ref, as on GitHub. The one static shell serves them all
+(`/r/* /r/ 200`): no file per repository, no Worker request.
+
+**Why.** A GitHub address becomes the registry's by changing its start; links in READMEs, papers and
+maps translate one to one. Zero cost: the file budget does not grow with the repositories.
+
+### D02-2. The registry's own viewer; GitHub only as a last resort, said
+
+**Decision.** Files, directories, history, diffs, comparisons, Markdown, notebooks and tables are
+shown by the registry's own code, styled by `science.css`. highlight.js's class-based output is read
+into view trees by a strict parser (no HTML string reaches the page). The reader is sent to GitHub
+only when they ask for something the registry cannot show (blame, a file too large, a licence that
+forbids showing, GitHub's limit reached, the code search of a large repository), through a discreet
+"At the source" link after a sentence that says why (`code-nav.ts` `atSource`). The README, the
+files and the latest commit of phase 01's home now stay in the registry.
+
+**Why.** The owner's directive. A reader who leaves for GitHub does not come back.
+
+### D02-3. Read in the reader's browser, on the reader's quota; the tab keeps what never changes
+
+**Decision.** The views read GitHub's anonymous API from the reader's browser (60 requests an hour)
+and the files from `raw.githubusercontent.com` (not counted); the tab keeps the immutable answers
+(trees and commits by id) in `sessionStorage` (`gitcache.ts`). Every extra of phase 02 (READMEs,
+images, `.gitattributes`, the citation, the search's files, a tracing map's version) is a raw read.
+
+**Why.** D00-5: signed out, the Worker is asked nothing. The raw reads keep the quota for the
+requests only the API answers.
+
+### D02-4. Display limits
+
+**Decision.** Text files are read up to 1 MiB; images, notebooks and PDFs up to 10 MiB; highlighting
+up to 512 KiB, 20,000 lines and lines of 5,000 characters (plain text beyond); Markdown rendered up
+to 500 KiB (GitHub's cut), each said in words, with "At the source" for a file too large.
+
+**Why.** The reader's browser stays responsive; GitHub's own limits are the readers' expectations.
+
+### D02-5. Blame stays GitHub's page
+
+**Decision.** Blame needs a GitHub sign-in (GraphQL): the line menu and the key `b` open GitHub's
+blame at the commit, after the sentence that says so. Local blame is the command line's (phase 14).
+
+**Why.** D00-5 (no user token kept); the anonymous API has no blame.
+
+### D02-6. No image from another site loads without the reader's click
+
+**Decision.** An image on another site is a link naming its host; the page never loads it and there
+is no image proxy. The repository's own images (relative paths, and its own raw addresses) are read
+as bytes and shown from object URLs (`img-src blob:`); a notebook's outputs as `data:` images.
+
+**Why.** Privacy (a third party learns nothing of the reader) and cost (a proxy would spend the
+Worker's requests and be an open relay). The CSP stays strict.
+
+### D02-7. The licence gate: files are shown under an open licence only
+
+**Decision.** A repository's files are shown when GitHub detects an open licence (the list of
+`code-nav.ts` `licenceShows`); without one, or one GitHub cannot identify, they are listed, not
+shown, with "At the source" and a sentence that asks the authors to add a licence. The README is a
+file: not rendered then (the home keeps phase 01's 480-character excerpt, D02-19).
+
+**Why.** CLAUDE.md: a file whose licence does not allow redistribution is never published; showing
+is publishing.
+
+### D02-8. Diagrams, maps and 3D models are shown as source, in words
+
+**Decision.** Mermaid blocks and files, GeoJSON and TopoJSON, and STL models are shown as their
+source (or said in words: features by geometry, triangles), with a sentence and "At the source".
+
+**Why.** Mermaid's SVG needs inline styles the pages' CSP forbids; a map needs a tile service
+outside the registry; a 3D viewer is a large dependency. Deferred, not refused.
+
+### D02-9. One Markdown renderer and TeX to MathML, written here
+
+**Decision.** `markdown.ts` (GFM with GitHub's tag filter) and `mathml.ts` (TeX into MathML Core)
+are the registry's own code, with no dependency, producing view trees. The inventory named Temml;
+MathML is written directly instead: no library, no stylesheet, no font, and an unknown command is
+shown as its source, never guessed.
+
+**Why.** science.css only; nothing from a repository can become markup; the page scripts stay small
+(a few kilobytes, not a Markdown library plus a sanitizer). Pathological texts are bounded (tests).
+
+### D02-10. Tracing maps reach the code view as 64 static shards, with no paper text
+
+**Decision.** `/forge/traced/00.json` … `63.json` are built from the catalogue's alignments at build
+time, keyed like the layer's shards: per repository, each paper's map at its pinned commit, the
+pairs' paths, lines, section headings, paragraph numbers and symbols. The paragraphs themselves are
+read in the Code ↔ Paper reader. At another commit, a map's lines are found again by their content
+(the map's version, a raw read), else by the map's symbol; a range that changed says so.
+
+**Why.** Zero cost (static files, a fixed number); the paper's text keeps its licence rules; a map
+stays useful as the code moves.
+
+### D02-11. Trace points from permalinks: one reading, on both sides
+
+**Decision.** `src/lib/traced.ts` `parsePermalink` and `oscr/forge.py` `parse_permalink` read
+GitHub's and the registry's permalinks (a file at a commit id, its lines) the same way, held to
+`tests/fixtures/permalinks.json`; an address at a branch is no trace point. Addresses URL parsers
+read differently (spaces, backslashes, dot segments, escaped slashes) are refused on both sides.
+
+**Why.** A map pinned to a moving branch would silently drift; the Mac and the site must agree.
+
+### D02-12. Notebooks are rendered, never run
+
+**Decision.** A notebook is rendered from its JSON: Markdown cells, highlighted code, outputs in
+their richest safe form (images as `data:`, SVG as an image, Markdown and LaTeX rendered, text).
+HTML, JavaScript and widget outputs never run: their text form is shown, or a sentence.
+
+**Why.** CLAUDE.md: never execute users' code. GitHub does the same (its notebooks are static).
+
+### D02-13. A PDF opens in the browser's own viewer
+
+**Decision.** A PDF (checked by its signature) is opened in a new tab from an object URL typed
+`application/pdf`, or downloaded; no `<iframe>`, `<object>` or `<embed>`.
+
+**Why.** The CSP keeps `object-src 'none'` and no frame; a blob typed as a PDF never becomes a page
+of this site.
+
+### D02-14. The Docs view: GitHub Pages adapted
+
+**Decision.** `docs/<ref>/<page>` renders the Markdown of `docs/` (or of the root) as pages, their
+list beside them, with the one renderer and science.css; links between pages stay in the view. No
+author HTML, CSS or JavaScript runs; a Pages site built by Jekyll or a workflow keeps its own
+address, linked from the home's sidebar.
+
+**Why.** A repository's documentation read inside the registry, safely; the build of Pages is
+GitHub's.
+
+### D02-15. Languages are computed from the tree, Linguist's way
+
+**Decision.** The About panel's languages come from the recursive tree the page already read: bytes
+per language, data and prose aside, vendored, generated and documentation paths aside (Linguist's
+common defaults), `.gitattributes` obeyed.
+
+**Why.** GitHub's languages endpoint would cost one more request of the reader's 60; the tree is
+already there.
+
+### D02-16. The finder and the search run in the reader's browser
+
+**Decision.** The finder matches the tree's paths as the reader types (a local list). The search
+reads a small repository's text (300 files, 4 MB, files ≤ 384 KB) only when the form is sent; beyond
+that, GitHub's code search at the source, with the sentence (it needs a GitHub sign-in).
+
+**Why.** Zero cost and no index to keep; the catalogue's rule (a search runs on submit) kept.
+
+### D02-17. Email addresses are masked in attributes read as text too
+
+**Decision.** `h()` masks `title`, `alt`, `aria-label`, `placeholder` and `value` like text nodes.
+
+**Why.** CLAUDE.md: no email address is displayed. A repository's Markdown link titles and a
+notebook's output descriptions reach attributes (found by the security review).
+
+### D02-18. The owner's default community files are read raw
+
+**Decision.** For the community files a repository lacks (code of conduct, contributing, security,
+support), the home tries the root of `<owner>/.github` at `HEAD`, as raw reads (4 at most), and says
+"<owner>'s default".
+
+**Why.** GitHub's community profile endpoint would cost a request of the reader's quota; a raw 404 is
+free.
+
+### D02-19. The README is rendered from the tree; phase 01's excerpt stays the fallback
+
+**Decision.** The home and every directory render their README from the commit's tree (GitHub's
+precedence on the home: `.github/`, the root, `docs/`). Phase 01's excerpt (from the API's README)
+stays on the home until the whole README replaces it, and stays alone when the files cannot be read
+or shown (a rate limit, D02-7).
+
+**Why.** The reader never sees less than phase 01 gave; the tree's README costs no request.
