@@ -56,6 +56,7 @@ import "./repo-about.ts";
 import "./repo-find.ts";
 import "./repo-edit.ts";
 import "./repo-upload.ts";
+import "./repo-templates.ts";
 import { codePanel, quickSetup, useTemplate, wireCopy } from "./repo-code-panel.ts";
 import { mountBranches } from "./repo-branches.ts";
 import { mountSettings } from "./repo-settings.ts";
@@ -180,7 +181,7 @@ async function main(): Promise<void> {
   wireCopy(root);
   const slot = document.getElementById("repo-view");
   const env: CodeEnv | null = loaded.info
-    ? { repo: loaded.repo, info: loaded.info, session, endpoints, site, target: loaded.target, search: location.search }
+    ? { repo: loaded.repo, info: loaded.info, session, endpoints, site, target: loaded.target, search: location.search, layer: loaded.layer }
     : null;
   if (slot && loaded.info) {
     const repo = shellRepo(loaded, signedIn);

@@ -667,6 +667,20 @@ ul.delete-files { margin: .3em 0 .8em; padding-left: 1.3em; font-family: var(--f
 ul.delete-files li { overflow-wrap: anywhere; }
 p.editor-extra { margin: .3em 0; font-size: .9em; color: var(--muted); }
 
+/* Templates and writing aids (night phase 03, E5): a ruled picker under the name, the Markdown
+   toolbar as plain word buttons, a metadata file's check in words */
+.template-picker { padding: .2em .8em; border: 1px solid var(--rule); background: var(--bg-sidebar); }
+.template-picker p { margin: .35em 0; }
+.template-picker select, .template-picker input, .template-picker button { font: inherit; border-radius: 0; }
+.template-picker input[type="text"] { padding: .1em .3em; border: 1px solid #777; width: min(14em, 100%); }
+.template-picker .explain { color: var(--muted); font-size: .92em; }
+.md-toolbar { margin: .4em 0 0; font-size: .88em; }
+.md-toolbar button { font: inherit; border-radius: 0; border: 1px solid var(--rule); background: var(--bg-sidebar); padding: .05em .5em; margin: 0 0 .2em; cursor: pointer; }
+.md-toolbar button:hover { text-decoration: underline; }
+.md-toolbar .md-hint { color: var(--muted); }
+p.metadata-check { margin: .3em 0; font-size: .9em; overflow-wrap: anywhere; }
+p.community-missing { font-size: .9em; color: var(--muted); }
+
 footer {
   max-width: var(--width); margin: 0 auto; padding: 1em;
   border-top: 1px solid var(--rule); font-size: .85em; color: var(--muted);

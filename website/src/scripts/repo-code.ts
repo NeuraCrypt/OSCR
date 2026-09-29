@@ -67,7 +67,7 @@ import {
   unicodeWarnings,
 } from "../lib/code-nav.ts";
 import { draftKey, readDraft } from "../lib/editor.ts";
-import { repoPath, type RepoCoords, type RepoPath } from "../lib/forge.ts";
+import { repoPath, type RepoCoords, type RepoPath, type ShellLayer } from "../lib/forge.ts";
 import { detectLanguage, editorConfigTabWidth, highlightText, type LineNodes, plainLines } from "../lib/highlight.ts";
 import { type Child, dateOfIso, type El, h } from "../lib/repo-view.ts";
 import { show, toDom } from "./dom.ts";
@@ -84,6 +84,8 @@ export interface CodeEnv {
   target: RepoPath;
   /** The query string of the address (?plain=1, ?raw=1). */
   search: string;
+  /** OSCR's layer (its papers: the editor's CITATION.cff and README templates, phase 03). */
+  layer?: ShellLayer | null;
 }
 
 /** A file the page read, handed to the renderers. */

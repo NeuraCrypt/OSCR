@@ -26,6 +26,17 @@ import { Call, iso, type MemoryBackend, type MemRepo, type Who } from "./memory.
 import { reachable, resolveRev, setBranch, setTag } from "./memory-core.ts";
 
 const API = "api.github.com";
+
+/** The fake's licence templates: name, SPDX id, body with GitHub's placeholders (short texts). */
+const LICENSE_BODIES: Record<string, [string, string, string]> = {
+  mit: ["MIT License", "MIT", "MIT License\n\nCopyright (c) [year] [fullname]\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation files (the \"Software\"), to deal\nin the Software without restriction.\n"],
+  "apache-2.0": ["Apache License 2.0", "Apache-2.0", "                                 Apache License\n                           Version 2.0, January 2004\n\n   Copyright [yyyy] [name of copyright owner]\n"],
+  "bsd-3-clause": ["BSD 3-Clause \"New\" or \"Revised\" License", "BSD-3-Clause", "BSD 3-Clause License\n\nCopyright (c) [year], [fullname]\n"],
+  "gpl-3.0": ["GNU General Public License v3.0", "GPL-3.0", "                    GNU GENERAL PUBLIC LICENSE\n                       Version 3, 29 June 2007\n\n    Copyright (C) <year>  <name of author>\n"],
+  "cc-by-4.0": ["Creative Commons Attribution 4.0 International", "CC-BY-4.0", "Attribution 4.0 International\n"],
+  "cc0-1.0": ["Creative Commons Zero v1.0 Universal", "CC0-1.0", "CC0 1.0 Universal\n"],
+};
+const CONDUCT_BODY = "# {name}\n\n## Our Pledge\n\nWe pledge to make participation in our community a harassment-free experience for everyone.\n\n## Enforcement\n\nInstances of abusive behavior may be reported to the community leaders responsible for enforcement at [INSERT CONTACT METHOD].\n";
 const EMAIL_FIELD = { email: null };
 
 type Json = Record<string, unknown>;
@@ -494,6 +505,18 @@ export class FakeGitHub {
     this.on("GET", /^\/user$/, async (_m, x) => {
       const me = await (d.auth as NonNullable<MemoryBackend["auth"]>).whoAmI(x.who.kind === "user" ? x.who.token : "");
       return reply({ login: me.login, id: Number(me.id), type: "User", name: null, ...EMAIL_FIELD });
+    });
+    // GitHub's licence and code-of-conduct templates (the editor's pickers, night phase 03): short
+    // texts with GitHub's own placeholders.
+    this.on("GET", /^\/licenses\/([a-z0-9.-]{1,40})$/, (m) => {
+      const key = m[1];
+      if (!LICENSE_BODIES[key]) return reply({ message: "Not Found" }, 404);
+      return reply({ key, name: LICENSE_BODIES[key][0], spdx_id: LICENSE_BODIES[key][1], body: LICENSE_BODIES[key][2] });
+    });
+    this.on("GET", /^\/codes_of_conduct\/([a-z_]{1,40})$/, (m) => {
+      const key = m[1];
+      if (!["contributor_covenant", "citizen_code_of_conduct"].includes(key)) return reply({ message: "Not Found" }, 404);
+      return reply({ key, name: key === "contributor_covenant" ? "Contributor Covenant" : "Citizen Code of Conduct", body: CONDUCT_BODY.replace("{name}", key === "contributor_covenant" ? "Contributor Covenant" : "Citizen Code of Conduct") });
     });
     // A public account by its login (the editor's co-authors, night phase 03): anyone may ask.
     this.on("GET", /^\/users\/([A-Za-z0-9][A-Za-z0-9_-]{0,99})$/, (m) => {

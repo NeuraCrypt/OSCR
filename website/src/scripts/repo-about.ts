@@ -10,7 +10,7 @@
 
 import { maskEmails } from "../../worker/forge/mask.ts";
 import { text as utf8Text } from "../../worker/forge/objects.ts";
-import { communityFiles, type CommunityFile, languagesInWords, languageStats, overviewLinks, ownerDefaults } from "../lib/about.ts";
+import { communityFiles, type CommunityFile, languagesInWords, languageStats, missingCommunity, overviewLinks, ownerDefaults } from "../lib/about.ts";
 import { attributesOf, parseAttributes } from "../lib/attributes.ts";
 import { apa, bibtex, type Citation, citationOfCff, citationOfCodemeta } from "../lib/citation.ts";
 import { entryAt, refSegments } from "../lib/code-nav.ts";
@@ -79,6 +79,12 @@ treeExtras.push(async (_slot, env, opened, dir) => {
   }
   const links = overviewLinks(env.repo, opened.ref.ref, found);
   if (links) blocks.push(h("p", { class: "community-title" }, "Community"), links);
+  // Phase 03: what is missing, each "Add" the registry's editor on the file (its template there).
+  const missing = opened.ref.kind === "branch" ? missingCommunity(found) : [];
+  if (missing.length) {
+    const add = (m: (typeof missing)[number]) => h("a", { href: `${repoPath(env.repo, "new", refSegments(opened.ref.ref))}?${new URLSearchParams({ filename: m.filename })}` }, `Add ${m.label}`);
+    blocks.push(h("p", { class: "community-missing" }, "Missing: ", ...missing.flatMap((m, i) => (i ? [" · ", add(m)] : [add(m)])), "."));
+  }
   // The citation.
   const cff = found.find((f) => f.kind === "citation");
   let citation: Citation | null = null;

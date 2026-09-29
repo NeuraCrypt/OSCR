@@ -223,7 +223,9 @@ export async function mountEditor(slot: HTMLElement, env: CodeEnv, mode: "edit" 
   }
 
   const config = await editorConfigAt(env, opened);
-  const draftKey = E.draftKey(env.repo, branch, mode === "edit" ? `edit:${original}` : `new:${dir}/`);
+  // A new file's draft is the folder's, or the named file's when the address names one (?filename=).
+  const named = mode === "new" ? (params.get("filename") ?? "").slice(0, 255) : "";
+  const draftKey = E.draftKey(env.repo, branch, mode === "edit" ? `edit:${original}` : `new:${dir}/${named}`);
   const store = localStore();
   const draft = E.readDraft(store, draftKey, now());
 

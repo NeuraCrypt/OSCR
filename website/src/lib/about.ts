@@ -105,6 +105,20 @@ export function ownerDefaults(found: readonly CommunityFile[]): { kind: Communit
   return KINDS.filter((k) => names[k.kind] && !have.has(k.kind)).map((k) => ({ kind: k.kind, label: k.label, path: names[k.kind]! }));
 }
 
+/** The community checklist's missing files (night phase 03: "Add" opens the registry's editor on the
+ *  file, its template offered there): the licence and the citation first, research's own. */
+export function missingCommunity(found: readonly CommunityFile[]): { kind: CommunityKind; label: string; filename: string }[] {
+  const have = new Set(found.map((f) => f.kind));
+  const wanted: { kind: CommunityKind; label: string; filename: string }[] = [
+    { kind: "license", label: "a licence", filename: "LICENSE" },
+    { kind: "citation", label: "CITATION.cff", filename: "CITATION.cff" },
+    { kind: "code_of_conduct", label: "a code of conduct", filename: "CODE_OF_CONDUCT.md" },
+    { kind: "contributing", label: "contributing guidelines", filename: "CONTRIBUTING.md" },
+    { kind: "security", label: "a security policy", filename: "SECURITY.md" },
+  ];
+  return wanted.filter((w) => !have.has(w.kind));
+}
+
 /** The overview's links (README, code of conduct, contributing, licence, security…), each to the
  *  file in this viewer; a default from the owner's .github repository says so. */
 export function overviewLinks(repo: RepoCoords, ref: string, files: readonly CommunityFile[], ownerRef = "HEAD"): El | null {
