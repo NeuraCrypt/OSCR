@@ -284,3 +284,40 @@ export async function seedPulls(ada: GitSession, bob: GitSession, repo: T.RepoRe
   await ada.issues.comment(repo, pull.number, "The paper's Figure 2 uses band_power: this changes a line its tracing map links. I will re-run the figure before merging.");
   return { issue: issue.number, pull: pull.number };
 }
+
+/** Phase 05: the issues the issue pages show (the screenshots): GitHub's default labels and the
+ *  research ones, a milestone for the journal's revision, an issue with a task list, a reaction, a
+ *  comment and a sub-issue, pinned; one closed as completed, one as not planned. Returns the
+ *  numbers. */
+export async function seedIssues(ada: GitSession, bob: GitSession, repo: T.RepoRef): Promise<{ figure: number; docs: number; question: number }> {
+  for (const [name, color, description] of [
+    ["bug", "d73a4a", "Something isn't working"],
+    ["documentation", "0075ca", "Improvements or additions to documentation"],
+    ["good first issue", "7057ff", "Good for newcomers"],
+    ["question", "d876e3", "Further information is requested"],
+    ["data", "1d76db", "The data the code reads or writes"],
+    ["environment", "fbca04", "Versions, packages, the system the code runs on"],
+    ["numerical difference", "e99695", "Results differ from the paper's numbers"],
+  ] as const) {
+    await ada.issues.createLabel(repo, { name, color, description }).catch(() => undefined);
+  }
+  const revision = await ada.issues.createMilestone(repo, { title: "Revision for the journal", description: "What the reviewers asked before the paper's second version.", dueOn: "2026-12-01T00:00:00Z" });
+  const figure = await bob.issues.create(repo, {
+    title: "Figure 2's alpha ratio differs with SciPy 1.14",
+    body: "Running `python plot.py` with SciPy 1.14 gives an alpha ratio of 0.31 for subject 3, where the paper's Figure 2 shows 0.29.\n\n- [x] Checked with the paper's data\n- [ ] Tried SciPy 1.11, the version of the paper\n- [ ] Compared the Welch parameters",
+  });
+  await ada.issues.update(repo, figure.number, { labels: ["numerical difference", "environment"], milestone: revision.number, assignees: ["ada-fixture"], type: "Bug" });
+  await ada.issues.react(repo, { issue: figure.number }, "eyes");
+  await ada.issues.comment(repo, figure.number, "Thank you. SciPy changed Welch's default detrending in 1.12; the paper used 1.11. I will pin the version in the environment file.");
+  const pin = await ada.issues.create(repo, { title: "Pin SciPy to the paper's version", body: "The environment file names `scipy==1.11.4`." });
+  await ada.issues.update(repo, pin.number, { labels: ["environment"], milestone: revision.number });
+  await ada.issues.addSubIssue(repo, figure.number, pin.number);
+  await ada.issues.pin(repo, figure.number, true);
+  const docs = await ada.issues.create(repo, { title: "Document the preprocessing parameters", body: "The band-pass edges and the epoch length, in the README." });
+  await ada.issues.update(repo, docs.number, { labels: ["documentation", "good first issue"] });
+  await ada.issues.update(repo, docs.number, { state: "closed", stateReason: "completed" });
+  const question = await bob.issues.create(repo, { title: "Will there be a Docker image?", body: "It would help to run the analysis as it was." });
+  await ada.issues.update(repo, question.number, { labels: ["question"], state: "closed", stateReason: "not_planned" });
+  await ada.issues.comment(repo, question.number, "Not planned: the environment file and the lock file are enough to run it as it was.");
+  return { figure: figure.number, docs: docs.number, question: question.number };
+}

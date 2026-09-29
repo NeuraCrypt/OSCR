@@ -61,6 +61,7 @@ import "./repo-pulls.ts";
 import "./repo-pull.ts";
 import "./repo-pull-files.ts";
 import "./repo-conflicts.ts";
+import "./repo-issues.ts";
 import { mountForkStatus } from "./repo-forks.ts";
 import { codePanel, quickSetup, useTemplate, wireCopy } from "./repo-code-panel.ts";
 import { mountBranches } from "./repo-branches.ts";

@@ -796,6 +796,61 @@ pre.conflict-context { color: var(--muted); background: var(--bg-sidebar); }
 p.conflict-whole { margin: .2em .7em .5em; font-size: .9em; }
 section.conflict-guide { margin: 1.2em 0; }
 
+/* Issues (night phase 05, E4): the list as ruled rows (the state and the type in words, never a
+   pill), a label as its name after a small square of its colour (a fixed palette of 16, chosen by
+   `data-color`: no style attribute), the chooser's entries, the new-issue form's fields, similar
+   issues and the suggestions set by rule in a quiet ruled box */
+ul.issue-list { list-style: none; margin: 0 0 1em; padding: 0; }
+ul.issue-list li.issue-row { display: flex; gap: .6em; align-items: baseline; padding: .45em 0; border-bottom: 1px solid var(--rule); }
+ul.issue-list li.issue-row > div { min-width: 0; }
+ul.issue-list li.issue-row.pinned { border-left: 3px solid var(--masthead); padding-left: .5em; }
+ul.issue-list .title { margin: 0; overflow-wrap: anywhere; }
+ul.issue-list .line { margin: .1em 0 0; color: var(--muted); font-size: .9em; overflow-wrap: anywhere; }
+.issue-state { font-weight: bold; }
+.issue-state.muted { color: var(--muted); }
+.issue-type { color: var(--muted); }
+.issue-type.research { color: var(--masthead); font-weight: bold; }
+.issue-flag { color: var(--muted); font-size: .9em; }
+.label { white-space: nowrap; }
+.label-mark { display: inline-block; width: .7em; height: .7em; margin-right: .3em; border: 1px solid #888; vertical-align: -.05em; }
+.label-mark[data-color="red"] { background: #d73a4a; }
+.label-mark[data-color="orange"] { background: #e99695; }
+.label-mark[data-color="amber"] { background: #fbca04; }
+.label-mark[data-color="yellow"] { background: #e4e669; }
+.label-mark[data-color="lime"] { background: #c2e0c6; }
+.label-mark[data-color="green"] { background: #0e8a16; }
+.label-mark[data-color="teal"] { background: #008672; }
+.label-mark[data-color="cyan"] { background: #a2eeef; }
+.label-mark[data-color="blue"] { background: #0075ca; }
+.label-mark[data-color="navy"] { background: #1d76db; }
+.label-mark[data-color="violet"] { background: #7057ff; }
+.label-mark[data-color="purple"] { background: #d876e3; }
+.label-mark[data-color="pink"] { background: #f9d0c4; }
+.label-mark[data-color="brown"] { background: #8a5a2b; }
+.label-mark[data-color="gray"] { background: #cfd3d7; }
+.label-mark[data-color="white"] { background: #fff; }
+ul.label-list, ul.milestone-list, ul.template-list { list-style: none; margin: .3em 0 1em; padding: 0; }
+ul.label-list li.label-row { padding: .35em 0; border-bottom: 1px solid var(--rule); overflow-wrap: anywhere; }
+ul.label-list .label-about { color: var(--muted); }
+ul.milestone-list li, ul.template-list li { padding: .4em 0; border-bottom: 1px solid var(--rule); }
+ul.milestone-list .title, ul.template-list .title { margin: 0; font-weight: bold; overflow-wrap: anywhere; }
+ul.milestone-list .line, ul.template-list .line { margin: .1em 0 0; color: var(--muted); font-size: .92em; overflow-wrap: anywhere; }
+.issue-bulk p { margin: .3em 0; }
+.issue-bulk select, .issue-form select { font: inherit; border-radius: 0; max-width: 100%; }
+section.issue-form .form-field { margin: .6em 0; }
+section.issue-form .form-field label { display: block; font-weight: bold; }
+section.issue-form .form-field input[type="text"] { width: min(40em, 100%); }
+section.issue-form .form-markdown { margin: .5em 0; padding: .1em .7em; border-left: 3px solid var(--rule); }
+section.issue-form fieldset.choices label { display: block; margin: .15em 0; }
+section.issue-form details.issue-meta { margin: .6em 0; }
+section.issue-form details.issue-meta summary { cursor: pointer; font-size: .92em; }
+fieldset.issue-labels label.label { display: inline-block; margin: .1em .8em .1em 0; }
+.similar, .rule-suggestions { margin: .3em 0; font-size: .92em; }
+.similar ul { margin: .2em 0 .4em; padding-left: 1.3em; }
+p.similar-title { margin: .3em 0 .1em; color: var(--muted); }
+p.rule-suggestion { margin: .3em 0; padding: .2em .6em; border-left: 3px solid var(--rule); background: var(--bg-sidebar); }
+section.template-problems { margin: 1em 0; }
+
 footer {
   max-width: var(--width); margin: 0 auto; padding: 1em;
   border-top: 1px solid var(--rule); font-size: .85em; color: var(--muted);
@@ -842,4 +897,7 @@ footer a { margin-right: 1em; }
   section.merge-box, .comment { padding-left: .6em; padding-right: .6em; }
   p.comment-head { margin-left: -.6em; margin-right: -.6em; padding-left: .6em; }
   form.pull-filter input[type="search"] { width: 100%; }
+  /* Phase 05: the issue forms take the column; a label keeps its words together */
+  section.issue-form .form-field input[type="text"] { width: 100%; box-sizing: border-box; }
+  ul.issue-list li.issue-row.pinned { padding-left: .3em; }
 }

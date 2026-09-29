@@ -256,6 +256,8 @@ export function parseLayer(value: unknown): ViewLayer | null {
       .map(record)
       .filter((r): r is Record<string, unknown> => !!r && typeof r.login === "string" && /^[A-Za-z0-9][A-Za-z0-9-]{0,38}$/.test(r.login))
       .map((r) => ({ login: r.login as string, papers: (Array.isArray(r.papers) ? r.papers : []).filter((d): d is string => typeof d === "string" && DOI.test(d)).slice(0, 20) })),
+    // Phase 05: the research issues, checked field by field where they are read (issue-view.ts).
+    research: Array.isArray(o.research) ? o.research.slice(0, 1000) : undefined,
   };
 }
 
@@ -363,11 +365,19 @@ export function repoHead({ owner, name, info }: HeadFacts): El {
 /** The bar of the shell's views, under the heading (nav.tabs, never pills). */
 export function repoTabs(repo: RepoCoords, view: RepoView): El {
   // Every code view (tree, blob, commits, commit, compare, find, search) is under Code; a pull
-  // request and the list under Pull requests (phase 04).
-  const shown: RepoView = view === "settings" || view === "branches" ? view : view === "pulls" || view === "pull" ? "pulls" : "home";
+  // request and the list under Pull requests (phase 04); an issue, the list, labels and milestones
+  // under Issues (phase 05).
+  const shown: RepoView =
+    view === "settings" || view === "branches"
+      ? view
+      : view === "pulls" || view === "pull"
+        ? "pulls"
+        : view === "issues" || view === "labels" || view === "milestones" || view === "milestone"
+          ? "issues"
+          : "home";
   const tab = (v: RepoView, label: string) =>
     h("li", null, h("a", { href: repoPath(repo, v), "aria-current": v === shown ? "page" : null }, label));
-  return h("nav", { class: "tabs", "aria-label": "Repository" }, h("ul", null, tab("home", "Code"), tab("pulls", "Pull requests"), tab("branches", "Branches"), tab("settings", "Settings")));
+  return h("nav", { class: "tabs", "aria-label": "Repository" }, h("ul", null, tab("home", "Code"), tab("issues", "Issues"), tab("pulls", "Pull requests"), tab("branches", "Branches"), tab("settings", "Settings")));
 }
 
 // ─── the papers, the Pages site, the archive ─────────────────────────────────

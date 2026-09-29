@@ -272,6 +272,9 @@ export interface ShellLayer {
   /** Phase 04: the papers' verified authors by their GitHub login (signed in, to the people who
    *  manage the code or wrote a paper): the reviewers a pull request suggests. */
   reviewers?: { login: string; papers: string[] }[];
+  /** Phase 05: the research issues about the repository, as of last night (the static shard only;
+   *  read by src/lib/issue-view.ts parseSummaries). */
+  research?: unknown[];
 }
 
 /** What the /r/ shell knows of a repository, and hands to mountSettings and mountBranches
