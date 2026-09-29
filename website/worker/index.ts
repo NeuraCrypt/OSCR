@@ -12,6 +12,8 @@
 //   /api/forge/*         the GitHub side (night phase 01): one authorized action (start, act),
 //                        GitHub's webhooks, OSCR's layer over a repository (forge/service/;
 //                        docs/FORGE.md). The repository pages themselves are static (/r/*).
+//   /api/v1, /api/v1/*   the public API (night phase 10): bearer tokens, CORS, dated versions
+//                        (forge/service/api.ts; docs/API.md).
 //
 // The search's answers are public and cached (Cache-Control: public, api.ts); the accounts', the
 // contributions' and the forge's depend on the reader (a session cookie) or change the registry,
@@ -22,6 +24,7 @@ import { handleAccount } from "./account/index.ts";
 import { error, handleSearch } from "./api.ts";
 import { handleContributions } from "./contributions/index.ts";
 import type { Context, Env, Handler } from "./env.ts";
+import { handleApi } from "./forge/service/api.ts";
 import { handleForge } from "./forge/service/index.ts";
 
 type Route = { path: string; handle: Handler } | { prefix: string; handle: Handler };
@@ -35,6 +38,8 @@ const contributions: Handler = async (request, env, ctx) =>
 /** The forge service (night phase 01), likewise: GitHub's backend, built from the environment. */
 const forge: Handler = async (request, env, ctx) =>
   (await handleForge(request, env, ctx)) ?? error(404, "not_found", "No such route.");
+/** The public API (night phase 10), likewise. */
+const api: Handler = async (request, env, ctx) => (await handleApi(request, env, ctx)) ?? error(404, "not_found", "No such route.");
 
 const ROUTES: Route[] = [
   { path: "/api/search", handle: handleSearch },
@@ -49,6 +54,8 @@ const ROUTES: Route[] = [
   { path: "/api/validations", handle: contributions },
   { path: "/api/reports", handle: contributions },
   { prefix: "/api/forge/", handle: forge },
+  { path: "/api/v1", handle: api },
+  { prefix: "/api/v1/", handle: api },
 ];
 
 function route(pathname: string): Handler | undefined {

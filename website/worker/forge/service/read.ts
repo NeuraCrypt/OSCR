@@ -43,7 +43,7 @@
 // databases), and every answer is `Cache-Control: no-store` (http.ts). Signed out: 401 with the
 // stale cookies cleared (account/guard.ts).
 
-import { signedIn } from "../../account/guard.ts";
+import { who } from "./who.ts";
 import type { User } from "../../account/store.ts";
 import { SEGMENT } from "../paths.ts";
 import type { ForgeName } from "../types.ts";
@@ -190,7 +190,7 @@ const repoUrl = (row: RepoRow): string => `/r/${encodeURIComponent(row.owner_log
 
 /** The signed-in reader, reading only (the session is not slid: 0 rows written). */
 async function reader(r: ForgeRequest): Promise<{ user: User; community: D1Database } | Response> {
-  const s = await signedIn(r.request, r.env, r.t, { post: false, touch: false });
+  const s = await who(r, { post: false, touch: false });
   if (s instanceof Response) return s;
   return { user: s.user, community: s.db };
 }

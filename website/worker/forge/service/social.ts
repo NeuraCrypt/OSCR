@@ -16,7 +16,8 @@
 // writes nothing. No answer names an account's id; a private profile's stars, lists and follows are
 // the person's own.
 
-import { signedIn, type SignedIn } from "../../account/guard.ts";
+import type { SignedIn } from "../../account/guard.ts";
+import { who } from "./who.ts";
 import { identityOwner, userById } from "../../account/store.ts";
 import { FORGE_ROWS_PER_DAY } from "./caps.ts";
 import { readCapped } from "./flow.ts";
@@ -117,7 +118,7 @@ const done = (s: SignedIn, written: number, extra: Record<string, unknown> = {})
 
 /** GET /api/forge/social?s=<subject or target>&s=…: what the reader's buttons show. */
 export async function handleSocialState(r: ForgeRequest): Promise<Response> {
-  const s = await signedIn(r.request, r.env, r.t, { post: false, touch: false });
+  const s = await who(r, { post: false, touch: false });
   if (s instanceof Response) return s;
   const asked = [...new Set(r.url.searchParams.getAll("s"))];
   if (asked.length > STATE_SUBJECTS) return problemAnswer(bad(`A page asks about ${STATE_SUBJECTS} subjects at most.`));
@@ -154,7 +155,7 @@ export async function handleSocialState(r: ForgeRequest): Promise<Response> {
 /** GET /api/forge/social/mine: the reader's own stars, lists (private ones included), follows,
  *  profile, and what the day's caps leave. */
 export async function handleSocialMine(r: ForgeRequest): Promise<Response> {
-  const s = await signedIn(r.request, r.env, r.t, { post: false, touch: false });
+  const s = await who(r, { post: false, touch: false });
   if (s instanceof Response) return s;
   const [stars, lists, items, follows, profile, caps] = await Promise.all([
     all<StarRow>(starsOf(r.db, s.user.id)),
@@ -181,7 +182,7 @@ export async function handleSocialMine(r: ForgeRequest): Promise<Response> {
  *  else), and whether the reader follows them. A catalogue author without an account answers
  *  `account: false`, and can still be followed by ORCID iD. */
 export async function handleSocialPerson(r: ForgeRequest): Promise<Response> {
-  const s = await signedIn(r.request, r.env, r.t, { post: false, touch: false });
+  const s = await who(r, { post: false, touch: false });
   if (s instanceof Response) return s;
   const q = r.url.searchParams;
   const github = q.get("github");
@@ -228,7 +229,7 @@ export async function handleSocialPerson(r: ForgeRequest): Promise<Response> {
 // ─── writes ──────────────────────────────────────────────────────────────────
 
 export async function handleSocialStar(r: ForgeRequest): Promise<Response> {
-  const s = await signedIn(r.request, r.env, r.t, { post: true, touch: true });
+  const s = await who(r, { post: true, touch: true });
   if (s instanceof Response) return s;
   const say = (p: ForgeProblem) => problemAnswer(p, s.cookies);
   const body = await readPost(r);
@@ -253,7 +254,7 @@ export async function handleSocialStar(r: ForgeRequest): Promise<Response> {
 }
 
 export async function handleSocialFollow(r: ForgeRequest): Promise<Response> {
-  const s = await signedIn(r.request, r.env, r.t, { post: true, touch: true });
+  const s = await who(r, { post: true, touch: true });
   if (s instanceof Response) return s;
   const say = (p: ForgeProblem) => problemAnswer(p, s.cookies);
   const body = await readPost(r);
@@ -284,7 +285,7 @@ export async function handleSocialFollow(r: ForgeRequest): Promise<Response> {
 }
 
 export async function handleSocialList(r: ForgeRequest): Promise<Response> {
-  const s = await signedIn(r.request, r.env, r.t, { post: true, touch: true });
+  const s = await who(r, { post: true, touch: true });
   if (s instanceof Response) return s;
   const say = (p: ForgeProblem) => problemAnswer(p, s.cookies);
   const body = await readPost(r);
@@ -367,7 +368,7 @@ export async function handleSocialList(r: ForgeRequest): Promise<Response> {
 }
 
 export async function handleSocialProfile(r: ForgeRequest): Promise<Response> {
-  const s = await signedIn(r.request, r.env, r.t, { post: true, touch: true });
+  const s = await who(r, { post: true, touch: true });
   if (s instanceof Response) return s;
   const say = (p: ForgeProblem) => problemAnswer(p, s.cookies);
   const body = await readPost(r);

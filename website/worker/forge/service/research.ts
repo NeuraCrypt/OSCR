@@ -1,7 +1,8 @@
 // The routes of research issues (night phase 05, E2): what research-core.ts describes, read and
 // written for a signed-in reader. See research-core.ts for the whole contract.
 
-import { signedIn, type SignedIn } from "../../account/guard.ts";
+import type { SignedIn } from "../../account/guard.ts";
+import { who as whoAsks } from "./who.ts";
 import { FORGE_ROWS_PER_DAY } from "./caps.ts";
 import { readCapped } from "./flow.ts";
 import { closed, dailyCaps, globalCap, mayWrite, overCap } from "./gate.ts";
@@ -177,7 +178,7 @@ async function knownCode(r: ForgeRequest, community: D1Database, repo: NonNullab
 }
 
 export async function handleResearchRead(r: ForgeRequest): Promise<Response> {
-  const s = await signedIn(r.request, r.env, r.t, { post: false, touch: false });
+  const s = await whoAsks(r, { post: false, touch: false });
   if (s instanceof Response) return s;
   const q = r.url.searchParams;
   const writes = mayWrite(r.env, await linkedGithub(s.db, s.user.id));
@@ -218,7 +219,7 @@ export async function handleResearchRead(r: ForgeRequest): Promise<Response> {
 }
 
 export async function handleResearchOpen(r: ForgeRequest): Promise<Response> {
-  const s = await signedIn(r.request, r.env, r.t, { post: true, touch: true });
+  const s = await whoAsks(r, { post: true, touch: true });
   if (s instanceof Response) return s;
   const say = (p: ForgeProblem) => problemAnswer(p, s.cookies);
   const body = await readPost(r);
@@ -257,7 +258,7 @@ export async function handleResearchOpen(r: ForgeRequest): Promise<Response> {
 }
 
 export async function handleResearchComment(r: ForgeRequest): Promise<Response> {
-  const s = await signedIn(r.request, r.env, r.t, { post: true, touch: true });
+  const s = await whoAsks(r, { post: true, touch: true });
   if (s instanceof Response) return s;
   const say = (p: ForgeProblem) => problemAnswer(p, s.cookies);
   const body = await readPost(r);
@@ -305,7 +306,7 @@ export async function handleResearchComment(r: ForgeRequest): Promise<Response> 
 }
 
 export async function handleResearchEdit(r: ForgeRequest): Promise<Response> {
-  const s = await signedIn(r.request, r.env, r.t, { post: true, touch: true });
+  const s = await whoAsks(r, { post: true, touch: true });
   if (s instanceof Response) return s;
   const say = (p: ForgeProblem) => problemAnswer(p, s.cookies);
   const body = await readPost(r);

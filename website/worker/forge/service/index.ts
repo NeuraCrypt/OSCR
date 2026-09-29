@@ -111,10 +111,25 @@ export async function handleForge(
   if (!route) return problem(404, "not_found", "No such route.");
   const get = request.method === "GET" || request.method === "HEAD";
   if (route.method === "GET" ? !get : request.method !== "POST") return wrongMethod(route.method);
+  return runRoute(request, env, ctx, deps, { url, path, signedIn: route.signedIn, handle: route.handle });
+}
+
+/** One route of the forge service, once its path and method are known (handleForge, and phase 10's
+ *  public API, api.ts): the FORGE binding (503 not_configured without it), for a signed-in route the
+ *  accounts (COMMUNITY and SESSION_KEY), then `prepare` (the API's token, scope and rate limit: an
+ *  answer ends it there) and the handler; whatever it throws becomes an answer in words. */
+export async function runRoute(
+  request: Request,
+  env: ForgeServiceEnv | object,
+  ctx: Context,
+  deps: ForgeDeps,
+  o: { url: URL; path: string; signedIn: boolean; handle: RouteHandler; prepare?: (r: ForgeRequest) => Promise<Response | null> },
+): Promise<Response> {
+  const { url, path } = o;
   const e = env as ForgeServiceEnv;
   const forgeDb: D1Database | undefined = e.FORGE;
   if (!forgeDb) return problem(503, "not_configured", "The GitHub side is not set up yet.");
-  if (route.signedIn && !ready(e as AccountEnv)) return problem(503, "not_configured", "Accounts are not set up yet.");
+  if (o.signedIn && !ready(e as AccountEnv)) return problem(503, "not_configured", "Accounts are not set up yet.");
   const t = deps.now ? deps.now() : now();
 
   // Development only (ACCOUNT_DEV_METRICS=1): D1's figures for both databases in the answer.
@@ -135,7 +150,9 @@ export async function handleForge(
       deps,
     };
     try {
-      return await route.handle(r);
+      const early = o.prepare ? await o.prepare(r) : null;
+      if (early) return early;
+      return await o.handle(r);
     } catch (err) {
       return failure(err, path, t);
     }

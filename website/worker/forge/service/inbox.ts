@@ -28,7 +28,8 @@
 // The page filters (repo:, org:, author:, is:, reason:) and switches views (Inbox, Unread, Saved,
 // Done, Read) in the browser: one request a view.
 
-import { signedIn, type SignedIn } from "../../account/guard.ts";
+import type { SignedIn } from "../../account/guard.ts";
+import { who } from "./who.ts";
 import { identityOwner, userById } from "../../account/store.ts";
 import { utcDay } from "./caps.ts";
 import { EVENT_TYPE_OF, EVENT_WORDS, eventByKey, eventsOf, RETENTION_SECONDS, threadWords, type EventKind, type EventRow } from "./events.ts";
@@ -292,7 +293,7 @@ export async function computeInbox(db: D1Database, s: SignedIn, t: number): Prom
 }
 
 export async function handleInbox(r: ForgeRequest): Promise<Response> {
-  const s = await signedIn(r.request, r.env, r.t, { post: false, touch: false });
+  const s = await who(r, { post: false, touch: false });
   if (s instanceof Response) return s;
   const inbox = await computeInbox(r.db, s, r.t);
   const writes = mayWrite(r.env, await linkedGithub(s.db, s.user.id));
@@ -385,7 +386,7 @@ function stateWrite(db: D1Database, userId: string, key: string, op: Op, x: { ti
 }
 
 export async function handleNotices(r: ForgeRequest): Promise<Response> {
-  const s = await signedIn(r.request, r.env, r.t, { post: true, touch: true });
+  const s = await who(r, { post: true, touch: true });
   if (s instanceof Response) return s;
   const say = (p: ForgeProblem) => problemAnswer(p, s.cookies);
   if (!(r.request.headers.get("Content-Type") ?? "").toLowerCase().startsWith("application/json")) return say(bad("The request is not JSON."));
@@ -500,7 +501,7 @@ async function publicActions(db: D1Database, userId: string, t: number, days: nu
 }
 
 export async function handleFeed(r: ForgeRequest): Promise<Response> {
-  const s = await signedIn(r.request, r.env, r.t, { post: false, touch: false });
+  const s = await who(r, { post: false, touch: false });
   if (s instanceof Response) return s;
   const me = await whoIs(s);
   const follows = (await all<FollowRow>(followsOf(r.db, s.user.id))).filter((f) => f.level !== "ignore").sort((a, b) => b.at - a.at);
@@ -592,7 +593,7 @@ export async function handleFeed(r: ForgeRequest): Promise<Response> {
 const NOT_CONTRIBUTIONS = new Set(["star", "star_list", "follow", "notice", "profile", "release_drafts"]);
 
 export async function handleActivity(r: ForgeRequest): Promise<Response> {
-  const s = await signedIn(r.request, r.env, r.t, { post: false, touch: false });
+  const s = await who(r, { post: false, touch: false });
   if (s instanceof Response) return s;
   const q = r.url.searchParams;
   let userId: string | null = null;

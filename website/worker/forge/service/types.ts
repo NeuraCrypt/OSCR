@@ -16,6 +16,7 @@
 //   start.ts, act.ts (E1)   webhook.ts (E3)   read.ts (E6)
 
 import type { AccountEnv, Context, D1Database, D1PreparedStatement } from "../../account/types.ts";
+import type { Principal } from "./bearer.ts";
 import type { User } from "../../account/store.ts";
 import type { GitBackend, GitSession } from "../gitbackend.ts";
 import type { ForgeEnv } from "../github/index.ts";
@@ -77,6 +78,10 @@ export interface ForgeRequest {
   backend(): GitBackend;
   actions: ActionRegistry;
   deps: ForgeDeps;
+  /** Phase 10: the person behind the token of a public API request (/api/v1/*), set by the API's
+   *  router (api.ts) once the token, its scope and its rate limit passed; never set for the site's own
+   *  routes. The shared routes read it through who.ts in place of a session. */
+  principal?: Principal;
 }
 
 export type RouteHandler = (r: ForgeRequest) => Promise<Response>;
