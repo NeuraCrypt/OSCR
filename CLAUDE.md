@@ -165,6 +165,15 @@ What signed-in readers ask of the registry (`website/worker/contributions/`, `os
   and reverses what a rule did (`reverse`). The site tells the requester what will happen
   (`src/lib/moderation.ts`, the same base rules: `tests/fixtures/moderation_rules.json`). No free text
   of a reader is public, so no language model is used.
+- **Data rights** (GDPR, 2026-09-29; `/data-rights/`, `oscr/rights.py`, D1 `rights`, `docs/CONTRIBUTIONS.md`):
+  signed in, one right at a time. A person is matched to contact rows **by an ORCID iD proven at
+  orcid.org only**. Access is answered on the page (email addresses masked, never whole, since D1
+  refuses an at sign); erasure and objection delete the rows and add the iD and the addresses'
+  SHA-256 to `contact_suppressed`, which `oscr/contacts.py` honours, and the next private publication
+  squashes the Hugging Face history and deletes the old files; the account is deleted by the Mac.
+  What the rules cannot answer waits for the operator with its one-month deadline (`oscr rights
+  list`): a data-rights request, or a removal for personal data, is **never closed unanswered**. The
+  moderator's log and settled requests are kept 12 months.
 - **Costs**: a request writes 3 D1 rows, an answer 1 (in the facts push's daily budget); per-account
   daily limits are counted from the rows; a signed-out reader's page view asks the Worker nothing
   (the `__Host-oscr_signed_in` hint cookie). No email address in any form: the texts lose theirs.
