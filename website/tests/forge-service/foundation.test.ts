@@ -337,7 +337,11 @@ describe("the rows (store.ts)", () => {
     assert.ok(FORGE_SCHEMA.includes("CREATE TABLE repos"));
     const between = (from: string, to: string) => FORGE_SCHEMA.slice(FORGE_SCHEMA.indexOf(from), FORGE_SCHEMA.indexOf(to, FORGE_SCHEMA.indexOf(from)));
     const listed = (text: string) => [...text.matchAll(/'([a-z_]+)'/g)].map((m) => m[1]);
-    assert.deepEqual(listed(between("kind         TEXT NOT NULL CHECK (kind IN (", "))")), [...ACTION_KINDS]);
+    // The kinds as the migrations leave them (0002 rebuilt `actions` with phase 03's commit).
+    const actions = (db.sqlite.prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'actions'").get() as { sql: string }).sql;
+    const kinds = actions.slice(actions.indexOf("kind         TEXT NOT NULL CHECK (kind IN ("), actions.indexOf("))", actions.indexOf("CHECK (kind IN (")));
+    assert.deepEqual(listed(kinds), [...ACTION_KINDS]);
+    assert.ok(/WITHOUT ROWID/.test(actions));
     assert.deepEqual(listed(between("kind        TEXT NOT NULL CHECK (kind IN ('link'", "))")), [...JOB_KINDS]);
     assert.deepEqual(listed(between("mode             TEXT NOT NULL", "),")), [...REPO_MODES]);
     assert.deepEqual(listed(between("CHECK (state IN (", "))")), [...REPO_STATES]);

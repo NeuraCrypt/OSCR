@@ -79,13 +79,15 @@ export type RouteHandler = (r: ForgeRequest) => Promise<Response>;
 
 // ─── authorized actions ──────────────────────────────────────────────────────
 
-/** Every kind of authorized action of phase 01. The migration's CHECK on actions.kind lists the
+/** Every kind of authorized action (phase 01's, then phase 03's commit). The migrations' CHECK on actions.kind lists the
  *  same (a test compares them); a later phase adds its kinds to both. */
 export const ACTION_KINDS = [
   "create", "generate", "link", "papers", "rename", "edit", "topics", "features", "template",
   "default_branch", "archive", "unarchive", "transfer", "branch_create", "branch_rename",
   "branch_delete", "autolink_create", "autolink_delete", "delete_request", "restore",
   "delete_final", "software_heritage",
+  // Phase 03 (migrations/d1-forge/0002_commit.sql): one web commit, made by GitHub as the person.
+  "commit",
 ] as const;
 
 export type ActionKind = (typeof ACTION_KINDS)[number];

@@ -246,6 +246,7 @@ export function info(c: Call, r: MemRepo): T.RepoInfo {
     pushedAt: r.pushedAt === null ? null : iso(r.pushedAt),
     features: { ...r.features },
     permission: c.kind === "anonymous" ? null : c.permission(r),
+    signoffRequired: r.signoffRequired,
     webUrl: b.links.repo(ref),
     cloneUrl: b.links.clone(ref),
   };
@@ -264,6 +265,7 @@ export function newRepo(b: MemoryBackend, ownerId: string, name: string, o: Part
     disabled: false,
     deleted: false,
     isTemplate: false,
+    signoffRequired: false,
     parentId: null,
     templateId: null,
     defaultBranch: null,

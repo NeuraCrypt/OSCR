@@ -11,9 +11,11 @@
 //   act-delete.ts     DELETE_ACTIONS     delete_request, restore, delete_final,
 //                                        software_heritage                                 (E4)
 //   act-autolinks.ts  AUTOLINK_ACTIONS   autolink_create, autolink_delete                  (E5)
+//   act-commit.ts     COMMIT_ACTIONS     commit                                (phase 03, E1)
 // A kind registered twice, or one that is not in ACTION_KINDS, stops the Worker at load.
 
 import { AUTOLINK_ACTIONS } from "./act-autolinks.ts";
+import { COMMIT_ACTIONS } from "./act-commit.ts";
 import { CREATE_ACTIONS } from "./act-create.ts";
 import { DELETE_ACTIONS } from "./act-delete.ts";
 import { LINK_ACTIONS } from "./act-link.ts";
@@ -45,6 +47,7 @@ export const REGISTERED_IN: Readonly<Record<ActionKind, string>> = {
   restore: "act-delete.ts",
   delete_final: "act-delete.ts",
   software_heritage: "act-delete.ts",
+  commit: "act-commit.ts",
 };
 
 /** A registry of these specs; a duplicate or an unknown kind is a programming error. */
@@ -65,4 +68,5 @@ export const ACTIONS: ActionRegistry = registry([
   ...REF_ACTIONS,
   ...DELETE_ACTIONS,
   ...AUTOLINK_ACTIONS,
+  ...COMMIT_ACTIONS,
 ]);

@@ -24,6 +24,7 @@
 //   addUser(login) → { user, token() }       addOrg(login, admins, members)
 //   install(accountLogin, repos?)             grant(repo, login, permission)
 //   markTemplate(repo)                        acceptTransfer(repoId)
+//   requireSignoff(repo)
 //   authorize(url, login) → { code, state }   (the person approving on the forge's page)
 //   events()                                  (returns and clears what was recorded)
 //   deliver(event, secret) → { headers, body } (a signed delivery for MemoryWebhookCodec)
@@ -216,6 +217,8 @@ export interface MemRepo {
   disabled: boolean;
   deleted: boolean;
   isTemplate: boolean;
+  /** GitHub's web_commit_signoff_required. */
+  signoffRequired: boolean;
   parentId: string | null;
   templateId: string | null;
   defaultBranch: string | null;
@@ -426,6 +429,13 @@ export class MemoryBackend implements GitBackend {
     const r = this.find(repo);
     if (!r) throw new Error("no such repository");
     r.isTemplate = isTemplate;
+  }
+
+  /** GitHub's "Require contributors to sign off on web-based commits" (phase 03). */
+  requireSignoff(repo: T.RepoRef, required = true): void {
+    const r = this.find(repo);
+    if (!r) throw new Error("no such repository");
+    r.signoffRequired = required;
   }
 
   acceptTransfer(repoId: string): void {

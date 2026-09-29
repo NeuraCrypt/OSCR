@@ -91,6 +91,7 @@ export function repoJson(r: T.RepoInfo): Json {
     archived: r.archived,
     disabled: r.disabled,
     is_template: r.isTemplate,
+    web_commit_signoff_required: r.signoffRequired,
     default_branch: r.defaultBranch,
     description: r.description || null,
     homepage: r.homepage || null,

@@ -87,15 +87,17 @@ def test_the_checks_refuse_an_address_an_unknown_forge_and_a_private_name(forge_
 
 
 def test_the_action_kinds_are_the_workers():
-    """The migration's CHECK on actions.kind lists website/worker/forge/service/types.ts ACTION_KINDS."""
-    sql = FORGE_MIGRATIONS[0].read_text()
+    """The migrations' CHECK on actions.kind (as the last one that rebuilt the table leaves it: 0002,
+    phase 03's commit) lists website/worker/forge/service/types.ts ACTION_KINDS."""
+    sql = forge_database().execute("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'actions'").fetchone()[0]
+    assert "WITHOUT ROWID" in sql
     start = sql.index("kind         TEXT NOT NULL CHECK (kind IN (")
     in_sql = re.findall(r"'([a-z_]+)'", sql[start:sql.index("))", start)])
     types = (ROOT / "website" / "worker" / "forge" / "service" / "types.ts").read_text()
     start = types.index("export const ACTION_KINDS = [")
     in_ts = re.findall(r'"([a-z_]+)"', types[start:types.index("] as const", start)])
     assert in_sql == in_ts
-    assert len(in_sql) == 22 and len(set(in_sql)) == 22
+    assert len(in_sql) == 23 and len(set(in_sql)) == 23
 
 
 def test_the_layer_shards_are_sha256_mod_64():

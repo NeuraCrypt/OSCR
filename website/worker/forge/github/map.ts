@@ -145,6 +145,7 @@ export function repo(v: unknown): T.RepoInfo {
       deleteBranchOnMerge: bool(r, "delete_branch_on_merge", false),
     },
     permission: permissionOf(r.permissions),
+    signoffRequired: bool(r, "web_commit_signoff_required", false),
     webUrl: str(r, "html_url"),
     cloneUrl: optStr(r, "clone_url") ?? `${str(r, "html_url")}.git`,
   };

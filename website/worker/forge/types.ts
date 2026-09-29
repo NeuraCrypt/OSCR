@@ -125,6 +125,9 @@ export interface RepoInfo {
   features: RepoFeatures;
   /** The session's own permission when the forge says (user and installation sessions). */
   permission: Permission | null;
+  /** The repository (or its organization) requires web commits to be signed off (DCO): GitHub's
+   *  `web_commit_signoff_required`. The registry's editor then adds the Signed-off-by trailer. */
+  signoffRequired: boolean;
   webUrl: string;
   /** https; the researcher's git uses it directly (D00-3). */
   cloneUrl: string;
