@@ -296,6 +296,36 @@ export function runContract(name: string, make: () => Promise<Harness>): void {
         assert.equal(await s.git.resolve(fork.ref, "main"), await s.git.resolve(r.ref, "main"));
       });
 
+      it("lists a repository's forks, newest first, and syncs a fork's branch with its upstream (phase 04)", async () => {
+        const h = await make();
+        const s = user(h);
+        const r = await h.seed({ name: "synced", files: { "a.txt": "a\n", "b.txt": "b\n" } });
+        const other = user(h, h.stranger);
+        const { repo: fork } = await other.repos.fork(r.ref);
+        const listed = await anon(h).repos.forks(r.ref);
+        assert.deepEqual(listed.items.map((f) => f.ref.name.toLowerCase()), [fork.ref.name.toLowerCase()]);
+        assert.equal(listed.items[0].parent?.name, "synced");
+        // Nothing new upstream: nothing to do.
+        assert.equal((await other.repos.syncFork(fork.ref, "main")).status, "up_to_date");
+        // Upstream moved: a fast-forward.
+        const up1 = (await commit(s, r.ref, "main", [put("a.txt", "a2\n")])).sha;
+        assert.equal((await other.repos.syncFork(fork.ref, "main")).status, "fast_forward");
+        assert.equal(await s.git.resolve(fork.ref, "main"), up1);
+        // Both moved, apart: a merge commit with both parents.
+        const mine = (await commit(other, fork.ref, "main", [put("c.txt", "c\n")])).sha;
+        const up2 = (await commit(s, r.ref, "main", [put("b.txt", "b2\n")])).sha;
+        const merged = await other.repos.syncFork(fork.ref, "main");
+        assert.equal(merged.status, "merged");
+        const tip = await s.git.commit(fork.ref, await s.git.resolve(fork.ref, "main"));
+        assert.deepEqual(tip.parents, [mine, up2]);
+        // Both changed the same lines: conflict, the fork's branch left as it was.
+        const before = (await commit(other, fork.ref, "main", [put("a.txt", "fork\n")])).sha;
+        await commit(s, r.ref, "main", [put("a.txt", "upstream\n")]);
+        await refused(other.repos.syncFork(fork.ref, "main"), "conflict");
+        assert.equal(await s.git.resolve(fork.ref, "main"), before);
+        await refused(anon(h).repos.syncFork(fork.ref, "main"), "unauthorized");
+      });
+
       it("says each person's permission", async () => {
         const h = await make();
         const s = user(h);

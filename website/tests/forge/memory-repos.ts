@@ -7,9 +7,9 @@ import type * as T from "../../worker/forge/types.ts";
 import { fileContent } from "../../worker/forge/objects.ts";
 import { checkAutolink, checkId, checkLogin, checkOwner, checkPath, checkRefName, checkRepo, checkRepoName, checkRev } from "../../worker/forge/paths.ts";
 import type { Flat } from "./gitobjects.ts";
-import type { Account, Call, MemRepo } from "./memory.ts";
+import { type Account, type Call, type MemRepo, pageOf } from "./memory.ts";
 import {
-  bytesOf, gitignoreText, info, languagesOf, licenseOf, licenseText, makeCommit, newRepo, notFound, resolveRev, setBranch, taken,
+  bytesOf, gitignoreText, info, languagesOf, licenseOf, licenseText, makeCommit, mergeCommits, newRepo, notFound, resolveRev, setBranch, taken,
 } from "./memory-core.ts";
 
 const TOPIC = /^[a-z0-9][a-z0-9-]{0,49}$/;
@@ -126,6 +126,39 @@ export function repoOps(c: Call): RepoOps {
       r.pushedAt = src.pushedAt;
       repositoryEvent(r, "created");
       return { repo: info(c, r), ready: false };
+    },
+
+    async forks(ref, page) {
+      checkRepo(ref);
+      c.enter("repos.forks", { act: "read", view: `${b.links.repo(ref)}/forks` });
+      const src = c.repo(ref, "read");
+      const list = [...b.repos.values()]
+        .filter((x) => x.parentId === src.id && !x.deleted && x.visibility === "public")
+        .sort((x, y) => y.createdAt - x.createdAt || Number(y.id) - Number(x.id));
+      return pageOf(list.map((x) => info(c, x)), page);
+    },
+
+    async syncFork(ref, branch) {
+      checkRepo(ref);
+      checkRefName(branch, "branch");
+      c.enter("repos.syncFork", { act: "write" });
+      const r = c.repo(ref, "write");
+      const up = r.parentId ? b.repos.get(r.parentId) : undefined;
+      if (!up || up.deleted) throw invalid("not a fork");
+      const mine = r.branches.get(branch);
+      const theirs = up.branches.get(branch);
+      if (!mine || !theirs) throw notFound("no such branch");
+      const upstream = `${b.ownerLogin(up)}:${branch}`;
+      if (mine === theirs || b.store.ancestors(mine).has(theirs)) return { status: "up_to_date", upstream };
+      if (b.store.ancestors(theirs).has(mine)) {
+        setBranch(c, r, branch, theirs);
+        return { status: "fast_forward", upstream };
+      }
+      const { merged, conflicts } = mergeCommits(b, mine, theirs);
+      if (conflicts.length) throw new GitBackendError("conflict", "the fork's branch and its upstream conflict");
+      const made = await makeCommit(c, { flat: merged, parents: [mine, theirs], message: `Merge branch '${upstream}' into ${branch}` });
+      setBranch(c, r, branch, made.sha);
+      return { status: "merged", upstream };
     },
 
     async update(ref, patch) {

@@ -12,13 +12,19 @@
 //                                        software_heritage                                 (E4)
 //   act-autolinks.ts  AUTOLINK_ACTIONS   autolink_create, autolink_delete                  (E5)
 //   act-commit.ts     COMMIT_ACTIONS     commit                                (phase 03, E1)
+//   act-forks.ts      FORK_ACTIONS       fork, fork_sync                       (phase 04, E1)
+//   act-pulls.ts      PULL_ACTIONS       pull_open, pull_edit, pull_review, pull_comment,
+//                                        pull_thread, pull_merge, pull_update, pull_revert
+//                                                                              (phase 04, E1)
 // A kind registered twice, or one that is not in ACTION_KINDS, stops the Worker at load.
 
 import { AUTOLINK_ACTIONS } from "./act-autolinks.ts";
 import { COMMIT_ACTIONS } from "./act-commit.ts";
 import { CREATE_ACTIONS } from "./act-create.ts";
 import { DELETE_ACTIONS } from "./act-delete.ts";
+import { FORK_ACTIONS } from "./act-forks.ts";
 import { LINK_ACTIONS } from "./act-link.ts";
+import { PULL_ACTIONS } from "./act-pulls.ts";
 import { REF_ACTIONS } from "./act-refs.ts";
 import { SETTINGS_ACTIONS } from "./act-settings.ts";
 import { isActionKind, type ActionKind, type ActionRegistry, type AnyActionSpec } from "./types.ts";
@@ -48,6 +54,16 @@ export const REGISTERED_IN: Readonly<Record<ActionKind, string>> = {
   delete_final: "act-delete.ts",
   software_heritage: "act-delete.ts",
   commit: "act-commit.ts",
+  fork: "act-forks.ts",
+  fork_sync: "act-forks.ts",
+  pull_open: "act-pulls.ts",
+  pull_edit: "act-pulls.ts",
+  pull_review: "act-pulls.ts",
+  pull_comment: "act-pulls.ts",
+  pull_thread: "act-pulls.ts",
+  pull_merge: "act-pulls.ts",
+  pull_update: "act-pulls.ts",
+  pull_revert: "act-pulls.ts",
 };
 
 /** A registry of these specs; a duplicate or an unknown kind is a programming error. */
@@ -69,4 +85,6 @@ export const ACTIONS: ActionRegistry = registry([
   ...DELETE_ACTIONS,
   ...AUTOLINK_ACTIONS,
   ...COMMIT_ACTIONS,
+  ...FORK_ACTIONS,
+  ...PULL_ACTIONS,
 ]);

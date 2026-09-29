@@ -26,10 +26,12 @@ export function network(b: MemoryBackend, r: MemRepo): MemRepo[] {
   return [...b.repos.values()].filter((x) => !x.deleted && root(x) === mine);
 }
 
-/** Whether a commit belongs to the repository's network (reachable from one of its refs). */
+/** Whether a commit belongs to the repository's network (reachable from one of its refs; a pull
+ *  request's head counts, as GitHub's refs/pull/<n>/head keep it after its branch is deleted). */
 export function reachable(b: MemoryBackend, r: MemRepo, sha: T.ObjectId): boolean {
   for (const x of network(b, r)) {
-    for (const head of [...x.branches.values(), ...x.tags.values()]) {
+    const pulls = [...x.issues.values()].flatMap((i) => (i.pull ? [i.pull.headSha] : []));
+    for (const head of [...x.branches.values(), ...x.tags.values(), ...pulls]) {
       const c = b.store.peel(head);
       if (c && b.store.ancestors(c).has(sha)) return true;
     }

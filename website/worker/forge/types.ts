@@ -423,6 +423,13 @@ export interface PullRequest {
   counts: { commits: number; additions: number; deletions: number; changedFiles: number; comments: number };
 }
 
+/** What "Sync fork" did (GitHub's merge-upstream `merge_type`: fast-forward, merge, none). */
+export interface SyncForkResult {
+  status: "fast_forward" | "merged" | "up_to_date";
+  /** The upstream branch, as the forge names it ("owner:branch"), when it says. */
+  upstream: string | null;
+}
+
 export interface PullFilter {
   state?: "open" | "closed" | "all";
   /** "owner:branch". */

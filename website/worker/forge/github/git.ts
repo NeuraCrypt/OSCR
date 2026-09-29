@@ -191,11 +191,12 @@ export function gitOps(ctx: Ctx): GitOps {
       }
     }
     if (orphan && !entries.length) throw invalid("an orphan commit needs files");
-    const tree = map.obj(
-      await http.json({ method: "POST", path: `${base}/git/trees`, json: baseTree ? { base_tree: baseTree, tree: entries } : { tree: entries } }),
-      "tree",
-    );
-    const treeSha = map.sha(tree);
+    // A merge whose result is the first parent's tree (a conflict resolved by keeping every line of
+    // the branch, phase 04) makes no new tree: the first parent's is the commit's.
+    const treeSha =
+      !entries.length && baseTree
+        ? baseTree
+        : map.sha(map.obj(await http.json({ method: "POST", path: `${base}/git/trees`, json: baseTree ? { base_tree: baseTree, tree: entries } : { tree: entries } }), "tree"));
     const made = map.obj(await http.json({ method: "POST", path: `${base}/git/commits`, json: { message: input.message, tree: treeSha, parents } }), "commit");
     const sha = map.sha(made);
     if (input.createFrom !== undefined || input.expectedHead === null) {

@@ -568,6 +568,12 @@ export class FakeGitHub {
       const f = await x.session.repos.fork(ref(m), { organization: j.organization as string | undefined, name: j.name as string | undefined, defaultBranchOnly: j.default_branch_only === true });
       return reply(repoJson(f.repo), 202);
     });
+    this.on("GET", new RegExp(`${R}/forks$`), async (m, x) => listed(await x.session.repos.forks(ref(m), page(x.url)), x.url, repoJson));
+    this.on("POST", new RegExp(`${R}/merge-upstream$`), async (m, x) => {
+      const done = await x.session.repos.syncFork(ref(m), String(x.json.branch ?? ""));
+      const type = { fast_forward: "fast-forward", merged: "merge", up_to_date: "none" }[done.status];
+      return reply({ message: `Successfully fetched and ${done.status === "up_to_date" ? "found nothing to do" : "synced"} from upstream ${done.upstream}`, merge_type: type, base_branch: done.upstream });
+    });
     this.on("PUT", new RegExp(`${R}/topics$`), async (m, x) => reply({ names: await x.session.repos.setTopics(ref(m), (x.json.names as string[]) ?? []) }));
     // Custom autolinks (phase 01): GitHub answers a prefix already there with 422 already_exists.
     const autolinkJson = (a: T.Autolink) => ({ id: Number(a.id), key_prefix: a.keyPrefix, url_template: a.urlTemplate, is_alphanumeric: a.isAlphanumeric });

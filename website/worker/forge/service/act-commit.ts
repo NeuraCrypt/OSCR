@@ -12,6 +12,10 @@
 // - "propose changes": when GitHub says the person may not write to the repository, and the page
 //   allowed it (`propose`), GitHub forks the repository into the person's account and the commit
 //   goes on a new branch of the fork, made at the same head (objects are shared in a fork network).
+// - a merge (phase 04, a conflict resolved in the browser: `mergeParent`) is a commit with two
+//   parents on the branch itself, [the head the page saw, mergeParent], through the Git data API;
+//   its changes are the resolved files and the files only the other side changed (they may be none:
+//   a resolution that keeps every line of the branch makes the branch's own tree the merge's).
 // GitHub signs the commit and the person is its author (their own address settings on GitHub, never
 // one the registry picks: D00-14). The message gets trailers the registry builds, never an address
 // the person typed: `Co-authored-by` with GitHub's no-reply address of each co-author (their login
@@ -20,8 +24,8 @@
 // the repository requires it (GitHub's `web_commit_signoff_required`).
 //
 // The payload (≤ ACTION_PAYLOAD_BYTES, 1 MiB; ≤ COMMIT_FILES changes):
-//   {branch, base, newBranch?, propose?, message, description?, coAuthors?: [{login, id}],
-//    signOff?, changes: [{op: "put", path, text | base64, executable?} | {op: "delete", path} |
+//   {branch, base, newBranch?, propose?, mergeParent?, message, description?,
+//    coAuthors?: [{login, id}], signOff?, changes: [{op: "put", path, text | base64, executable?} | {op: "delete", path} |
 //    {op: "move", from, to}]}
 // `branch` and `base` repeat the target (start's branch and expectedHead): the sentence names the
 // branch, and a payload prepared for another branch or head is refused. Nothing is written to D1 but
@@ -53,6 +57,9 @@ export interface CommitPayload {
   base: string;
   newBranch?: string;
   propose?: boolean;
+  /** The second parent of a merge commit (phase 04): the base's head, for a pull request's
+   *  conflicts resolved in the browser. */
+  mergeParent?: string;
   message: string;
   description?: string;
   coAuthors?: CoAuthor[];
@@ -65,6 +72,7 @@ export interface CommitParsed {
   base: string;
   newBranch: string | null;
   propose: boolean;
+  mergeParent: string | null;
   message: string;
   description: string;
   coAuthors: CoAuthor[];
@@ -88,6 +96,8 @@ export interface CommitDone {
   newBranch: boolean;
   /** Made on the person's fork ("propose changes"). */
   proposed: boolean;
+  /** The second parent of a merge commit, as GitHub answered it; null for an ordinary commit. */
+  merged: string | null;
   /** The commit's page in the registry's viewer (a /r/ path). */
   page: string;
   /** The comparison of the new branch with the branch it came from, in the registry's viewer. */
@@ -131,8 +141,8 @@ export function commitMessage(p: Pick<CommitParsed, "message" | "description" | 
 }
 
 /** The changes of the payload as GitBackend's, checked (paths, duplicates), or the problem. */
-function readChanges(raw: unknown): { changes: FileChange[]; counts: CommitParsed["counts"] } | ForgeProblem {
-  if (!Array.isArray(raw) || raw.length === 0) return bad("The commit changes no file.");
+function readChanges(raw: unknown, mayBeEmpty = false): { changes: FileChange[]; counts: CommitParsed["counts"] } | ForgeProblem {
+  if (!Array.isArray(raw) || (raw.length === 0 && !mayBeEmpty)) return bad("The commit changes no file.");
   if (raw.length > COMMIT_FILES) return bad(`A commit from the browser changes at most ${COMMIT_FILES} files: git can make larger ones.`);
   const out: FileChange[] = [];
   const counts = { edited: 0, deleted: 0, moved: 0 };
@@ -196,15 +206,21 @@ export function validateCommit(payload: unknown): CommitParsed | ForgeProblem {
     return bad(`The description is at most ${DESCRIPTION_CHARS.toLocaleString("en-GB")} characters.`);
   }
   if (p.signOff !== undefined && typeof p.signOff !== "boolean") return bad("The sign-off choice is not true or false.");
+  if (p.mergeParent !== undefined && p.mergeParent !== null) {
+    if (!isObjectId(p.mergeParent)) return bad("The merge's second parent is not a full commit id.");
+    if (p.mergeParent === p.base) return bad("A merge joins two different commits.");
+    if (p.newBranch || p.propose === true) return bad("A merge commit goes on the branch itself: no new branch, no proposal.");
+  }
   const coAuthors = readCoAuthors(p.coAuthors);
   if (coAuthors instanceof ForgeProblem) return coAuthors;
-  const read = readChanges(p.changes);
+  const read = readChanges(p.changes, typeof p.mergeParent === "string");
   if (read instanceof ForgeProblem) return read;
   const parsed: CommitParsed = {
     branch: p.branch,
     base: p.base as string,
     newBranch: typeof p.newBranch === "string" ? p.newBranch : null,
     propose: p.propose === true,
+    mergeParent: typeof p.mergeParent === "string" ? p.mergeParent : null,
     message: p.message.trim(),
     description: typeof p.description === "string" ? p.description.replace(/\r\n?/g, "\n").trim() : "",
     coAuthors,
@@ -230,14 +246,19 @@ export function changesInWords(counts: CommitParsed["counts"]): string {
 }
 
 export function describeCommit(p: CommitParsed): string {
-  const where = p.newBranch ? `on a new branch ${p.newBranch}, from ${p.branch}` : `to the branch ${p.branch}`;
+  const where = p.newBranch
+    ? `on a new branch ${p.newBranch}, from ${p.branch}`
+    : p.mergeParent
+      ? `to the branch ${p.branch}, merging ${p.mergeParent.slice(0, 7)} into it`
+      : `to the branch ${p.branch}`;
   const also = [
     p.coAuthors.length ? `with ${plural(p.coAuthors.length, "co-author")}` : "",
     p.signOff ? "signed off" : "",
   ].filter(Boolean);
   // A proposal from a fork is said before it is made: GitHub makes a copy in the person's account.
   const fork = p.propose ? "; if GitHub says you may not write to the repository, on a new branch of your own copy of it (a fork)" : "";
-  return `Commit “${p.message}” ${where} (${changesInWords(p.counts)}${also.length ? `; ${also.join(", ")}` : ""}${fork})`;
+  const changed = changesInWords(p.counts) || "no file changed beyond the merge";
+  return `Commit “${p.message}” ${where} (${changed}${also.length ? `; ${also.join(", ")}` : ""}${fork})`;
 }
 
 /** The target a commit needs: a repository, a branch and the head the page saw. */
@@ -311,6 +332,7 @@ export const commitSpec: ActionSpec<CommitParsed, CommitDone> = {
         branch,
         expectedHead: createFrom ? null : p.base,
         ...(createFrom ? { createFrom } : {}),
+        ...(p.mergeParent ? { parents: [p.base, p.mergeParent], allowEmpty: true } : {}),
         changes: p.changes,
         message,
       });
@@ -355,6 +377,7 @@ export const commitSpec: ActionSpec<CommitParsed, CommitDone> = {
         base: { branch: p.branch, sha: done.parents[0] ?? "" },
         newBranch: createFrom !== undefined,
         proposed,
+        merged: p.mergeParent ? (done.parents[1] ?? null) : null,
         page: commitPage,
         compare,
         pullRequest: createFrom ? { repo: `${info.ref.owner}/${info.ref.name}`, base: p.branch, head: proposed ? `${where.ref.owner}:${done.branch}` : done.branch } : null,
@@ -369,7 +392,8 @@ export const commitSpec: ActionSpec<CommitParsed, CommitDone> = {
     isObjectId(r.sha) &&
     r.id === (ctx.target.repo && "id" in ctx.target.repo ? ctx.target.repo.id : r.id) &&
     r.branch === (r.proposed ? r.branch : (p.newBranch ?? p.branch)) &&
-    r.base.sha === p.base,
+    r.base.sha === p.base &&
+    r.merged === p.mergeParent,
 };
 
 /** A path as the page may name it (the editor's own check, before anything is sent). */

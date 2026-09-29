@@ -78,6 +78,12 @@ export interface RepoOps {
   generate(template: T.RepoRef, input: T.GenerateInput): Promise<T.RepoInfo>;
   /** The forge copies in the background: `ready` false means "not yet cloneable". */
   fork(repo: T.RepoRef, input?: T.ForkInput): Promise<{ repo: T.RepoInfo; ready: boolean }>;
+  /** The repository's public forks, newest first (phase 04: the fork list). */
+  forks(repo: T.RepoRef, page?: T.PageRequest): Promise<T.Page<T.RepoInfo>>;
+  /** Brings a fork's branch up to date with the upstream branch of the same name (phase 04, "Sync
+   *  fork"): a fast-forward, a merge commit, or nothing to do; `conflict` when the two diverged and
+   *  their changes conflict (the fork's branch is then left as it was). */
+  syncFork(repo: T.RepoRef, branch: string): Promise<T.SyncForkResult>;
   update(repo: T.RepoRef, patch: T.RepoPatch): Promise<T.RepoInfo>;
   setTopics(repo: T.RepoRef, topics: string[]): Promise<string[]>;
   /** "pending": the new owner must accept (GitHub: within one day). Capability "transfer". */

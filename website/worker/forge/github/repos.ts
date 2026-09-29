@@ -5,6 +5,10 @@
 //   create             POST /user/repos (user tokens only: "Administration" and repository creation)
 //   generate           POST /repos/{t_owner}/{t_repo}/generate
 //   fork               POST /repos/{o}/{r}/forks (202: `ready` false, GitHub copies in the background)
+//   forks              GET /repos/{o}/{r}/forks?sort=newest (phase 04: the fork list; public forks)
+//   syncFork           POST /repos/{o}/{r}/merge-upstream {branch} (phase 04, "Sync fork"): its
+//                      merge_type fast-forward, merge or none; 409 → conflict (GitHub leaves the
+//                      branch as it was)
 //   update             PATCH /repos/{o}/{r}
 //   setTopics          PUT /repos/{o}/{r}/topics {names}
 //   transfer           POST /repos/{o}/{r}/transfer {new_owner, new_name} (202). GitHub's answer does
@@ -26,8 +30,8 @@ import type { RepoOps } from "../gitbackend.ts";
 import { fileContent, fromBase64 } from "../objects.ts";
 import { checkAutolink, checkId, checkLogin, checkOwner, checkPath, checkRefName, checkRepoName, checkRev } from "../paths.ts";
 import type * as T from "../types.ts";
-import { type Ctx, need, R, scope } from "./ctx.ts";
-import { MEDIA, readJson, readLimited } from "./http.ts";
+import { type Ctx, need, paged, R, scope } from "./ctx.ts";
+import { MEDIA, nextPage, readJson, readLimited, restPage } from "./http.ts";
 import { escapePath } from "./links.ts";
 import * as map from "./map.ts";
 
@@ -115,6 +119,25 @@ export function repoOps(ctx: Ctx): RepoOps {
         json: { organization: input.organization, name: input.name, default_branch_only: input.defaultBranchOnly === true },
       });
       return { repo: map.repo(await readJson(res)), ready: res.status !== 202 };
+    },
+
+    async forks(repo, page) {
+      need(ctx, "read");
+      const path = `${R(repo)}/forks`;
+      const p = restPage(page);
+      const res = await http.send({ path, query: { sort: "newest", per_page: p.perPage, page: p.page }, scope: scope(repo, "read"), view: `${links.repo(repo)}/forks` });
+      return paged(await readJson(res), map.repo, nextPage(res, p.page));
+    },
+
+    async syncFork(repo, branch) {
+      need(ctx, "write");
+      const path = `${R(repo)}/merge-upstream`;
+      checkRefName(branch, "branch");
+      const answer = map.obj(await http.json({ method: "POST", path, json: { branch } }), "merge-upstream");
+      const kind = map.optStr(answer, "merge_type");
+      const status = kind === "fast-forward" ? "fast_forward" : kind === "merge" ? "merged" : kind === "none" ? "up_to_date" : null;
+      if (!status) throw new GitBackendError("unavailable", "unexpected answer from the forge (merge_type)");
+      return { status, upstream: map.optStr(answer, "base_branch") };
     },
 
     async update(repo, patch) {
