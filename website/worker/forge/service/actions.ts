@@ -20,6 +20,9 @@
 //                                        issue_lock, issue_pin, issue_transfer, issue_relation,
 //                                        issue_branch, issue_labels, issue_milestone (phase 05, E1)
 //   act-research.ts   RESEARCH_ACTIONS   research_copy                         (phase 05, E2)
+//   act-releases.ts   RELEASE_ACTIONS    release_create, release_edit, release_delete,
+//                                        release_drafts, release_research, tag_create,
+//                                        tag_delete, asset_upload, asset_delete (phase 07, E1)
 // (The registry's own writes of research issues, research_open, research_comment and research_edit,
 // are routes of research.ts, not authorized actions: they are in RESEARCH_KINDS, not here.)
 // A kind registered twice, or one that is not in ACTION_KINDS, stops the Worker at load.
@@ -32,6 +35,7 @@ import { FORK_ACTIONS } from "./act-forks.ts";
 import { ISSUE_ACTIONS } from "./act-issues.ts";
 import { LINK_ACTIONS } from "./act-link.ts";
 import { PULL_ACTIONS } from "./act-pulls.ts";
+import { RELEASE_ACTIONS } from "./act-releases.ts";
 import { RESEARCH_ACTIONS } from "./act-research.ts";
 import { REF_ACTIONS } from "./act-refs.ts";
 import { SETTINGS_ACTIONS } from "./act-settings.ts";
@@ -84,6 +88,15 @@ export const REGISTERED_IN: Readonly<Record<ActionKind, string>> = {
   issue_labels: "act-issues.ts",
   issue_milestone: "act-issues.ts",
   research_copy: "act-research.ts",
+  release_create: "act-releases.ts",
+  release_edit: "act-releases.ts",
+  release_delete: "act-releases.ts",
+  release_drafts: "act-releases.ts",
+  release_research: "act-releases.ts",
+  tag_create: "act-releases.ts",
+  tag_delete: "act-releases.ts",
+  asset_upload: "act-releases.ts",
+  asset_delete: "act-releases.ts",
 };
 
 /** A registry of these specs; a duplicate or an unknown kind is a programming error. */
@@ -109,4 +122,5 @@ export const ACTIONS: ActionRegistry = registry([
   ...PULL_ACTIONS,
   ...ISSUE_ACTIONS,
   ...RESEARCH_ACTIONS,
+  ...RELEASE_ACTIONS,
 ]);

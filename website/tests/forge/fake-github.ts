@@ -236,7 +236,7 @@ const reviewCommentJson = (c: T.ReviewComment): Json => ({
 });
 const labelJson = (l: T.Label): Json => ({ name: l.name, color: l.color, description: l.description || null });
 const milestoneFull = (m: T.Milestone): Json => ({ number: m.number, title: m.title, description: m.description || null, state: m.state, due_on: m.dueOn, open_issues: m.openIssues, closed_issues: m.closedIssues });
-const assetJson = (a: T.ReleaseAsset): Json => ({ id: num(a.id), name: a.name, label: a.label || null, content_type: a.contentType, size: a.size, download_count: a.downloads, browser_download_url: a.downloadUrl, created_at: a.createdAt, uploader: null });
+const assetJson = (a: T.ReleaseAsset): Json => ({ id: num(a.id), name: a.name, label: a.label || null, content_type: a.contentType, size: a.size, download_count: a.downloads, browser_download_url: a.downloadUrl, created_at: a.createdAt, digest: a.digest ? `sha256:${a.digest}` : null, uploader: null });
 const releaseJson = (r: T.Release): Json => ({
   id: num(r.id),
   tag_name: r.tagName,

@@ -515,7 +515,14 @@ export function asset(v: unknown): T.ReleaseAsset {
     downloads: optNum(a, "download_count") ?? 0,
     downloadUrl: str(a, "browser_download_url"),
     createdAt: str(a, "created_at"),
+    digest: sha256Of(optStr(a, "digest")),
   };
+}
+
+/** GitHub's "sha256:<hex>" as its hex, or null. */
+function sha256Of(digest: string | null): string | null {
+  const m = digest === null ? null : /^sha256:([0-9a-f]{64})$/i.exec(digest.trim());
+  return m ? m[1].toLowerCase() : null;
 }
 
 export function release(v: unknown): T.Release {

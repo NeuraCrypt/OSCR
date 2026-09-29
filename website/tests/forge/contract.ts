@@ -1171,6 +1171,9 @@ export function runContract(name: string, make: () => Promise<Harness>): void {
         const asset = await s.releases.uploadAsset(r.ref, rel.id, { name: "results.csv", label: "Results", contentType: "text/csv", size: data.length, body: data });
         assert.equal(asset.size, data.length);
         assert.equal(asset.name, "results.csv");
+        // The SHA-256 the forge computed at upload (GitHub's `digest`): what a reader checks a file against.
+        const sha = [...new Uint8Array(await crypto.subtle.digest("SHA-256", data as Uint8Array<ArrayBuffer>))].map((x) => x.toString(16).padStart(2, "0")).join("");
+        assert.equal(asset.digest, sha);
         await refused(s.releases.uploadAsset(r.ref, rel.id, { name: "results.csv", contentType: "text/csv", size: data.length, body: data }), "conflict");
         const stream = new ReadableStream<Uint8Array>({
           start(ctrl) {

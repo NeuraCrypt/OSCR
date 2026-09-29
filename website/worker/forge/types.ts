@@ -648,6 +648,9 @@ export interface ReleaseAsset {
   /** A link. OSCR never downloads assets itself. */
   downloadUrl: string;
   createdAt: string;
+  /** The file's SHA-256, in hex, as the forge computed it at upload (GitHub's `digest`,
+   *  "sha256:…", since 2025-06); null for an asset uploaded before, or another algorithm. */
+  digest: string | null;
 }
 
 export interface Release {

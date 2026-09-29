@@ -174,6 +174,8 @@ export function gitOps(c: Call): GitOps {
       c.enter("git.deleteTag", { act: "write" });
       const r = c.repo(ref, "write");
       if (!r.tags.has(name)) throw notFound("no such tag");
+      // GitHub: the tag of an immutable release is locked.
+      if ([...r.releases.values()].some((x) => x.immutable && x.tagName === name)) throw new GitBackendError("forbidden", "the tag of an immutable release is locked");
       setTag(c, r, name, null);
     },
 
@@ -460,6 +462,7 @@ export function releaseOps(c: Call): ReleaseOps {
     downloads: 0,
     downloadUrl: `${b.links.repo(b.refOf(r))}/releases/download/${escapePath(rel.tagName)}/${encodeURIComponent(a.name)}`,
     createdAt: iso(a.createdAt),
+    digest: a.digest,
   });
 
   const out = (r: MemRepo, rel: MemRelease): T.Release => ({
@@ -470,7 +473,7 @@ export function releaseOps(c: Call): ReleaseOps {
     body: rel.body,
     draft: rel.draft,
     prerelease: rel.prerelease,
-    immutable: false,
+    immutable: rel.immutable,
     author: b.actorOf(rel.authorId),
     createdAt: iso(rel.createdAt),
     publishedAt: rel.publishedAt === null ? null : iso(rel.publishedAt),
@@ -565,6 +568,8 @@ export function releaseOps(c: Call): ReleaseOps {
       c.enter("releases.create", { act: "write" });
       const r = c.repo(ref, "write");
       if ([...r.releases.values()].some((x) => x.tagName === input.tagName)) throw new GitBackendError("conflict", "already_exists");
+      // GitHub: the tag of a deleted immutable release is never used by a release again.
+      if (r.burnedTags.has(input.tagName)) throw invalid("tag_name was used by an immutable release");
       if (!r.tags.has(input.tagName)) resolveRev(b, r, input.target ?? r.defaultBranch ?? "HEAD");
       const rel: MemRelease = {
         id: b.nextId(),
@@ -579,6 +584,7 @@ export function releaseOps(c: Call): ReleaseOps {
         createdAt: b.now(),
         publishedAt: null,
         assets: [],
+        immutable: false,
       };
       if (input.generateNotes) {
         const n = notes(r, rel.tagName, input.target, undefined, rel.id);
@@ -590,6 +596,7 @@ export function releaseOps(c: Call): ReleaseOps {
       if (!rel.draft) {
         ensureTag(r, rel);
         rel.publishedAt = b.now();
+        rel.immutable = r.immutableReleases;
         releaseEvent(r, rel, "published");
       }
       return out(r, rel);
@@ -605,6 +612,10 @@ export function releaseOps(c: Call): ReleaseOps {
       c.enter("releases.update", { act: "write" });
       const r = c.repo(ref, "write");
       const rel = find(r, id);
+      // An immutable release keeps its tag and stays published; its text and flags stay editable.
+      if (rel.immutable && ((patch.tagName !== undefined && patch.tagName !== rel.tagName) || patch.target !== undefined || patch.draft === true)) {
+        throw invalid("an immutable release keeps its tag and stays published");
+      }
       if (patch.tagName !== undefined && patch.tagName !== rel.tagName) {
         if ([...r.releases.values()].some((x) => x.tagName === patch.tagName)) throw new GitBackendError("conflict", "already_exists");
         rel.tagName = patch.tagName;
@@ -623,6 +634,7 @@ export function releaseOps(c: Call): ReleaseOps {
       if (publishing) {
         ensureTag(r, rel);
         rel.publishedAt = b.now();
+        rel.immutable = r.immutableReleases;
         releaseEvent(r, rel, "published");
       }
       return out(r, rel);
@@ -635,6 +647,7 @@ export function releaseOps(c: Call): ReleaseOps {
       const r = c.repo(ref, "write");
       const rel = find(r, id);
       r.releases.delete(rel.id);
+      if (rel.immutable) r.burnedTags.add(rel.tagName);
       for (const a of rel.assets) b.assetsById.delete(a.id);
       releaseEvent(r, rel, "deleted");
     },
@@ -672,11 +685,13 @@ export function releaseOps(c: Call): ReleaseOps {
       c.enter("releases.uploadAsset", { act: "write" });
       const r = c.repo(ref, "write");
       const rel = find(r, releaseId);
+      if (rel.immutable) throw invalid("the assets of an immutable release are locked");
       if (rel.assets.some((a) => a.name === name)) throw new GitBackendError("conflict", "already_exists");
       if (rel.assets.length >= b.limits.releaseAssets) throw new GitBackendError("too_large", "the release has as many assets as the forge takes");
       const bytes = await collect(upload.body);
       if (bytes.length !== upload.size) throw invalid("the asset's size is not its length");
-      const a: MemAsset = { id: b.nextId(), name, label, contentType: upload.contentType, size: bytes.length, bytes, createdAt: b.now() };
+      const digest = [...new Uint8Array(await crypto.subtle.digest("SHA-256", bytes as Uint8Array<ArrayBuffer>))].map((x) => x.toString(16).padStart(2, "0")).join("");
+      const a: MemAsset = { id: b.nextId(), name, label, contentType: upload.contentType, size: bytes.length, bytes, digest, createdAt: b.now() };
       rel.assets.push(a);
       b.assetsById.set(a.id, { repoId: r.id, releaseId: rel.id });
       return assetOut(r, rel, a);
@@ -690,6 +705,7 @@ export function releaseOps(c: Call): ReleaseOps {
       const where = b.assetsById.get(assetId);
       const rel = where && where.repoId === r.id ? r.releases.get(where.releaseId) : undefined;
       if (!rel) throw notFound("no such asset");
+      if (rel.immutable) throw invalid("the assets of an immutable release are locked");
       rel.assets = rel.assets.filter((a) => a.id !== assetId);
       b.assetsById.delete(assetId);
     },

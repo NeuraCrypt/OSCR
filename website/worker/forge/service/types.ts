@@ -80,7 +80,7 @@ export type RouteHandler = (r: ForgeRequest) => Promise<Response>;
 // ─── authorized actions ──────────────────────────────────────────────────────
 
 /** Every kind of authorized action (phase 01's, phase 03's commit, phase 04's forks and pull
- *  requests, phase 05's issues). The migrations' CHECK on actions.kind lists the
+ *  requests, phase 05's issues, phase 07's releases). The migrations' CHECK on actions.kind lists the
  *  same (a test compares them); a later phase adds its kinds to both. */
 export const ACTION_KINDS = [
   "create", "generate", "link", "papers", "rename", "edit", "topics", "features", "template",
@@ -100,6 +100,11 @@ export const ACTION_KINDS = [
   // Phase 05 (migrations/d1-forge/0005_research.sql): a research issue copied to GitHub as an ordinary
   // issue, when its author asks (act-research.ts).
   "research_copy",
+  // Phase 07 (migrations/d1-forge/0006_releases.sql): GitHub's releases, tags and release assets, made
+  // by GitHub as the person; the release tied to a version of a paper, the Mac's jobs asked for it
+  // (act-releases.ts).
+  "release_create", "release_edit", "release_delete", "release_drafts", "release_research", "tag_create",
+  "tag_delete", "asset_upload", "asset_delete",
 ] as const;
 
 export type ActionKind = (typeof ACTION_KINDS)[number];
@@ -185,6 +190,10 @@ export interface ActionContext<P> {
    *  permission (GitHub's /user/installations): bound to this action's token inside act.ts, so the
    *  token itself never reaches a spec. */
   installations: PersonInstallations;
+  /** Phase 07: the file of a release asset, streamed as the request's body (POST /api/forge/asset,
+   *  asset.ts), never parsed nor buffered; its length is the request's, held to it. Absent for every
+   *  other route. */
+  upload?: { body: ReadableStream<Uint8Array>; size: number };
 }
 
 /** What `ActionContext.installations` answers (ForgeAuth's, without the token). */
@@ -234,12 +243,14 @@ export type ActionRegistry = ReadonlyMap<ActionKind, AnyActionSpec>;
 export type RepoMode = "created" | "installed" | "public";
 export type RepoState = "active" | "archived" | "pending_deletion" | "hidden" | "deleted" | "gone";
 export type PaperStatus = "linked" | "proposed";
-export type JobKind = "link" | "push" | "archive" | "delete_due" | "reconcile";
+/** Phase 07 adds `release` (the paper's tracing map versioned with a release) and `deposit` (the
+ *  release's validated map deposited on Zenodo at its author's request): oscr/forgejobs.py. */
+export type JobKind = "link" | "push" | "archive" | "delete_due" | "reconcile" | "release" | "deposit";
 export type Outcome = "done" | "pending" | "failed";
 
 export const REPO_MODES: readonly RepoMode[] = ["created", "installed", "public"];
 export const REPO_STATES: readonly RepoState[] = ["active", "archived", "pending_deletion", "hidden", "deleted", "gone"];
-export const JOB_KINDS: readonly JobKind[] = ["link", "push", "archive", "delete_due", "reconcile"];
+export const JOB_KINDS: readonly JobKind[] = ["link", "push", "archive", "delete_due", "reconcile", "release", "deposit"];
 
 export interface RepoRow {
   forge: ForgeName;
@@ -322,4 +333,6 @@ export interface JobRow {
   user_id: string;
   created_at: number;
   not_before: number | null;
+  /** Phase 07: the paper of a `release` or `deposit` job ("" otherwise). */
+  paper_id: string;
 }

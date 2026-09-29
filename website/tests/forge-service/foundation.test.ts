@@ -342,7 +342,9 @@ describe("the rows (store.ts)", () => {
     const kinds = actions.slice(actions.indexOf("kind         TEXT NOT NULL CHECK (kind IN ("), actions.indexOf("))", actions.indexOf("CHECK (kind IN (")));
     assert.deepEqual(listed(kinds), [...ROW_KINDS]);
     assert.ok(/WITHOUT ROWID/.test(actions));
-    assert.deepEqual(listed(between("kind        TEXT NOT NULL CHECK (kind IN ('link'", "))")), [...JOB_KINDS]);
+    // The job kinds as the migrations leave them (0006 rebuilt `jobs` with phase 07's release and deposit).
+    const jobs = (db.sqlite.prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'jobs'").get() as { sql: string }).sql;
+    assert.deepEqual(listed(jobs.slice(jobs.indexOf("kind        TEXT NOT NULL CHECK (kind IN ("), jobs.indexOf("))", jobs.indexOf("CHECK (kind IN (")))), [...JOB_KINDS]);
     assert.deepEqual(listed(between("mode             TEXT NOT NULL", "),")), [...REPO_MODES]);
     assert.deepEqual(listed(between("CHECK (state IN (", "))")), [...REPO_STATES]);
     const indexes = db.sqlite.prepare("SELECT name, tbl_name FROM sqlite_master WHERE type = 'index' AND sql IS NOT NULL").all() as { name: string }[];

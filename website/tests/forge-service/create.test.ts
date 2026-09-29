@@ -63,7 +63,7 @@ describe("create", () => {
     ]);
     assert.match(run.actBody?.sentence, /^Create the public repository eeg-study in your GitHub account, with a README, a Python \.gitignore and the MIT License, attached to 2 papers$/);
     // repos 2 + papers 2 + job 1 + action 1: 6 rows with two papers; with one paper, 5.
-    assert.deepEqual(forgeCounts(w.forge), { actions: 1, deliveries: 0, installations: 0, jobs: 1, repo_papers: 2, repos: 1, research_comments: 0, research_issues: 0, traced_paths: 0 });
+    assert.deepEqual(forgeCounts(w.forge), { actions: 1, deliveries: 0, installations: 0, jobs: 1, release_papers: 0, repo_papers: 2, repos: 1, research_comments: 0, research_issues: 0, traced_paths: 0 });
     assert.equal(w.forge.totals.written, 6);
     const [action] = forgeRows(w.forge, "actions");
     assert.equal(action.rows, 6);

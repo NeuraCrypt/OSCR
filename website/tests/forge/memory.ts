@@ -177,6 +177,8 @@ export interface MemAsset {
   contentType: string;
   size: number;
   bytes: Uint8Array;
+  /** Its SHA-256 in hex, as GitHub computes it at upload. */
+  digest: string;
   createdAt: number;
 }
 
@@ -193,6 +195,9 @@ export interface MemRelease {
   createdAt: number;
   publishedAt: number | null;
   assets: MemAsset[];
+  /** Published while the repository had release immutability on (GitHub's setting): its tag and
+   *  assets are locked, its text stays editable. */
+  immutable: boolean;
 }
 
 export interface MemCheckRun {
@@ -241,6 +246,10 @@ export interface MemRepo {
   milestones: Map<number, MemMilestone>;
   milestoneCounter: number;
   releases: Map<string, MemRelease>;
+  /** GitHub's "Enable release immutability" (future releases only). */
+  immutableReleases: boolean;
+  /** Tag names of deleted immutable releases: GitHub never lets a release use them again. */
+  burnedTags: Set<string>;
   pendingTransfer: { ownerId: string; name: string } | null;
   autolinks: Map<string, T.Autolink>;
   checkRuns: Map<string, MemCheckRun>;

@@ -287,6 +287,8 @@ export function newRepo(b: MemoryBackend, ownerId: string, name: string, o: Part
     milestones: new Map(),
     milestoneCounter: 0,
     releases: new Map(),
+    immutableReleases: false,
+    burnedTags: new Set(),
     pendingTransfer: null,
     autolinks: new Map(),
     checkRuns: new Map(),

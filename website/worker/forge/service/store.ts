@@ -295,15 +295,70 @@ export function deleteInstallation(db: D1Database, forge: string, id: string): W
 /** A job for the Mac (1 row written). */
 export function insertJob(
   db: D1Database,
-  job: { kind: JobKind; forge: string; repoId: string; ref?: string; userId?: string; notBefore?: number | null },
+  job: { kind: JobKind; forge: string; repoId: string; ref?: string; userId?: string; notBefore?: number | null; paperId?: string },
   t: number,
 ): Write {
   if (job.kind === "delete_due" && (job.notBefore === undefined || job.notBefore === null)) throw new TypeError("a delete_due job needs not_before");
+  if ((job.kind === "release" || job.kind === "deposit") && (!job.ref || !job.paperId)) throw new TypeError(`a ${job.kind} job needs its tag and its paper`);
   return {
     rows: 1,
     stmt: db
-      .prepare("INSERT INTO jobs (kind, forge, repo_id, ref, user_id, created_at, not_before) VALUES (?, ?, ?, ?, ?, ?, ?)")
-      .bind(job.kind, forgeOf(job.forge), job.repoId, job.ref ?? "", job.userId ?? "", t, job.notBefore ?? null),
+      .prepare("INSERT INTO jobs (kind, forge, repo_id, ref, user_id, created_at, not_before, paper_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
+      .bind(job.kind, forgeOf(job.forge), job.repoId, job.ref ?? "", job.userId ?? "", t, job.notBefore ?? null, job.paperId ?? ""),
+  };
+}
+
+// ─── releases tied to a paper's version (phase 07) ───────────────────────────
+
+/** A release tied to a version of a paper (migrations/d1-forge/0006_releases.sql). */
+export interface ReleasePaperRow {
+  forge: string;
+  repo_id: string;
+  tag: string;
+  paper_id: string;
+  release_id: string;
+  repo_path: string;
+  version: string;
+  label: string;
+  commit_sha: string;
+  map_digest: string;
+  status: PaperStatus;
+  by_user: string;
+  at: number;
+}
+
+/** A repository's ties, by the key's prefix (no index), in the order of their tags. */
+export function releasePapersOf(db: D1Database, forge: string, repoId: string, tag?: string): D1PreparedStatement {
+  if (tag === undefined) {
+    return db.prepare("SELECT * FROM release_papers WHERE forge = ? AND repo_id = ? ORDER BY tag, paper_id LIMIT 500").bind(forgeOf(forge), repoId);
+  }
+  return db.prepare("SELECT * FROM release_papers WHERE forge = ? AND repo_id = ? AND tag = ? ORDER BY paper_id").bind(forgeOf(forge), repoId, tag);
+}
+
+/** A release tied to a paper's version, or the tie changed (1 row: the table is its key). */
+export function upsertReleasePaper(
+  db: D1Database,
+  r: { forge: string; repoId: string; tag: string; paperId: string; releaseId: string; repoPath: string; version: string; label: string; commit: string; mapDigest: string; status: PaperStatus; userId: string },
+  t: number,
+): Write {
+  return {
+    rows: 1,
+    stmt: db
+      .prepare(
+        "INSERT INTO release_papers (forge, repo_id, tag, paper_id, release_id, repo_path, version, label, commit_sha, map_digest, status, by_user, at) " +
+          "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT (forge, repo_id, tag, paper_id) DO UPDATE SET release_id = excluded.release_id, " +
+          "repo_path = excluded.repo_path, version = excluded.version, label = excluded.label, commit_sha = excluded.commit_sha, " +
+          "map_digest = excluded.map_digest, status = excluded.status, by_user = excluded.by_user, at = excluded.at",
+      )
+      .bind(forgeOf(r.forge), r.repoId, r.tag, r.paperId, r.releaseId, lower(r.repoPath), r.version, r.label, r.commit, r.mapDigest, r.status, r.userId, Math.floor(t)),
+  };
+}
+
+/** A tie undone (1 row). */
+export function deleteReleasePaper(db: D1Database, forge: string, repoId: string, tag: string, paperId: string): Write {
+  return {
+    rows: 1,
+    stmt: db.prepare("DELETE FROM release_papers WHERE forge = ? AND repo_id = ? AND tag = ? AND paper_id = ?").bind(forgeOf(forge), repoId, tag, paperId),
   };
 }
 
