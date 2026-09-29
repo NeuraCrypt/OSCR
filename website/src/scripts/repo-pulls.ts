@@ -40,7 +40,7 @@ import {
   suggestReviewers,
   summaryInWords,
 } from "../lib/pulls.ts";
-import { type El, h } from "../lib/repo-view.ts";
+import { type El, h, moderatedThread } from "../lib/repo-view.ts";
 import { show, toDom } from "./dom.ts";
 import { confirmAction, el, signedInHint, signInLine, textAt, whoIsHere } from "./pull-common.ts";
 import { type CodeEnv, codeViews, failed, repoRef } from "./repo-code.ts";
@@ -126,7 +126,7 @@ async function mountPulls(slot: HTMLElement, env: CodeEnv): Promise<void> {
   try {
     if (plan.search) {
       const found = await env.session.issues.search(repoRef(env), searchQuery(qMe), { perPage: 50, cursor: pageNo > 1 ? String(pageNo) : null });
-      rows = found.items.filter((i) => i.isPullRequest).map((i) => searchRow(env.repo, i));
+      rows = found.items.filter((i) => i.isPullRequest && !moderatedThread(env.layer, "pull", i.number)).map((i) => searchRow(env.repo, i));
       next = found.next;
       note = "Found by GitHub's search (it knows the reviews and comments; its answers may lag a minute behind).";
     } else {
@@ -135,7 +135,8 @@ async function mountPulls(slot: HTMLElement, env: CodeEnv): Promise<void> {
         { state: plan.state, base: plan.base ?? undefined, head: plan.head && plan.head.includes(":") ? plan.head : undefined, sort: plan.sort, direction: plan.direction },
         { perPage: LIST_PAGE, cursor: pageNo > 1 ? String(pageNo) : null },
       );
-      const kept = list.items.filter((p) => matchPull(p, parsed.node, { me }));
+      // Night phase 16: a pull request the owner hid leaves the registry's list.
+      const kept = list.items.filter((p) => matchPull(p, parsed.node, { me }) && !moderatedThread(env.layer, "pull", p.number));
       rows = kept.map((p) => pullRow(env.repo, p, signedIn));
       next = list.next;
       if (list.next) note = `Filtered among the ${LIST_PAGE} pull requests GitHub listed on this page; the next page holds older ones.`;

@@ -69,7 +69,7 @@ import {
 import { draftKey, readDraft } from "../lib/editor.ts";
 import { repoPath, type RepoCoords, type RepoPath, type ShellLayer } from "../lib/forge.ts";
 import { detectLanguage, editorConfigTabWidth, highlightText, type LineNodes, plainLines } from "../lib/highlight.ts";
-import { type Child, dateOfIso, type El, h } from "../lib/repo-view.ts";
+import { type Child, dateOfIso, type El, h, moderatedThread } from "../lib/repo-view.ts";
 import { show, toDom } from "./dom.ts";
 
 /** What the shell hands the code views. */
@@ -799,6 +799,18 @@ export const codeViews: Partial<Record<string, (slot: HTMLElement, env: CodeEnv)
 
 export async function mountCode(slot: HTMLElement, env: CodeEnv): Promise<void> {
   wireKeys(env);
+  // Night phase 16: a GitHub issue, pull request or release the owner hid shows only why.
+  const rest = env.target.rest ?? [];
+  const thread =
+    env.target.view === "issues" && /^[1-9]\d{0,9}$/.test(rest[0] ?? "") ? { kind: "issue" as const, id: rest[0], words: "issue" }
+    : env.target.view === "pull" && /^[1-9]\d{0,9}$/.test(rest[0] ?? "") ? { kind: "pull" as const, id: rest[0], words: "pull request" }
+    : env.target.view === "releases" && rest[0] === "tag" && rest[1] ? { kind: "release" as const, id: rest[1], words: "release" }
+    : null;
+  const why = thread ? moderatedThread(env.layer, thread.kind, thread.id) : null;
+  if (thread && why) {
+    show(slot, h("p", { class: "moderated" }, `This ${thread.words} is hidden from the registry's pages: ${why}. `, h("a", { href: "/notices/" }, "The notices"), " say what was hidden and why."));
+    return;
+  }
   const view = codeViews[env.target.view];
   if (view) await view(slot, env);
   else show(slot, h("p", null, "This view of the repository is not built yet."));

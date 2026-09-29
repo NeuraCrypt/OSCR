@@ -220,8 +220,12 @@ export async function handleSocialPerson(r: ForgeRequest): Promise<Response> {
   const hiddenLists = me ? new Map() : await hiddenAmong(r.db, "list", lists.map((l) => `${user.id}/${l.list_id}`));
   const view = profileHidden && !me ? { ...profileView(null, r.t), private: profileView(profile, r.t).private, hidden: moderationView(profileHidden).words } : profileView(profile, r.t);
   const open = me || !view.private;
-  const stars: StarRow[] = open ? await all<StarRow>(starsOf(r.db, user.id)) : [];
-  const follows: FollowRow[] = open ? await all<FollowRow>(followsOf(r.db, user.id)) : [];
+  const starred: StarRow[] = open ? await all<StarRow>(starsOf(r.db, user.id)) : [];
+  const followed: FollowRow[] = open ? await all<FollowRow>(followsOf(r.db, user.id)) : [];
+  // Night phase 16: a repository moderation hid is not named in someone else's stars or follows.
+  const hiddenRepos = me ? new Map() : await hiddenAmong(r.db, "repo", [...starred.map((x) => x.subject), ...followed.map((f) => f.target)].filter((x) => x.startsWith("repo:")).map((x) => x.slice(5)));
+  const stars = starred.filter((x) => !(x.subject.startsWith("repo:") && hiddenRepos.has(x.subject.slice(5))));
+  const follows = followed.filter((f) => !(f.target.startsWith("repo:") && hiddenRepos.has(f.target.slice(5))));
   return json({
     account: true,
     me,

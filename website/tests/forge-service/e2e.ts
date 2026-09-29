@@ -23,6 +23,12 @@ const post = (url: string, body: unknown) => fetch(url, { method: "POST", body: 
 
 type Json = Record<string, any>; // deno-lint-ignore no-explicit-any
 
+/** Night phase 16: the forms that carry the human check. */
+const HUMAN_ROUTES = new Set([
+  "/api/forge/research/open", "/api/forge/research/comment", "/api/forge/social/profile", "/api/forge/social/list",
+  "/api/forge/tokens/write", "/api/forge/hooks/write", "/api/forge/report", "/api/forge/appeal", "/api/forge/rights",
+]);
+
 /** A browser over real HTTP: a cookie jar for the site, redirects followed by hand. */
 class Client {
   jar = new Map<string, string>();
@@ -70,10 +76,13 @@ class Client {
 
   async post(path: string, body: unknown): Promise<{ status: number; data: Json }> {
     const csrf = (await this.me()).csrf as string;
+    // Night phase 16: a form with the human check sends the widget's token (Cloudflare's dummy token, as
+    // the test secret passes it), unless the check gives its own.
+    const human = HUMAN_ROUTES.has(path) && body && typeof body === "object" && !("turnstile" in (body as object));
     const res = await this.request(`${SITE}${path}`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Origin: new URL(SITE).origin, "X-CSRF-Token": csrf },
-      body: JSON.stringify(body),
+      body: JSON.stringify(human ? { ...(body as object), turnstile: "XXXX.DUMMY.TOKEN.XXXX" } : body),
     });
     return { status: res.status, data: (await res.json()) as Json };
   }

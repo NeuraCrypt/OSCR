@@ -2550,3 +2550,23 @@ module imports neither a process nor a network library (a test says so).
 - **Snippets'** reports (phase 13 builds snippets: the report kind is reserved).
 - **The context notice on retracted papers** (the plan's "Research" line): the catalogue's pages
   already say a retraction first (main's `notices`, PROMINENT); nothing more was needed tonight.
+
+### D16-21. The end-to-end run: three Workers on one state; the security review's fixes
+
+**Decision.** `tests/forge-service/e2e.sh` starts the Worker again (`start_worker`, the same local D1s and
+the same server key, every child process killed between) for phase 16's stages
+(`tests/forge-service/e2e-rules.ts`): FORGE_OPEN unset with Turnstile's always-passing test secret (a
+report without an account, refused without the widget's token; the owner's queue, the owner's only; the
+comment hidden for others, still read by its author and the owner; Bob's write refused), then
+FORGE_OPEN=true (Bob's write taken under the caps; his comment behind the check; blocked: his comment
+and his reaction refused, the refusal naming no one; unblocked; a limit set, read, enforced, lifted),
+then the always-failing test secret (a report and a write refused). Turnstile's siteverify is the
+sign-in mock's (`/turnstile/siteverify`, `TURNSTILE_VERIFY_URL`, this machine only); the Worker's
+fetch uses `redirect: "manual"` (Workers refuse "error"). 216 checks, every one passed.
+
+The security review (docs/MODERATION.md "Security review") also led to: a redelivery of an event
+hidden since is refused; a private star list cannot be reported, nor its existence learned; a person's
+stars and follows no longer name a hidden repository; a GitHub issue, pull request or release the owner
+hides is named in its repository's layer (static `moderated_threads`, live `moderatedThreads`), so its
+page on the registry says only why and the lists leave it out; wrangler.toml is checked to hold neither
+FORGE_OPEN nor Turnstile's secret or stand-in.

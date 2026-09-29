@@ -146,3 +146,17 @@ export async function hiddenEventFilter(
     return !!k && hiddenThreads.has(`${k.kind}|${k.key}`);
   };
 }
+
+/** A repository's GitHub issues, pull requests and releases hidden from the registry's pages, as
+ *  "issue:3", "pull:7", "release:v1.0" → the reason in words (two key ranges: "<repo>#…", "<repo>/…"). */
+export async function hiddenThreadsOf(db: D1Database, forge: string, repoId: string): Promise<Record<string, string>> {
+  const ref = `${forge}:${repoId}`;
+  const [threads, releases] = await Promise.all([
+    all<HiddenRow>(db.prepare("SELECT kind, ref, reason FROM moderation WHERE kind IN ('issue', 'pull') AND ref >= ? AND ref < ? AND state = 'hidden'").bind(`${ref}#`, `${ref}$`)),
+    all<HiddenRow>(db.prepare("SELECT kind, ref, reason FROM moderation WHERE kind = 'release' AND ref >= ? AND ref < ? AND state = 'hidden'").bind(`${ref}/`, `${ref}0`)),
+  ]);
+  const out: Record<string, string> = {};
+  for (const r of threads) out[`${r.kind}:${r.ref.slice(ref.length + 1)}`] = REASON_WORDS[r.reason];
+  for (const r of releases) out[`release:${r.ref.slice(ref.length + 1)}`] = REASON_WORDS[r.reason];
+  return out;
+}

@@ -72,7 +72,7 @@ import {
 } from "../lib/issues.ts";
 import { renderMarkdown } from "../lib/markdown.ts";
 import { declarePull } from "../lib/pull-view.ts";
-import { type El, h } from "../lib/repo-view.ts";
+import { type El, h, moderatedThread } from "../lib/repo-view.ts";
 import { show, toDom } from "./dom.ts";
 import { confirmAction, el, signedInHint, signInLine, textAt, whoIsHere } from "./pull-common.ts";
 import { type CodeEnv, codeViews, failed, repoRef } from "./repo-code.ts";
@@ -282,7 +282,8 @@ async function mountIssues(slot: HTMLElement, env: CodeEnv): Promise<void> {
   }
   const milestones = items.some((i) => i.milestone !== null) || /milestone:/.test(q) ? await milestoneTitles(env) : [];
   const ctx = { me, milestones: new Map(milestones.map((m) => [m.number, m.title])) };
-  const kept = sortIssues(items.filter((i) => matchIssue(i, parsed.node, ctx)), plan, queryWords(parsed.node));
+  // Night phase 16: a GitHub issue the owner hid leaves the registry's list.
+  const kept = sortIssues(items.filter((i) => matchIssue(i, parsed.node, ctx) && !(i.kind === "github" && moderatedThread(env.layer, "issue", i.number))), plan, queryWords(parsed.node));
   const { labels, colors } = kept.some((i) => i.labels.length) || signedIn ? await labelColors(env) : { labels: [] as T.Label[], colors: new Map<string, string>() };
   const rows = kept.map((i) => issueRow(env.repo, i, { select: signedIn && !plan.search, colors, milestones: ctx.milestones, asOfLastNight: i.kind === "research" && !research.live }));
   const here = (n: number) => {

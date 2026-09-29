@@ -49,7 +49,7 @@ import { SEGMENT } from "../paths.ts";
 import type { ForgeName } from "../types.ts";
 import { PER_ACCOUNT_DAY } from "./caps.ts";
 import { dailyCaps, forgeOpen, mayWrite } from "./gate.ts";
-import { hiddenOne, moderationView } from "./hidden.ts";
+import { hiddenOne, hiddenThreadsOf, moderationView } from "./hidden.ts";
 import { linkedGithub } from "./identity.ts";
 import { json, problem } from "./http.ts";
 import { packagesOfRepo } from "./act-packages.ts";
@@ -125,6 +125,9 @@ export interface RepoLayerAnswer {
   answered: { kind: string; ref: string; paper: string; outcome: string; message: string; doneAt: number }[];
   /** Phase 07: the packages a person who may push confirmed or declined (repo_packages); never who. */
   packages: { registry: string; name: string; status: string; version: string; source: string }[];
+  /** Night phase 16: its GitHub issues, pull requests and releases hidden from the registry's pages
+   *  ("issue:3", "pull:7", "release:v1.0" → why). */
+  moderatedThreads: Record<string, string>;
 }
 
 export interface MineItem {
@@ -376,6 +379,8 @@ export async function repoLayer(db: D1Database, community: D1Database, user: Use
     releaseTies: ties.map((t) => ({ tag: t.tag, paper: t.paper_id.replace(/^doi:/, ""), version: t.version, label: t.label, status: t.status, commit: t.commit_sha || null, shown: t.map_digest || null })),
     answered: answered.map((j) => ({ kind: j.kind, ref: j.ref, paper: (j.paper_id ?? "").replace(/^doi:/, ""), outcome: j.outcome, message: j.message, doneAt: Number(j.done_at) })),
     packages: ((packagesRes?.results ?? []) as { registry: string; name: string; status: string; version: string; source: string }[]).map((p) => ({ registry: p.registry, name: p.name, status: p.status, version: p.version, source: p.source })),
+    // Night phase 16: its GitHub issues, pull requests and releases hidden from the registry's pages.
+    moderatedThreads: await hiddenThreadsOf(db, row.forge, row.repo_id),
   };
 }
 

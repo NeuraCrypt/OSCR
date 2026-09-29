@@ -27,6 +27,10 @@
 # 6. phase 08 (in 4: stars, a follow by ORCID iD, a watch, Bob's comment by webhook into Ada's inbox,
 #    marked read, Bob's star refused): the Mac's forge and social layers and the search's index, then
 #    the search of repositories, research issues and people, and the static social shards.
+# Phase 16 (7): a report without an account behind Turnstile (Cloudflare's test secrets, against the
+#    mock's siteverify: TURNSTILE_VERIFY_URL, development only), the owner's queue, the comment hidden for
+#    others; the Worker started again with FORGE_OPEN=true: a non-owner's write, a block (his comment and
+#    reaction refused), an interaction limit; and again with the always-failing test secret.
 # Phase 10 (in 4): a personal token made on the site, the public API called with it, a commit status
 #    posted, an outgoing webhook to a local receiver (RECEIVER_PORT, this run's own; HOOKS_ALLOW_LOCAL=1,
 #    development only) pinged then delivered an event, both signatures checked; the App installed on
@@ -53,9 +57,14 @@ CLIENT_ID="Iv23liE2ETESTCLIENT"
 CLIENT_SECRET="e2e-test-secret-not-real"
 WEBHOOK_SECRET="e2e-webhook-$(openssl rand -hex 12)"
 PIDS=""
+# A process and every process it started (npx → wrangler → workerd), so that no server is left behind.
+kill_tree() {
+  for c in $(pgrep -P "$1" 2>/dev/null); do kill_tree "$c"; done
+  kill "$1" 2>/dev/null || true
+}
 cleanup() {
   if [ "${KEEP:-}" != "1" ]; then
-    for p in $PIDS; do kill "$p" 2>/dev/null || true; done
+    for p in $PIDS; do kill_tree "$p"; done
     rm -rf "$TMP"
   else
     echo "servers kept: $PIDS; state in $TMP"
@@ -92,11 +101,25 @@ until curl -fs "$FAKE/control/seed" >/dev/null 2>&1; do
 done
 ADA_ID=$(curl -fs "$FAKE/control/seed" | "$PYTHON" -c 'import json,sys; print(json.load(sys.stdin)["ada"]["id"])')
 
-# 3. The site, reading the fake GitHub, and the Worker.
+# 3. The site, reading the fake GitHub, and the Worker. Night phase 16: the Worker is started again
+# with other values for its last stages (start_worker), on the same databases and the same server key.
 FORGE_GITHUB_API_URL="$FAKE/api" FORGE_GITHUB_RAW_URL="$FAKE/raw" FORGE_GITHUB_WEB_URL="$FAKE/web" \
   CATALOG_DIR=../tests/fixtures/public-catalog npm run build >"$TMP/build.log" 2>&1
-WRANGLER_SEND_METRICS=false npx wrangler dev --env local --port "$SITE_PORT" --persist-to "$TMP/state" \
-  --var "SESSION_KEY:e2e-$(openssl rand -hex 24)" \
+SESSION_KEY="e2e-$(openssl rand -hex 24)"
+TURNSTILE_PASS="1x0000000000000000000000000000000AA"   # Cloudflare's documented test secret: always passes
+TURNSTILE_FAIL="2x0000000000000000000000000000000AA"   # and always fails
+WORKER=""
+start_worker() {
+  if [ -n "$WORKER" ]; then
+    kill_tree "$WORKER"
+    i=0
+    while curl -fs "$SITE/api/account/me" >/dev/null 2>&1; do
+      i=$((i + 1)); [ "$i" -gt 60 ] && { echo "the previous Worker did not stop"; exit 1; }
+      sleep 0.5
+    done
+  fi
+  WRANGLER_SEND_METRICS=false npx wrangler dev --env local --port "$SITE_PORT" --persist-to "$TMP/state" \
+  --var "SESSION_KEY:$SESSION_KEY" \
   --var "ORCID_CLIENT_ID:APP-TESTORCID0000001" --var "ORCID_CLIENT_SECRET:orcid-test-secret" --var "ORCID_ISSUER:$MOCK/orcid" \
   --var "GITHUB_CLIENT_ID:Iv1.testgithubclient" --var "GITHUB_CLIENT_SECRET:github-test-secret" \
   --var "GITHUB_URL:$MOCK/github" --var "GITHUB_API_URL:$MOCK/github-api" \
@@ -107,13 +130,17 @@ WRANGLER_SEND_METRICS=false npx wrangler dev --env local --port "$SITE_PORT" --p
   --var "GITHUB_APP_WEBHOOK_SECRET:$WEBHOOK_SECRET" --var "FORGE_OWNER_GITHUB_ID:$ADA_ID" \
   --var "FORGE_GITHUB_API_URL:$FAKE/api" --var "FORGE_GITHUB_WEB_URL:$FAKE/web" --var "FORGE_GITHUB_RAW_URL:$FAKE/raw" \
   --var "FORGE_GITHUB_UPLOADS_URL:$FAKE/uploads" \
-  --var "GITHUB_APP_PRIVATE_KEY:$APP_KEY" --var "HOOKS_ALLOW_LOCAL:1" >"$TMP/dev.log" 2>&1 &
-PIDS="$PIDS $!"
-i=0
-until curl -fs "$SITE/api/account/me" >/dev/null 2>&1; do
-  i=$((i + 1)); [ "$i" -gt 120 ] && { echo "wrangler dev did not start:"; tail -20 "$TMP/dev.log"; exit 1; }
-  sleep 0.5
-done
+  --var "GITHUB_APP_PRIVATE_KEY:$APP_KEY" --var "HOOKS_ALLOW_LOCAL:1" \
+  --var "TURNSTILE_VERIFY_URL:$MOCK/turnstile/siteverify" "$@" >"$TMP/dev.log" 2>&1 &
+  WORKER=$!
+  PIDS="$PIDS $WORKER"
+  i=0
+  until curl -fs "$SITE/api/account/me" >/dev/null 2>&1; do
+    i=$((i + 1)); [ "$i" -gt 120 ] && { echo "wrangler dev did not start:"; tail -20 "$TMP/dev.log"; exit 1; }
+    sleep 0.5
+  done
+}
+start_worker --var "TURNSTILE_SECRET_KEY:$TURNSTILE_PASS"
 
 # 4. The run. Phase 07: the fixture paper's tracing map digest, as the Mac computes it (the map the
 # release form shows), for the release's tie and its deposit.
@@ -143,3 +170,12 @@ OSCR="$PYTHON -m oscr --db $TMP/mac.db --cache $TMP/cache --offline --no-verify 
   || { echo "the Mac's search push failed:"; tail -20 "$TMP/mac-social.log"; exit 1; }
 REPO_ID=$("$PYTHON" -c "import json; print(json.load(open('$TMP/phase07.json'))['id'])")
 SITE="$SITE" MOCK="$MOCK" FAKE="$FAKE" EXPORT="$TMP/export" REPO_ID="$REPO_ID" node --experimental-strip-types tests/forge-service/e2e.ts after-social
+
+# 7. Night phase 16 (tests/forge-service/e2e-rules.ts): reports, the owner's queue, what hiding removes,
+# with FORGE_OPEN unset; then the Worker again with FORGE_OPEN=true (a non-owner's write under the caps,
+# the human check, a block, an interaction limit); then with Turnstile's always-failing test secret.
+env SITE="$SITE" MOCK="$MOCK" FAKE="$FAKE" REPO_ID="$REPO_ID" node --experimental-strip-types tests/forge-service/e2e-rules.ts closed
+start_worker --var "TURNSTILE_SECRET_KEY:$TURNSTILE_PASS" --var "FORGE_OPEN:true"
+env SITE="$SITE" MOCK="$MOCK" FAKE="$FAKE" REPO_ID="$REPO_ID" node --experimental-strip-types tests/forge-service/e2e-rules.ts open
+start_worker --var "TURNSTILE_SECRET_KEY:$TURNSTILE_FAIL" --var "FORGE_OPEN:true"
+env SITE="$SITE" MOCK="$MOCK" FAKE="$FAKE" REPO_ID="$REPO_ID" node --experimental-strip-types tests/forge-service/e2e-rules.ts fail

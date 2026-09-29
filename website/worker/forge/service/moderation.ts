@@ -108,8 +108,9 @@ export async function resolveTarget(r: ForgeRequest, community: D1Database, t: T
     if (!user) return missing("account");
     const handle = user.github_login ?? user.orcid ?? (user.display_name || "a reader");
     if (t.kind === "list") {
-      const list = await first<{ name: string }>(r.db.prepare("SELECT name FROM star_lists WHERE user_id = ? AND list_id = ?").bind(user.id, listOfTarget(t.target)!.listId));
-      if (!list) return missing("star list");
+      const list = await first<{ name: string; public: number }>(r.db.prepare("SELECT name, public FROM star_lists WHERE user_id = ? AND list_id = ?").bind(user.id, listOfTarget(t.target)!.listId));
+      // A private list is nobody's to report (nor to learn of): answered as one that does not exist.
+      if (!list || list.public !== 1) return missing("star list");
       return { kind: "list", key: `${user.id}/${listOfTarget(t.target)!.listId}`, label: `${handle}'s list “${list.name}”`, ownerUser: user.id, github: null };
     }
     const github = person.provider === "github" ? person.subject : await linkedGithub(community, user.id);

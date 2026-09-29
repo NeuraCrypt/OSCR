@@ -846,6 +846,10 @@ def apply_moderation(entries: dict[str, dict[str, Any]], hidden: moderation.Hidd
     for path, entry in list(entries.items()):
         row = hidden.repos.get(f"{FORGE}:{entry.get('id')}") if entry.get("id") else None
         if row is None:
+            # A GitHub issue, pull request or release hidden: its page says so, its lists leave it out.
+            threads = hidden.threads.get(f"{FORGE}:{entry.get('id')}") if entry.get("id") else None
+            if threads:
+                entry["moderated_threads"] = dict(sorted(threads.items()))
             continue
         since = int(row["created_at"])
         out[path] = {"words": hidden.words(row["reason"]), "since": since,

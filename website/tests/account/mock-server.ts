@@ -3,7 +3,8 @@
 //   GITHUB_URL, GITHUB_API_URL and GOOGLE_ISSUER (docs/ACCOUNTS.md, "Local end-to-end run");
 // - under /checks/, doi.org and the forges the contributions' checks ask (Phase 6,
 //   tests/contributions/places.ts): `wrangler dev --var CHECKS_URL:<this>/checks`;
-// - under /zenodo/, the Zenodo sandbox of the Mac's job runner (`OSCR_ZENODO_SANDBOX_URL`).
+// - under /zenodo/, the Zenodo sandbox of the Mac's job runner (`OSCR_ZENODO_SANDBOX_URL`);
+// - night phase 16: /turnstile/siteverify, Cloudflare Turnstile's verification with its test secrets.
 //
 //   node --experimental-strip-types tests/account/mock-server.ts [port, default 9471]
 //
@@ -60,6 +61,15 @@ createServer(async (req, res) => {
   }
   if (path === "/control/zenodo") {
     res.writeHead(200, { "Content-Type": "application/json" }).end(JSON.stringify(zenodo.deposits));
+    return;
+  }
+  // Night phase 16: Cloudflare Turnstile's siteverify as its documented test secrets make it answer
+  // (the secret 1x…AA passes any token, 2x…AA fails every one): `wrangler dev --var
+  // TURNSTILE_VERIFY_URL:<this>/turnstile/siteverify`. Never Cloudflare itself.
+  if (path === "/turnstile/siteverify" && req.method === "POST") {
+    const form = new URLSearchParams(body.toString("utf8"));
+    const pass = form.get("secret") === "1x0000000000000000000000000000000AA" && !!form.get("response");
+    res.writeHead(200, { "Content-Type": "application/json" }).end(JSON.stringify({ success: pass, "error-codes": pass ? [] : ["invalid-input-response"] }));
     return;
   }
   const headers = new Headers();

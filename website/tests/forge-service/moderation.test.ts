@@ -246,6 +246,28 @@ describe("the owner's queue and decisions", () => {
     assert.equal(forgeRows(w.forge, "hooks")[0].active, 0);
   });
 
+  test("a GitHub issue, pull request or release hidden: its repository's layer names it for the pages", async () => {
+    const ada = await signIn(w, ADA_LOGIN);
+    const adaId = await userIdOf(ADA_LOGIN);
+    await seed.repo(w.forge, { repoId: "78", ownerLogin: "lab", name: "kit", linkedBy: adaId });
+    assert.equal((await ada.post("/api/forge/moderation/decide", { op: "hide", target: "issue:memory:78#4", reason: "spam", label: "issue #4 of lab/kit" })).status, 200);
+    assert.equal((await ada.post("/api/forge/moderation/decide", { op: "hide", target: "release:memory:78/v1.0", reason: "malware" })).status, 200);
+    w.forge.reset();
+    const layer = await body(await ada.fetch("/api/forge/repo?id=memory:78"));
+    assert.deepEqual(layer.moderatedThreads, { "issue:4": "spam or advertising", "release:v1.0": "malware or a harmful file" });
+    assert.deepEqual(w.forge.scans, []);
+  });
+
+  test("a private star list cannot be reported (nor learned of)", async () => {
+    await signIn(w, ADA_LOGIN);
+    const adaGithub = String([...w.backend.accounts.values()].find((a) => a.login === ADA_LOGIN)!.id);
+    const adaId = await userIdOf(ADA_LOGIN);
+    w.forge.sqlite.prepare("INSERT INTO star_lists (user_id, list_id, name, public, at) VALUES (?, 1, 'Mine', 0, ?), (?, 2, 'Ours', 1, ?)").run(adaId, T0, adaId, T0);
+    const anon = w.browser();
+    assert.equal((await anon.post("/api/forge/report", { target: `list:github:${adaGithub}/1`, reason: "spam", turnstile: TOKEN }, { csrf: null })).status, 404);
+    assert.equal((await anon.post("/api/forge/report", { target: `list:github:${adaGithub}/2`, reason: "spam", turnstile: TOKEN }, { csrf: null })).status, 201);
+  });
+
   test("a repository hidden: its layer answers 410 but to whoever manages it and the owner", async () => {
     const ada = await signIn(w, ADA_LOGIN);
     const adaId = await userIdOf(ADA_LOGIN);

@@ -145,6 +145,8 @@ describe("GET /api/forge/repo", () => {
       releaseTies: [],
       answered: [],
       packages: [],
+      // Night phase 16: none of its GitHub threads hidden.
+      moderatedThreads: {},
     });
     // Budget R6: at most 12 rows read in both databases (phase 04's authors included), none
     // written, never a scan.

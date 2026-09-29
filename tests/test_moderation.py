@@ -92,3 +92,17 @@ def test_the_social_layer_leaves_out_a_suspended_account_a_hidden_profile_and_a_
     assert ada["profile"]["name"] == "" and ada["profile"]["bio"] == "" and ada["profile"]["website"] == ""
     assert ada["lists"] == [] and explore["collections"] == []
     assert ada["followers"] == 0, "Bob followed Ada: his follow no longer counts"
+
+
+def test_a_hidden_github_thread_is_named_in_its_repository_entry(tmp_path, forge_d1):
+    con, state, reader = _mac(tmp_path), _state(), _reader()
+    forgelayer.resolve_ids(con, state, reader, now=T)
+    _repo(forge_d1, "101", "oscr-fixture", "eeg-analysis")
+    _hide(forge_d1, "issue", "github:101#4", "issue:github:101#4", "spam")
+    _hide(forge_d1, "release", "github:101/v1.0", "release:github:101/v1.0", "malware")
+    _hide(forge_d1, "pull", "github:101#9", "pull:github:101#9", "spam", state="restored")
+    out = tmp_path / "public"
+    forgelayer.write(con, forge_d1, out, state=state, now=T)
+    entry = _entries(out)["oscr-fixture/eeg-analysis"]
+    assert entry["moderated_threads"] == {"issue:4": "spam or advertising", "release:v1.0": "malware or a harmful file"}
+    assert entry["mode"] == "public", "the repository itself stays shown"

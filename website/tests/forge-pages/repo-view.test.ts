@@ -29,6 +29,7 @@ import {
   pagesSite,
   papersBlock,
   parseLayer,
+  moderatedThread,
   readLayer,
   readmeExcerpt,
   renamedPath,
@@ -616,7 +617,7 @@ describe("reading a repository in the reader's browser (fake GitHub, anonymous)"
       },
     });
     assert.deepEqual(asked, ["/api/forge/repo?path=oscr-fixture%2Feeg-analysis"]);
-    assert.ok(live && live !== "unknown" && !("moderated" in live));
+    assert.ok(live && live !== "unknown" && !("repoHidden" in live));
     assert.equal(live.mode, "installed");
     assert.deepEqual(live.roles, ["owner"]);
     // Not linked (404): null, no further request.
@@ -635,7 +636,7 @@ describe("reading a repository in the reader's browser (fake GitHub, anonymous)"
       },
     });
     assert.deepEqual(asked, ["/api/forge/repo?path=oscr-fixture%2Feeg-analysis", shardUrl]);
-    assert.ok(fallback && fallback !== "unknown" && !("moderated" in fallback));
+    assert.ok(fallback && fallback !== "unknown" && !("repoHidden" in fallback));
     assert.equal(fallback.mode, "catalogue");
   });
 
@@ -644,12 +645,22 @@ describe("reading a repository in the reader's browser (fake GitHub, anonymous)"
       signedIn: true,
       site: async () => new Response(JSON.stringify({ error: { code: "moderated", moderation: { words: "malware or a harmful file" } } }), { status: 410 }),
     });
-    assert.deepEqual(live, { moderated: "malware or a harmful file" });
+    assert.deepEqual(live, { repoHidden: "malware or a harmful file" });
     const nightly = await readLayer(EEG, {
       signedIn: false,
       site: async () => new Response(JSON.stringify({ "oscr-fixture/eeg-analysis": { moderated: { words: "spam or advertising", since: 1 } } })),
     });
-    assert.deepEqual(nightly, { moderated: "spam or advertising" });
+    assert.deepEqual(nightly, { repoHidden: "spam or advertising" });
+  });
+
+  test("night phase 16: a GitHub issue, pull request or release the owner hid, from the layer", () => {
+    const layer = parseLayer({ forge: "github", id: 5, mode: "public", moderated_threads: { "issue:3": "spam or advertising", "release:v1.0": "malware or a harmful file", "bad key": "x" } });
+    assert.ok(layer);
+    assert.equal(moderatedThread(layer, "issue", 3), "spam or advertising");
+    assert.equal(moderatedThread(layer, "release", "v1.0"), "malware or a harmful file");
+    assert.equal(moderatedThread(layer, "pull", 3), null);
+    assert.equal(Object.keys(layer.moderated ?? {}).length, 2, "only well-formed threads");
+    assert.equal(moderatedThread(null, "issue", 3), null);
   });
 
   test("the layer names another repository at this address: it is not shown", async () => {

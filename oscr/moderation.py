@@ -64,6 +64,9 @@ class Hidden:
     profiles: set[str] = field(default_factory=set)
     lists: set[tuple[str, int]] = field(default_factory=set)
     statuses: set[str] = field(default_factory=set)
+    #: A GitHub issue, pull request or release hidden from the registry's pages, by repository
+    #: ("github:<id>") then thread ("issue:3", "pull:7", "release:v1.0") → the reason in words.
+    threads: dict[str, dict[str, str]] = field(default_factory=dict)
     rows: list[dict[str, Any]] = field(default_factory=list)           # every row, hidden or restored
 
     def words(self, reason: str) -> str:
@@ -114,6 +117,11 @@ def read(d1: community.D1 | None) -> Hidden:
                 h.lists.add((uid, int(n)))
         elif kind == "status":
             h.statuses.add(key)
+        elif kind in ("issue", "pull", "release"):
+            sep = "/" if kind == "release" else "#"
+            if sep in key:
+                repo, thread = key.split(sep, 1)
+                h.threads.setdefault(repo, {})[f"{kind}:{thread}"] = h.words(r["reason"])
     return h
 
 

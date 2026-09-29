@@ -199,6 +199,16 @@ export interface ViewLayer extends ShellLayer {
   swh: string | null;
   /** How many of its files the registry keeps as licensed script copies (the Mac's count). */
   copies: number | null;
+  /** Night phase 16: its GitHub issues, pull requests and releases hidden from the registry's pages,
+   *  "issue:3", "pull:7", "release:v1.0" → why (the static layer's moderated_threads, the API's
+   *  moderatedThreads). */
+  moderated?: Record<string, string>;
+}
+
+/** Why a GitHub issue, pull request or release is hidden from the registry's pages, or null. */
+export function moderatedThread(layer: object | null | undefined, kind: "issue" | "pull" | "release", id: string | number): string | null {
+  const moderated = (layer as { moderated?: Record<string, string> } | null | undefined)?.moderated;
+  return moderated?.[`${kind}:${id}`] ?? null;
 }
 
 const LAYER_MODES: readonly LayerMode[] = ["catalogue", "created", "installed", "public"];
@@ -254,6 +264,12 @@ export function parseLayer(value: unknown): ViewLayer | null {
     roles: Array.isArray(o.roles) ? o.roles.filter((r): r is string => typeof r === "string" && /^[a-z_]{1,40}$/.test(r)) : [],
     swh: typeof swh === "string" && swhUrl(swh) ? swh : null,
     copies: count(o.copies),
+    moderated: Object.fromEntries(
+      Object.entries(record(pick(o, "moderated_threads", "moderatedThreads")) ?? {})
+        .filter(([k, v]) => /^(?:issue|pull):[1-9]\d{0,9}$|^release:.{1,200}$/s.test(k) && typeof v === "string")
+        .slice(0, 500)
+        .map(([k, v]) => [k, (v as string).slice(0, 200)]),
+    ),
     reviewers: (Array.isArray(o.reviewers) ? o.reviewers.slice(0, 30) : [])
       .map(record)
       .filter((r): r is Record<string, unknown> => !!r && typeof r.login === "string" && /^[A-Za-z0-9][A-Za-z0-9-]{0,38}$/.test(r.login))
@@ -603,7 +619,7 @@ const asError = (e: unknown): GitBackendError =>
 
 /** OSCR's layer for one repository: live when signed in, else the static shard; null when OSCR
  *  does not know it; "unknown" when neither could be read. */
-export async function readLayer(repo: RepoCoords, deps: Pick<ShellDeps, "site" | "signedIn">): Promise<ViewLayer | null | "unknown" | { moderated: string }> {
+export async function readLayer(repo: RepoCoords, deps: Pick<ShellDeps, "site" | "signedIn">): Promise<ViewLayer | null | "unknown" | { repoHidden: string }> {
   if (deps.signedIn) {
     try {
       const res = await deps.site(`/api/forge/repo?path=${encodeURIComponent(`${repo.owner}/${repo.name}`)}`);
@@ -611,7 +627,7 @@ export async function readLayer(repo: RepoCoords, deps: Pick<ShellDeps, "site" |
       // Night phase 16: hidden by moderation (410), the reason in words; nothing else of it is shown.
       if (res.status === 410) {
         const e = record(record(await res.json())?.error);
-        return { moderated: String(record(e?.moderation)?.words ?? "it broke the rules") };
+        return { repoHidden: String(record(e?.moderation)?.words ?? "it broke the rules") };
       }
       if (res.ok) {
         const body = record(await res.json());
@@ -630,7 +646,7 @@ export async function readLayer(repo: RepoCoords, deps: Pick<ShellDeps, "site" |
     const entry = shard ? record(shard[`${repo.owner}/${repo.name}`.toLowerCase()]) : null;
     // Night phase 16: last night's layer says only that it is hidden, and why.
     const moderated = record(entry?.moderated);
-    if (moderated) return { moderated: String(moderated.words ?? "it broke the rules") };
+    if (moderated) return { repoHidden: String(moderated.words ?? "it broke the rules") };
     return entry ? parseLayer(entry) : null;
   } catch {
     return "unknown";
@@ -662,8 +678,8 @@ export async function loadRepository(target: RepoPath, deps: ShellDeps): Promise
     out.error = asError(e);
   }
   let layerOrHidden = await layerRead;
-  if (layerOrHidden && typeof layerOrHidden === "object" && "moderated" in layerOrHidden) {
-    out.moderated = layerOrHidden.moderated;
+  if (layerOrHidden && typeof layerOrHidden === "object" && "repoHidden" in layerOrHidden) {
+    out.moderated = layerOrHidden.repoHidden;
     layerOrHidden = null;
   }
   let layer = layerOrHidden;
@@ -674,7 +690,7 @@ export async function loadRepository(target: RepoPath, deps: ShellDeps): Promise
       out.repo = now;
       if (layer === null) {
         const again = await readLayer(now, deps);
-        if (again && typeof again === "object" && "moderated" in again) out.moderated = again.moderated;
+        if (again && typeof again === "object" && "repoHidden" in again) out.moderated = again.repoHidden;
         else layer = again;
       }
     } else if (isOwner(now.owner) && isRepoName(now.name)) {

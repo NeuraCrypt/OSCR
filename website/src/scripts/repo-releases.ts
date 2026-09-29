@@ -57,7 +57,7 @@ import {
   type NotesMapLink,
   type ReleaseTie,
 } from "../lib/releases.ts";
-import { type El, h } from "../lib/repo-view.ts";
+import { type El, h, moderatedThread } from "../lib/repo-view.ts";
 import { nextVersions, parseSemver, sortTags } from "../lib/semver.ts";
 import { show, toDom } from "./dom.ts";
 import { sessionStore } from "./forge-client.ts";
@@ -230,7 +230,9 @@ async function mountList(slot: HTMLElement, env: CodeEnv): Promise<void> {
   const drafts = (stash?.drafts ?? []).map(fromStash).filter((d) => !list.items.some((r) => r.id === d.id));
   const items = sortReleases([...drafts, ...list.items]);
   const latestId = latest?.id ?? null;
-  const kept = q ? items.filter((r) => matchRelease(r, parsed.node, { latestId, ties: ctx.ties })) : items;
+  // Night phase 16: a release the owner hid leaves the registry's list.
+  const shown = items.filter((r) => !moderatedThread(env.layer, "release", r.tagName));
+  const kept = q ? shown.filter((r) => matchRelease(r, parsed.node, { latestId, ties: ctx.ties })) : shown;
   const rows = kept.map((r) => releaseRow(env.repo, r, latestId, ctx.ties.get(r.tagName) ?? [], notesExcerpt(r.body)));
   const count = list.items.length;
   const draftsLine = !signedIn

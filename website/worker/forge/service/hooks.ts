@@ -378,6 +378,8 @@ export async function handleHookWrite(r: ForgeRequest): Promise<Response> {
     if (past.event === "ping" || !past.ev_subject) return say(bad("A ping is not redelivered: ping the hook again."));
     const e = await first<EventRow>(eventByKey(r.db, past.ev_subject, past.ev_at, past.ev_nonce));
     if (!e) return say(new ForgeProblem(410, "gone", "This event is no longer kept: it cannot be delivered again."));
+    // Night phase 16: what moderation hid since is never delivered again.
+    if ((await hiddenEventFilter(r.db, [e]))(e)) return say(new ForgeProblem(410, "moderated", "This event is hidden by moderation: it cannot be delivered again."));
     const gate = await mayAutomate(r, s, "hook", 2);
     if (gate instanceof ForgeProblem) return say(gate);
     const again = crypto.randomUUID();

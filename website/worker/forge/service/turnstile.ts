@@ -54,7 +54,7 @@ export async function checkTurnstile(env: ForgeServiceEnv, token: string, fetche
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: form.toString(),
       signal: AbortSignal.timeout(WAIT_MS),
-      redirect: "error",
+      redirect: "manual",
     });
     if (res.ok) {
       const body = (await res.json()) as { success?: unknown };
