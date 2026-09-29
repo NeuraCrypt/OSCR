@@ -140,3 +140,65 @@ def test_reads_every_page_in_key_order():
     d1.run([f"INSERT INTO stars (user_id, subject, label, at) VALUES ('u{i:04d}', 'topic:t{i % 7}', '', {i})" for i in range(2_500)])
     got = social.rows(d1, "stars", "user_id, subject", ("user_id", "subject"))
     assert len(got) == 2_500 and got == sorted(got, key=lambda r: (r["user_id"], r["subject"]))
+
+
+def _search_d1() -> community.SqliteD1:
+    con = sqlite3.connect(":memory:")
+    con.executescript((ROOT / "migrations" / "d1" / "search" / "0002_forge.sql").read_text())
+    return community.SqliteD1(con)
+
+
+def _export(tmp_path: Path, world) -> Path:
+    forge, people = world
+    out = tmp_path / "public"
+    social.write(forge, people, out, now=NOW)
+    layer = out / "forge" / "layer"
+    layer.mkdir(parents=True)
+    entries = {
+        "lab/eeg": {"forge": "github", "id": "101", "mode": "public", "state": "active",
+                    "papers": [{"doi": "10.1234/eeg.2026", "title": "Filtering EEG before epoching"}]},
+        "lab/secret": {"forge": "github", "id": "102", "mode": "public", "state": "hidden", "papers": []},
+    }
+    for key, e in entries.items():
+        n = f"{hashlib.sha256(key.encode()).digest()[0] % 64:02d}"
+        path = layer / f"{n}.json"
+        content = json.loads(path.read_text()) if path.exists() else {}
+        content[key] = e
+        path.write_text(json.dumps(content))
+    research = out / "forge" / "research"
+    research.mkdir(parents=True)
+    (research / "01.json").write_text(json.dumps({"1": {"issue": {
+        "id": 1, "paper": "doi:10.1234/eeg.2026", "repo": {"forge": "github", "id": "101", "path": "lab/eeg"}, "type": "code_error",
+        "title": "Off by one in the epochs", "state": "open", "labels": ["epochs"], "body": "Line 12, mail ada@example.org", "comments": 2}}}))
+    return out
+
+
+def test_search_documents_come_from_the_public_files_only(world, tmp_path):
+    docs = social.search_docs(_export(tmp_path, world))
+    assert set(docs) >= {"repo:github:101", "research:1", "person:ada-fixture", "topic:eeg"}
+    assert "repo:github:102" not in docs
+    assert "person:bob-fixture" not in docs  # a private profile is not searchable
+    assert docs["repo:github:101"]["fx"]["papers"][0]["doi"] == "10.1234/eeg.2026"
+    assert docs["research:1"]["kind"] == "zzkall zzkissue zzsopen zztcodeerror"
+    assert docs["repo:github:101"]["fx"]["stars"] == 2
+    text = json.dumps(docs)
+    assert "u_ada" not in text and "ada@example.org" not in text
+
+
+def test_the_search_push_is_incremental_and_capped(world, tmp_path):
+    out = _export(tmp_path, world)
+    search = _search_d1()
+    state = sqlite3.connect(":memory:")
+    said = social.push_search(search, social.search_docs(out), state)
+    n = len(social.search_docs(out))
+    assert said == f"search: {n} documents, {n} changes pushed"
+    hits = search.query("SELECT fx FROM forge_fts WHERE forge_fts MATCH '{kind} : \"zzkissue\" AND {title text ids} : \"epochs\"'")
+    assert [json.loads(h["fx"])["n"] for h in hits] == [1]
+    assert social.push_search(search, social.search_docs(out), state) == f"search: {n} documents, 0 changes pushed"
+    # A document gone: its DELETE; a changed one: DELETE and INSERT under the same rowid.
+    docs = social.search_docs(out)
+    docs.pop("research:1")
+    docs["repo:github:101"]["fx"]["stars"] = 3
+    assert social.push_search(search, docs, state) == f"search: {n - 1} documents, 2 changes pushed"
+    assert not search.query("SELECT rowid FROM forge_fts WHERE forge_fts MATCH '{title} : \"epochs\"'")
+    assert social.push_search(_search_d1(), docs, sqlite3.connect(":memory:"), limit=1).endswith(f"{n - 2} wait for the next run")

@@ -6,6 +6,7 @@
 
 import type { Context, Env } from "./env.ts";
 import { BadRequest, canonicalSearch, classify, readQuery, runSearch, toCsv, toExportJson, toJson } from "./search.ts";
+import { ForgeSearchError, readForgeQuery, runForgeSearch } from "./forge-search.ts";
 
 export type { Env };
 
@@ -57,6 +58,10 @@ export async function handleSearch(request: Request, env: Env, ctx: Context): Pr
     return error(405, "method_not_allowed", "The search answers GET requests only.");
   }
   const url = new URL(request.url);
+  // Night phase 08: the GitHub side's types (repositories, issues, people, topics) have their own
+  // index in oscr_search (forge-search.ts); "papers" stays the first type, and the default.
+  const type = url.searchParams.get("type");
+  if (type !== null && type !== "papers") return handleForgeSearch(url, env, ctx);
   let query;
   try {
     query = readQuery(url.searchParams);
@@ -104,4 +109,41 @@ export async function handleSearch(request: Request, env: Env, ctx: Context): Pr
 /** What an answer cost D1, for every format (the JSON answer also says it in `cost`). */
 function costHeader(cost: { queries: number; rows_read: number }): Record<string, string> {
   return { "X-Search-Cost": `queries=${cost.queries}; rows_read=${cost.rows_read}` };
+}
+
+/** GET /api/search?type=repositories|issues|people|topics: the GitHub side's search (night phase 08),
+ *  with the papers' answers: cached alike, the same errors in words (the quota's first). */
+async function handleForgeSearch(url: URL, env: Env, ctx: Context): Promise<Response> {
+  let query;
+  try {
+    query = readForgeQuery(url.searchParams);
+  } catch (e) {
+    if (e instanceof ForgeSearchError) return error(400, "bad_query", e.message);
+    throw e;
+  }
+  if (!env.SEARCH) return error(503, "not_configured", MESSAGES.not_configured);
+  const canonical = new URLSearchParams({ type: query.type, q: query.q, ...(query.page !== 1 ? { page: String(query.page) } : {}) });
+  const key = new Request(`${url.origin}/api/search?${canonical}`);
+  const cache = cacheOf();
+  const hit = await cache?.match(key).catch(() => undefined);
+  if (hit) {
+    const response = new Response(hit.body, hit);
+    response.headers.set("X-Search-Cache", "hit");
+    return response;
+  }
+  let response: Response;
+  try {
+    if (env.SEARCH_SIMULATE_FAILURE) throw new Error(SIMULATED[env.SEARCH_SIMULATE_FAILURE] ?? SIMULATED.unavailable);
+    const outcome = await runForgeSearch(env.SEARCH, query);
+    response = new Response(JSON.stringify(outcome), {
+      headers: headers({ "Cache-Control": `public, max-age=${CACHE_SECONDS}`, ...costHeader(outcome.cost), "Content-Type": "application/json; charset=utf-8" }),
+    });
+  } catch (e) {
+    const kind = classify(e);
+    console.error(`forge search failed (${kind}): ${String((e as Error)?.message ?? e).slice(0, 300)}`);
+    if (kind === "bad_query") return error(400, "bad_query", "The query could not be understood: check its quotes.");
+    return error(503, kind, MESSAGES[kind]);
+  }
+  if (cache) ctx.waitUntil(cache.put(key, response.clone()).catch(() => undefined));
+  return response;
 }

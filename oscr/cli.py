@@ -381,12 +381,13 @@ def main(argv: list[str] | None = None) -> int:
 
     so = sp.add_parser("social", help="the social layer (night phase 08): the static shards of stars, follows and "
                                       "profiles, the Explore page, the collections (docs/SOCIAL.md)")
-    so.add_argument("action", choices=["layer", "collections", "accept", "decline"])
+    so.add_argument("action", choices=["layer", "search", "collections", "accept", "decline"])
     so_where = so.add_mutually_exclusive_group()
     so_where.add_argument("--local", action="store_true", help="the local D1s of `wrangler dev --env local`")
     so_where.add_argument("--remote", action="store_true", help="the Cloudflare databases oscr_forge and oscr_community")
     so.add_argument("--persist-to", default="", help="the local D1's state folder, when not website/.wrangler/state")
-    so.add_argument("--export", default="data/public", help="layer: the public export, whose social/ the files go to")
+    so.add_argument("--export", default="data/public",
+                    help="layer: the public export, whose social/ the files go to; search: the export the index is made from")
     so.add_argument("--handle", default="", help="accept, decline: the person who proposed the list (GitHub login or ORCID iD)")
     so.add_argument("--list", type=int, default=0, help="accept, decline: the list's number")
 
@@ -489,6 +490,17 @@ def main(argv: list[str] | None = None) -> int:
                         community.open_d1("remote", settings=cfg), out, con=con), flush=True)
                 except (Exception, SystemExit) as e:
                     errors.append(f"Social layer: {e}")
+                # The GitHub side's search index (forge_fts), with the papers' own push switch.
+                if cfg.get("OSCR_D1_PUSH") == "remote":
+                    try:
+                        state = forgelayer.open_state(forgelayer.STATE_FOLDER)
+                        try:
+                            print(f"{now()} " + social.push_search(community.open_d1("remote", settings=cfg, database="oscr_search"),
+                                                                   social.search_docs(out), state), flush=True)
+                        finally:
+                            state.close()
+                    except (Exception, SystemExit) as e:
+                        errors.append(f"Forge search: {e}")
             if a.dataset:
                 try:
                     print(f"{now()} {publish.publish_hf(out, a.dataset)}", flush=True)

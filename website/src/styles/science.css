@@ -930,6 +930,14 @@ section.asset-form p { margin: .35em 0; }
 section.asset-form input[type="text"], section.asset-form select { font: inherit; border-radius: 0; max-width: 100%; }
 section.asset-form input[type="text"] { width: min(24em, 100%); padding: .1em .3em; border: 1px solid #777; box-sizing: border-box; }
 
+/* Night phase 08: the search's other types (src/scripts/search-types.ts): the results numbered, their
+   second line quieter; the form's help. */
+ol.results { padding-left: 2em; }
+ol.results li { margin: .7em 0; }
+ol.results p.line { margin: .15em 0 0; color: var(--muted); font-size: .92em; }
+form.search-form p.explain { color: var(--muted); font-size: .92em; margin-top: .2em; }
+form.search-form input[type="search"] { font: inherit; padding: .15em .3em; border: 1px solid #777; border-radius: 0; width: min(28em, 100%); box-sizing: border-box; }
+
 footer {
   max-width: var(--width); margin: 0 auto; padding: 1em;
   border-top: 1px solid var(--rule); font-size: .85em; color: var(--muted);
@@ -983,4 +991,6 @@ footer a { margin-right: 1em; }
   table.assets { display: block; overflow-x: auto; }
   section.release-form input[type="text"], section.release-form #rel-name { width: 100%; box-sizing: border-box; }
   section.release-notes, .tie { padding-left: .6em; padding-right: .6em; }
+  /* Phase 08: the masthead's search wraps under the site's name (the type and the field) */
+  .masthead form { flex-wrap: wrap; }
 }

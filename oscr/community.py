@@ -67,7 +67,9 @@ from . import catalog, entities
 DATABASE = "oscr_community"
 #: The D1 databases the Mac reads and writes, each with the settings key of its id for the REST API
 #: (the account id is OSCR_D1_ACCOUNT_ID for both). `oscr_forge`: the GitHub side (night phase 01).
-DATABASES: dict[str, str] = {"oscr_community": "OSCR_D1_COMMUNITY_ID", "oscr_forge": "OSCR_D1_FORGE_ID"}
+DATABASES: dict[str, str] = {"oscr_community": "OSCR_D1_COMMUNITY_ID", "oscr_forge": "OSCR_D1_FORGE_ID",
+                             # Night phase 08: the GitHub side's search index (forge_fts), pushed by oscr/social.py.
+                             "oscr_search": "OSCR_D1_SEARCH_ID"}
 ROOT = Path(__file__).resolve().parents[1]
 MIGRATIONS = ROOT / "migrations" / "d1-community"
 WEBSITE = ROOT / "website"

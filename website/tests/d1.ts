@@ -58,7 +58,8 @@ export function databases(): { catalog: DatabaseSync; search: DatabaseSync } {
   const catalog = new DatabaseSync(":memory:");
   catalog.exec(readFileSync(new URL("catalog/0001_catalog.sql", MIGRATIONS), "utf8"));
   const search = new DatabaseSync(":memory:");
-  search.exec(readFileSync(new URL("search/0001_search.sql", MIGRATIONS), "utf8"));
+  // Every migration of oscr_search, in order (night phase 08 adds forge_fts).
+  for (const name of ["0001_search.sql", "0002_forge.sql"]) search.exec(readFileSync(new URL(`search/${name}`, MIGRATIONS), "utf8"));
   return { catalog, search };
 }
 

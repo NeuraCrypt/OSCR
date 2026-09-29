@@ -359,6 +359,156 @@ def write(forge: community.D1 | None, people: community.D1 | None, out: Path, *,
 
 
 # ---------------------------------------------------------------------------------------
+# The GitHub side's search (night phase 08, E4): forge_fts in oscr_search, from the PUBLIC files.
+
+SEARCH_STATE = """
+CREATE TABLE IF NOT EXISTS social_search (
+    key    TEXT PRIMARY KEY,
+    rowid  INTEGER NOT NULL UNIQUE,
+    hash   TEXT NOT NULL
+);
+"""
+#: Changes pushed in one run (a DELETE and an INSERT each): the rest goes the next night.
+MAX_SEARCH_CHANGES = 2_000
+SEARCH_CHUNK = 100
+
+
+def _words(*parts: Any) -> str:
+    return " ".join(str(p) for p in parts if p).replace("\n", " ")[:4000]
+
+
+def _load(folder: Path) -> dict[str, Any]:
+    out: dict[str, Any] = {}
+    for f in sorted(folder.glob("[0-9][0-9].json")) if folder.is_dir() else []:
+        try:
+            content = json.loads(f.read_text(encoding="utf-8"))
+        except ValueError:
+            continue
+        if isinstance(content, dict):
+            out.update(content)
+    return out
+
+
+def search_docs(out: Path) -> dict[str, dict[str, Any]]:
+    """The search's documents, by key, from the night's public files only (the forge layer, the
+    research issues, the social layer, the Explore page): what the static site already shows."""
+    docs: dict[str, dict[str, Any]] = {}
+    social_entries = _load(out / FOLDER)
+    for path, e in _load(out / "forge" / "layer").items():
+        if not isinstance(e, dict) or e.get("state") in ("hidden", "pending_deletion", "deleted") or "/" not in path:
+            continue
+        owner, name = path.split("/", 1)
+        key = f"repo:{e.get('forge') or 'github'}:{e['id']}" if e.get("id") else f"repo-path:{path}"
+        papers = [p for p in e.get("papers") or [] if isinstance(p, dict)][:10]
+        stars = (social_entries.get(key) or {}).get("stars", 0) if isinstance(social_entries.get(key), dict) else 0
+        docs[key] = {
+            "title": _words(owner, name, path),
+            "text": _words(*(p.get("title") for p in papers)),
+            "ids": _words(path, owner, name, *(p.get("doi") for p in papers)),
+            "kind": "zzkall zzkrepository",
+            "fx": {"k": "repository", "path": path, "url": f"/r/{path}/", "mode": e.get("mode"), "stars": stars,
+                   "papers": [{"doi": p.get("doi"), "title": _text(p.get("title"), 200)} for p in papers[:3]]},
+        }
+    for n, e in _load(out / "forge" / "research").items():
+        issue = e.get("issue") if isinstance(e, dict) else None
+        if not isinstance(issue, dict):
+            continue
+        repo = (issue.get("repo") or {}).get("path") if isinstance(issue.get("repo"), dict) else None
+        doi = str(issue.get("paper") or "").removeprefix("doi:")
+        docs[f"research:{n}"] = {
+            "title": _words(issue.get("title")),
+            "text": _words(_text(issue.get("body"), 2000), *(issue.get("labels") or [])),
+            "ids": _words(f"research {n}", doi, repo),
+            "kind": f"zzkall zzkissue zzs{issue.get('state')} zzt{str(issue.get('type') or '').replace('_', '')}",
+            "fx": {"k": "issue", "n": int(n), "title": _text(issue.get("title"), 200), "url": f"/research/{n}", "state": issue.get("state"),
+                   "type": issue.get("type"), "paper": doi, "repo": repo, "comments": issue.get("comments", 0)},
+        }
+    for key, e in social_entries.items():
+        if not key.startswith("person:") or not isinstance(e, dict) or "profile" not in e:
+            continue
+        handle = key[7:]
+        prof = e["profile"]
+        hs = e.get("handles") or {}
+        docs[key] = {
+            "title": _words(prof.get("name"), handle),
+            "text": _words(prof.get("bio"), prof.get("company"), prof.get("location")),
+            "ids": _words(handle, hs.get("github"), hs.get("orcid")),
+            "kind": "zzkall zzkperson",
+            "fx": {"k": "person", "handle": handle, "name": _text(prof.get("name"), 100), "bio": _text(prof.get("bio"), 160),
+                   "url": f"/u/{handle}/", "followers": e.get("followers", 0)},
+        }
+    try:
+        explore_data = json.loads((out / FOLDER / EXPLORE).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        explore_data = {}
+    for t in explore_data.get("topics") or []:
+        if not isinstance(t, dict) or not _TOPIC.match(str(t.get("name") or "")):
+            continue
+        docs[f"topic:{t['name']}"] = {
+            "title": _words(t["name"], t["name"].replace("-", " "), *(t.get("aliases") or [])),
+            "text": _words(t.get("description")),
+            "ids": _words(t["name"]),
+            "kind": "zzkall zzktopic",
+            "fx": {"k": "topic", "name": t["name"], "description": _text(t.get("description"), 200), "stars": t.get("stars", 0),
+                   "featured": bool(t.get("featured")), "url": f"/explore/?topic={t['name']}"},
+        }
+    return docs
+
+
+def push_search(search: community.D1, docs: dict[str, dict[str, Any]], state: sqlite3.Connection, *,
+                limit: int = MAX_SEARCH_CHANGES) -> str:
+    """The documents that changed since the last push, into forge_fts: a DELETE and an INSERT each (a
+    removed one, its DELETE), in parts of SEARCH_CHUNK statements, each recorded once accepted; at
+    most ``limit`` changes a run."""
+    state.executescript(SEARCH_STATE)
+    known = {r[0]: (r[1], r[2]) for r in state.execute("SELECT key, rowid, hash FROM social_search")}
+    next_id = (state.execute("SELECT coalesce(max(rowid), 0) FROM social_search").fetchone()[0] or 0) + 1
+    changes: list[tuple[str, int, str | None, list[str]]] = []
+    for key in sorted(docs):
+        d = docs[key]
+        h = hashlib.sha256(json.dumps(d, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
+        had = known.get(key)
+        if had and had[1] == h:
+            continue
+        rowid = had[0] if had else next_id
+        if not had:
+            next_id += 1
+        values = ", ".join(community.literal(v) for v in (rowid, d["title"], d["text"], d["ids"], d["kind"],
+                                                             json.dumps(d["fx"], ensure_ascii=False, separators=(",", ":"))))
+        sql = ([f"DELETE FROM forge_fts WHERE rowid = {rowid}"] if had else []) + \
+              [f"INSERT INTO forge_fts (rowid, title, text, ids, kind, fx) VALUES ({values})"]
+        changes.append((key, rowid, h, sql))
+    for key, (rowid, _) in sorted(known.items()):
+        if key not in docs:
+            changes.append((key, rowid, None, [f"DELETE FROM forge_fts WHERE rowid = {rowid}"]))
+    todo, later = changes[:limit], max(0, len(changes) - limit)
+    applied = 0
+    part: list[tuple[str, int, str | None, list[str]]] = []
+
+    def flush() -> None:
+        nonlocal applied
+        if not part:
+            return
+        search.run([s for c in part for s in c[3]])
+        for key, rowid, h, _ in part:
+            if h is None:
+                state.execute("DELETE FROM social_search WHERE key = ?", (key,))
+            else:
+                state.execute("INSERT INTO social_search (key, rowid, hash) VALUES (?, ?, ?) ON CONFLICT (key) DO UPDATE SET hash = excluded.hash",
+                              (key, rowid, h))
+        state.commit()
+        applied += len(part)
+        part.clear()
+
+    for c in todo:
+        part.append(c)
+        if sum(len(x[3]) for x in part) >= SEARCH_CHUNK:
+            flush()
+    flush()
+    return f"search: {len(docs)} documents, {applied} changes pushed" + (f", {later} wait for the next run" if later else "")
+
+
+# ---------------------------------------------------------------------------------------
 # Collections: the owner's decision on the public lists proposed as collections.
 
 def proposed(forge: community.D1) -> list[dict[str, Any]]:
@@ -382,9 +532,20 @@ def decide(forge: community.D1, people: community.D1, handle: str, list_id: int,
 
 def command(con: sqlite3.Connection, action: str, *, target: str | None, out: Path, settings: dict[str, str] | None = None,
             persist_to: Path | None = None, handle: str = "", list_id: int = 0, now: float | None = None) -> str:
-    """``oscr social layer|collections|accept|decline``: its answer in words."""
+    """``oscr social layer|search|collections|accept|decline``: its answer in words."""
     if target not in ("local", "remote"):
         raise SystemExit("social: add --local (the local D1 of `wrangler dev`) or --remote (the Cloudflare databases)")
+    if action == "search":
+        from . import forgelayer
+        state = forgelayer.open_state(forgelayer.STATE_FOLDER)
+        try:
+            search = community.open_d1(target, settings=settings, persist_to=persist_to, database="oscr_search")
+            return push_search(search, search_docs(out), state)
+        except community.D1Error as e:
+            raise SystemExit(f"social search ({target}): {e}. Is oscr_search migrated? npx wrangler d1 migrations apply "
+                             f"oscr_search --{target}" + (" --env local" if target == "local" else "")) from None
+        finally:
+            state.close()
     try:
         forge = community.open_d1(target, settings=settings, persist_to=persist_to, database="oscr_forge")
         people = community.open_d1(target, settings=settings, persist_to=persist_to)
@@ -401,4 +562,4 @@ def command(con: sqlite3.Connection, action: str, *, target: str | None, out: Pa
             return decide(forge, people, handle, list_id, action == "accept")
     except (community.D1Error, SocialError) as e:
         raise SystemExit(f"social {action} ({target}): {e}") from None
-    raise SystemExit(f"social {action}: not an action (layer, collections, accept, decline)")
+    raise SystemExit(f"social {action}: not an action (layer, search, collections, accept, decline)")

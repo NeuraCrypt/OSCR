@@ -48,8 +48,17 @@ const sections = [
         <a class="site" href="/" title={SITE_TAGLINE === SITE_NAME ? undefined : SITE_TAGLINE}>{SITE_NAME}</a>
         <nav aria-label="Sections">{sections.map((s) => <a href={s.href}>{s.text}</a>)}</nav>
         <form action="/search/" method="get" role="search">
-          <input type="search" name="q" placeholder="Search the catalogue" aria-label="Search the catalogue" />
-          <select name="field" aria-label="Where to search">
+          <input type="search" name="q" placeholder="Search the registry" aria-label="Search the registry" />
+          <select name="type" aria-label="What to search">
+            <option value="papers">Papers</option>
+            <option value="repositories">Repositories</option>
+            <option value="issues">Issues</option>
+            <option value="people">People</option>
+            <option value="topics">Topics</option>
+            <option value="commits">Commits</option>
+            <option value="code">Code</option>
+          </select>
+          <select name="field" aria-label="Where to search (papers)">
             <option value="all">All fields</option>
             <option value="title">Title</option>
             <option value="doi">DOI</option>
