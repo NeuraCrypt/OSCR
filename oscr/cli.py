@@ -206,6 +206,26 @@ def _zenodo(con, a: argparse.Namespace) -> None:
         inv.close()
 
 
+#: The researchers' command line's own commands (cli/, the `oscr_cli` package: DECISIONS.md D14-1). The
+#: harvester has none of them; given one, argparse refuses it as always (exit 2), and a line says where
+#: that command lives. `run` is the harvester's here (the researchers' `oscr run` lists CI runs).
+RESEARCHER_COMMANDS = frozenset({
+    "auth", "repo", "pr", "issue", "release", "paper", "trace", "cite", "check", "search", "api", "browse",
+    "workflow", "config", "alias", "completion", "mcp", "help",
+})
+
+
+def researchers_hint(argv: list[str], harvester: set[str]) -> None:
+    """After argparse's own refusal: the researchers' tool, when the command word (the first word that is
+    a command of either tool) is one of its commands."""
+    word = next((w for w in argv if w in RESEARCHER_COMMANDS or w in harvester), None)
+    if word in RESEARCHER_COMMANDS and word not in harvester:
+        print(f"note: `{word}` is a command of the researchers' `oscr` (cli/, docs/CLI.md), not of the "
+              f"harvester's. In this repository it runs as `PYTHONPATH=cli/src .venv/bin/python -m oscr_cli {word}`; "
+              "elsewhere, as the `oscr` installed with `uv tool install ./cli` or `pipx install ./cli`.",
+              file=sys.stderr)
+
+
 def main(argv: list[str] | None = None) -> int:
     cfg = settings()
     p = argparse.ArgumentParser(prog="oscr", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -418,7 +438,12 @@ def main(argv: list[str] | None = None) -> int:
     n.add_argument("--cloudflare", default=cfg.get("OSCR_CLOUDFLARE_PROJECT", ""),
                    help="Cloudflare Pages project to rebuild and put online (empty: none)")
 
-    a = p.parse_args(argv)
+    try:
+        a = p.parse_args(argv)
+    except SystemExit as e:
+        if e.code == 2:
+            researchers_hint(sys.argv[1:] if argv is None else argv, set(sp.choices))
+        raise
     if a.command == "dashboard":
         from . import dashboard
         db.open_db(a.db).close()  # creates or updates the schema, then read-only

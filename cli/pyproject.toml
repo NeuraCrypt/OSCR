@@ -1,0 +1,63 @@
+# The researchers' command line (night phase 14; docs/CLI.md; DECISIONS.md D14-*).
+#
+# A distribution of its own, apart from the harvester at the repository's root (D14-1):
+# - its import package is `oscr_cli`, never `oscr` (the harvester's, which the Mac's launchd jobs run
+#   as `.venv/bin/python -m oscr`);
+# - its console script is `oscr` (the plan's name), installed in an environment of its own
+#   (`uv tool install ./cli`, `pipx install ./cli`), never into the repository's `.venv`;
+# - the standard library only: nothing to install besides Python.
+#
+# The name on PyPI is the owner's choice (`oscr-cli` is a placeholder); publishing is the owner's step.
+
+[project]
+name = "oscr-cli"
+version = "0.1.0"
+description = "The Open Scientific Code Registry on the command line: sign in, link a repository to its paper, trace, check and cite research code, and work with its GitHub repository."
+readme = "README.md"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+requires-python = ">=3.10"
+authors = [{ name = "The OSCR contributors" }]
+keywords = ["research software", "reproducibility", "open science", "command line", "citation", "tracing"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Science/Research",
+    "Operating System :: MacOS",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Software Development :: Version Control :: Git",
+]
+dependencies = []
+
+[project.scripts]
+oscr = "oscr_cli.main:main"
+
+[project.urls]
+Homepage = "https://oscr.yannbellec-b.workers.dev"
+Documentation = "https://github.com/yannbellec/Open-Scientific-Code-Registry-OSCR-/blob/main/docs/CLI.md"
+Repository = "https://github.com/yannbellec/Open-Scientific-Code-Registry-OSCR-"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/oscr_cli"]
+
+[tool.hatch.build.targets.sdist]
+include = ["src/oscr_cli", "tests", "README.md", "LICENSE", "pyproject.toml"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP"]
+ignore = ["E501", "E731", "E741", "B008", "B905"]
