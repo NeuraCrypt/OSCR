@@ -97,9 +97,22 @@ export const ACTION_KINDS = [
   // GitHub as the person (act-issues.ts).
   "issue_open", "issue_edit", "issue_comment", "issue_react", "issue_lock", "issue_pin", "issue_transfer",
   "issue_relation", "issue_branch", "issue_labels", "issue_milestone",
+  // Phase 05 (migrations/d1-forge/0005_research.sql): a research issue copied to GitHub as an ordinary
+  // issue, when its author asks (act-research.ts).
+  "research_copy",
 ] as const;
 
 export type ActionKind = (typeof ACTION_KINDS)[number];
+
+/** The registry's own writes of research issues (phase 05, research.ts): not authorized actions on
+ *  GitHub (no start, no act), but logged in `actions` like them, so that the per-account caps and the
+ *  day's rows count them. The migrations' CHECK lists ACTION_KINDS then these. */
+export const RESEARCH_KINDS = ["research_open", "research_comment", "research_edit"] as const;
+export type ResearchKind = (typeof RESEARCH_KINDS)[number];
+
+/** Every kind an action row may have. */
+export const ROW_KINDS = [...ACTION_KINDS, ...RESEARCH_KINDS] as const;
+export type RowKind = ActionKind | ResearchKind;
 
 export function isActionKind(value: unknown): value is ActionKind {
   return typeof value === "string" && (ACTION_KINDS as readonly string[]).includes(value);
@@ -284,7 +297,7 @@ export interface ActionRow {
   user_id: string;
   at: number;
   nonce: string;
-  kind: ActionKind;
+  kind: RowKind;
   forge: string;
   repo_id: string;
   github_user: string;

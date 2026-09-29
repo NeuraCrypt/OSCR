@@ -19,6 +19,9 @@
 //   act-issues.ts     ISSUE_ACTIONS      issue_open, issue_edit, issue_comment, issue_react,
 //                                        issue_lock, issue_pin, issue_transfer, issue_relation,
 //                                        issue_branch, issue_labels, issue_milestone (phase 05, E1)
+//   act-research.ts   RESEARCH_ACTIONS   research_copy                         (phase 05, E2)
+// (The registry's own writes of research issues, research_open, research_comment and research_edit,
+// are routes of research.ts, not authorized actions: they are in RESEARCH_KINDS, not here.)
 // A kind registered twice, or one that is not in ACTION_KINDS, stops the Worker at load.
 
 import { AUTOLINK_ACTIONS } from "./act-autolinks.ts";
@@ -29,6 +32,7 @@ import { FORK_ACTIONS } from "./act-forks.ts";
 import { ISSUE_ACTIONS } from "./act-issues.ts";
 import { LINK_ACTIONS } from "./act-link.ts";
 import { PULL_ACTIONS } from "./act-pulls.ts";
+import { RESEARCH_ACTIONS } from "./act-research.ts";
 import { REF_ACTIONS } from "./act-refs.ts";
 import { SETTINGS_ACTIONS } from "./act-settings.ts";
 import { isActionKind, type ActionKind, type ActionRegistry, type AnyActionSpec } from "./types.ts";
@@ -79,6 +83,7 @@ export const REGISTERED_IN: Readonly<Record<ActionKind, string>> = {
   issue_branch: "act-issues.ts",
   issue_labels: "act-issues.ts",
   issue_milestone: "act-issues.ts",
+  research_copy: "act-research.ts",
 };
 
 /** A registry of these specs; a duplicate or an unknown kind is a programming error. */
@@ -103,4 +108,5 @@ export const ACTIONS: ActionRegistry = registry([
   ...FORK_ACTIONS,
   ...PULL_ACTIONS,
   ...ISSUE_ACTIONS,
+  ...RESEARCH_ACTIONS,
 ]);

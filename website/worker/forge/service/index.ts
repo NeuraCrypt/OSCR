@@ -6,6 +6,11 @@
 //   POST /api/forge/webhook   GitHub      a delivery of the mirror mode (HMAC, ≤ 1 MiB)             webhook.ts (E3)
 //   GET  /api/forge/repo      signed in   OSCR's layer for one repository (?id= or ?path=)         read.ts (E6)
 //   GET  /api/forge/mine      signed in   "Your repositories"                                       read.ts (E6)
+//   GET  /api/forge/research          signed in   research issues: one (?id=), or a paper's      research.ts (phase 05)
+//   POST /api/forge/research/open     signed in   a new research issue (3 rows)                   research.ts
+//   POST /api/forge/research/comment  signed in   a comment; its edit, deletion or hiding         research.ts
+//   POST /api/forge/research/edit     signed in   title, text, close with a resolution, reopen,   research.ts
+//                                                 labels, lock, pin
 //
 // What every route gets here, in order: its path (another is 404), its method (405), the FORGE
 // binding (503 not_configured without it), and for the signed-in routes the accounts (COMMUNITY and
@@ -26,6 +31,7 @@ import { ACTIONS } from "./actions.ts";
 import { forgeBackend } from "./backend.ts";
 import { failure, problem, wrongMethod } from "./http.ts";
 import { handleMine, handleRepo } from "./read.ts";
+import { handleResearchComment, handleResearchEdit, handleResearchOpen, handleResearchRead } from "./research.ts";
 import { handleStart } from "./start.ts";
 import type { Context, D1Database, ForgeDeps, ForgeRequest, ForgeServiceEnv, RouteHandler } from "./types.ts";
 import { handleWebhook } from "./webhook.ts";
@@ -46,6 +52,10 @@ export const FORGE_ROUTES: Readonly<Record<string, Route>> = {
   "/api/forge/webhook": { method: "POST", signedIn: false, handle: (r) => handleWebhook(r) },
   "/api/forge/repo": { method: "GET", signedIn: true, handle: (r) => handleRepo(r) },
   "/api/forge/mine": { method: "GET", signedIn: true, handle: (r) => handleMine(r) },
+  "/api/forge/research": { method: "GET", signedIn: true, handle: (r) => handleResearchRead(r) },
+  "/api/forge/research/open": { method: "POST", signedIn: true, handle: (r) => handleResearchOpen(r) },
+  "/api/forge/research/comment": { method: "POST", signedIn: true, handle: (r) => handleResearchComment(r) },
+  "/api/forge/research/edit": { method: "POST", signedIn: true, handle: (r) => handleResearchEdit(r) },
 };
 
 const PREFIX = "/api/forge/";

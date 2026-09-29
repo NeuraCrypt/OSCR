@@ -16,7 +16,7 @@
 //   is not asked, its rows count in the total the next action sees.
 
 import { CAP_OF, CAP_WORDS, FORGE_ROWS_PER_DAY, KINDS_OF, PER_ACCOUNT_DAY, untilNextDay, utcDay, type Cap } from "./caps.ts";
-import { ForgeProblem, type ActionKind, type D1Database, type ForgeServiceEnv } from "./types.ts";
+import { ForgeProblem, type D1Database, type ForgeServiceEnv, type RowKind } from "./types.ts";
 
 export const CLOSED_MESSAGE = "The GitHub side opens to the public with its content rules; until then, only the owner of the registry can act here.";
 
@@ -45,7 +45,7 @@ export interface DailyCaps {
 
 /** The account's use of its caps in the 24 hours before `t`, and whether one more action of `kind`
  *  goes over one. Reads only. */
-export async function dailyCaps(db: D1Database, userId: string, kind: ActionKind, t: number): Promise<DailyCaps> {
+export async function dailyCaps(db: D1Database, userId: string, kind: RowKind, t: number): Promise<DailyCaps> {
   const today = utcDay(t);
   const rows = (
     await db
@@ -59,6 +59,7 @@ export async function dailyCaps(db: D1Database, userId: string, kind: ActionKind
     actions: [...by.values()].reduce((a, b) => a + b, 0),
     creations: count(KINDS_OF.creations),
     links: count(KINDS_OF.links),
+    research: count(KINDS_OF.research),
   };
   const caps: Cap[] = ["actions"];
   const specific = CAP_OF[kind];

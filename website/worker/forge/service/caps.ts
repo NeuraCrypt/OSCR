@@ -8,7 +8,7 @@
 //   forge service's 5,000 until the owner confirms C3 (D00-12). Counted from the rows written
 //   today (actions.rows, deliveries.rows: gate.ts), with no counter row.
 
-import type { ActionKind } from "./types.ts";
+import type { RowKind } from "./types.ts";
 
 const MiB = 2 ** 20;
 
@@ -24,9 +24,10 @@ export const COMMIT_FILES = 100;
 export const PR_FILES_CHECKED = 300;
 /** Rows the forge service writes in D1 in a UTC day, every account and every webhook together. */
 export const FORGE_ROWS_PER_DAY = 5_000;
-/** What one account may do in 24 hours: authorized actions of every kind, repositories created
- *  (create, generate), repositories linked (link). */
-export const PER_ACCOUNT_DAY = { actions: 100, creations: 10, links: 20 } as const;
+/** What one account may do in 24 hours: authorized actions of every kind (and the registry's own
+ *  writes of research issues, phase 05), repositories created (create, generate), repositories
+ *  linked (link), research issues opened (research_open). */
+export const PER_ACCOUNT_DAY = { actions: 100, creations: 10, links: 20, research: 20 } as const;
 export type Cap = keyof typeof PER_ACCOUNT_DAY;
 /** OSCR's grace period before a repository asked for deletion may be deleted (D00-10). */
 export const GRACE_SECONDS = 30 * 86_400;
@@ -46,16 +47,18 @@ export const utcDay = (t: number): number => Math.floor(t / DAY_SECONDS);
 export const untilNextDay = (t: number): number => Math.max(60, (utcDay(t) + 1) * DAY_SECONDS - Math.floor(t));
 
 /** The cap each kind counts toward besides `actions`. */
-export const CAP_OF: Readonly<Partial<Record<ActionKind, Exclude<Cap, "actions">>>> = {
+export const CAP_OF: Readonly<Partial<Record<RowKind, Exclude<Cap, "actions">>>> = {
   create: "creations",
   generate: "creations",
   link: "links",
+  research_open: "research",
 };
 
 /** The kinds each cap counts. */
-export const KINDS_OF: Readonly<Record<Exclude<Cap, "actions">, readonly ActionKind[]>> = {
+export const KINDS_OF: Readonly<Record<Exclude<Cap, "actions">, readonly RowKind[]>> = {
   creations: ["create", "generate"],
   links: ["link"],
+  research: ["research_open"],
 };
 
 /** A cap in words, for the answers ("10 repositories created"). */
@@ -63,4 +66,5 @@ export const CAP_WORDS: Readonly<Record<Cap, (n: number) => string>> = {
   actions: (n) => `${n} authorized ${n === 1 ? "action" : "actions"}`,
   creations: (n) => `${n} ${n === 1 ? "repository" : "repositories"} created`,
   links: (n) => `${n} ${n === 1 ? "repository" : "repositories"} linked`,
+  research: (n) => `${n} research ${n === 1 ? "issue" : "issues"} opened`,
 };

@@ -189,7 +189,7 @@ describe("act", () => {
     assert.deepEqual(ctx.parsed, { name: "eeg-study" });
     assert.equal(ctx.repo, null);
     // Exactly the action row and the spec's rows, in one batch, billed as D1 bills them.
-    assert.deepEqual(forgeCounts(w.forge), { actions: 1, deliveries: 0, installations: 0, jobs: 0, repo_papers: 0, repos: 1, traced_paths: 0 });
+    assert.deepEqual(forgeCounts(w.forge), { actions: 1, deliveries: 0, installations: 0, jobs: 0, repo_papers: 0, repos: 1, research_comments: 0, research_issues: 0, traced_paths: 0 });
     const [row] = forgeRows(w.forge, "actions");
     assert.equal(row.kind, "create");
     assert.equal(row.user_id, userOf(w.ada.user.id));

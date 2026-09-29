@@ -37,7 +37,9 @@ import { BODY_CHARS } from "../limits.ts";
 import { isObjectId, isRefName, LOGIN } from "../paths.ts";
 import type { MergeMethod, PullRequest, RepoInfo, RepoRef, ReviewEvent, ReviewLineComment } from "../types.ts";
 import { isRepoPath } from "./act-commit.ts";
-import { ForgeProblem, type ActionContext, type ActionSpec, type ActionTarget, type AnyActionSpec } from "./types.ts";
+import { closeByMerge, issueById, researchClosing, type IssueRow } from "./research-core.ts";
+import { first } from "./store.ts";
+import { ForgeProblem, type ActionContext, type ActionSpec, type ActionTarget, type AnyActionSpec, type Write } from "./types.ts";
 
 // ─── shared ──────────────────────────────────────────────────────────────────
 
@@ -682,7 +684,14 @@ export interface PullMergeParsed {
   title: string | null;
   message: string | null;
   deleteBranch: boolean;
+  /** Research issues the pull request says it fixes ("Fixes research#12", phase 05): closed as "fixed
+   *  in the code" at the merge commit, when the pull request names them and goes into the default
+   *  branch (GitHub's rule for its own closing keywords). */
+  closes: number[];
 }
+
+/** Research issues one merge closes at most (1 row each, within the rows act reserves). */
+export const MERGE_CLOSES = 5;
 
 export interface PullMergeDone extends PullLinks {
   id: string;
@@ -690,6 +699,8 @@ export interface PullMergeDone extends PullLinks {
   sha: string;
   method: MergeMethod;
   branchDeleted: boolean;
+  /** The research issues this merge closed. */
+  closed: number[];
   page: string;
   notes: string[];
 }
@@ -710,11 +721,17 @@ export function validatePullMerge(payload: unknown): PullMergeParsed | ForgeProb
   if (message instanceof ForgeProblem) return message;
   if (p.deleteBranch !== undefined && typeof p.deleteBranch !== "boolean") return bad("The choice to delete the branch is not true or false.");
   if (p.method === "rebase" && (title || message)) return bad("A rebase keeps each commit's own message: no title or message to give.");
-  return { number, method: p.method as MergeMethod, head: p.head as string, title, message: message || null, deleteBranch: p.deleteBranch === true };
+  let closes: number[] = [];
+  if (p.closes !== undefined) {
+    if (!Array.isArray(p.closes) || p.closes.length > MERGE_CLOSES || !p.closes.every(isNumber)) return bad(`A merge closes ${MERGE_CLOSES} research issues at most, named by their numbers.`);
+    closes = [...new Set(p.closes as number[])];
+  }
+  return { number, method: p.method as MergeMethod, head: p.head as string, title, message: message || null, deleteBranch: p.deleteBranch === true, closes };
 }
 
 export const describePullMerge = (p: PullMergeParsed): string =>
-  `Merge the pull request #${p.number} (${methodInWords(p.method)}) at ${p.head.slice(0, 7)}${p.deleteBranch ? ", then delete its branch" : ""}`;
+  `Merge the pull request #${p.number} (${methodInWords(p.method)}) at ${p.head.slice(0, 7)}${p.deleteBranch ? ", then delete its branch" : ""}` +
+  (p.closes.length ? `; this closes the research ${p.closes.length === 1 ? "issue" : "issues"} ${p.closes.map((n) => `research#${n}`).join(", ")} as fixed in the code` : "");
 
 export const pullMergeSpec: ActionSpec<PullMergeParsed, PullMergeDone> = {
   kind: "pull_merge",
@@ -742,6 +759,27 @@ export const pullMergeSpec: ActionSpec<PullMergeParsed, PullMergeDone> = {
     }
     const notes: string[] = [];
     let branchDeleted = false;
+    const writes: Write[] = [];
+    const closed: number[] = [];
+    if (p.closes.length) {
+      // What the pull request says, as GitHub has it now (its title and description), and where it
+      // went: GitHub's own keywords close on the default branch only; the registry's follow the rule.
+      const pr = await ctx.session.pulls.get(info.ref, p.number).catch(() => null);
+      const named = new Set(pr ? researchClosing(`${pr.title}\n${pr.body}`) : []);
+      const toDefault = pr !== null && pr.base.ref === info.defaultBranch;
+      for (const id of p.closes) {
+        const row = await first<IssueRow>(issueById(ctx.db, id));
+        if (!toDefault) notes.push(`research#${id} stays open: a merge closes issues only into the default branch.`);
+        else if (!named.has(id)) notes.push(`research#${id} stays open: the pull request does not say it fixes it (“Fixes research#${id}”).`);
+        else if (!row || row.forge !== info.key.forge || row.repo_id !== info.key.id) notes.push(`research#${id} stays open: it is not about this repository.`);
+        else if (row.state !== "open") notes.push(`research#${id} was already closed.`);
+        else {
+          writes.push(closeByMerge(ctx.db, id, sha, p.number, ctx.github.login, ctx.t));
+          closed.push(id);
+        }
+      }
+      if (closed.length) notes.push(`Closed as fixed in the code, at this merge: ${closed.map((n) => `research#${n}`).join(", ")}.`);
+    }
     if (p.deleteBranch) {
       try {
         const pr = await ctx.session.pulls.get(info.ref, p.number);
@@ -754,8 +792,8 @@ export const pullMergeSpec: ActionSpec<PullMergeParsed, PullMergeDone> = {
     }
     const page = pullPage(info.ref, p.number);
     return {
-      result: { id: info.key.id, number: p.number, sha, method: p.method, branchDeleted, page, notes, links: [{ href: page, text: `The pull request #${p.number}` }, { href: `${pageOf(info.ref)}commit/${sha}/`, text: "The commit on the base branch" }] },
-      writes: [],
+      result: { id: info.key.id, number: p.number, sha, method: p.method, branchDeleted, closed, page, notes, links: [{ href: page, text: `The pull request #${p.number}` }, { href: `${pageOf(info.ref)}commit/${sha}/`, text: "The commit on the base branch" }] },
+      writes,
       repo: { forge: info.key.forge, repoId: info.key.id },
     };
   },

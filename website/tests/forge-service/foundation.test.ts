@@ -17,7 +17,7 @@ import { closed, CLOSED_MESSAGE, dailyCaps, globalCap, globalRowsToday, mayWrite
 import { failure, gitProblem, GIT_MESSAGES, problemAnswer, redact, safeUrl } from "../../worker/forge/service/http.ts";
 import { FORGE_ROUTES, handleForge } from "../../worker/forge/service/index.ts";
 import * as store from "../../worker/forge/service/store.ts";
-import { ACTION_KINDS, ForgeProblem, isActionKind, JOB_KINDS, REPO_MODES, REPO_STATES, type AnyActionSpec } from "../../worker/forge/service/types.ts";
+import { ACTION_KINDS, ForgeProblem, isActionKind, JOB_KINDS, REPO_MODES, REPO_STATES, ROW_KINDS, type AnyActionSpec } from "../../worker/forge/service/types.ts";
 import { WEBHOOK_MAX_BYTES } from "../../worker/forge/github/webhooks.ts";
 import worker from "../../worker/index.ts";
 import { FORGE_SCHEMA, fakeForgeD1, forgeCounts, forgeRows, type FakeForgeD1 } from "./d1.ts";
@@ -195,7 +195,7 @@ describe("the gate", () => {
     await seed.action(db, { userId: "u_ben", kind: "create", t });
     db.reset();
     let caps = await dailyCaps(db, "u_ada", "create", t);
-    assert.deepEqual(caps.used, { actions: 28, creations: 9, links: 19 });
+    assert.deepEqual(caps.used, { actions: 28, creations: 9, links: 19, research: 0 });
     assert.equal(caps.exceeded, null);
     assert.deepEqual(caps.limits, PER_ACCOUNT_DAY);
     await seed.action(db, { userId: "u_ada", kind: "create", t: t + 1 });
@@ -206,7 +206,7 @@ describe("the gate", () => {
     assert.deepEqual((await dailyCaps(db, "u_ada", "link", t + 3)).exceeded, { cap: "links", limit: 20, used: 20 });
     // Another kind is still allowed; Ben has his own count.
     assert.equal((await dailyCaps(db, "u_ada", "edit", t + 3)).exceeded, null);
-    assert.deepEqual((await dailyCaps(db, "u_ben", "create", t + 3)).used, { actions: 1, creations: 1, links: 0 });
+    assert.deepEqual((await dailyCaps(db, "u_ben", "create", t + 3)).used, { actions: 1, creations: 1, links: 0, research: 0 });
     // The next day, the window has moved on.
     assert.equal((await dailyCaps(db, "u_ada", "create", t + 86_400)).exceeded, null);
     assert.equal(db.totals.written, 0);
@@ -252,9 +252,9 @@ describe("the gate", () => {
     assert.equal(ACTION_PAYLOAD_BYTES, 1_048_576);
     assert.equal(WEBHOOK_BYTES, WEBHOOK_MAX_BYTES);
     assert.equal(FORGE_ROWS_PER_DAY, 5_000);
-    assert.deepEqual(PER_ACCOUNT_DAY, { actions: 100, creations: 10, links: 20 });
+    assert.deepEqual(PER_ACCOUNT_DAY, { actions: 100, creations: 10, links: 20, research: 20 });
     assert.equal(GRACE_SECONDS, 30 * 86_400);
-    assert.deepEqual(CAP_OF, { create: "creations", generate: "creations", link: "links" });
+    assert.deepEqual(CAP_OF, { create: "creations", generate: "creations", link: "links", research_open: "research" });
     assert.equal(utcDay(T0), 20_724);
     assert.equal(untilNextDay(T0), 43_200);
   });
@@ -340,13 +340,13 @@ describe("the rows (store.ts)", () => {
     // The kinds as the migrations leave them (0002 rebuilt `actions` with phase 03's commit).
     const actions = (db.sqlite.prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'actions'").get() as { sql: string }).sql;
     const kinds = actions.slice(actions.indexOf("kind         TEXT NOT NULL CHECK (kind IN ("), actions.indexOf("))", actions.indexOf("CHECK (kind IN (")));
-    assert.deepEqual(listed(kinds), [...ACTION_KINDS]);
+    assert.deepEqual(listed(kinds), [...ROW_KINDS]);
     assert.ok(/WITHOUT ROWID/.test(actions));
     assert.deepEqual(listed(between("kind        TEXT NOT NULL CHECK (kind IN ('link'", "))")), [...JOB_KINDS]);
     assert.deepEqual(listed(between("mode             TEXT NOT NULL", "),")), [...REPO_MODES]);
     assert.deepEqual(listed(between("CHECK (state IN (", "))")), [...REPO_STATES]);
     const indexes = db.sqlite.prepare("SELECT name, tbl_name FROM sqlite_master WHERE type = 'index' AND sql IS NOT NULL").all() as { name: string }[];
-    assert.deepEqual(indexes.map((i) => i.name), ["repos_path"]);
+    assert.deepEqual(indexes.map((i) => i.name).sort(), ["repos_path", "research_paper"]);
   });
 
   test("a repository: inserted with its index (2 rows), found by key and by path in any case", async () => {

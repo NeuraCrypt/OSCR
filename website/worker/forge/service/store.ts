@@ -12,7 +12,7 @@
 import { randomToken } from "../../account/crypto.ts";
 import { REDELIVERY_DAYS, utcDay } from "./caps.ts";
 import type {
-  ActionKind,
+  RowKind,
   D1Database,
   D1PreparedStatement,
   JobKind,
@@ -324,7 +324,7 @@ export function pendingJobsOf(db: D1Database, forge: string, repoId: string, tai
  *  `rows` is every row the action wrote, this one included. */
 export function actionRow(
   db: D1Database,
-  a: { userId: string; t: number; nonce: string; kind: ActionKind; forge?: string; repoId?: string; githubUser?: string; outcome: Outcome; rows: number },
+  a: { userId: string; t: number; nonce: string; kind: RowKind; forge?: string; repoId?: string; githubUser?: string; outcome: Outcome; rows: number },
 ): Write {
   return {
     rows: 1,

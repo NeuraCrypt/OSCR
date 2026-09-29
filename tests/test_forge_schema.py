@@ -16,7 +16,8 @@ from conftest import FORGE_MIGRATIONS, forge_database
 from oscr import catalog, cli, community, forgejobs, forgelayer, jobs, publish
 
 ROOT = Path(__file__).resolve().parents[1]
-TABLES = {"repos", "repo_papers", "installations", "traced_paths", "actions", "deliveries", "jobs"}
+TABLES = {"repos", "repo_papers", "installations", "traced_paths", "actions", "deliveries", "jobs",
+          "research_issues", "research_comments"}
 T = 1_790_596_800
 
 
@@ -24,7 +25,7 @@ def _tables(con: sqlite3.Connection) -> dict[str, str]:
     return {name: sql for name, sql in con.execute("SELECT name, sql FROM sqlite_master WHERE type = 'table'")}
 
 
-def test_the_migration_applies_and_holds_the_seven_tables(forge_d1):
+def test_the_migration_applies_and_holds_the_nine_tables(forge_d1):
     assert FORGE_MIGRATIONS and FORGE_MIGRATIONS[0].name == "0001_forge.sql"
     assert set(_tables(forge_d1.con)) == TABLES
     # The Mac's interface: rows in, rows out.
@@ -40,7 +41,7 @@ def test_at_most_one_index_per_table_and_without_rowid_where_the_key_is_text():
     for table, name in indexes:
         per_table.setdefault(table, []).append(name)
     assert all(len(names) <= 1 for names in per_table.values()), per_table
-    assert per_table == {"repos": ["repos_path"]}
+    assert per_table == {"repos": ["repos_path"], "research_issues": ["research_paper"]}
     # No hidden autoindex either: a text key is the table itself.
     assert con.execute("SELECT count(*) FROM sqlite_master WHERE type = 'index' AND sql IS NULL AND name NOT LIKE 'sqlite_autoindex_%'").fetchone()[0] == 0
     for name, sql in _tables(con).items():
@@ -87,8 +88,9 @@ def test_the_checks_refuse_an_address_an_unknown_forge_and_a_private_name(forge_
 
 
 def test_the_action_kinds_are_the_workers():
-    """The migrations' CHECK on actions.kind (as the last one that rebuilt the table leaves it: 0004,
-    phase 05's issues) lists website/worker/forge/service/types.ts ACTION_KINDS."""
+    """The migrations' CHECK on actions.kind (as the last one that rebuilt the table leaves it: 0005,
+    phase 05's research issues) lists website/worker/forge/service/types.ts ACTION_KINDS, then its
+    RESEARCH_KINDS (the registry's own writes, logged like the actions)."""
     sql = forge_database().execute("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'actions'").fetchone()[0]
     assert "WITHOUT ROWID" in sql
     start = sql.index("kind         TEXT NOT NULL CHECK (kind IN (")
@@ -96,8 +98,10 @@ def test_the_action_kinds_are_the_workers():
     types = (ROOT / "website" / "worker" / "forge" / "service" / "types.ts").read_text()
     start = types.index("export const ACTION_KINDS = [")
     in_ts = re.findall(r'"([a-z_]+)"', types[start:types.index("] as const", start)])
+    start = types.index("export const RESEARCH_KINDS = [")
+    in_ts += re.findall(r'"([a-z_]+)"', types[start:types.index("] as const", start)])
     assert in_sql == in_ts
-    assert len(in_sql) == 44 and len(set(in_sql)) == 44
+    assert len(in_sql) == 48 and len(set(in_sql)) == 48
 
 
 def test_the_layer_shards_are_sha256_mod_64():
