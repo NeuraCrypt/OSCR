@@ -94,6 +94,9 @@ export interface CommitDone {
   compare: string | null;
   /** Phase 04's hook: the pull request to open (base ← head), or null for a commit on the branch. */
   pullRequest: { repo: string; base: string; head: string } | null;
+  /** The pages the callback page links to, all in the registry's viewer: the file (or folder) as
+   *  committed, the commit, the comparison. */
+  links: { href: string; text: string }[];
   notes: string[];
 }
 
@@ -317,10 +320,25 @@ export const commitSpec: ActionSpec<CommitParsed, CommitDone> = {
     }
     const base = pageOf(where.ref);
     const target = pageOf(info.ref);
-    const branchSegments = done.branch.split("/").map(encodeURIComponent).join("/");
+    const segments = (s: string) => s.split("/").map(encodeURIComponent).join("/");
+    const branchSegments = segments(done.branch);
     const compare = createFrom
       ? viewerPath(target, `compare/${p.branch.split("/").map(encodeURIComponent).join("/")}...${proposed ? `${where.ref.owner}:` : ""}${branchSegments}/`)
       : null;
+    // The file as committed (the first one written or moved), else the folder a deletion emptied.
+    const written = p.changes.find((c) => c.op === "put" || c.op === "move");
+    const deleted = p.changes.find((c) => c.op === "delete");
+    const view = written
+      ? viewerPath(base, `blob/${branchSegments}/${segments(written.op === "move" ? written.to : written.path)}`)
+      : deleted && deleted.path.includes("/")
+        ? viewerPath(base, `tree/${branchSegments}/${segments(deleted.path.slice(0, deleted.path.lastIndexOf("/")))}/`)
+        : viewerPath(base, `tree/${branchSegments}/`);
+    const commitPage = viewerPath(base, `commit/${done.sha}/`) ?? base;
+    const links = [
+      view ? { href: view, text: written ? (p.changes.length > 1 ? "The first file, as committed" : "The file, as committed") : "The folder, after the deletion" } : null,
+      { href: commitPage, text: "The commit" },
+      compare ? { href: compare, text: `The comparison with ${p.branch}` } : null,
+    ].filter((l): l is { href: string; text: string } => l !== null);
     return {
       result: {
         id: info.key.id,
@@ -332,9 +350,10 @@ export const commitSpec: ActionSpec<CommitParsed, CommitDone> = {
         base: { branch: p.branch, sha: done.parents[0] ?? "" },
         newBranch: createFrom !== undefined,
         proposed,
-        page: viewerPath(base, `commit/${done.sha}/`) ?? base,
+        page: commitPage,
         compare,
         pullRequest: createFrom ? { repo: `${info.ref.owner}/${info.ref.name}`, base: p.branch, head: proposed ? `${where.ref.owner}:${done.branch}` : done.branch } : null,
+        links,
         notes,
       },
       writes: [],

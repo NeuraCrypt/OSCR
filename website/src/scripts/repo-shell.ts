@@ -54,6 +54,7 @@ import "./repo-rich.ts";
 import "./repo-docs.ts";
 import "./repo-about.ts";
 import "./repo-find.ts";
+import "./repo-edit.ts";
 import { codePanel, quickSetup, useTemplate, wireCopy } from "./repo-code-panel.ts";
 import { mountBranches } from "./repo-branches.ts";
 import { mountSettings } from "./repo-settings.ts";

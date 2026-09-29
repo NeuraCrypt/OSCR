@@ -17,7 +17,7 @@
 // never as HTML. The token GitHub issues never reaches the browser: the Worker exchanges the code,
 // acts, and revokes it. Like every browser script, it never names the platform: "the registry".
 
-import { ACT_PATH, apiStart, backPath, START_PATH, type StartBody, type StartInput } from "../lib/forge.ts";
+import { ACT_PATH, apiStart, backPath, isDraftKey, START_PATH, type StartBody, type StartInput } from "../lib/forge.ts";
 import { ACTION_PAYLOAD_BYTES, FLOW_SECONDS } from "../../worker/forge/service/caps.ts";
 
 /** The sessionStorage key of the action waiting for GitHub's answer (one at a time: the Worker
@@ -43,6 +43,9 @@ export interface Pending {
   /** The declaration posted to start (without `install`): after an installation of the App, the
    *  callback page declares the same action again, for an ordinary authorization (resumeAction). */
   start?: StartBody;
+  /** The editor's drafts (localStorage keys, phase 03) the callback page drops once the action is
+   *  done: a commit's own. */
+  drafts?: string[];
 }
 
 /** What the page shows: a tone (`.ok`, `.warning`, or none), sentences, and links. */
@@ -52,9 +55,13 @@ export interface Outcome {
   links: { href: string; text: string }[];
 }
 
+export type ClientStorage = Pick<Storage, "getItem" | "setItem" | "removeItem"> | null;
+
 export interface ClientDeps {
   fetch?: typeof fetch;
-  storage?: Pick<Storage, "getItem" | "setItem" | "removeItem"> | null;
+  storage?: ClientStorage;
+  /** The site's localStorage (the editor's drafts, phase 03). */
+  local?: ClientStorage;
   assign?: (url: string) => void;
   /** Unix seconds. */
   now?: () => number;
@@ -69,6 +76,31 @@ const encoder = new TextEncoder();
 /** An account or repository name (worker/forge/paths.ts SEGMENT). */
 const SEGMENT_RE = /^(?!\.+$)[A-Za-z0-9._-]{1,100}$/;
 const nowSeconds = () => Math.floor(Date.now() / 1000);
+
+/** The site's localStorage, or null when the browser keeps none. */
+export function localStore(): ClientStorage {
+  try {
+    const s = globalThis.localStorage;
+    const probe = "forge-probe";
+    s.setItem(probe, "1");
+    s.removeItem(probe);
+    return s;
+  } catch {
+    return null;
+  }
+}
+
+/** Drops the editor's drafts named (their keys checked again), once their commit is made. */
+export function dropDrafts(keys: readonly string[], local: ClientStorage): void {
+  for (const k of keys) {
+    if (!isDraftKey(k)) continue;
+    try {
+      local?.removeItem(k);
+    } catch {
+      // the draft stays; it is dropped when read if its commit is already on the branch
+    }
+  }
+}
 
 /** The tab's sessionStorage, or null when the browser keeps none (a private window, blocked data). */
 export function sessionStore(): ClientDeps["storage"] {
@@ -120,8 +152,8 @@ export function safeLocation(value: unknown): string | null {
 export type Started = { ok: true; location: string } | { ok: false; message: string; code: string; signIn?: boolean };
 
 /** Steps 1–2: keep the payload, POST start, and send the tab to GitHub. The payload never goes to
- *  start: only its SHA-256 does. */
-export async function startAction(input: StartInput, sentence: string, deps: ClientDeps = {}): Promise<Started> {
+ *  start: only its SHA-256 does. `keep.drafts`: the editor's drafts to drop once it is done. */
+export async function startAction(input: StartInput, sentence: string, deps: ClientDeps = {}, keep: { drafts?: string[] } = {}): Promise<Started> {
   const storage = deps.storage === undefined ? sessionStore() : deps.storage;
   if (!storage) {
     return {
@@ -138,6 +170,8 @@ export async function startAction(input: StartInput, sentence: string, deps: Cli
   if ("message" in token) return { ok: false, code: token.signIn ? "signed_out" : "unavailable", message: token.message, signIn: token.signIn };
   const { install: _install, ...plain } = body;
   const pending: Pending = { kind: body.kind, payload, digest: body.digest, sentence, back: body.back, at: (deps.now ?? nowSeconds)(), start: plain };
+  const drafts = (keep.drafts ?? []).filter(isDraftKey).slice(0, 20);
+  if (drafts.length) pending.drafts = drafts;
   return sendStart(body, pending, storage, token.csrf, deps);
 }
 
@@ -215,6 +249,10 @@ export function takePending(storage: ClientDeps["storage"], now: number): Pendin
     back: backPath(p.back),
     at: p.at,
   };
+  if (Array.isArray(p.drafts)) {
+    const drafts = p.drafts.filter(isDraftKey).slice(0, 20);
+    if (drafts.length) pending.drafts = drafts;
+  }
   const st = p.start as Json | undefined;
   // The declaration kept for a new authorization: the same action (its digest), nothing else.
   if (st && typeof st === "object" && typeof st.kind === "string" && st.digest === p.digest) {
@@ -273,6 +311,22 @@ export async function completeAction(ret: Return, pending: Pending, deps: Client
 
 const backLink = (href: string) => ({ href: backPath(href), text: "Back to the page you came from" });
 
+/** A path of the registry's code viewer an answer may link to (a commit's file, the commit, a
+ *  comparison with a fork's "owner:branch"): /r/ only, no "//", no dot segment, nothing a link could
+ *  run. Never another site: no open redirect. */
+export const VIEWER_PATH = /^\/r\/(?:[A-Za-z0-9._~\-:%]+\/){2,}[A-Za-z0-9._~\-/:%]{0,400}$/;
+
+export function viewerLinks(value: unknown): { href: string; text: string }[] {
+  if (!Array.isArray(value)) return [];
+  const out: { href: string; text: string }[] = [];
+  for (const l of value.slice(0, 5)) {
+    if (!l || typeof l.href !== "string" || typeof l.text !== "string" || !l.text.trim() || l.text.length > 120) continue;
+    if (!VIEWER_PATH.test(l.href) || l.href.includes("//") || /(?:^|\/)\.{1,2}(?:\/|$)/.test(l.href)) continue;
+    out.push({ href: l.href, text: l.text });
+  }
+  return out;
+}
+
 /** The installation's part of the outcome: installed (with the link page, the installation
  *  preselected), or requested from an organization's owners. */
 export function installationOutcome(ret: Return): Outcome | null {
@@ -314,8 +368,11 @@ export function outcomeOf(res: { status: number; body: Json } | null, pending: P
       text.push(`Its papers: ${parts.join(", ")}.`);
     }
     // A new or linked repository: its page on this site (its quick setup when empty), a /r/ path only.
+    // A commit (phase 03) names its own pages instead: the file or folder, the commit, the comparison
+    // of a new branch, each a /r/ path of the registry's viewer.
+    const own = viewerLinks(result.links);
     const page = typeof result.page === "string" && result.page.startsWith("/r/") && backPath(result.page) === result.page ? result.page : null;
-    const links = page ? [{ href: page, text: "The repository's page" }, back] : [back];
+    const links = own.length ? [...own, back] : page ? [{ href: page, text: "The repository's page" }, back] : [back];
     // The other repositories of the same installation, to link next (each its own action).
     if (Array.isArray(result.others)) {
       for (const o of result.others.slice(0, 20)) {
@@ -330,6 +387,9 @@ export function outcomeOf(res: { status: number; body: Json } | null, pending: P
   const links = [back];
   if (e.offer === "new_branch") {
     text.push("Go back to the page: it shows the branch as it is now, and offers to put your change on a new branch instead.");
+  }
+  if (e.offer === "propose") {
+    text.push("Go back to the page: your change is kept there, and its commit dialog can propose it from your own copy of the repository.");
   }
   if (res.status === 401 && e.code !== "unauthorized") links.push({ href: "/account/", text: "Sign in" });
   if (typeof e.fallbackUrl === "string" && safeLocation(e.fallbackUrl)?.startsWith("https://github.com/")) {

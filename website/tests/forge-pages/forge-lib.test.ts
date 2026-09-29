@@ -63,6 +63,12 @@ describe("the URL scheme of the repository pages", () => {
       ["/r/oscr-fixture/eeg-analysis/compare/v1.0...main/", "compare", ["v1.0...main"], "/r/oscr-fixture/eeg-analysis/compare/v1.0...main/"],
       ["/r/oscr-fixture/eeg-analysis/find/main/", "find", ["main"], "/r/oscr-fixture/eeg-analysis/find/main/"],
       ["/r/oscr-fixture/eeg-analysis/search/", "search", [], "/r/oscr-fixture/eeg-analysis/search/"],
+      // Phase 03: GitHub's editing shapes.
+      ["/r/oscr-fixture/eeg-analysis/edit/main/analysis.py", "edit", ["main", "analysis.py"], "/r/oscr-fixture/eeg-analysis/edit/main/analysis.py"],
+      ["/r/oscr-fixture/eeg-analysis/new/main/", "new", ["main"], "/r/oscr-fixture/eeg-analysis/new/main/"],
+      ["/r/oscr-fixture/eeg-analysis/new/main/docs", "new", ["main", "docs"], "/r/oscr-fixture/eeg-analysis/new/main/docs/"],
+      ["/r/oscr-fixture/eeg-analysis/upload/main/data/", "upload", ["main", "data"], "/r/oscr-fixture/eeg-analysis/upload/main/data/"],
+      ["/r/oscr-fixture/eeg-analysis/delete/main/docs/old.md", "delete", ["main", "docs", "old.md"], "/r/oscr-fixture/eeg-analysis/delete/main/docs/old.md"],
     ];
     for (const [path, view, rest, canonical] of cases) {
       const parsed = parseRepoPath(path);

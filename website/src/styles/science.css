@@ -580,6 +580,81 @@ ol.search-lines li { white-space: pre-wrap; overflow-wrap: anywhere; }
 ol.search-lines code { background: none; }
 a.search-line-num { display: inline-block; min-width: 3em; text-align: right; color: var(--muted); font-family: var(--font-code); }
 
+/* Editing in the browser (night phase 03): the registry's own editor looks like its viewer. The
+   viewer's lines (ol.lines.code: the gutter, highlight.js's classes, the exact indentation) lie
+   under a transparent textarea in one grid cell: the same font, line height, padding and tab
+   width, so the caret sits on the letters. No wrapping unless asked; the block scrolls sideways. */
+.edit-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: .3em .6em; margin: .6em 0 .3em; }
+.edit-head .path-crumbs { margin: 0; font-family: var(--font-code); font-size: .92em; overflow-wrap: anywhere; }
+.edit-head .edit-name { margin: 0; flex: 1 1 16em; }
+main .edit-head .edit-name input[type="text"], .edit-head .edit-name input[type="text"] {
+  font: inherit; font-family: var(--font-code); font-size: .92em; width: min(24em, 100%); padding: .15em .35em; border: 1px solid #777; border-radius: 0; box-sizing: border-box;
+}
+.edit-head .edit-branch { color: var(--muted); font-size: .92em; }
+.edit-head .edit-actions { margin: 0; }
+p.edit-name-said { margin: .2em 0; font-size: .92em; color: var(--muted); }
+p.edit-name-said.warning { color: var(--warning); }
+.name-helper:empty { display: none; }
+.name-helper { margin: .4em 0; }
+button.primary { font: inherit; font-weight: bold; color: var(--masthead-text); background: var(--masthead); border: 1px solid var(--masthead); border-radius: 0; padding: .15em .7em; cursor: pointer; }
+button.primary:hover { text-decoration: underline; }
+.editor-tabs { display: flex; gap: 0; margin: .7em 0 0; border-bottom: 1px solid var(--rule); }
+.editor-tabs button {
+  font: inherit; background: var(--bg-sidebar); border: 1px solid var(--rule); border-bottom: 0; border-radius: 0;
+  padding: .2em .9em; margin: 0 .2em -1px 0; cursor: pointer; color: var(--link);
+}
+.editor-tabs button[aria-selected="true"] { background: var(--bg); color: var(--text); font-weight: bold; border-bottom: 1px solid var(--bg); }
+.editor-panel { margin: 0 0 .6em; }
+.editor-panel.preview, .editor-panel.changes { border: 1px solid var(--rule); border-top: 0; padding: .4em .8em; }
+.editor-tools, .editor-find p, form.editor-goto { margin: .4em 0; font-size: .9em; }
+.editor-tools select, .editor-find input, .editor-find button, form.editor-goto input, form.editor-goto button { font: inherit; border-radius: 0; }
+.editor-find { border: 1px solid var(--rule); background: var(--bg-sidebar); padding: 0 .6em; }
+.editor-find input[type="search"], .editor-find input[type="text"] { width: min(18em, 100%); padding: .1em .3em; border: 1px solid #777; box-sizing: border-box; }
+.editor-find .find-said { color: var(--muted); }
+form.editor-goto input { width: 6em; padding: .1em .3em; border: 1px solid #777; }
+.editor-surface {
+  overflow-x: auto; border: 1px solid var(--rule); background: var(--bg);
+  font-family: var(--font-code); font-size: .85em; line-height: 1.5;
+}
+.editor-surface:focus-within { outline: 2px solid #e8a200; outline-offset: 1px; }
+.editor-stack { display: grid; grid-template-columns: 100%; width: max-content; min-width: 100%; }
+.editor-stack > * { grid-area: 1 / 1; }
+.editor-surface ol.lines.code.editor-lines { margin: 0; border: 0; font-size: 1em; overflow: visible; pointer-events: none; }
+.editor-surface ol.lines.code.editor-lines li::before { cursor: text; }
+textarea.editor-input {
+  box-sizing: border-box; width: 100%; height: 100%; min-height: 3em; margin: 0; border: 0; border-radius: 0;
+  padding: 0 .8em 0 4.6em; resize: none; overflow: hidden; background: transparent;
+  font: inherit; line-height: 1.5; letter-spacing: normal; white-space: pre; overflow-wrap: normal; tab-size: 4;
+  color: transparent; -webkit-text-fill-color: transparent; caret-color: var(--text); outline: 0;
+}
+textarea.editor-input::selection { color: transparent; -webkit-text-fill-color: transparent; background: rgba(6, 69, 173, .22); }
+.editor-surface.tab-2 textarea.editor-input { tab-size: 2; }
+.editor-surface.tab-4 textarea.editor-input { tab-size: 4; }
+.editor-surface.tab-8 textarea.editor-input { tab-size: 8; }
+.editor-surface.wrap .editor-stack { width: auto; }
+.editor-surface.wrap ol.lines.code li { width: auto; white-space: pre-wrap; overflow-wrap: anywhere; }
+.editor-surface.wrap textarea.editor-input { white-space: pre-wrap; overflow-wrap: anywhere; }
+p.editor-status { margin: .25em 0 0; color: var(--muted); font-size: .85em; }
+p.editor-foot { margin: .4em 0; font-size: .9em; }
+p.editor-foot .editor-draft { color: var(--muted); }
+.editor-moved { margin: .5em 0; }
+p.draft-note { margin: .3em 0; padding: .3em .6em; background: var(--highlighter); font-size: .92em; }
+
+/* The commit dialog: a ruled section under the editor, its choices as sentences */
+section.commit-dialog { margin: 1em 0; padding: .4em .9em .6em; border: 1px solid var(--masthead); background: var(--bg-sidebar); }
+section.commit-dialog h2 { margin: .3em 0 .5em; font-size: 1.15em; }
+section.commit-dialog input[type="text"], section.commit-dialog textarea {
+  font: inherit; width: min(40em, 100%); padding: .15em .35em; border: 1px solid #777; border-radius: 0; box-sizing: border-box; background: var(--bg);
+}
+section.commit-dialog textarea { min-height: 4.5em; resize: vertical; }
+section.commit-dialog fieldset.choices legend { font-weight: bold; }
+section.commit-dialog .branch-name { margin: .4em 0 0 1.7em; }
+section.commit-dialog .branch-name input[type="text"] { font-family: var(--font-code); width: min(24em, 100%); }
+section.commit-dialog p.explain { color: var(--muted); font-size: .92em; }
+section.commit-dialog label .explain { display: block; margin: .05em 0 0 1.7em; color: var(--muted); font-size: .92em; }
+.secret-warning { margin: .5em 0; padding: .2em .7em; border: 1px solid var(--warning); background: var(--bg); }
+.secret-warning ul { margin: .2em 0; padding-left: 1.3em; font-family: var(--font-code); font-size: .9em; }
+
 footer {
   max-width: var(--width); margin: 0 auto; padding: 1em;
   border-top: 1px solid var(--rule); font-size: .85em; color: var(--muted);
@@ -606,6 +681,11 @@ footer a { margin-right: 1em; }
   table.files td.what, table.files th:nth-child(2) { display: none; }
   ol.lines.code li { padding-left: 3.6em; }
   ol.lines.code li::before { width: 2.8em; }
+  /* Phase 03: the editor's textarea keeps the gutter's width, its head wraps */
+  textarea.editor-input { padding-left: 3.6em; }
+  .edit-head { display: block; }
+  .edit-head > * { margin: .3em 0; }
+  section.commit-dialog { padding-left: .6em; padding-right: .6em; }
   .code-layout { flex-direction: column; align-items: stretch; }
   nav.file-tree { order: 2; flex-basis: auto; position: static; max-height: 20em; margin: .6em 0 0; }
   table.diff.split td.code { width: auto; }

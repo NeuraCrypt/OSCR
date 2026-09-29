@@ -14,6 +14,8 @@
 
 import {
   completeAction,
+  dropDrafts,
+  localStore,
   hasReturn,
   installationOutcome,
   outcomeOf,
@@ -103,6 +105,9 @@ export async function arrive(search: string, deps: ClientDeps = {}): Promise<Out
   }
 
   const res = await completeAction(ret, pending, deps);
+  // A commit made: the editor's drafts it carried are dropped (phase 03); kept on any failure, so
+  // the change is still there when the person goes back.
+  if (res?.status === 200 && pending.drafts?.length) dropDrafts(pending.drafts, deps.local === undefined ? localStore() : deps.local);
   const outcome = outcomeOf(res, pending);
   return installed ? [installed, outcome] : [outcome];
 }

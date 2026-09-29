@@ -20,3 +20,11 @@ const EMAIL_IN_TEXT = /(?<![\p{L}\p{N}_.+%-])(?!git@)[\p{L}\p{N}_.+%-]+@[A-Za-z0
 export function maskEmails(text: string): string {
   return typeof text === "string" && text.includes("@") ? text.replace(EMAIL_IN_TEXT, EMAIL_MASK) : text;
 }
+
+/** Email addresses hidden without moving anything (the web editor's visible layer, night phase 03):
+ *  each character of an address but "@" and "." becomes "*", so every line keeps its columns under
+ *  the text being edited. What remains is no address (its last part is no longer letters), so
+ *  `maskEmails` leaves it as it is. */
+export function maskEmailsInPlace(text: string): string {
+  return typeof text === "string" && text.includes("@") ? text.replace(EMAIL_IN_TEXT, (m) => m.replace(/[^@.]/gu, "*")) : text;
+}

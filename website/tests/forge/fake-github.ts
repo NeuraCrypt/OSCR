@@ -495,6 +495,12 @@ export class FakeGitHub {
       const me = await (d.auth as NonNullable<MemoryBackend["auth"]>).whoAmI(x.who.kind === "user" ? x.who.token : "");
       return reply({ login: me.login, id: Number(me.id), type: "User", name: null, ...EMAIL_FIELD });
     });
+    // A public account by its login (the editor's co-authors, night phase 03): anyone may ask.
+    this.on("GET", /^\/users\/([A-Za-z0-9][A-Za-z0-9_-]{0,99})$/, (m) => {
+      const a = d.accountByLogin(m[1]);
+      if (!a) return reply({ message: "Not Found" }, 404);
+      return reply({ login: a.login, id: Number(a.id), type: a.type === "organization" ? "Organization" : "User", name: null, ...EMAIL_FIELD });
+    });
     this.on("GET", /^\/user\/installations$/, async (_m, x) => {
       const p = await (d.auth as NonNullable<MemoryBackend["auth"]>).installations(x.who.kind === "user" ? x.who.token : "", page(x.url));
       return reply({ total_count: p.items.length, installations: p.items.map(installationJson) });

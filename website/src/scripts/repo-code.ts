@@ -21,7 +21,7 @@
 // `renderers` (E2, E5).
 //
 // Keys (not while typing): t the file finder, w the branch and tag switcher, y the permalink (the
-// address at the commit id), l jump to a line, b blame at the source. Lines: click a number in the
+// address at the commit id), l jump to a line, b blame at the source, e edit the file (phase 03). Lines: click a number in the
 // gutter, shift-click to extend; the line menu copies the permalink or the lines.
 
 import { GitBackendError } from "../../worker/forge/errors.ts";
@@ -66,6 +66,7 @@ import {
   textLines,
   unicodeWarnings,
 } from "../lib/code-nav.ts";
+import { draftKey, readDraft } from "../lib/editor.ts";
 import { repoPath, type RepoCoords, type RepoPath } from "../lib/forge.ts";
 import { detectLanguage, editorConfigTabWidth, highlightText, type LineNodes, plainLines } from "../lib/highlight.ts";
 import { type Child, dateOfIso, type El, h } from "../lib/repo-view.ts";
@@ -179,7 +180,8 @@ export function failed(slot: HTMLElement, e: unknown, source: string, what: stri
 }
 
 /** The line above a view: the switcher, the path, the actions. */
-function codeHead(env: CodeEnv, opened: Opened, view: "tree" | "blob", path: string, actions: Child[]): El {
+function codeHead(env: CodeEnv, opened: Opened, view: "tree" | "blob", path: string, given: Child[]): El {
+  const actions = given.filter((a) => a !== null && a !== undefined && a !== false);
   return h(
     "div",
     { class: "code-head" },
@@ -273,8 +275,11 @@ export async function mountTree(slot: HTMLElement, env: CodeEnv, segments: reado
   }
   const listing = listDirectory(entries, dir);
   const submodules = await submodulesOf(env, opened);
+  const onBranch = opened.ref.kind === "branch";
   const actions: Child[] = [
     h("a", { href: repoPath(env.repo, "find", refSegments(opened.ref.ref)) }, "Go to file"),
+    // Phase 03: files are added on a branch, in the registry's own editor.
+    onBranch ? h("a", { href: repoPath(env.repo, "new", refSegments(opened.ref.ref, dir)), id: "add-file" }, "Add a file") : null,
     h("a", { href: `${repoPath(env.repo, "search")}?${new URLSearchParams({ ref: opened.ref.ref })}` }, "Search"),
     h("a", { href: repoPath(env.repo, "commits", refSegments(opened.ref.ref, dir)) }, "History"),
   ];
@@ -301,6 +306,15 @@ export async function mountTree(slot: HTMLElement, env: CodeEnv, segments: reado
 // ─── the file ────────────────────────────────────────────────────────────────
 
 let editorConfig: { commit: string; text: string | null } | null = null;
+
+/** Whether the editor keeps a draft of this file on this branch in the reader's browser. */
+function keptDraft(env: CodeEnv, branch: string, path: string): boolean {
+  try {
+    return readDraft(globalThis.localStorage, draftKey(env.repo, branch, `edit:${path}`), Math.floor(Date.now() / 1000)) !== null;
+  } catch {
+    return false;
+  }
+}
 
 /** The repository's root .editorconfig at the commit (a raw read, not counted), once per page. */
 async function editorConfigText(env: CodeEnv, opened: Opened): Promise<string | null> {
@@ -375,9 +389,12 @@ export async function mountBlob(slot: HTMLElement, env: CodeEnv, segments: reado
   const plain = params.get("plain") === "1";
   const raw = params.get("raw") === "1";
   const here = repoPath(env.repo, "blob", refSegments(opened.ref.ref, path));
-  /** The actions of the file's header: Raw and Copy for a text only, Download once it is read. */
+  const onBranch = opened.ref.kind === "branch";
+  /** The actions of the file's header: Edit (phase 03, on a branch), Raw and Copy for a text only,
+   *  Download once it is read. */
   const headOf = (what: "text" | "bytes" | "none"): El =>
     codeHead(env, opened, "blob", path, [
+      what === "text" && onBranch ? h("a", { href: repoPath(env.repo, "edit", refSegments(opened.ref.ref, path)), id: "edit-file" }, "Edit") : null,
       what === "text" ? (raw ? h("strong", null, "Raw") : h("a", { href: `${here}?raw=1` }, "Raw")) : null,
       what !== "none" ? h("button", { type: "button", class: "link", id: "download-file" }, "Download") : null,
       what === "text" ? h("button", { type: "button", class: "link", id: "copy-file" }, "Copy") : null,
@@ -482,6 +499,10 @@ export async function mountBlob(slot: HTMLElement, env: CodeEnv, segments: reado
     const shown = await viewLines(text, language);
     state.lines = shown.lines;
     const warnings = unicodeWarnings(text);
+    // A change of the reader's own to this file, kept in this browser by the editor (phase 03).
+    if (onBranch && keptDraft(env, opened.ref.ref, path)) {
+      body.push(h("p", { class: "draft-note" }, "A change of yours to this file is kept in this browser, not committed yet: ", h("a", { href: repoPath(env.repo, "edit", refSegments(opened.ref.ref, path)) }, "continue editing"), "."));
+    }
     body.push(fileInfo({ lines: lineCounts(shown.lines), size, language, kind, executable: entry?.mode === "100755" }));
     if (claimed && !raw) {
       body.push(h("p", { class: "view-switch" }, rendered ? [h("strong", null, "Rendered"), " · ", h("a", { href: `${here}?plain=1` }, "Source")] : [h("a", { href: here }, "Rendered"), " · ", h("strong", null, "Source")]));
@@ -747,6 +768,13 @@ export function wireKeys(env: CodeEnv): void {
         }
         break;
       }
+      case "e":
+        // Phase 03: the file in the registry's own editor (on a branch), at the selected line.
+        if (state?.path && state.lines !== null && state.opened.ref.kind === "branch") {
+          ev.preventDefault();
+          location.assign(`${repoPath(env.repo, "edit", refSegments(state.opened.ref.ref, state.path))}${state.selection ? `#L${state.selection.start}` : ""}`);
+        }
+        break;
       case "b":
         // Blame is GitHub's (it needs a GitHub sign-in): the reader's own request, at the source.
         if (state?.path && state.lines !== null) {

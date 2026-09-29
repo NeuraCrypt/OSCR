@@ -19,7 +19,10 @@
 import { diffLines, splitLines } from "../../worker/forge/diff.ts";
 import type { PayloadChange } from "../../worker/forge/service/act-commit.ts";
 import { isRefName, LOGIN } from "../../worker/forge/paths.ts";
+import { DRAFT_PREFIX } from "./forge.ts";
 import { editorConfigGlob } from "./highlight.ts";
+
+export { DRAFT_PREFIX, isDraftKey } from "./forge.ts";
 
 // ─── the file in and out of the editor ───────────────────────────────────────
 
@@ -466,7 +469,6 @@ export function coAuthorLogins(typed: string): string[] | string {
 
 // ─── drafts in the reader's browser ──────────────────────────────────────────
 
-export const DRAFT_PREFIX = "oscr-draft:";
 /** A draft older than this is dropped when read (a month). */
 export const DRAFT_DAYS = 30;
 /** A draft larger than this is not kept (localStorage holds about 5 MB per site). */
@@ -526,9 +528,6 @@ export function dropDraft(store: Store, key: string): void {
     // nothing to do
   }
 }
-
-/** Whether a key is a draft's (the callback page drops only those). */
-export const isDraftKey = (key: unknown): key is string => typeof key === "string" && key.startsWith(DRAFT_PREFIX) && key.length <= 5000;
 
 // ─── what a change touches ───────────────────────────────────────────────────
 

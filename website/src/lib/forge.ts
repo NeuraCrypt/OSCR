@@ -36,11 +36,19 @@ export const GITHUB = "https://github.com";
  *  - compare/<base>...<head>: a comparison (three dots; refs may hold "/");
  *  - find/<ref>: the file finder; search: the search in the repository (?q=);
  *  - docs/<ref>/<page…>: the repository's documentation (its Markdown) read as pages (E5: GitHub
- *    Pages adapted, no author HTML or JavaScript). */
-export type RepoView = "home" | "settings" | "branches" | "tree" | "blob" | "commits" | "commit" | "compare" | "find" | "search" | "docs";
+ *    Pages adapted, no author HTML or JavaScript).
+ *  Phase 03 (editing in the browser, D03-*) adds GitHub's own editing shapes: edit/<branch>/<path…>
+ *  (a file), new/<branch>/<dir…> (a new file; ?filename= and ?value= prefill it, as GitHub's),
+ *  upload/<branch>/<dir…> (files uploaded into a folder), delete/<branch>/<path…> (a file or a
+ *  folder). */
+export type RepoView =
+  | "home" | "settings" | "branches" | "tree" | "blob" | "commits" | "commit" | "compare" | "find" | "search" | "docs"
+  | "edit" | "new" | "upload" | "delete";
 export const REPO_VIEWS: readonly RepoView[] = ["home", "settings", "branches"];
 /** The views that carry segments after their name (a ref, a path, a commit, a comparison). */
-export const CODE_VIEWS: readonly RepoView[] = ["tree", "blob", "commits", "commit", "compare", "find", "search", "docs"];
+export const CODE_VIEWS: readonly RepoView[] = ["tree", "blob", "commits", "commit", "compare", "find", "search", "docs", "edit", "new", "upload", "delete"];
+/** The editing views (phase 03): they act on a branch, and their changes are commits. */
+export const EDIT_VIEWS: readonly RepoView[] = ["edit", "new", "upload", "delete"];
 
 export interface RepoCoords {
   owner: string;
@@ -76,6 +84,10 @@ const SEGMENTS: Partial<Record<RepoView, [number, number]>> = {
   find: [0, 64],
   search: [0, 0],
   docs: [0, 64],
+  edit: [2, 64],
+  new: [1, 64],
+  upload: [1, 64],
+  delete: [2, 64],
 };
 
 /** The repository and the view a path of the shell names, or null: /r/<owner>/<name>/ (the final
@@ -113,7 +125,7 @@ export function repoPath(repo: RepoCoords, view: RepoView = "home", rest: readon
   const segs = rest.flatMap((s) => s.split("/")).filter((s) => s !== "");
   if (!segs.every(isPathSegment)) throw new TypeError("not a path");
   const tail = segs.map(encodeURIComponent).join("/");
-  if (view === "blob") return `${base}blob/${tail}`;
+  if (view === "blob" || view === "edit" || view === "delete") return `${base}${view}/${tail}`;
   return tail ? `${base}${view}/${tail}/` : `${base}${view}/`;
 }
 
@@ -297,6 +309,15 @@ export async function sha256Hex(text: string): Promise<string> {
   const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", encoder.encode(text)));
   return [...digest].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
+
+// ─── drafts of the editor (phase 03) ─────────────────────────────────────────
+
+/** The prefix of the editor's drafts in localStorage (src/lib/editor.ts): the callback page drops
+ *  only keys that carry it, once the commit is made. */
+export const DRAFT_PREFIX = "oscr-draft:";
+
+/** Whether a key is one of the editor's drafts. */
+export const isDraftKey = (key: unknown): key is string => typeof key === "string" && key.startsWith(DRAFT_PREFIX) && key.length <= 5000;
 
 /** A page of this site to come back to, or "/repositories/": never another site, never /api/. */
 export function backPath(value: unknown): string {

@@ -97,6 +97,12 @@ function locatedIn(env: CodeEnv, opened: Opened, path: string, lines: readonly s
 }
 
 lineMarkers.push(async (env, opened, path, lines) => lineMarks(await locatedIn(env, opened, path, lines)));
+
+/** The map links on a file at a commit (phase 03: the commit dialog's notice of the links a change
+ *  touches). `lines`: the file's lines at that commit, as the viewer shows them. */
+export function mapLinksIn(env: CodeEnv, commit: string, path: string, lines: readonly string[]): Promise<Located[]> {
+  return locatedIn(env, { commit } as Opened, path, lines);
+}
 blobNotes.push(async (env, opened, path, lines) => tracedNote(await locatedIn(env, opened, path, lines), opened.commit));
 lineMenuExtras.push(({ opened, path, selection }) => explainLines(settled.get(keyOf(opened.commit, path)) ?? [], selection));
 

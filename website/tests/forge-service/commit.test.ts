@@ -70,6 +70,10 @@ describe("a web commit", () => {
     assert.equal(r.newBranch, false);
     assert.equal(r.pullRequest, null);
     assert.equal(r.page, `/r/ada-fixture/eeg/commit/${now}/`);
+    assert.deepEqual(r.links, [
+      { href: "/r/ada-fixture/eeg/blob/main/analysis.py", text: "The file, as committed" },
+      { href: `/r/ada-fixture/eeg/commit/${now}/`, text: "The commit" },
+    ]);
     const c = await ada().git.commit(REF, now);
     assert.equal(c.author?.login, ADA_LOGIN);
     assert.deepEqual(c.parents, [head]);
@@ -149,6 +153,7 @@ describe("a web commit", () => {
     assert.equal(r.branch, "fix/units");
     assert.equal(r.newBranch, true);
     assert.equal(r.compare, "/r/ada-fixture/eeg/compare/main...fix/units/");
+    assert.deepEqual(r.links.map((l: { text: string }) => l.text), ["The file, as committed", "The commit", "The comparison with main"]);
     assert.deepEqual(r.pullRequest, { repo: "ada-fixture/eeg", base: "main", head: "fix/units" });
     assert.equal(await ada().git.resolve(REF, "main"), head);
     assert.deepEqual((await ada().git.commit(REF, r.sha)).parents, [head]);
