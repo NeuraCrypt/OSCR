@@ -1,0 +1,21 @@
+---
+// /feed/: the reader's dashboard (night phase 08, E5; docs/SOCIAL.md). Its script (src/scripts/feed.ts)
+// reads GET /api/forge/social/feed when signed in (1 request), and the catalogue's papers of the
+// authors followed from static shards.
+import Base from "../layouts/Base.astro";
+import { SITE_NAME } from "../config";
+---
+<Base
+  title="Feed"
+  description="What the people, authors, organizations, repositories and papers you follow did lately."
+  breadcrumb={[{ text: "Feed" }]}
+>
+  <div id="feed-shell" data-site={SITE_NAME}>
+    <h1>Your feed</h1>
+    <p class="summary" aria-live="polite">Reading your feed…</p>
+    <noscript><p class="warning">This page reads your feed in your browser, which needs JavaScript.</p></noscript>
+  </div>
+  <script>
+    import "../scripts/feed";
+  </script>
+</Base>

@@ -1,0 +1,28 @@
+---
+// /u/: the ONE static shell of every person's page (night phase 08, E5; public/_redirects:
+// "/u/* /u/ 200": no file per person). Its script (src/scripts/profile.ts) reads /u/<GitHub login or
+// ORCID iD>/: last night's static shard signed out (0 Worker requests), live signed in; the profile
+// README from GitHub's raw files in the reader's browser. data-github-*: GitHub's addresses for a local
+// run against the fake GitHub, only http addresses on this machine (as the /r/ shell's).
+import Base from "../../layouts/Base.astro";
+import { SITE_NAME } from "../../config";
+
+const local = (v: unknown): string | undefined =>
+  typeof v === "string" && /^http:\/\/(?:localhost|127\.0\.0\.1)(?::\d{1,5})?(?:\/[A-Za-z0-9._/-]*)?$/.test(v) ? v : undefined;
+const githubApi = local(import.meta.env.FORGE_GITHUB_API_URL);
+const githubRaw = local(import.meta.env.FORGE_GITHUB_RAW_URL);
+---
+<Base
+  title="Person"
+  description="A researcher in the registry: their profile, their papers, their contributions and what they follow."
+  breadcrumb={[{ text: "People" }]}
+>
+  <div id="profile-shell" data-site={SITE_NAME} data-github-api={githubApi} data-github-raw={githubRaw}>
+    <h1>Person</h1>
+    <p class="summary" aria-live="polite">Reading the profile…</p>
+    <noscript><p class="warning">This page reads the profile in your browser, which needs JavaScript.</p></noscript>
+  </div>
+  <script>
+    import "../../scripts/profile";
+  </script>
+</Base>

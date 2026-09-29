@@ -60,3 +60,30 @@
   X-Frame-Options: DENY
   Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; connect-src 'self' https://api.github.com https://raw.githubusercontent.com; form-action 'self'; frame-ancestors 'none'; base-uri 'none'; object-src 'none'
   Referrer-Policy: same-origin
+
+# Night phase 08: the social pages hold a CSRF token or ask the Worker for the reader's own data: this
+# site only; /u/* also reads GitHub (a login's id, the profile README's raw file).
+/notifications/
+  X-Frame-Options: DENY
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'; object-src 'none'
+  Referrer-Policy: same-origin
+
+/stars/
+  X-Frame-Options: DENY
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'; object-src 'none'
+  Referrer-Policy: same-origin
+
+/feed/
+  X-Frame-Options: DENY
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'; object-src 'none'
+  Referrer-Policy: same-origin
+
+/explore/
+  X-Frame-Options: DENY
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'; object-src 'none'
+  Referrer-Policy: same-origin
+
+/u/*
+  X-Frame-Options: DENY
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; connect-src 'self' https://api.github.com https://raw.githubusercontent.com; form-action 'self'; frame-ancestors 'none'; base-uri 'none'; object-src 'none'
+  Referrer-Policy: same-origin

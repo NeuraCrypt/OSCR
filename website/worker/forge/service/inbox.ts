@@ -567,7 +567,22 @@ export async function handleFeed(r: ForgeRequest): Promise<Response> {
     }
   });
   items.sort((a, b) => b.at - a.at);
-  return json({ items: items.slice(0, FEED_ITEMS), days: FEED_DAYS, following: { people: people.length, subjects: subjects.length } });
+  // What the reader follows (their own), and their settings (what the feed hides): one request a view.
+  const marks = await first<{ settings: string }>(r.db.prepare("SELECT settings FROM notice_marks WHERE user_id = ?").bind(s.user.id));
+  let settings: Record<string, unknown> = {};
+  try {
+    const v = JSON.parse(marks?.settings ?? "{}") as unknown;
+    if (isObject(v)) settings = v;
+  } catch {
+    settings = {};
+  }
+  return json({
+    items: items.slice(0, FEED_ITEMS),
+    days: FEED_DAYS,
+    following: { people: people.length, subjects: subjects.length },
+    follows: follows.map((f) => ({ target: f.target, label: f.label, level: f.level })),
+    settings,
+  });
 }
 
 // ─── a person's activity ─────────────────────────────────────────────────────

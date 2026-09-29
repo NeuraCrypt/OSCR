@@ -938,6 +938,73 @@ ol.results p.line { margin: .15em 0 0; color: var(--muted); font-size: .92em; }
 form.search-form p.explain { color: var(--muted); font-size: .92em; margin-top: .2em; }
 form.search-form input[type="search"] { font: inherit; padding: .15em .3em; border: 1px solid #777; border-radius: 0; width: min(28em, 100%); box-sizing: border-box; }
 
+/* Night phase 08: the social pages. Star, Watch and Follow as plain buttons with their counts in
+   words (never a badge); the inbox as ruled rows, an unread one in bold with a rule on its left; the
+   stars and lists; a profile's head with its identicon (a 5 × 5 table whose cells take one of eight
+   hues by class: no image, no style attribute); the contribution calendar as a table of cells whose
+   level (0–4) is a class, a published paper a dot; the feed and the topics as plain lists. */
+p.explain, span.explain { color: var(--muted); font-size: .92em; }
+.social-actions { display: flex; flex-wrap: wrap; gap: .4em .6em; align-items: center; margin: .4em 0 .8em; font-size: .95em; }
+.social-actions button, .social-actions select { font: inherit; border-radius: 0; }
+.social-actions .said { color: var(--muted); }
+.sidebar .social-actions { display: block; }
+.sidebar .social-actions > * { margin: .2em 0; }
+details.lists-menu { display: inline-block; }
+details.lists-menu[open] { display: block; border: 1px solid var(--rule); padding: .2em .6em; }
+details.lists-menu p { margin: .2em 0; }
+fieldset.custom-watch { display: block; margin: .3em 0; padding: .2em .6em .4em; border: 1px solid var(--rule); }
+fieldset.custom-watch label { margin-right: .8em; white-space: nowrap; }
+ul.notices { list-style: none; margin: 0 0 1em; padding: 0; }
+ul.notices li.notice { padding: .45em 0 .45em .5em; border-bottom: 1px solid var(--rule); overflow-wrap: anywhere; }
+ul.notices li.notice.unread { border-left: 3px solid var(--masthead); }
+ul.notices .notice-what { color: var(--muted); }
+ul.notices p.line { margin: .1em 0 0; color: var(--muted); font-size: .9em; }
+ul.notices p.notice-actions { margin: .25em 0 0; font-size: .9em; }
+ul.notices button, p.notice-bulk button, p.notice-filters button, ul.watching button, section.star-list button, ul.stars button { font: inherit; font-size: .9em; border-radius: 0; }
+h2.notice-group { font-size: 1em; margin: 1em 0 .2em; border-bottom: 1px solid var(--rule); }
+form.notice-filter input[type="search"] { font: inherit; width: min(30em, 100%); box-sizing: border-box; padding: .15em .3em; border: 1px solid #777; border-radius: 0; }
+p.notice-filters, p.notice-bulk { font-size: .92em; margin: .4em 0; }
+ul.watching li { margin: .25em 0; }
+section.notice-settings { margin-top: 1.5em; }
+ul.stars { padding-left: 1.2em; }
+ul.stars li { margin: .3em 0; overflow-wrap: anywhere; }
+p.star-filters input[type="search"], p.star-filters select, form.list-form input[type="text"] { font: inherit; border-radius: 0; }
+p.star-filters input[type="search"], form.list-form input[type="text"] { padding: .1em .3em; border: 1px solid #777; max-width: 100%; box-sizing: border-box; }
+section.star-list { margin: .8em 0; padding: .1em .9em .5em; border: 1px solid var(--rule); }
+section.star-list h3 { margin: .4em 0 .2em; }
+section.star-list .list-state { font-weight: normal; color: var(--muted); font-size: .85em; }
+.profile-head { display: flex; gap: 1em; align-items: center; margin: .4em 0; }
+.profile-head h1 { margin: 0; }
+p.handles, p.status { margin: .15em 0; color: var(--muted); }
+p.bio { font-size: 1.05em; }
+table.identicon { border-collapse: collapse; flex: none; border: 1px solid var(--rule); }
+table.identicon td { width: 12px; height: 12px; padding: 0; }
+table.identicon.hue-0 td.on { background: #1f3b4d; }
+table.identicon.hue-1 td.on { background: #0e8a16; }
+table.identicon.hue-2 td.on { background: #8a5a00; }
+table.identicon.hue-3 td.on { background: #0075ca; }
+table.identicon.hue-4 td.on { background: #7057ff; }
+table.identicon.hue-5 td.on { background: #b60205; }
+table.identicon.hue-6 td.on { background: #008672; }
+table.identicon.hue-7 td.on { background: #5a3696; }
+form.profile-form p.line label { display: inline-block; min-width: 12em; }
+form.profile-form input[type="text"] { font: inherit; width: min(28em, 100%); box-sizing: border-box; padding: .1em .3em; border: 1px solid #777; border-radius: 0; }
+.calendar-scroll { overflow-x: auto; }
+table.calendar { border-collapse: separate; border-spacing: 2px; }
+table.calendar td { width: 10px; height: 10px; padding: 0; font-size: 8px; line-height: 10px; text-align: center; color: #000; background: #ebedf0; }
+table.calendar td.none { background: transparent; }
+table.calendar td.level-1 { background: #c6dbe8; }
+table.calendar td.level-2 { background: #8fb3cc; }
+table.calendar td.level-3 { background: #4f7f9f; }
+table.calendar td.level-4 { background: #1f3b4d; color: #fff; }
+table.calendar td.published { outline: 1px solid #8a5a00; }
+ul.milestones li, ul.timeline li, ul.feed li, ul.pinned li { margin: .3em 0; overflow-wrap: anywhere; }
+ul.feed { list-style: none; padding: 0; }
+ul.feed li { padding: .35em 0; border-bottom: 1px solid var(--rule); }
+ul.feed li button { font: inherit; font-size: .85em; border-radius: 0; margin-left: .4em; }
+ul.topics li { margin: .4em 0; }
+ul.topics p.line { margin: .1em 0 0; color: var(--muted); font-size: .92em; }
+
 footer {
   max-width: var(--width); margin: 0 auto; padding: 1em;
   border-top: 1px solid var(--rule); font-size: .85em; color: var(--muted);
@@ -993,4 +1060,8 @@ footer a { margin-right: 1em; }
   section.release-notes, .tie { padding-left: .6em; padding-right: .6em; }
   /* Phase 08: the masthead's search wraps under the site's name (the type and the field) */
   .masthead form { flex-wrap: wrap; }
+  /* Phase 08: the profile's head and the forms take the column; the calendar scrolls within it */
+  .profile-head { align-items: flex-start; }
+  form.profile-form p.line label { display: block; min-width: 0; }
+  .social-actions { font-size: .92em; }
 }

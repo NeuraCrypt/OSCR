@@ -27,6 +27,10 @@ const tools = a.tools.map((id) => ({ id, name: toolOf(id)?.name ?? id, url: tool
     {plural(a.counts.papers, "paper")} with a page, {number(a.counts.with_code)} of them with the authors' code.
   </p>
   <div class="line"><span class="label">ORCID iD:</span> <a href={orcidUrl(a.orcid)}>{orcidUrl(a.orcid)}</a></div>
+  {/* Night phase 08: follow this author by their ORCID iD, before they have an account (social-buttons.ts);
+      their profile in the registry, once they have one. */}
+  <div data-social data-target={`orcid:${a.orcid}`} data-label={a.name} data-watch="person"></div>
+  <div class="line"><a href={`/u/${a.orcid}/`}>Their profile and activity in the registry</a></div>
   {a.affiliations.length > 0 && (
     <div class="line"><span class="label">Latest affiliations:</span> {a.affiliations.join("; ")}</div>
   )}
@@ -45,4 +49,7 @@ const tools = a.tools.map((id) => ({ id, name: toolOf(id)?.name ?? id, url: tool
 
   <h2>Papers</h2>
   <Listing articles={papers} />
+  <script>
+    import "../../scripts/social-buttons";
+  </script>
 </Base>

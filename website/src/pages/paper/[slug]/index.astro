@@ -87,6 +87,8 @@ const LATER = new Set(["activity"]);
     </div>
 
     <aside class="sidebar">
+      {/* Night phase 08: Star and Watch the paper by its DOI, the registry's own (social-buttons.ts). */}
+      <div data-social data-subject={`paper:doi:${a.doi.toLowerCase()}`} data-target={`paper:doi:${a.doi.toLowerCase()}`} data-label={a.title.slice(0, 300)} data-watch="paper"></div>
       {hasCode && (
         <>
           <h3><a class="reader-link" href={reader}>Code ↔ Paper</a></h3>
@@ -136,4 +138,7 @@ const LATER = new Set(["activity"]);
       </ul>
     </aside>
   </div>
+  <script>
+    import "../../../scripts/social-buttons";
+  </script>
 </Base>

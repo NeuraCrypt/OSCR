@@ -17,6 +17,7 @@
 // checked again here (repo-view.ts safeHref). Like every browser script, it never names the
 // platform: the page hands its name in (data-site).
 
+import { mountSocial } from "./social-buttons.ts";
 import { githubBackend } from "../../worker/forge/github/index.ts";
 import { cachedSession, gitCache, tabStore } from "../lib/gitcache.ts";
 import { CODE_VIEWS, repoPath } from "../lib/forge.ts";
@@ -197,6 +198,13 @@ async function main(): Promise<void> {
   document.title = `${loaded.repo.owner}/${loaded.repo.name}${tail}`;
   const view = loaded.target.view;
   root.replaceChildren(...page(loaded, site).map(toDom));
+  // Phase 08: Star and Watch, the registry's own (social-buttons.ts), under the repository's name.
+  if (loaded.info) {
+    const box = document.createElement("div");
+    root.querySelector(".repo-head")?.after(box);
+    const key = `repo:${loaded.info.key.forge}:${loaded.info.key.id}`;
+    void mountSocial(box, { subject: key, target: key, label: `${loaded.repo.owner}/${loaded.repo.name}`.toLowerCase(), watch: "repository" });
+  }
   wireCopy(root);
   const slot = document.getElementById("repo-view");
   const env: CodeEnv | null = loaded.info

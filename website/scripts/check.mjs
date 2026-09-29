@@ -41,6 +41,8 @@ const all = new Set(files);
 const exists = (route) =>
   route.startsWith("/r/")
     ? all.has("/r/index.html")
+    : /^\/u\/[^/?#]+\/?(?:\?.*)?$/.test(route)
+      ? all.has("/u/index.html")
     : /^\/research\/(?:[1-9]\d{0,9}|new)?(?:\?.*)?$/.test(route)
       ? all.has("/research/index.html")
       : route.endsWith("/") ? all.has(`${route}index.html`) : all.has(route) || all.has(`${route}/index.html`);
@@ -52,7 +54,9 @@ const FIXED = ["/", "/about/", "/browse/", "/authors/", "/journals/", "/institut
   "/new/", "/new/link/", "/new/import/", "/repositories/", "/forge/authorized/", "/r/", "/hosting/", "/hosting/limits/",
   "/hosting/large-files/", "/hosting/git/", "/hosting/history/", "/hosting/tokens/", "/hosting/import/", "/hosting/leave/",
   // Night phase 05: the research issues' one shell.
-  "/research/"];
+  "/research/",
+  // Night phase 08: the social pages, and the people's one shell.
+  "/notifications/", "/stars/", "/feed/", "/explore/", "/u/"];
 for (const route of FIXED) if (!exists(route)) problems.push(`missing page ${route}`);
 
 // 2. A page for each paper of decision D2, none for the others; a reader for each paper

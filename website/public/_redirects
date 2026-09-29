@@ -11,3 +11,7 @@
 # paper's list (?paper=); signed out it reads the nightly static shards, signed in the Worker. No file
 # per issue.
 /research/* /research/ 200
+
+# People's pages (night phase 08): ONE shell serves /u/<GitHub login or ORCID iD>/, and its script reads
+# the profile (last night's static shard signed out, the Worker signed in). No file per person.
+/u/* /u/ 200
