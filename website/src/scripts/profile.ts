@@ -232,7 +232,21 @@ async function main(): Promise<void> {
     return;
   }
   const reportTarget = githubId ? `person:github:${githubId}` : orcid ? `person:orcid:${orcid}` : null;
-  if (reportTarget && !person?.me) blocks.push(el("p", { class: "muted" }, el("a", { href: reportHref(reportTarget, login ?? orcid ?? handle) }, "Report this person")));
+  if (reportTarget && !person?.me) {
+    const line = el("p", { class: "muted" }, el("a", { href: reportHref(reportTarget, login ?? orcid ?? handle) }, "Report this person"));
+    // Night phase 16: block them (silent; /settings/blocked/ says what it does and keeps the list).
+    if (signedIn() && person?.account) {
+      const block = el("button", { type: "button" }, "Block");
+      const blockSaid = el("span", { role: "status" });
+      block.addEventListener("click", async () => {
+        if (!confirm("Block this person? They will not be able to comment on your research issues or in the repositories you manage, nor follow you, and their activity leaves your notifications. They are not told.")) return;
+        const r = await postJson("/api/forge/blocks/write", { target: reportTarget, on: true });
+        blockSaid.textContent = r.ok ? " Blocked: your blocks are on /settings/blocked/." : ` ${problemOf(r.body)}`;
+      });
+      line.append(" · ", block, blockSaid);
+    }
+    blocks.push(line);
+  }
   const names = await namesOf([...(p?.pinned ?? []), ...(person?.stars ?? []).slice(0, 100), ...(person?.lists ?? []).flatMap((l) => l.items)]);
   const item = (s: string) => {
     const href = subjectHref(s, names.get(s));

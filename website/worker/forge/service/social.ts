@@ -23,6 +23,7 @@ import { FORGE_ROWS_PER_DAY } from "./caps.ts";
 import { readCapped } from "./flow.ts";
 import { closed, dailyCaps, globalCap, mayWrite, overCap } from "./gate.ts";
 import { accountHidden, hiddenAmong, hiddenOne, moderationView } from "./hidden.ts";
+import { blockedByAny, blockedProblem } from "./blocks.ts";
 import { json, problemAnswer } from "./http.ts";
 import { linkedGithub } from "./identity.ts";
 import {
@@ -280,6 +281,10 @@ export async function handleSocialFollow(r: ForgeRequest): Promise<Response> {
     writes = [unfollowWrite(r.db, s.user.id, p.target)];
   } else {
     if (had && had.level === p.level && had.events === p.events.join(" ") && had.auto === 0) return unchanged(s, { follow: { level: had.level } });
+    // Night phase 16: a person who blocked the reader cannot be followed by them (the refusal names no one).
+    const person = /^(github|orcid):(.+)$/.exec(p.target);
+    const followed = person ? await identityOwner(s.db, person[1] as "github" | "orcid", person[2]) : null;
+    if (followed && (await blockedByAny(r.db, [followed], s.user.id))) return say(blockedProblem());
     if (!had) {
       const n = Number((await first<{ n: number }>(followCount(r.db, s.user.id)))?.n ?? 0);
       if (n >= FOLLOWS_MAX) return say(new ForgeProblem(409, "too_many_follows", `An account follows ${FOLLOWS_MAX.toLocaleString("en-GB")} people, repositories, papers and threads at most: stop following some first.`));

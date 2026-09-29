@@ -123,7 +123,7 @@ export function parseComments(v: unknown): (CommentView & { mine: boolean; moder
       created_at: int(c.created_at) ?? 0,
       edited_at: int(c.edited_at),
       deleted: c.deleted === true,
-      hidden: (["spam", "abuse", "off-topic", "outdated", "duplicate", "resolved"] as const).find((x) => x === c.hidden) ?? "",
+      hidden: (["spam", "abuse", "off-topic", "outdated", "duplicate", "resolved", "low-quality"] as const).find((x) => x === c.hidden) ?? "",
       mine: c.mine === true,
       // Night phase 16: hidden by moderation (the reason in words); its words withheld but from its author.
       moderated: rec(c.moderated) ? txt(rec(c.moderated)!.words, 200) : "",

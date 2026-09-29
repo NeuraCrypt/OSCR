@@ -72,7 +72,7 @@ const FIXED = ["/", "/about/", "/browse/", "/authors/", "/journals/", "/institut
   // Night phase 10: the tokens, the webhooks, the API's reference.
   "/settings/tokens/", "/settings/hooks/", "/developers/",
   // Night phase 16: the report form, the owner's queue, a person's page of hidden things.
-  "/report/", "/moderation/", "/account/moderation/", "/notices/"];
+  "/report/", "/moderation/", "/account/moderation/", "/notices/", "/settings/blocked/"];
 for (const route of FIXED) if (!exists(route)) problems.push(`missing page ${route}`);
 
 const rewrites = new Map();
@@ -331,7 +331,7 @@ for (const page of pages) {
     if (missing.length) problems.push(`${page}: no section ${missing.map((id) => `#${id}`).join(", ")}`);
   }
   // (The reader's data, a <script type="application/json">, is not run: it is allowed.)
-  if (/^\/(paper\/[^/]+|account|submit|removal|new|new\/link|new\/import|repositories|forge\/authorized|r|research|settings\/tokens|settings\/hooks|developers|report|moderation|account\/moderation)\/index\.html$/.test(page) &&
+  if (/^\/(paper\/[^/]+|account|submit|removal|new|new\/link|new\/import|repositories|forge\/authorized|r|research|settings\/tokens|settings\/hooks|developers|report|moderation|account\/moderation|settings\/blocked)\/index\.html$/.test(page) &&
       /<script(?![^>]*\s(?:src=|type="application\/json"))[^>]*>/.test(html)) {
     problems.push(`${page}: an inline script, which its Content-Security-Policy forbids`);
   }

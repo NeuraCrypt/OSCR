@@ -36,6 +36,10 @@
 //   POST /api/forge/moderation/decide the owner   dismiss, hide, restore, answer an appeal             moderation.ts
 //   POST /api/forge/appeal            signed in   an appeal or a counter-notice (Turnstile)            moderation.ts
 //   GET  /api/forge/moderation/mine   signed in   what of the reader's is hidden; their requests        moderation.ts
+//   GET  /api/forge/blocks            signed in   the reader's blocks and account-wide limit           blocks.ts
+//   POST /api/forge/blocks/write      signed in   block, unblock (silent)                              blocks.ts
+//   GET  /api/forge/limits            signed in   a repository's interaction limit                     blocks.ts
+//   POST /api/forge/limits/write      signed in   set or lift an interaction limit                     blocks.ts
 //
 // What every route gets here, in order: its path (another is 404), its method (405), the FORGE
 // binding (503 not_configured without it), and for the signed-in routes the accounts (COMMUNITY and
@@ -65,6 +69,7 @@ import { handleTokens, handleTokenWrite } from "./tokens.ts";
 import { handleHookDeliveries, handleHooks, handleHookWrite } from "./hooks.ts";
 import { handleStatuses } from "./statuses.ts";
 import { handleAppeal, handleModerationMine, handleModerationRead, handleModerationWrite, handleReport } from "./moderation.ts";
+import { handleBlocks, handleBlockWrite, handleLimits, handleLimitWrite } from "./blocks.ts";
 import type { Context, D1Database, ForgeDeps, ForgeRequest, ForgeServiceEnv, RouteHandler } from "./types.ts";
 import { handleWebhook } from "./webhook.ts";
 
@@ -115,6 +120,11 @@ export const FORGE_ROUTES: Readonly<Record<string, Route>> = {
   "/api/forge/moderation/decide": { method: "POST", signedIn: true, handle: (r) => handleModerationWrite(r) },
   "/api/forge/moderation/mine": { method: "GET", signedIn: true, handle: (r) => handleModerationMine(r) },
   "/api/forge/appeal": { method: "POST", signedIn: true, handle: (r) => handleAppeal(r) },
+  // Phase 16: blocks and interaction limits.
+  "/api/forge/blocks": { method: "GET", signedIn: true, handle: (r) => handleBlocks(r) },
+  "/api/forge/blocks/write": { method: "POST", signedIn: true, handle: (r) => handleBlockWrite(r) },
+  "/api/forge/limits": { method: "GET", signedIn: true, handle: (r) => handleLimits(r) },
+  "/api/forge/limits/write": { method: "POST", signedIn: true, handle: (r) => handleLimitWrite(r) },
 };
 
 const PREFIX = "/api/forge/";

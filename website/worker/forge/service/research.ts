@@ -5,6 +5,7 @@ import type { SignedIn } from "../../account/guard.ts";
 import { who as whoAsks } from "./who.ts";
 import { accountHidden, hiddenActors, hiddenAmong, hiddenCommentsOf, hiddenOne, moderationView } from "./hidden.ts";
 import { isOwner } from "./moderation.ts";
+import { mayInteract } from "./blocks.ts";
 import { queueHooks } from "./hooks.ts";
 import { FORGE_ROWS_PER_DAY } from "./caps.ts";
 import { readCapped } from "./flow.ts";
@@ -270,6 +271,12 @@ export async function handleResearchOpen(r: ForgeRequest): Promise<Response> {
     }
     parsed.repo.path = known.path;
   }
+  // Night phase 16: a research issue on a repository meets its managers' blocks and limits.
+  if (parsed.repo) {
+    const repoRow = await first<RepoRow>(repoByKey(r.db, parsed.repo.forge, parsed.repo.id));
+    const refusedHere = repoRow ? await mayInteract(r, s, { repo: repoRow }) : null;
+    if (refusedHere) return say(refusedHere);
+  }
   const gate = await mayResearch(r, s, "research_open", 5);
   if (gate instanceof ForgeProblem) return say(gate);
   const roles = await rolesOf(s.db, s.user.id);
@@ -313,6 +320,10 @@ export async function handleResearchComment(r: ForgeRequest): Promise<Response> 
   let created = false;
   if (p.n === null) {
     if (issue.locked && !triage) return say(new ForgeProblem(403, "locked", "The conversation is locked: only the paper's verified authors and the code's maintainers comment now."));
+    // Night phase 16: the issue's author's blocks, and its repository's managers' blocks and limits.
+    const repoRow = issue.repo_id ? await first<RepoRow>(repoByKey(r.db, issue.forge, issue.repo_id)) : null;
+    const refusedHere = await mayInteract(r, s, { repo: repoRow, also: [issue.author_id] });
+    if (refusedHere) return say(refusedHere);
     if (issue.comments >= RESEARCH_COMMENTS) return say(new ForgeProblem(409, "full", `The issue holds ${RESEARCH_COMMENTS.toLocaleString("en-GB")} comments, the most one may: open another and link this one.`));
     writes = insertComment(r.db, p.id, p.body ?? "", who, roleOn(roles, issue), r.t);
     created = true;

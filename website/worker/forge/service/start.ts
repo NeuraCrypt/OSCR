@@ -25,6 +25,7 @@ import { FLOW_SECONDS, START_BODY_BYTES } from "./caps.ts";
 import { callbackUrl, flowCookie, readCapped, repoTarget, sameOriginPath, type ForgeFlow } from "./flow.ts";
 import { closed, dailyCaps, mayWrite, overCap } from "./gate.ts";
 import { accountHidden, suspended } from "./hidden.ts";
+import { INTERACTION_KINDS, mayInteract } from "./blocks.ts";
 import { json, problem, problemAnswer } from "./http.ts";
 import { linkedGithub } from "./identity.ts";
 import { first, repoByKey, repoByPath } from "./store.ts";
@@ -112,6 +113,13 @@ export async function handleStart(r: ForgeRequest): Promise<Response> {
   if (!mayWrite(r.env, await linkedGithub(s.db, s.user.id))) return say(closed());
   const hidden = await accountHidden(r.db, s.user.id);
   if (hidden) return say(suspended(hidden));
+  // Night phase 16: on a repository, opening, commenting, reacting and reviewing meet its managers'
+  // blocks and interaction limits (blocks.ts).
+  if (INTERACTION_KINDS.has(target.kind) && target.repo) {
+    const repo = await loadRepo(r.db, target.repo);
+    const refusedHere = repo ? await mayInteract(r, s, { repo }) : null;
+    if (refusedHere) return say(refusedHere);
+  }
 
   // 4. The daily caps (reads only).
   const caps = await dailyCaps(r.db, s.user.id, target.kind, r.t);

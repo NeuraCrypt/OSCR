@@ -277,6 +277,17 @@ function wireComments(root: HTMLElement, r: Read): void {
       const why = el("select", { "aria-label": "Hide it as" }, el("option", { value: "" }, c.hidden ? "Show it again" : "Hide it as…"), ...HIDE_REASONS.map((x) => el("option", { value: x }, x)));
       bar.append(why, " ", button(c.hidden ? "Apply" : "Hide", () => void send(said, "/api/forge/research/comment", { id: r.issue.id, n: c.n, hide: why.value })));
     }
+    // Night phase 16: block the author of a comment (silent; the reader's page says what it does).
+    if (!c.mine && r.live) {
+      bar.append(
+        button("Block its author", async () => {
+          if (!confirm("Block the author of this comment? They will not be able to comment on your research issues or in the repositories you manage, nor follow you, and their activity leaves your notifications. They are not told. Your blocks: /settings/blocked/")) return;
+          const res = await post("/api/forge/blocks/write", { target: `research:${r.issue.id}#${c.n}`, on: true });
+          said.replaceChildren(el("p", { class: res.ok ? "ok" : "warning" }, res.ok ? "Blocked. Your blocks are on /settings/blocked/." : problemOf(res.body)));
+        }),
+        " ",
+      );
+    }
     if (bar.childNodes.length) node.append(bar, said);
   }
 }

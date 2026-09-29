@@ -88,7 +88,8 @@ export const OUTCOME_WORDS: Readonly<Record<Outcome, string>> = { failed: "not r
 
 export const LOCK_REASONS = ["off-topic", "too heated", "resolved", "spam"] as const;
 export type LockReason = (typeof LOCK_REASONS)[number];
-export const HIDE_REASONS = ["spam", "abuse", "off-topic", "outdated", "duplicate", "resolved"] as const;
+/** Night phase 16: GitHub's seventh reason, "low-quality" (migrations/d1-forge/0010_moderation.sql). */
+export const HIDE_REASONS = ["spam", "abuse", "off-topic", "outdated", "duplicate", "resolved", "low-quality"] as const;
 export type HideReason = (typeof HIDE_REASONS)[number];
 
 /** Limits (the texts' own are GitHub's). */
@@ -616,7 +617,7 @@ export function validateComment(payload: unknown): CommentParsed | ForgeProblem 
     return { id: payload.id, n, body: null, delete: true, hide: null };
   }
   if (payload.hide !== undefined) {
-    if (n === null || (payload.hide !== "" && !HIDE_REASONS.includes(payload.hide as HideReason))) return bad("A comment is hidden as spam, abuse, off-topic, outdated, a duplicate or resolved, or shown again.");
+    if (n === null || (payload.hide !== "" && !HIDE_REASONS.includes(payload.hide as HideReason))) return bad("A comment is hidden as spam, abuse, off-topic, outdated, a duplicate, resolved or low quality, or shown again.");
     return { id: payload.id, n, body: null, delete: false, hide: payload.hide as "" | HideReason };
   }
   const body = readBody(payload.body, "The comment", true);

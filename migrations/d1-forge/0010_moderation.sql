@@ -12,6 +12,7 @@
 -- - `interaction_limits`: a repository's or an account's limit on who may interact, until a time.
 -- - `rights_requests`: a person's request to exercise a data right (access, portability,
 --   rectification, erasure, objection), answered in the site.
+-- - `research_comments` rebuilt with the hide reason 'low-quality' (GitHub's seventh).
 -- - `actions` rebuilt with the kinds `report`, `moderate`, `appeal`, `block`, `limit`, `rights`
 --   (types.ts MODERATION_KINDS), so that the per-account caps and the day's rows count these writes.
 --
@@ -111,11 +112,13 @@ CREATE INDEX moderation_owner ON moderation(owner_user) WHERE owner_user != '';
 
 -- A block: `user_id` blocked `blocked` (both users.id, never answered). `blocked_github` is the blocked
 -- account's GitHub numeric id when it has one, so that its GitHub events (from webhooks) leave the
--- blocker's inbox too. `label` is how the blocked person was named when blocked (a login, an ORCID iD,
--- a name); `note` the blocker's own words.
+-- blocker's inbox too. `ref` names the block on the blocker's page (the person's "github:<id>" or
+-- "orcid:<iD>", or a random "anon:…" for an account without a public handle); `label` is how the
+-- blocked person was named when blocked (a login, an ORCID iD, a name); `note` the blocker's own words.
 CREATE TABLE blocks (
     user_id         TEXT NOT NULL,
     blocked         TEXT NOT NULL,
+    ref             TEXT NOT NULL CHECK (length(ref) BETWEEN 5 AND 40 AND instr(ref, '@') = 0),
     blocked_github  TEXT NOT NULL DEFAULT '' CHECK (blocked_github NOT GLOB '*[^0-9]*'),
     label           TEXT NOT NULL CHECK (length(label) BETWEEN 1 AND 100 AND instr(label, '@') = 0),
     note            TEXT NOT NULL DEFAULT '' CHECK (length(note) <= 300 AND instr(note, '@') = 0),
@@ -126,9 +129,9 @@ CREATE TABLE blocks (
 
 -- An interaction limit, until a time: on one repository ("repo:<forge>:<id>"), or on every repository an
 -- account manages ("account:<users.id>"). `level` says who may still interact: 'existing_users'
--- (accounts older than 24 hours), 'contributors' (the paper's verified authors, the code's maintainers,
--- the people who manage the repository, and those who already took part), 'managers' (only the people
--- who manage it). The stricter of a repository's and its manager's account's limits applies.
+-- (accounts older than 24 hours), 'contributors' (the papers' verified authors, the code's maintainers
+-- and the people who manage the repository), 'managers' (only the people who manage it). The stricter
+-- of a repository's and its managers' accounts' limits applies.
 CREATE TABLE interaction_limits (
     scope    TEXT NOT NULL CHECK (length(scope) BETWEEN 6 AND 120 AND (substr(scope, 1, 5) = 'repo:' OR substr(scope, 1, 8) = 'account:')),
     level    TEXT NOT NULL CHECK (level IN ('existing_users', 'contributors', 'managers')),
@@ -156,6 +159,31 @@ CREATE TABLE rights_requests (
 -- The owner's queue (the open ones, by time; answered by (at, id)): one more row when a request is
 -- made, one when it is answered. A person's own requests are the key's prefix.
 CREATE INDEX rights_requests_open ON rights_requests(at, id) WHERE state = 'open';
+
+-- `research_comments` rebuilt with GitHub's seventh reason to hide a comment, 'low_quality' (a
+-- maintainer's hide, phase 05's research.ts; the owner's moderation is the `moderation` table's).
+CREATE TABLE research_comments_next (
+    issue_id     INTEGER NOT NULL,
+    n            INTEGER NOT NULL CHECK (n BETWEEN 1 AND 2500),
+    author_id    TEXT NOT NULL,
+    author       TEXT NOT NULL CHECK (length(author) BETWEEN 1 AND 100 AND instr(author, '@') = 0),
+    author_via   TEXT NOT NULL CHECK (author_via IN ('github', 'orcid', 'name')),
+    author_role  TEXT NOT NULL DEFAULT '' CHECK (author_role IN ('', 'verified_author', 'maintainer')),
+    body         TEXT NOT NULL CHECK (length(body) <= 65536),
+    created_at   INTEGER NOT NULL,
+    edited_at    INTEGER,
+    deleted      INTEGER NOT NULL DEFAULT 0 CHECK (deleted IN (0, 1)),
+    hidden       TEXT NOT NULL DEFAULT '' CHECK (hidden IN ('', 'spam', 'abuse', 'off-topic', 'outdated', 'duplicate', 'resolved', 'low-quality')),
+    PRIMARY KEY (issue_id, n),
+    CHECK (deleted = 0 OR body = '')
+) WITHOUT ROWID;
+
+INSERT INTO research_comments_next SELECT issue_id, n, author_id, author, author_via, author_role, body, created_at, edited_at, deleted, hidden
+    FROM research_comments;
+
+DROP TABLE research_comments;
+
+ALTER TABLE research_comments_next RENAME TO research_comments;
 
 -- `actions` rebuilt with the moderation kinds (types.ts ACTION_KINDS, RESEARCH_KINDS, SOCIAL_KINDS,
 -- AUTOMATION_KINDS, then MODERATION_KINDS, in order). A report made without an account has

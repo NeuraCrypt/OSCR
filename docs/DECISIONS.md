@@ -2412,3 +2412,37 @@ which the CHECKs (`instr(…, '@') = 0`) accept.
 
 **Decision.** The migration's moderation table names its lookup column `ref`: the schema test refuses a
 column named with "key" (or token, secret…), a rule of every migration of `oscr_forge`.
+
+### D16-10. Blocks: silent, from a profile or a comment, with what they do and do not do said
+
+**Decision.** A block (`POST /api/forge/blocks/write`, 2 rows) names a person by "person:github:<id>" or
+"person:orcid:<iD>", or the author of a research issue or comment ("research:3#2": the registry finds the
+account; the page never learns its id). It keeps the blocked person from commenting on, reacting to,
+or opening issues and pull requests in the repositories the blocker manages in the registry (checked at
+`start` for `INTERACTION_KINDS`, and for research issues on those repositories), from commenting on the
+blocker's research issues, and from following the blocker; the blocker's inbox and feed drop the blocked
+person's events and mentions (hidden.ts, with their GitHub numeric id for webhook events). The refusal
+says "You cannot take part", never who blocked. The list (`/settings/blocked/`) keeps a ref, a label, the
+date and the blocker's note; 1,000 blocks at most; 100 changes a day. The action row names nothing: a
+person's public activity never shows whom they blocked. What a block does not do (hide what was already
+written, stop reading public pages, anything on GitHub) is said on the page. Closing a blocked person's
+open contributions is deferred (D16-20).
+
+**Who manages a repository**, for blocks and limits: the account that linked or created it in the
+registry, and the account whose linked GitHub id owns it (its `owner_id`, by the identities' key). The
+registry's owner is never refused.
+
+### D16-11. Interaction limits: a repository's or every repository of an account, the stricter wins
+
+**Decision.** Three levels, GitHub's adapted: existing users (accounts older than 24 hours), contributors
+(the papers' verified authors and the code's maintainers by the registry's roles, and the managers),
+managers only. Durations: 24 hours, 3 days, 1 week, 1 month, 6 months; a limit ends by itself (`until`).
+One row per scope (`repo:<forge>:<id>` or `account:<users.id>`), 2 rows a change; the stricter of a
+repository's own and its managers' accounts' limits applies. GitHub's "prior contributors" (anyone who
+already committed) is narrowed to the registry's roles: finding a person's past comments on a
+repository would need an index the budget does not allow. Organizations' limits come with phase 09.
+
+### D16-12. "Low quality", GitHub's seventh reason to hide a comment
+
+**Decision.** `research_comments` is rebuilt in 0010 with 'low-quality' among a maintainer's reasons to
+hide a comment (HIDE_REASONS). The owner's moderation stays the `moderation` table's.
