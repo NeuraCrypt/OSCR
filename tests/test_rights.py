@@ -471,3 +471,63 @@ def test_the_moderator_s_log_is_kept_twelve_months(w):
     assert w.state.execute("SELECT COUNT(*) FROM job WHERE kind = 'report' AND ref = ?", (waiting,)).fetchone()[0] == 1
     assert w.state.execute("SELECT COUNT(*) FROM job WHERE kind = 'report' AND ref = ?", (old,)).fetchone()[0] == 0
     assert any(j["ref"] == waiting for j in jobs.waiting(w.state, "local", ("report",)))
+
+
+# ---------------------------------------------------------------------------------------
+# D1's migration, the budget, the answer's size.
+
+def test_migration_4_keeps_the_jobs_and_their_ids_and_takes_the_rights(tmp_path):
+    from test_jobs import MIGRATIONS
+    con = sqlite3.connect(":memory:")
+    con.execute("PRAGMA foreign_keys = ON")
+    for m in MIGRATIONS[:3]:
+        con.executescript(m.read_text())
+    con.execute("INSERT INTO users (id, display_name, created_at) VALUES ('u_1', 'One', 1)")
+    con.executemany("INSERT INTO jobs (id, kind, ref, user_id, created_at) VALUES (?, ?, ?, 'u_1', 1)",
+                    [(7, "report", 1), (9, "claim", 2)])
+    with pytest.raises(sqlite3.IntegrityError):
+        con.execute("INSERT INTO jobs (kind, ref, user_id, created_at) VALUES ('rights', 1, 'u_1', 1)")
+    con.commit()
+    assert MIGRATIONS[3].name == "0004_data_rights.sql"
+    con.executescript(MIGRATIONS[3].read_text())
+    assert con.execute("SELECT id, kind, ref FROM jobs ORDER BY id").fetchall() == [(7, "report", 1), (9, "claim", 2)]
+    con.execute("INSERT INTO rights (user_id, kind, created_at, due_at) VALUES ('u_1', 'access', 1, 2)")
+    con.execute("INSERT INTO jobs (kind, ref, user_id, created_at) VALUES ('rights', last_insert_rowid(), 'u_1', 1)")
+    assert con.execute("SELECT MAX(id) FROM jobs").fetchone()[0] == 10          # after the ids kept
+    for bad in ("UPDATE rights SET details = 'a@b'", "UPDATE rights SET answer = '{\"e\": \"a@b.org\"}'",
+                "UPDATE rights SET kind = 'everything'", "UPDATE rights SET orcid = 'not an iD'"):
+        with pytest.raises(sqlite3.IntegrityError):
+            con.execute(bad)
+    # A deleted account takes its requests with it.
+    con.execute("DELETE FROM users WHERE id = 'u_1'")
+    assert con.execute("SELECT COUNT(*) FROM rights").fetchone()[0] == 0
+
+
+def test_an_account_deletion_waits_for_tomorrow_s_budget_rather_than_half_done(w):
+    w.runner.budget = 4
+    rid = ask(w, "account", user="u_ben", orcid="")
+    out = w.poll()
+    assert out.retry == 1 or out.deferred == 1
+    assert w.d1con.execute("SELECT COUNT(*) FROM users WHERE id = 'u_ben'").fetchone()[0] == 1
+    assert w.row("rights", rid)["status"] == "open"
+    attempts = w.state.execute("SELECT attempts FROM job WHERE kind = 'rights'").fetchone()[0]
+    assert attempts == 0                         # the budget is not the request's fault
+    w.runner.budget = 10_000
+    w.clock.t = T + DAY
+    w.poll()
+    assert w.d1con.execute("SELECT COUNT(*) FROM users WHERE id = 'u_ben'").fetchone()[0] == 0
+
+
+def test_a_long_answer_fits_one_d1_row(w):
+    for n in range(4, 204):
+        w.mac.execute("INSERT OR IGNORE INTO article (id, doi, title, updated_at) VALUES (?, ?, ?, 0)",
+                      (f"doi:10.5555/oscr.many.{n}", f"10.5555/oscr.many.{n}", "A long title " * 20))
+        contacts.write(w.mac, f"doi:10.5555/oscr.many.{n}", [_row(1, "Ada Fixture", ADA, ADA_MAIL,
+                                                                   organization="An Institute " + "of Neuroscience " * 12)], T)
+    w.mac.commit()
+    rid = ask(w, "access")
+    w.poll()
+    row = w.row("rights", rid)
+    assert row["status"] == "done" and len(row["answer"].encode()) <= rights.MAX_ANSWER
+    c = json.loads(row["answer"])["contacts"]
+    assert c["rows"] == 202 and len(c["listed"]) + c["more"] == 202 and len(c["listed"]) <= rights.MAX_LISTED
