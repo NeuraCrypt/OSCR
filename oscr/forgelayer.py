@@ -48,6 +48,17 @@ tests/fixtures/forge-shards.json). A shard is an object keyed by "owner/name" in
   empty and the error raised: a layer that could not be checked against D1's hidden and deleted
   repositories is never published (the nightly records the failure and still deploys).
 
+**The research issues** (night phase 05, ``research``). The registry's own issues (a code error, a
+code–paper mismatch, a reproduction failure; D1 ``research_issues`` and ``research_comments``, read
+when ``d1`` is given, a page at a time by their keys) for signed-out readers, as of last night: each
+repository's layer entry gains ``research``, its issues' summaries (the newest ``RESEARCH_PER_REPO``),
+and at most 64 shards ``<out>/forge/research/NN.json``, NN = the issue's number mod 64, hold each
+issue whole: ``{"<n>": {"issue": {...}, "comments": [...]}}`` — the shapes of the Worker's answers
+(website/worker/forge/service/research-core.ts ``summaryOf``, ``viewOf``, ``commentViewOf``), never
+who wrote them by account (no ``author_id``). Left out: an issue about a repository left out of the
+layer, or about a paper the Mac holds off-topic or withdrawn. Every string goes through
+``entities.scrub``.
+
     oscr forge layer --local|--remote   the traced paths pushed, then the shards written
     oscr forge status                   what each target holds, the ids, the last runs
     oscr nightly                        calls ``write`` between the public export and the
@@ -77,6 +88,10 @@ ACTIONS: tuple[str, ...] = ("layer", "status")
 SHARDS = 64
 #: The layer's folder under the public export.
 LAYER = Path("forge") / "layer"
+#: The research issues' folder under the public export (night phase 05): /forge/research/NN.json.
+RESEARCH = Path("forge") / "research"
+#: Research issues a repository's layer entry lists at most, the newest first.
+RESEARCH_PER_REPO = 200
 #: The forge of the catalogue's repositories that come into the layer.
 FORGE = "github"
 HOST = "github.com"
@@ -702,6 +717,125 @@ def _archived(state: sqlite3.Connection | None, target: str | None) -> set[str]:
         (FORGE, *args))}
 
 
+# ---------------------------------------------------------------------------------------
+# The research issues (night phase 05).
+
+def _paged(d1: community.D1, sql: str, keys: tuple[str, ...]) -> list[dict[str, Any]]:
+    """Every row of ``sql`` (a SELECT with ``{where}`` for the key's position), in key order, a page
+    at a time."""
+    rows: list[dict[str, Any]] = []
+    after: tuple[int, ...] = (0,) * len(keys)
+    while True:
+        ranges = [" AND ".join([*(f"{k} = {int(after[j])}" for j, k in enumerate(keys[:i])), f"{keys[i]} > {int(after[i])}"])
+                  for i in range(len(keys))]
+        page = d1.query(sql.format(where=" OR ".join(f"({r})" for r in ranges), order=", ".join(keys), limit=PAGE))
+        rows += page
+        if len(page) < PAGE:
+            return rows
+        after = tuple(int(page[-1][k]) for k in keys)
+
+
+def _json(text: Any, empty: Any) -> Any:
+    try:
+        value = json.loads(text) if isinstance(text, str) else empty
+    except ValueError:
+        return empty
+    return value if isinstance(value, type(empty)) else empty
+
+
+def research_summary(r: dict[str, Any]) -> dict[str, Any]:
+    """A research issue's summary, as the Worker answers it (research-core.ts ``summaryOf``)."""
+    anchor = None
+    if r.get("path") or r.get("paragraph") is not None or r.get("commit_sha"):
+        anchor = {"commit": r.get("commit_sha") or "", "path": r.get("path") or "", "start": r.get("start_line"),
+                  "end": r.get("end_line"), "paragraph": r.get("paragraph"), "section": r.get("section") or ""}
+    outcome = _json(r.get("report"), {}).get("outcome")
+    return {
+        "id": int(r["id"]), "paper": r["paper_id"],
+        "repo": {"forge": r["forge"], "id": r["repo_id"], "path": r["repo_path"]} if r.get("repo_id") else None,
+        "code_url": r.get("code_url") or "", "type": r["type"], "title": r["title"], "state": r["state"],
+        "close_reason": r.get("close_reason") or "", "resolution": r.get("resolution") or "",
+        "resolution_ref": r.get("resolution_ref") or "", "labels": [x for x in _json(r.get("labels"), []) if isinstance(x, str)],
+        "locked": bool(r.get("locked")), "pinned": bool(r.get("pinned")), "author": r["author"],
+        "author_via": r["author_via"], "author_role": r.get("author_role") or "", "comments": int(r.get("comments") or 0),
+        "created_at": int(r["created_at"]), "updated_at": int(r["updated_at"]),
+        "closed_at": int(r["closed_at"]) if r.get("closed_at") is not None else None,
+        "anchor": anchor, "outcome": outcome if outcome in ("failed", "partially") else None,
+        "github_number": r.get("github_number"),
+    }
+
+
+def research_view(r: dict[str, Any]) -> dict[str, Any]:
+    """A research issue whole (research-core.ts ``viewOf``): its summary, text, report and events."""
+    report = _json(r.get("report"), {})
+    return {**research_summary(r), "body": r.get("body") or "",
+            "report": report if report.get("outcome") in ("failed", "partially") else None,
+            "lock_reason": r.get("lock_reason") or "",
+            "events": [e for e in _json(r.get("events"), []) if isinstance(e, dict)][-100:]}
+
+
+def comment_view(c: dict[str, Any]) -> dict[str, Any]:
+    """A comment (research-core.ts ``commentViewOf``): never who by account, only as they are named."""
+    deleted = bool(c.get("deleted"))
+    return {"n": int(c["n"]), "author": c["author"], "author_via": c["author_via"], "author_role": c.get("author_role") or "",
+            "body": "" if deleted else (c.get("body") or ""), "created_at": int(c["created_at"]),
+            "edited_at": c.get("edited_at"), "deleted": deleted, "hidden": c.get("hidden") or ""}
+
+
+def research(con: sqlite3.Connection, d1: community.D1 | None) -> dict[int, dict[str, Any]]:
+    """The research issues to publish, by number: ``{"issue": view, "comments": [...]}``, scrubbed.
+    Without ``d1``, none. An issue about a repository left out of the layer (waiting for deletion,
+    hidden, deleted), or about a paper the Mac holds off-topic or withdrawn, is left out."""
+    if d1 is None:
+        return {}
+    try:
+        left_out = {r["repo_id"] for r in _forge_rows(d1, "repos", "repo_id, state") if r["state"] in LEFT_OUT}
+        issues = _paged(d1, "SELECT * FROM research_issues WHERE {where} ORDER BY {order} LIMIT {limit}", ("id",))
+        comments = _paged(d1, "SELECT issue_id, n, author, author_via, author_role, body, created_at, edited_at, deleted, hidden "
+                              "FROM research_comments WHERE {where} ORDER BY {order} LIMIT {limit}", ("issue_id", "n"))
+    except (community.D1Error, sqlite3.Error) as e:
+        if "no such table" in str(e):
+            return {}  # oscr_forge before its migration 0005: no research issue yet
+        raise LayerError(f"D1 did not answer for the research issues: {e}") from None
+    out_of_scope = {f"doi:{(r['doi'] or '').lower()}" for r in con.execute(f"SELECT doi FROM article WHERE doi IS NOT NULL AND NOT ({catalog.IN_SCOPE})")}
+    by_issue: dict[int, list[dict[str, Any]]] = defaultdict(list)
+    for c in comments:
+        by_issue[int(c["issue_id"])].append(comment_view(c))
+    out: dict[int, dict[str, Any]] = {}
+    for r in issues:
+        if (r.get("repo_id") and r["repo_id"] in left_out) or r["paper_id"] in out_of_scope:
+            continue
+        out[int(r["id"])] = entities.scrub({"issue": research_view(r), "comments": by_issue.get(int(r["id"]), [])})
+    return out
+
+
+def attach_research(entries: dict[str, dict[str, Any]], issues: dict[int, dict[str, Any]]) -> None:
+    """Each layer entry's research issues (their summaries, the newest first), by its path."""
+    by_path: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    for n in sorted(issues, reverse=True):
+        issue = issues[n]["issue"]
+        repo = issue.get("repo")
+        if repo:
+            by_path[repo["path"]].append({k: issue[k] for k in research_summary_keys()})
+    for path, entry in entries.items():
+        if path in by_path:
+            entry["research"] = by_path[path][:RESEARCH_PER_REPO]
+
+
+def research_summary_keys() -> tuple[str, ...]:
+    return ("id", "paper", "repo", "code_url", "type", "title", "state", "close_reason", "resolution", "resolution_ref",
+            "labels", "locked", "pinned", "author", "author_via", "author_role", "comments", "created_at", "updated_at",
+            "closed_at", "anchor", "outcome", "github_number")
+
+
+def research_shards(issues: dict[int, dict[str, Any]]) -> dict[str, dict[str, Any]]:
+    """The 64 research shards, "00" to "63": each issue in the shard its number mod 64 names."""
+    out: dict[str, dict[str, Any]] = {f"{n:02d}": {} for n in range(SHARDS)}
+    for n in sorted(issues):
+        out[f"{n % SHARDS:02d}"][str(n)] = issues[n]
+    return out
+
+
 def shards(entries: dict[str, dict[str, Any]]) -> dict[str, dict[str, Any]]:
     """The 64 shards, "00" to "63", each an object keyed by "owner/name" (sorted)."""
     out: dict[str, dict[str, Any]] = {f"{n:02d}": {} for n in range(SHARDS)}
@@ -711,8 +845,8 @@ def shards(entries: dict[str, dict[str, Any]]) -> dict[str, dict[str, Any]]:
     return out
 
 
-def _write_shards(out: Path, content: dict[str, dict[str, Any]]) -> Path:
-    folder = out / LAYER
+def _write_shards(out: Path, content: dict[str, dict[str, Any]], where: Path = LAYER) -> Path:
+    folder = out / where
     folder.mkdir(parents=True, exist_ok=True)
     for n, entries in content.items():
         tmp = folder / f"{n}.json.tmp"
@@ -748,14 +882,18 @@ def write(con: sqlite3.Connection, d1: community.D1 | None, out: Path, *, state:
                         + ("" if plan.complete else f", {plan.deferred} wait for tomorrow's budget"))
         try:
             entries, left_out = layer(con, d1, state)
+            issues = research(con, d1)
         except LayerError:
             _write_shards(out, {f"{n:02d}": {} for n in range(SHARDS)})
+            _write_shards(out, {f"{n:02d}": {} for n in range(SHARDS)}, RESEARCH)
             raise
+        attach_research(entries, issues)
         folder = _write_shards(out, shards(entries))
+        _write_shards(out, research_shards(issues), RESEARCH)
         catalogue_only = sum(1 for e in entries.values() if e["mode"] == "catalogue")
         summary = (f"{len(entries)} repositories in {SHARDS} shards ({catalogue_only} from the catalogue only, "
                    f"{len(entries) - catalogue_only} linked through OSCR; {left_out} left out: waiting for deletion, "
-                   f"hidden, deleted or private) → {folder}")
+                   f"hidden, deleted or private); {len(issues)} research issues → {folder}")
         if state is not None:
             state.execute("INSERT INTO forgelayer_run (at, what, summary) VALUES (?, 'layer', ?)",
                           (now if now is not None else time.time(), summary))

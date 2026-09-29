@@ -1,27 +1,45 @@
 ---
-// The sections that open with sign-in (Phases 5 and 7), kept quiet: one heading for the three,
-// and one muted line each saying what it will hold.
-const LATER = [
-  {
-    id: "discussion",
-    label: "Discussion",
-    text: "questions and error reports about this paper and its code, from signed-in readers and its authors.",
-  },
-  {
-    id: "reproductions",
-    label: "Reproductions",
-    text: "reports from readers who ran the authors' code: what they reproduced, with which environment, commit and data.",
-  },
-  {
-    id: "activity",
-    label: "Activity",
-    text: "what happens around this paper: new versions of its record, its map's validation, discussions and reproductions.",
-  },
-];
+// The paper's Discussion, Reproductions and Activity sections (Phases 5 and 7; night phase 05).
+//
+// Discussion and Reproductions hold the paper's research issues (the registry's own, D00-6): code
+// errors and code–paper mismatches in Discussion, reproduction failures (with their reports) in
+// Reproductions. Static here: what they hold and the ways to report one (/research/new, prefilled
+// with the DOI and the code). The page's script (src/scripts/paper-research.ts) lists them: signed
+// out, from the nightly layer shards of the paper's GitHub repositories ("as of last night", 0 Worker
+// requests); signed in, live (GET /api/forge/research, 1 request). Activity still opens later.
+import type { Article } from "../../lib/catalog";
+
+interface Props {
+  a: Article;
+}
+const { a } = Astro.props;
+const github = a.code.filter((r) => r.repo.startsWith("github.com/")).map((r) => r.repo.slice("github.com/".length));
+const elsewhere = a.code.find((r) => !r.repo.startsWith("github.com/") && r.url)?.url ?? "";
+const report = (type: string) => {
+  const q = new URLSearchParams({ type, doi: a.doi });
+  if (github[0]) q.set("repo", github[0]);
+  else if (elsewhere) q.set("code", elsewhere);
+  return `/research/new?${q}`;
+};
+const hasCode = a.code.length > 0;
 ---
 <h2>Discussion, reproductions, activity</h2>
-{LATER.map((s) => (
-  <section id={s.id}>
-    <p class="summary"><strong>{s.label}</strong>: {s.text} It opens with sign-in.</p>
-  </section>
-))}
+<section id="discussion" data-doi={a.doi} data-repos={github.join(",")}>
+  <p class="summary"><strong>Discussion</strong>: code errors and code–paper mismatches about this paper and its code, from readers and its authors, beside the paper and its tracing map.</p>
+  <div class="research-list" data-kind="discussion" aria-live="polite"></div>
+  {hasCode && (
+    <p class="line"><a href={report("mismatch")}>Report a code–paper mismatch</a> · <a href={report("code_error")}>Report a code error</a> (signed in)</p>
+  )}
+</section>
+<section id="reproductions">
+  <p class="summary"><strong>Reproductions</strong>: reports from readers who ran the authors' code and did not get the paper's result — what they ran, with which environment, commit and data.</p>
+  <div class="research-list" data-kind="reproductions" aria-live="polite"></div>
+  {hasCode && <p class="line"><a href={report("reproduction")}>Report a reproduction failure</a> (signed in)</p>}
+</section>
+<section id="activity">
+  <p class="summary"><strong>Activity</strong>: what happens around this paper: new versions of its record, its map's validation, discussions and reproductions. It opens with sign-in.</p>
+</section>
+
+<script>
+  import "../../scripts/paper-research";
+</script>

@@ -88,4 +88,15 @@ describe("the callback's links", () => {
     ]);
     assert.deepEqual(ok.map((l) => l.href), ["/r/ada/eeg/compare/main...ada-patch-1/?expand=1", "/r/ada/eeg/pull/7"]);
   });
+
+  test("phase 05: a research issue's page, and nothing else under /research/", () => {
+    const ok = viewerLinks([
+      { href: "/research/12", text: "The research issue" },
+      { href: "/research/12/../x", text: "no" },
+      { href: "/research/new?paper=x", text: "no" },
+      { href: "/research/0", text: "no" },
+      { href: "/research/12?next=//evil.example", text: "no" },
+    ]);
+    assert.deepEqual(ok.map((l) => l.href), ["/research/12"]);
+  });
 });

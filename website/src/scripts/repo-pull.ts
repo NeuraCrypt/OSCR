@@ -37,7 +37,8 @@ import {
   threadWhere,
   timelineOf,
 } from "../lib/pull-page.ts";
-import { closingNotice, declarePull } from "../lib/pull-view.ts";
+import { closingNotice, declarePull, researchClosingNotice } from "../lib/pull-view.ts";
+import { researchClosing } from "../../worker/forge/service/research-core.ts";
 import {
   changeSummary,
   checksSummary,
@@ -311,6 +312,10 @@ function mergeBoxView(f: PullFrame, into: HTMLElement, box: MergeBox, commits: r
   const merge = button("Merge", () => {
     const m = method.value as T.MergeMethod;
     const payload: Record<string, unknown> = { number: pr.number, method: m, head: pr.head.sha, deleteBranch: del.checked };
+    // Phase 05: the research issues its text says it fixes ("Fixes research#12"), closed by the merge
+    // into the default branch as "fixed in the code" (the Worker checks the text again).
+    const researchIds = researchClosing(`${pr.title}\n${pr.body}`).slice(0, 5);
+    if (researchIds.length && env.info.defaultBranch !== null && pr.base.ref === env.info.defaultBranch) payload.closes = researchIds;
     if (m !== "rebase") {
       payload.title = title.value;
       payload.message = message.value;
@@ -393,7 +398,13 @@ async function sidebar(f: PullFrame, roles: Roles, reviews: ReturnType<typeof re
   const refs = closingRefs([pr.title, pr.body, ...commits.map((c) => c.message)], env.repo, env.endpoints.web);
   const closes = env.info.defaultBranch !== null && pr.base.ref === env.info.defaultBranch;
   const note = closingNotice(refs, closes, pr.base.ref, env.repo);
-  parts.push(el("h3", {}, "Development"), note ? toDom(note) : el("p", {}, "No issue named with a closing keyword (“Fixes #12”)."));
+  // Phase 05: the research issues it says it fixes, closed by the merge as "fixed in the code".
+  const researchIds = researchClosing(`${pr.title}\n${pr.body}`);
+  const researchNote = researchIds.length ? toDom(researchClosingNotice(researchIds, closes, pr.base.ref)) : null;
+  parts.push(el("h3", {}, "Development"));
+  if (note) parts.push(toDom(note));
+  if (researchNote) parts.push(researchNote);
+  if (!note && !researchNote) parts.push(el("p", {}, "No issue named with a closing keyword (“Fixes #12”, “Fixes research#3”)."));
 
   // The papers, the tracing-map links it touches, the change in numbers.
   const papers = env.layer?.papers ?? [];

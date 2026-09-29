@@ -54,7 +54,15 @@ const pairs = (alignment?.pairs ?? []).map((p) => {
   const file = repos.find((x) => x.r.repo === p.repo)?.e?.files.find((f) => f.path === p.path);
   const source = file?.source_url ? sourceLines(file.source_url, p.start_line, p.end_line) : "";
   const label = `§ ${p.section || `paragraph ${p.paragraph}`}`;
-  return { ...p, view, source, label };
+  // Phase 05: "Report a mismatch" on this match: the registry's research form, prefilled with the
+  // paragraph and the lines at the commit the map read (a GitHub repository's form is on its page).
+  const commit = repos.find((x) => x.r.repo === p.repo)?.e?.commit ?? "";
+  const report = new URLSearchParams({ type: "mismatch", doi: a.doi, "field.paragraph": String(p.paragraph), "field.path": p.path, "field.lines": `${p.start_line}-${p.end_line}` });
+  if (p.section) report.set("section", p.section);
+  if (/^[0-9a-f]{40}$/.test(commit)) report.set("field.commit", commit);
+  if (p.repo.startsWith("github.com/")) report.set("repo", p.repo.slice("github.com/".length));
+  else if (repos.find((x) => x.r.repo === p.repo)?.r.url) report.set("code", repos.find((x) => x.r.repo === p.repo)!.r.url);
+  return { ...p, view, source, label, report: `/research/new?${report}` };
 });
 
 // The view shown first: the one with the most pairs, else the first script whose text
@@ -166,6 +174,7 @@ const json = JSON.stringify(data).replace(/</g, "\\u003c");
             {p.evidence.length > 0 && <> · evidence: {p.evidence.join(", ")}</>}
             {typeof p.score === "number" && <> · score {p.score.toFixed(2)}</>}
             {p.view < 0 && <> · <span class="warning">this file is not among the harvested files</span></>}
+            {" · "}<a class="report-link" href={p.report}>Report a mismatch</a>
           </li>
         ))}
       </ul>

@@ -40,14 +40,18 @@ const all = new Set(files);
 const exists = (route) =>
   route.startsWith("/r/")
     ? all.has("/r/index.html")
-    : route.endsWith("/") ? all.has(`${route}index.html`) : all.has(route) || all.has(`${route}/index.html`);
+    : /^\/research\/(?:[1-9]\d{0,9}|new)?(?:\?.*)?$/.test(route)
+      ? all.has("/research/index.html")
+      : route.endsWith("/") ? all.has(`${route}index.html`) : all.has(route) || all.has(`${route}/index.html`);
 
 // 1. The fixed pages.
 const FIXED = ["/", "/about/", "/browse/", "/authors/", "/journals/", "/institutions/", "/tools/", "/datasets/",
   "/lookup/", "/search/", "/404.html", "/account/", "/submit/", "/badge.svg",
   // The GitHub side (night phase 01).
   "/new/", "/new/link/", "/new/import/", "/repositories/", "/forge/authorized/", "/r/", "/hosting/", "/hosting/limits/",
-  "/hosting/large-files/", "/hosting/git/", "/hosting/history/", "/hosting/tokens/", "/hosting/import/", "/hosting/leave/"];
+  "/hosting/large-files/", "/hosting/git/", "/hosting/history/", "/hosting/tokens/", "/hosting/import/", "/hosting/leave/",
+  // Night phase 05: the research issues' one shell.
+  "/research/"];
 for (const route of FIXED) if (!exists(route)) problems.push(`missing page ${route}`);
 
 // 2. A page for each paper of decision D2, none for the others; a reader for each paper
@@ -81,6 +85,28 @@ for (const name of layer) {
   }
   if (!entries || typeof entries !== "object" || Array.isArray(entries)) problems.push(`public/forge/layer/${name}: not an object`);
   else for (const key of Object.keys(entries)) if (key !== key.toLowerCase() || key.split("/").length !== 2) problems.push(`public/forge/layer/${name}: key ${key}`);
+}
+
+// The research issues for signed-out readers (night phase 05; scripts/data.mjs copies them when the
+// export has them): at most 64 shards, 00.json to 63.json, each an object keyed by an issue's number,
+// in the shard its number mod 64 names.
+const research = existsSync("public/forge/research") ? readdirSync("public/forge/research") : [];
+if (research.length > 64) problems.push(`${research.length} research shards: 64 at most`);
+for (const name of research) {
+  const m = /^(\d{2})\.json$/.exec(name);
+  if (!m || Number(m[1]) > 63) {
+    problems.push(`public/forge/research/${name}: not a shard (00.json to 63.json)`);
+    continue;
+  }
+  let entries;
+  try {
+    entries = JSON.parse(readFileSync(`public/forge/research/${name}`, "utf8"));
+  } catch {
+    problems.push(`public/forge/research/${name}: not JSON`);
+    continue;
+  }
+  if (!entries || typeof entries !== "object" || Array.isArray(entries)) problems.push(`public/forge/research/${name}: not an object`);
+  else for (const key of Object.keys(entries)) if (!/^[1-9]\d{0,9}$/.test(key) || Number(key) % 64 !== Number(m[1])) problems.push(`public/forge/research/${name}: key ${key}`);
 }
 
 // The tracing maps of the repository pages (night phase 02, E4): exactly 64 shards built from the
@@ -143,7 +169,7 @@ for (const page of pages) {
     const missing = SECTIONS.filter((id) => !ids.has(id));
     if (missing.length) problems.push(`${page}: no section ${missing.map((id) => `#${id}`).join(", ")}`);
   }
-  if (/^\/(paper\/[^/]+|account|submit|new|new\/link|new\/import|repositories|forge\/authorized|r)\/index\.html$/.test(page) &&
+  if (/^\/(paper\/[^/]+|account|submit|new|new\/link|new\/import|repositories|forge\/authorized|r|research)\/index\.html$/.test(page) &&
       /<script(?![^>]*\ssrc=)[^>]*>/.test(html)) {
     problems.push(`${page}: an inline script, which its Content-Security-Policy forbids`);
   }

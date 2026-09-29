@@ -51,8 +51,9 @@ const SECTIONS = [
   { id: "reproductions", label: "Reproductions" },
   { id: "activity", label: "Activity" },
 ];
-/** The sections that open with sign-in (Phase 7): muted in the bar. */
-const LATER = new Set(["discussion", "reproductions", "activity"]);
+/** The sections that open with sign-in (Phase 7): muted in the bar. Night phase 05: Discussion and
+ *  Reproductions hold the paper's research issues. */
+const LATER = new Set(["activity"]);
 ---
 <Base
   title={a.title}
@@ -82,7 +83,7 @@ const LATER = new Set(["discussion", "reproductions", "activity"]);
       <Cite a={a} p={p} />
       <Similar p={p} />
       <Contribute a={a} p={p} />
-      <Later />
+      <Later a={a} />
     </div>
 
     <aside class="sidebar">

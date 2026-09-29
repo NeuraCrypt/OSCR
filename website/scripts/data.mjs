@@ -214,6 +214,28 @@ if (existsSync(`${source}/forge/layer`)) {
 }
 if (misplaced) console.warn(`${misplaced} entries of OSCR's forge layer were not in their shard, or not a repository: dropped.`);
 
+// The registry's research issues for signed-out readers (night phase 05): at most 64 shards,
+// forge/research/NN.json, NN = the issue's number mod 64, each an object keyed by the number
+// ("12") → {issue, comments}, as of last night (oscr/forgelayer.py). Only well-formed numbers in
+// their own shard, and no email address.
+rmSync("public/forge/research", { recursive: true, force: true });
+let researchShards = 0;
+let researched = 0;
+if (existsSync(`${source}/forge/research`)) {
+  mkdirSync("public/forge/research", { recursive: true });
+  for (const name of readdirSync(`${source}/forge/research`).filter((n) => /^\d{2}\.json$/.test(n) && Number(n.slice(0, 2)) < 64)) {
+    const clean = {};
+    for (const [key, e] of Object.entries(JSON.parse(readFileSync(`${source}/forge/research/${name}`, "utf8")))) {
+      if (!/^[1-9]\d{0,9}$/.test(key) || `${String(Number(key) % 64).padStart(2, "0")}.json` !== name) continue;
+      if (!e || typeof e !== "object" || !e.issue || typeof e.issue !== "object" || Number(e.issue.id) !== Number(key)) continue;
+      clean[key] = scrub({ issue: e.issue, comments: Array.isArray(e.comments) ? e.comments : [] });
+      researched += 1;
+    }
+    writeFileSync(`public/forge/research/${name}`, JSON.stringify(clean));
+    researchShards += 1;
+  }
+}
+
 const withCode = catalog.articles.filter((a) => a.code.length > 0).length;
 const withPage = catalog.articles.filter((a) => a.page === true || a.code.length > 0).length;
 const aligned = catalog.articles.filter((a) => a.alignment?.pairs > 0).length;
@@ -224,5 +246,5 @@ console.log(
 console.log(
   `entities: ${Object.entries(entities).map(([k, n]) => `${n} ${k}`).join(", ")}; ` +
     `DOI lookup: ${looked} papers in ${shards} shards; ${detailed} full paper pages; ` +
-    `forge layer: ${layered} repositories in ${layerShards} shards`,
+    `forge layer: ${layered} repositories in ${layerShards} shards; research issues: ${researched} in ${researchShards} shards`,
 );

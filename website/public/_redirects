@@ -6,3 +6,8 @@
 # anonymous API on the reader's own quota, OSCR's static layer). No file per repository (C5: the
 # catalogue already uses most of the 20,000 files a version may hold); 0 Worker requests.
 /r/* /r/ 200
+
+# The registry's research issues (night phase 05): ONE shell serves /research/<n>, /research/new and a
+# paper's list (?paper=); signed out it reads the nightly static shards, signed in the Worker. No file
+# per issue.
+/research/* /research/ 200

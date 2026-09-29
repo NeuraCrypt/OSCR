@@ -9,7 +9,8 @@
 # its address never leaves), and the repository pages (/r/*), which also read GitHub's anonymous API
 # and raw files in the reader's browser, on the reader's own quota (D00-5). Phase 02: the repository's
 # own images are read as bytes and shown from object URLs (img-src blob:); no image loads from
-# another host (D02-6), and nothing a repository holds runs (script-src 'self' only).
+# another host (D02-6), and nothing a repository holds runs (script-src 'self' only). Phase 05: the
+# research issues' shell (/research/*) asks this site only (the Worker, the nightly shards).
 /account/
   X-Frame-Options: DENY
   Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'; object-src 'none'
@@ -49,6 +50,11 @@
   X-Frame-Options: DENY
   Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'; object-src 'none'
   Referrer-Policy: no-referrer
+
+/research/*
+  X-Frame-Options: DENY
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'; object-src 'none'
+  Referrer-Policy: same-origin
 
 /r/*
   X-Frame-Options: DENY

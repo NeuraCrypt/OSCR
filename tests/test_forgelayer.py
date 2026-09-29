@@ -131,7 +131,8 @@ def test_output_is_written_only_under_forge_layer(tmp_path):
     out.mkdir()
     forgelayer.write(con, None, out, state=_state(), now=T)
     written = sorted(p.relative_to(out).as_posix() for p in out.rglob("*") if p.is_file())
-    assert written == [f"forge/layer/{n:02d}.json" for n in range(64)]
+    # The layer's 64 shards, and (night phase 05) the research issues' 64: nothing else.
+    assert written == sorted([f"forge/layer/{n:02d}.json" for n in range(64)] + [f"forge/research/{n:02d}.json" for n in range(64)])
     # A second run replaces them in place: nothing left over.
     forgelayer.write(con, None, out, state=_state(), now=T)
     assert sorted(p.relative_to(out).as_posix() for p in out.rglob("*") if p.is_file()) == written
@@ -459,3 +460,60 @@ def test_the_nightly_hook_pushes_in_the_shared_state_and_writes_the_shards(tmp_p
     # Without D1 (the local case with nothing configured): the catalogue's layer, nothing pushed.
     said = forgelayer.write(con, None, tmp_path / "local", now=T)
     assert "traced paths" not in said and "oscr-fixture/eeg-analysis" in _entries(tmp_path / "local")
+
+
+# ---------------------------------------------------------------------------------------------
+# The research issues (night phase 05).
+
+def _research(d1: community.SqliteD1, n: int, paper: str, *, repo: tuple[str, str] | None = ("101", "oscr-fixture/eeg-analysis"),
+              title: str = "Order 4, not 2", body: str = "", **cols: object) -> None:
+    values = {"id": n, "paper_id": paper, "forge": "github" if repo else "", "repo_id": repo[0] if repo else "",
+              "repo_path": repo[1] if repo else "", "code_url": "" if repo else "https://zenodo.org/records/1",
+              "type": "mismatch", "title": title, "body": body, "path": "analysis.py", "start_line": 3, "end_line": 5,
+              "paragraph": 2, "author_id": "u_secret", "author": "ada-fixture", "author_via": "github",
+              "created_at": int(T), "updated_at": int(T), **cols}
+    names = ", ".join(values)
+    d1.run([f"INSERT INTO research_issues ({names}) VALUES ({', '.join(community.literal(v) for v in values.values())})"])
+
+
+def test_research_issues_reach_their_repository_and_their_shards_as_of_last_night(tmp_path, forge_d1):
+    con, state, reader = _mac(tmp_path), _state(), _reader()
+    forgelayer.resolve_ids(con, state, reader, now=T)
+    _repo(forge_d1, "102", "oscr-fixture", "unlicensed", state="hidden")
+    _research(forge_d1, 1, PAPER_1, body="Mail ada.lovelace@example.org for the data.", labels='["data"]')
+    _research(forge_d1, 65, PAPER_1, repo=None, type="reproduction", path="", start_line=None, end_line=None, paragraph=None,
+              report='{"outcome": "failed", "observed": "r = 0.1", "environment": "py", "datasets": [], "command": "", "expected": "", "figure": ""}')
+    _research(forge_d1, 2, PAPER_2, repo=("102", "oscr-fixture/unlicensed"))   # a hidden repository: left out
+    _research(forge_d1, 3, PAPER_9, title="Off-topic")                        # an off-topic paper: left out
+    forge_d1.run(["INSERT INTO research_comments (issue_id, n, author_id, author, author_via, body, created_at) "
+                  "VALUES (1, 1, 'u_secret', 'bob-fixture', 'github', 'Same with numpy 2 (bob@example.org).', 1)",
+                  "INSERT INTO research_comments (issue_id, n, author_id, author, author_via, body, created_at, deleted) "
+                  "VALUES (1, 2, 'u_secret', 'bob-fixture', 'github', '', 2, 1)"])
+    out = tmp_path / "public"
+    said = forgelayer.write(con, forge_d1, out, state=state, now=T)
+    assert "2 research issues" in said
+    entry = _entries(out)["oscr-fixture/eeg-analysis"]
+    assert [r["id"] for r in entry["research"]] == [1]
+    summary = entry["research"][0]
+    assert summary["anchor"] == {"commit": "", "path": "analysis.py", "start": 3, "end": 5, "paragraph": 2, "section": ""}
+    assert summary["labels"] == ["data"] and "body" not in summary
+    shards = {p.name: json.loads(p.read_text()) for p in sorted((out / "forge" / "research").iterdir())}
+    assert sorted(shards) == [f"{n:02d}.json" for n in range(64)]
+    # 1 and 65 share the shard 01 (65 mod 64): the numbers name their shard.
+    assert sorted(shards["01.json"]) == ["1", "65"]
+    one = shards["01.json"]["1"]
+    assert [c["n"] for c in one["comments"]] == [1, 2] and one["comments"][1]["deleted"] and one["comments"][1]["body"] == ""
+    assert shards["01.json"]["65"]["issue"]["report"]["outcome"] == "failed"
+    assert shards["01.json"]["65"]["issue"]["repo"] is None
+    text = (out / "forge" / "research" / "01.json").read_text() + json.dumps(entry)
+    assert "u_secret" not in text and "author_id" not in text and not EMAIL.search(text)
+    assert all(not s for name, s in shards.items() if name not in ("01.json",))
+
+
+def test_before_its_migration_the_forge_database_has_no_research_issue(tmp_path, forge_d1):
+    forge_d1.con.execute("DROP TABLE research_comments")
+    forge_d1.con.execute("DROP TABLE research_issues")
+    con, state = _mac(tmp_path), _state()
+    out = tmp_path / "public"
+    said = forgelayer.write(con, forge_d1, out, state=state, now=T)
+    assert "0 research issues" in said and "oscr-fixture/eeg-analysis" in _entries(out)

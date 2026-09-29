@@ -1,0 +1,35 @@
+---
+// /research/: the ONE static shell of the registry's research issues (night phase 05, E6;
+// public/_redirects: "/research/* /research/ 200": no file per issue). Its script
+// (src/scripts/research.ts) reads the address: /research/<n> (an issue), /research/new (the research
+// forms, prefilled from the reader and the code view), /research/?paper=<doi> (a paper's issues).
+// Signed out, the issue comes from the nightly static shard /forge/research/NN.json ("as of last
+// night"): 0 Worker requests; signed in, live from GET /api/forge/research (1 request).
+//
+// science.css only; the platform's name from src/config.ts, handed to the script in data-site (the
+// browser scripts never name the platform).
+import Base from "../../layouts/Base.astro";
+import { SITE_NAME } from "../../config";
+---
+<Base
+  title="Research issue"
+  description="An issue about a paper's code: a code error, a code–paper mismatch, or a reproduction failure, beside the paper and its tracing map."
+  breadcrumb={[{ text: "Repositories", href: "/repositories/" }, { text: "Research issue" }]}
+>
+  <div id="research-shell" data-site={SITE_NAME}>
+    <h1>Research issue</h1>
+    <p class="summary" aria-live="polite">Reading the research issue…</p>
+    <noscript>
+      <p class="warning">This page reads the research issue in your browser, which needs JavaScript.</p>
+    </noscript>
+    <p>
+      Research issues are {SITE_NAME}'s own: a code error, a code–paper mismatch (one link of a
+      tracing map) or a reproduction failure (its report), filed about a paper's code and read by its
+      authors and the code's maintainers beside the paper.
+    </p>
+  </div>
+
+  <script>
+    import "../../scripts/research";
+  </script>
+</Base>

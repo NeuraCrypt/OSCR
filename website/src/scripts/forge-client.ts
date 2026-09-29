@@ -313,9 +313,10 @@ const backLink = (href: string) => ({ href: backPath(href), text: "Back to the p
 
 /** A path of the registry's code viewer an answer may link to (a commit's file, the commit, a
  *  comparison with a fork's "owner:branch", a pull request; phase 04: a comparison's creation form,
- *  "?expand=1" and nothing else after it): /r/ only, no "//", no dot segment, nothing a link could
- *  run. Never another site: no open redirect. */
-export const VIEWER_PATH = /^\/r\/(?:[A-Za-z0-9._~\-:%]+\/){2,}[A-Za-z0-9._~\-/:%]{0,400}(?:\?expand=1)?$/;
+ *  "?expand=1" and nothing else after it; phase 05: a research issue's page, /research/<n>): /r/ and
+ *  /research/<n> only, no "//", no dot segment, nothing a link could run. Never another site: no
+ *  open redirect. */
+export const VIEWER_PATH = /^\/r\/(?:[A-Za-z0-9._~\-:%]+\/){2,}[A-Za-z0-9._~\-/:%]{0,400}(?:\?expand=1)?$|^\/research\/[1-9][0-9]{0,9}$/;
 
 export function viewerLinks(value: unknown): { href: string; text: string }[] {
   if (!Array.isArray(value)) return [];

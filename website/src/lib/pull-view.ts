@@ -113,6 +113,19 @@ export function closingNotice(refs: readonly IssueRef[], closes: boolean, base: 
   );
 }
 
+/** The registry's research issues a pull request says it fixes ("Fixes research#12", phase 05): its
+ *  merge into the default branch closes them as "fixed in the code", at the merge commit. */
+export function researchClosingNotice(ids: readonly number[], closes: boolean, base: string): El {
+  const links = ids.flatMap((id, i) => [i ? (i === ids.length - 1 ? " and " : ", ") : "", h("a", { href: `/research/${id}` }, `research#${id}`)]);
+  return h(
+    "p",
+    { class: "closing" },
+    closes
+      ? ["Merging it in the registry closes the research ", ids.length === 1 ? "issue " : "issues ", ...links, ": fixed in the code, at the merge commit."]
+      : ["Its text names the research ", ids.length === 1 ? "issue " : "issues ", ...links, ` with a closing keyword, but a merge closes issues only into the default branch, not ${base}.`],
+  );
+}
+
 // ─── forks ───────────────────────────────────────────────────────────────────
 
 /** One fork of the list: its page in the registry, its owner, when it was last pushed. */
