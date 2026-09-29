@@ -186,13 +186,15 @@ describe("the heading line and the tabs", () => {
     const tabs = repoTabs(EEG, "branches");
     assert.equal(tabs.tag, "nav");
     assert.equal(tabs.attrs.class, "tabs");
-    assert.deepEqual(hrefs(tabs), ["/r/oscr-fixture/eeg-analysis/", "/r/oscr-fixture/eeg-analysis/issues/", "/r/oscr-fixture/eeg-analysis/pulls/", "/r/oscr-fixture/eeg-analysis/releases/", "/r/oscr-fixture/eeg-analysis/branches/", "/r/oscr-fixture/eeg-analysis/settings/"]);
+    assert.deepEqual(hrefs(tabs), ["/r/oscr-fixture/eeg-analysis/", "/r/oscr-fixture/eeg-analysis/issues/", "/r/oscr-fixture/eeg-analysis/pulls/", "/r/oscr-fixture/eeg-analysis/releases/", "/r/oscr-fixture/eeg-analysis/checks/", "/r/oscr-fixture/eeg-analysis/branches/", "/r/oscr-fixture/eeg-analysis/settings/"]);
     // Phase 04: a pull request and the list are under Pull requests.
     assert.deepEqual([...walk(repoTabs(EEG, "pull"))].filter((e) => e.attrs["aria-current"] === "page").map((e) => textOf(e)), ["Pull requests"]);
     // Phase 05: an issue, the list, the labels and the milestones are under Issues.
     for (const view of ["issues", "labels", "milestones", "milestone"] as const) {
       assert.deepEqual([...walk(repoTabs(EEG, view))].filter((e) => e.attrs["aria-current"] === "page").map((e) => textOf(e)), ["Issues"], view);
     }
+    // Phase 10: the checks of a commit are under Checks.
+    assert.deepEqual([...walk(repoTabs(EEG, "checks"))].filter((e) => e.attrs["aria-current"] === "page").map((e) => textOf(e)), ["Checks"]);
     // Phase 07: the releases and the tags are under Releases.
     for (const view of ["releases", "tags"] as const) {
       assert.deepEqual([...walk(repoTabs(EEG, view))].filter((e) => e.attrs["aria-current"] === "page").map((e) => textOf(e)), ["Releases"], view);

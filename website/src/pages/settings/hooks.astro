@@ -1,0 +1,38 @@
+---
+// /settings/hooks/: the reader's outgoing webhooks (night phase 10, E5; docs/AUTOMATION.md "Webhooks").
+// Its script (src/scripts/hooks.ts) reads GET /api/forge/hooks when signed in (1 request); every act is
+// one request with the session's CSRF token. A hook's secret is shown once. science.css only.
+import Base from "../../layouts/Base.astro";
+import { SITE_NAME } from "../../config";
+---
+<Base
+  title="Webhooks"
+  description="Outgoing webhooks: what happens to a paper or a repository, posted to your service, signed."
+  breadcrumb={[{ text: "Account", href: "/account/" }, { text: "Webhooks" }]}
+>
+  <div id="hooks-shell">
+    <h1>Webhooks</h1>
+    <p class="summary" aria-live="polite">Reading your webhooks…</p>
+    <noscript><p class="warning">This page reads your webhooks in your browser, which needs JavaScript.</p></noscript>
+    <p>
+      A webhook posts what happens to a paper or a repository to your own service, as it happens: a research issue
+      opened or closed, code linked to a paper, a release tied to a version of the paper, an issue, a pull request, a
+      release. A journal, a lab or an index can follow its papers this way. Every delivery is signed with the
+      webhook's secret, in the header <code>X-Hub-Signature-256</code>, as GitHub's are: <a href="/developers/#webhooks">how
+      to check it</a>.
+    </p>
+    <p>
+      {SITE_NAME} sends what its pages already show (a title, a page's address, the time, a GitHub login), never a
+      text, never an email address. It never posts to a private network or to this machine, and it follows no
+      redirection.
+    </p>
+    <h2>Your webhooks</h2>
+    <div id="hooks-list" aria-live="polite"></div>
+    <div id="hooks-made"></div>
+    <h2>Make a webhook</h2>
+    <div id="hooks-make"></div>
+  </div>
+  <script>
+    import "../../scripts/hooks";
+  </script>
+</Base>

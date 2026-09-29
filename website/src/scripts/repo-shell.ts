@@ -69,6 +69,7 @@ import "./issue-links.ts";
 import "./repo-releases.ts";
 import "./repo-release-assets.ts";
 import "./repo-environment.ts";
+import "./repo-checks.ts";
 import { mountForkStatus } from "./repo-forks.ts";
 import { codePanel, quickSetup, useTemplate, wireCopy } from "./repo-code-panel.ts";
 import { mountBranches } from "./repo-branches.ts";
@@ -131,6 +132,15 @@ function sidebar(loaded: Loaded, site: string): El {
     h("p", null, h("a", { href: repoPath(repo, "releases") }, "The releases"), " · ", h("a", { href: repoPath(repo, "tags") }, "Tags"), " · ", h("a", { href: `${repoPath(repo, "releases")}latest` }, "The latest")),
     h("h3", null, "Environment"),
     h("p", null, h("a", { href: repoPath(repo, "environment") }, "How it runs again"), ": its environment files, read as text, and the packages it publishes."),
+    // Phase 10: the checks of its default branch (a paper's cited commits from there), and its webhooks.
+    h("h3", null, "Checks"),
+    h(
+      "p",
+      null,
+      h("a", { href: repoPath(repo, "checks") }, "Checks"),
+      ": a licence, an environment, the paper's DOI, CITATION.cff, the tracing maps; its own tests' results.",
+      info ? [" ", h("a", { href: `/settings/hooks/?subject=${encodeURIComponent(`repo:${info.key.forge}:${info.key.id}`)}` }, "Webhooks"), " for its events."] : null,
+    ),
     pagesBlock(pagesSite(repo.owner, repo.name, info?.homepage), site),
     archive ? [h("h3", null, "Archive"), h("p", null, link(archive, "Software Heritage's archive"), " of this repository.")] : null,
     about.length ? [h("h3", null, "About"), ...about] : null,

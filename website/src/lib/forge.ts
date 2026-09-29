@@ -52,13 +52,17 @@ export const GITHUB = "https://github.com";
  *  &prerelease=1 prefill it), releases/edit/<tag…>, releases/latest, releases/latest/download/<file>,
  *  releases/download/<tag…>/<file> (the file is GitHub's: the page links it), and the registry's
  *  releases/changelog; tags (the list); environment/<ref> (the environment files, read as text, and
- *  the packages they declare). src/lib/releases.ts and src/lib/environments.ts read them. */
+ *  the packages they declare). src/lib/releases.ts and src/lib/environments.ts read them.
+ *  Phase 10 (automation, D10-*) adds checks/<ref>: the registry's checks at a commit (they read files,
+ *  never run code), the researcher's CI as GitHub reports it, the statuses posted to the registry, the
+ *  environments the workflows test (src/lib/checks-view.ts). */
 export type RepoView =
   | "home" | "settings" | "branches" | "tree" | "blob" | "commits" | "commit" | "compare" | "find" | "search" | "docs"
   | "edit" | "new" | "upload" | "delete"
   | "pulls" | "pull" | "fork" | "forks"
   | "issues" | "labels" | "milestones" | "milestone"
-  | "releases" | "tags" | "environment";
+  | "releases" | "tags" | "environment"
+  | "checks";
 export const REPO_VIEWS: readonly RepoView[] = ["home", "settings", "branches"];
 /** The views that carry segments after their name (a ref, a path, a commit, a comparison). */
 export const CODE_VIEWS: readonly RepoView[] = [
@@ -66,6 +70,7 @@ export const CODE_VIEWS: readonly RepoView[] = [
   "pulls", "pull", "fork", "forks",
   "issues", "labels", "milestones", "milestone",
   "releases", "tags", "environment",
+  "checks",
 ];
 /** The editing views (phase 03): they act on a branch, and their changes are commits. */
 export const EDIT_VIEWS: readonly RepoView[] = ["edit", "new", "upload", "delete"];
@@ -125,6 +130,7 @@ const SEGMENTS: Partial<Record<RepoView, [number, number]>> = {
   releases: [0, 66],
   tags: [0, 0],
   environment: [0, 64],
+  checks: [0, 64],
 };
 
 /** The repository and the view a path of the shell names, or null: /r/<owner>/<name>/ (the final

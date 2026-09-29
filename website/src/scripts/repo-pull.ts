@@ -20,6 +20,7 @@
 import { maskEmails } from "../../worker/forge/mask.ts";
 import type * as T from "../../worker/forge/types.ts";
 import { codeownersPath, ownersOfChange, parseCodeowners } from "../lib/codeowners.ts";
+import { repoPath } from "../lib/forge.ts";
 import { commitList } from "../lib/history.ts";
 import { detectLanguage } from "../lib/highlight.ts";
 import { renderMarkdown } from "../lib/markdown.ts";
@@ -500,7 +501,9 @@ async function mountChecks(slot: HTMLElement, env: CodeEnv, number: number): Pro
       h("h3", null, `Checks of ${f.pr.head.sha.slice(0, 7)}, the pull request's last commit`),
       h("p", { class: sum.failed ? "warning" : sum.total && !sum.running ? "ok" : "" }, sum.total ? `${sum.passed} passed, ${sum.failed} failed, ${sum.running} running, ${sum.skipped} skipped or neutral.` : "No check reported: the repository runs none on its pull requests, or they have not started."),
       items.length ? h("ul", { class: "checks" }, ...items) : null,
-      h("p", { class: "explain" }, "The checks are the repository's own (its continuous integration, on GitHub); the registry reads their outcome and never runs code. A check's log stays on its own service: the link goes there."),
+      h("p", { class: "explain" }, "The checks are the repository's own (its continuous integration, on GitHub) and the registry's (a licence, an environment, the paper's DOI, CITATION.cff, the tracing maps: read as text, never run); the registry never runs code. A check's log stays on its own service: the link goes there."),
+      // Phase 10: the registry's view of this commit: its checks in words, the statuses posted to the registry.
+      h("p", null, h("a", { href: repoPath(env.repo, "checks", [f.pr.head.sha]) }, "Every check of this commit in the registry"), ": what its checks found, the tests' environments, the statuses outside services posted."),
     );
   } catch (e) {
     pullFailed(f.main, env, e, number);

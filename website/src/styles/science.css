@@ -209,8 +209,11 @@ pre.commands + button.copy, button.copy { font-size: .85em; padding: .05em .6em;
 
 /* A choice among options, each explained in a sentence (the licence, the .gitignore template, the
    template to start from) */
-fieldset.choices label { display: block; margin: .45em 0 0; }
-fieldset.choices .explain { display: block; margin: .05em 0 0 1.7em; color: var(--muted); font-size: .92em; }
+fieldset.choices label, div.choices label { display: block; margin: .45em 0 0; }
+fieldset.choices .explain, div.choices .explain { display: block; margin: .05em 0 0 1.7em; color: var(--muted); font-size: .92em; }
+/* Phase 10: a group of choices drawn by a page's script (its heading a paragraph, not a legend) */
+div.choices { margin: .6em 0; }
+div.choices p.legend { font-weight: bold; margin: .2em 0 0; }
 
 /* A compact table of limits (file, push and repository sizes, the registry's own caps) */
 .limits { border-collapse: collapse; margin: .5em 0 1.2em; font-size: .93em; }
@@ -1006,6 +1009,23 @@ ul.feed li button { font: inherit; font-size: .85em; border-radius: 0; margin-le
 ul.topics li { margin: .4em 0; }
 ul.topics p.line { margin: .1em 0 0; color: var(--muted); font-size: .92em; }
 
+/* Phase 10: automation and integrations. The settings of tokens and webhooks (their lists, a secret
+   shown once), the checks of a commit (the registry's findings in words, the repository's own tests,
+   the statuses posted to the registry, the tested environments), the public API's reference. */
+section.token-made pre.commands, .confirm pre.commands { font-family: var(--font-code); }
+ul.hooks { list-style: none; padding: 0; margin: .4em 0 1em; }
+ul.hooks > li { padding: .5em 0; border-bottom: 1px solid var(--rule); overflow-wrap: anywhere; }
+ul.hooks p { margin: .2em 0; }
+p.hook-actions button, table.tokens button, table.deliveries button { font-size: .88em; padding: .05em .6em; }
+section.checks-report, section.checks-ci, section.checks-posted, section.checks-env { margin: .8em 0 1.2em; }
+section.checks-report h3, section.checks-ci h3, section.checks-posted h3, section.checks-env h3 { font-size: 1.05em; margin: .6em 0 .3em; }
+ul.findings { margin: .3em 0 .6em; padding-left: 1.3em; }
+ul.findings li { margin: .35em 0; overflow-wrap: anywhere; }
+ul.findings .fix { color: var(--muted); }
+section.api-route { margin: 1.1em 0; padding-top: .3em; border-top: 1px solid var(--rule); }
+section.api-route h3 { font-size: 1em; margin: .3em 0; overflow-wrap: anywhere; }
+section.api-route p { margin: .25em 0; }
+
 footer {
   max-width: var(--width); margin: 0 auto; padding: 1em;
   border-top: 1px solid var(--rule); font-size: .85em; color: var(--muted);
@@ -1065,4 +1085,6 @@ footer a { margin-right: 1em; }
   .profile-head { align-items: flex-start; }
   form.profile-form p.line label { display: block; min-width: 0; }
   .social-actions { font-size: .92em; }
+  /* Phase 10: the tokens', deliveries' and reference's tables scroll within the column */
+  table.tokens, table.deliveries, table.scopes, table.errors { display: block; overflow-x: auto; }
 }

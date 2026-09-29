@@ -374,7 +374,8 @@ export function repoHead({ owner, name, info }: HeadFacts): El {
 export function repoTabs(repo: RepoCoords, view: RepoView): El {
   // Every code view (tree, blob, commits, commit, compare, find, search) is under Code; a pull
   // request and the list under Pull requests (phase 04); an issue, the list, labels and milestones
-  // under Issues (phase 05); the releases and the tags under Releases (phase 07).
+  // under Issues (phase 05); the releases and the tags under Releases (phase 07); the checks of a
+  // commit under Checks (phase 10).
   const shown: RepoView =
     view === "settings" || view === "branches"
       ? view
@@ -384,13 +385,15 @@ export function repoTabs(repo: RepoCoords, view: RepoView): El {
           ? "issues"
           : view === "releases" || view === "tags"
             ? "releases"
-            : "home";
+            : view === "checks"
+              ? "checks"
+              : "home";
   const tab = (v: RepoView, label: string) =>
     h("li", null, h("a", { href: repoPath(repo, v), "aria-current": v === shown ? "page" : null }, label));
   return h(
     "nav",
     { class: "tabs", "aria-label": "Repository" },
-    h("ul", null, tab("home", "Code"), tab("issues", "Issues"), tab("pulls", "Pull requests"), tab("releases", "Releases"), tab("branches", "Branches"), tab("settings", "Settings")),
+    h("ul", null, tab("home", "Code"), tab("issues", "Issues"), tab("pulls", "Pull requests"), tab("releases", "Releases"), tab("checks", "Checks"), tab("branches", "Branches"), tab("settings", "Settings")),
   );
 }
 

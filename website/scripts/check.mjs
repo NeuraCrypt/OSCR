@@ -200,7 +200,7 @@ for (const page of pages) {
     const missing = SECTIONS.filter((id) => !ids.has(id));
     if (missing.length) problems.push(`${page}: no section ${missing.map((id) => `#${id}`).join(", ")}`);
   }
-  if (/^\/(paper\/[^/]+|account|submit|new|new\/link|new\/import|repositories|forge\/authorized|r|research)\/index\.html$/.test(page) &&
+  if (/^\/(paper\/[^/]+|account|submit|new|new\/link|new\/import|repositories|forge\/authorized|r|research|settings\/tokens|settings\/hooks|developers)\/index\.html$/.test(page) &&
       /<script(?![^>]*\ssrc=)[^>]*>/.test(html)) {
     problems.push(`${page}: an inline script, which its Content-Security-Policy forbids`);
   }

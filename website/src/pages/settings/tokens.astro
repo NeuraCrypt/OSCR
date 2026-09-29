@@ -1,0 +1,36 @@
+---
+// /settings/tokens/: the reader's personal tokens for the public API (night phase 10, E5; docs/API.md).
+// Its script (src/scripts/tokens.ts) reads GET /api/forge/tokens when signed in (1 request); a token is
+// made or revoked with the session's CSRF token, and shown once. science.css only.
+import Base from "../../layouts/Base.astro";
+import { SITE_NAME } from "../../config";
+---
+<Base
+  title="Personal tokens"
+  description="Personal tokens for the public API: scoped, expiring, revocable; kept as a fingerprint only."
+  breadcrumb={[{ text: "Account", href: "/account/" }, { text: "Personal tokens" }]}
+>
+  <div id="tokens-shell">
+    <h1>Personal tokens</h1>
+    <p class="summary" aria-live="polite">Reading your tokens…</p>
+    <noscript><p class="warning">This page reads your tokens in your browser, which needs JavaScript.</p></noscript>
+    <p>
+      A token lets a script, a notebook or a lab's CI use {SITE_NAME}'s <a href="/developers/">public API</a> as you:
+      read your notifications, star a paper, open a research issue, post a commit status, manage your webhooks.
+      Each token may do only what you choose, expires after the days you choose (a year at most), and can be
+      revoked at once. {SITE_NAME} keeps only its fingerprint (SHA-256): it is shown once, when it is made.
+    </p>
+    <p>
+      It is {SITE_NAME}'s own, for its API only. Git goes to GitHub with GitHub's own tokens:
+      <a href="/hosting/tokens/">the guide</a> says which.
+    </p>
+    <h2>Your tokens</h2>
+    <div id="tokens-list" aria-live="polite"></div>
+    <div id="tokens-made"></div>
+    <h2>Make a token</h2>
+    <div id="tokens-make"></div>
+  </div>
+  <script>
+    import "../../scripts/tokens";
+  </script>
+</Base>
