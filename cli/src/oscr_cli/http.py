@@ -171,6 +171,9 @@ def error_message(status: int, body: Any, text: str, url: str) -> str:
             words = str(err.get("message") or err.get("code") or "")
         elif isinstance(body.get("message"), str):
             words = body["message"]
+            details = [str(e.get("message") or " ".join(str(e.get(k)) for k in ("field", "code") if e.get(k))) for e in body.get("errors") or [] if isinstance(e, dict)]
+            if details:
+                words = f"{words} ({'; '.join(d for d in details if d)})"
         elif isinstance(body.get("error_description"), str):
             words = body["error_description"]
         elif isinstance(err, str):

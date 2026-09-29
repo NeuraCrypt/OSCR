@@ -88,8 +88,12 @@ class FakeServer:
         self.base = f"http://127.0.0.1:{self.server.server_port}"
         threading.Thread(target=self.server.serve_forever, kwargs={"poll_interval": 0.05}, daemon=True).start()
 
-    def on(self, method: str, pattern: str, handler: Handler) -> None:
-        self.routes.append((method, re.compile(f"^{pattern}$"), handler))
+    def on(self, method: str, pattern: str, handler: Handler, *, first: bool = False) -> None:
+        route = (method, re.compile(f"^{pattern}$"), handler)
+        if first:
+            self.routes.insert(0, route)
+        else:
+            self.routes.append(route)
 
     def close(self) -> None:
         self.server.shutdown()
@@ -112,6 +116,7 @@ class FakeGitHub(FakeServer):
         self.on("POST", "/web/login/device/code", self._device_code)
         self.on("POST", "/web/login/oauth/access_token", self._access_token)
         self.on("GET", "/api/user", self._user)
+        self._model()
 
     @property
     def web(self) -> str:
@@ -218,6 +223,11 @@ class FakeOscr(FakeServer):
         self.repos: dict[str, dict[str, Any]] = {}
         self.on("GET", "/forge/.+", lambda r: (200, self.files[r.path]) if r.path in self.files else (404, b"Not Found"))
         self.on("GET", "/api/v1/repos", self._repo)
+        self.research: list[dict[str, Any]] = []
+        self.search_results: list[dict[str, Any]] = [{"doi": "10.5555/oscr.fixture.1", "title": "A synthetic EEG study", "page": "/paper/x/"}]
+        self.on("GET", "/api/search", lambda r: (200, {"results": self.search_results, "total": len(self.search_results)}))
+        self.on("GET", "/api/v1/search", lambda r: (200, {"results": self.search_results, "total": len(self.search_results)}) if self.tokens.get(r.token or "") else (401, {"error": {"code": "requires_authentication", "message": "token"}}))
+        self.on("POST", "/api/v1/research/open", self._research)
 
     @property
     def host(self) -> str:
@@ -283,8 +293,217 @@ class FakeOscr(FakeServer):
             return 404, {"error": {"code": "not_found", "message": "The registry does not know this repository."}}
         return 200, repo
 
+    def _research(self, r: Req) -> tuple[int, Any]:
+        t = self.tokens.get(r.token or "")
+        if not t:
+            return 401, {"error": {"code": "requires_authentication", "message": "This route needs a token."}}
+        if "research:write" not in t["scopes"]:
+            return 403, {"error": {"code": "insufficient_scope", "message": "This token may not do this: it needs the scope research:write."}}
+        b = r.json or {}
+        self.research.append(b)
+        n = len(self.research)
+        return 201, {"id": n, "page": f"/research/{n}"}
+
     def _revoke(self, r: Req) -> tuple[int, Any]:
         t = self.tokens.pop(r.token or "", None)
         if not t:
             return 401, {"error": {"code": "bad_credentials", "message": "This token is not valid."}}
         return 200, {"ok": True, "revoked": t["id"]}
+
+
+# ── the fake GitHub's repositories, issues, pull requests, releases, runs (GitHub's shapes) ──
+
+
+def _now() -> str:
+    return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+
+
+def _model(self: FakeGitHub) -> None:
+    self.repos: dict[str, dict[str, Any]] = {}
+    self.issues: dict[str, list[dict[str, Any]]] = {}
+    self.releases: dict[str, list[dict[str, Any]]] = {}
+    self.runs: dict[str, list[dict[str, Any]]] = {}
+    self.synced: list[str] = []
+    R = r"/api/repos/([^/]+)/([^/]+)"
+
+    def who(r: Req) -> dict[str, Any] | None:
+        return self.users.get(r.token or "")
+
+    def need(r: Req) -> dict[str, Any] | None:
+        return who(r)
+
+    def key(r: Req) -> str:
+        return f"{r.m.group(1)}/{r.m.group(2)}".lower()
+
+    def repo_json(k: str) -> dict[str, Any]:
+        return self.repos[k]
+
+    def create(r: Req) -> tuple[int, Any]:
+        u = need(r)
+        if not u:
+            return 401, {"message": "Requires authentication"}
+        b = r.json or {}
+        name = b.get("name", "")
+        k = f"{u['login']}/{name}".lower()
+        if not re.match(r"^[A-Za-z0-9._-]{1,100}$", name):
+            return 422, {"message": "Repository creation failed.", "errors": [{"message": "name is invalid"}]}
+        if k in self.repos:
+            return 422, {"message": "Repository creation failed.", "errors": [{"message": "name already exists on this account"}]}
+        self.repos[k] = {"id": 5000 + len(self.repos), "name": name, "full_name": f"{u['login']}/{name}", "owner": {"login": u["login"], "id": u["id"]},
+                         "private": bool(b.get("private")), "visibility": "private" if b.get("private") else "public", "description": b.get("description"),
+                         "homepage": b.get("homepage"), "default_branch": "main", "html_url": f"https://github.com/{u['login']}/{name}",
+                         "license": {"spdx_id": "MIT"} if b.get("license_template") == "mit" else None, "fork": False, "parent": None,
+                         "stargazers_count": 0, "pushed_at": _now(), "updated_at": _now(), "archived": False, "topics": []}
+        self.issues[k], self.releases[k], self.runs[k] = [], [], []
+        return 201, self.repos[k]
+
+    def one(r: Req) -> tuple[int, Any]:
+        k = key(r)
+        return (200, self.repos[k]) if k in self.repos else (404, {"message": "Not Found"})
+
+    def mine(r: Req) -> tuple[int, Any]:
+        u = need(r)
+        if not u:
+            return 401, {"message": "Requires authentication"}
+        return 200, [x for x in self.repos.values() if x["owner"]["login"] == u["login"] and not x["private"]]
+
+    def theirs(r: Req) -> tuple[int, Any]:
+        return 200, [x for x in self.repos.values() if x["owner"]["login"].lower() == r.m.group(1).lower() and not x["private"]]
+
+    def issue_list(r: Req, pulls: bool) -> tuple[int, Any]:
+        k = key(r)
+        if k not in self.repos:
+            return 404, {"message": "Not Found"}
+        state = r.q("state", "open")
+        items = [i for i in self.issues[k] if ("pull_request" in i) == pulls or (not pulls)]
+        if pulls:
+            items = [i for i in self.issues[k] if "pull_request" in i]
+        items = [i for i in items if state == "all" or i["state"] == state]
+        return 200, list(reversed(items))
+
+    def issue_new(r: Req, pull: bool) -> tuple[int, Any]:
+        u = need(r)
+        k = key(r)
+        if not u:
+            return 401, {"message": "Requires authentication"}
+        if k not in self.repos:
+            return 404, {"message": "Not Found"}
+        b = r.json or {}
+        if not b.get("title"):
+            return 422, {"message": "Validation Failed", "errors": [{"field": "title", "code": "missing_field"}]}
+        n = len(self.issues[k]) + 1
+        item: dict[str, Any] = {"number": n, "title": b["title"], "body": b.get("body") or "", "state": "open", "state_reason": None, "user": {"login": u["login"]},
+                                "labels": [{"name": x} for x in b.get("labels") or []], "comments": 0, "created_at": _now(), "updated_at": _now(),
+                                "html_url": f"https://github.com/{self.repos[k]['full_name']}/{'pull' if pull else 'issues'}/{n}", "assignees": []}
+        if pull:
+            item["pull_request"] = {"url": ""}
+            item.update({"head": {"ref": b.get("head"), "sha": "0" * 40, "repo": {"full_name": self.repos[k]["full_name"]}}, "base": {"ref": b.get("base")},
+                         "draft": bool(b.get("draft")), "merged": False, "mergeable": True})
+        self.issues[k].append(item)
+        return 201, item
+
+    def issue_one(r: Req, pull: bool) -> tuple[int, Any]:
+        k = key(r)
+        n = int(r.m.group(3))
+        for i in self.issues.get(k, []):
+            if i["number"] == n and (("pull_request" in i) or not pull):
+                return 200, i
+        return 404, {"message": "Not Found"}
+
+    def issue_edit(r: Req) -> tuple[int, Any]:
+        if not need(r):
+            return 401, {"message": "Requires authentication"}
+        code, i = issue_one(r, False)
+        if code != 200:
+            return code, i
+        b = r.json or {}
+        for f in ("state", "state_reason", "title", "body"):
+            if f in b:
+                i[f] = b[f]
+        return 200, i
+
+    def comment(r: Req) -> tuple[int, Any]:
+        if not need(r):
+            return 401, {"message": "Requires authentication"}
+        code, i = issue_one(r, False)
+        if code != 200:
+            return code, i
+        i["comments"] += 1
+        return 201, {"id": 1, "body": (r.json or {}).get("body", "")}
+
+    def rel_list(r: Req) -> tuple[int, Any]:
+        k = key(r)
+        return (200, list(reversed(self.releases[k]))) if k in self.releases else (404, {"message": "Not Found"})
+
+    def rel_new(r: Req) -> tuple[int, Any]:
+        if not need(r):
+            return 401, {"message": "Requires authentication"}
+        k = key(r)
+        b = r.json or {}
+        if any(x["tag_name"] == b.get("tag_name") for x in self.releases[k]):
+            return 422, {"message": "Validation Failed", "errors": [{"code": "already_exists", "field": "tag_name"}]}
+        rel = {"id": 900 + len(self.releases[k]), "tag_name": b.get("tag_name"), "name": b.get("name") or b.get("tag_name"), "body": b.get("body") or "",
+               "draft": bool(b.get("draft")), "prerelease": bool(b.get("prerelease")), "created_at": _now(), "published_at": None if b.get("draft") else _now(),
+               "html_url": f"https://github.com/{self.repos[k]['full_name']}/releases/tag/{b.get('tag_name')}", "author": {"login": who(r)["login"]}, "assets": []}
+        self.releases[k].append(rel)
+        return 201, rel
+
+    def rel_tag(r: Req) -> tuple[int, Any]:
+        k = key(r)
+        for x in self.releases.get(k, []):
+            if x["tag_name"] == urllib.parse.unquote(r.m.group(3)):
+                return 200, x
+        return 404, {"message": "Not Found"}
+
+    def runs(r: Req) -> tuple[int, Any]:
+        k = key(r)
+        return (200, {"total_count": len(self.runs.get(k, [])), "workflow_runs": self.runs.get(k, [])}) if k in self.repos else (404, {"message": "Not Found"})
+
+    def run_one(r: Req) -> tuple[int, Any]:
+        for x in self.runs.get(key(r), []):
+            if x["id"] == int(r.m.group(3)):
+                return 200, x
+        return 404, {"message": "Not Found"}
+
+    def jobs(r: Req) -> tuple[int, Any]:
+        return 200, {"total_count": 1, "jobs": [{"id": 1, "name": "tests", "status": "completed", "conclusion": "failure",
+                                                "steps": [{"name": "Run pytest", "status": "completed", "conclusion": "failure", "number": 3}]}]}
+
+    def workflows(r: Req) -> tuple[int, Any]:
+        return 200, {"total_count": 1, "workflows": [{"id": 7, "name": "Tests", "path": ".github/workflows/tests.yml", "state": "active"}]}
+
+    def search(r: Req) -> tuple[int, Any]:
+        q = (r.q("q") or "").lower()
+        items = [x for x in self.repos.values() if q.split()[0] in x["full_name"].lower() and not x["private"]] if q else []
+        return 200, {"total_count": len(items), "items": items}
+
+    def sync(r: Req) -> tuple[int, Any]:
+        if not need(r):
+            return 401, {"message": "Requires authentication"}
+        self.synced.append(key(r))
+        return 200, {"message": "Successfully fetched and fast-forwarded from upstream", "merge_type": "fast-forward", "base_branch": "upstream:main"}
+
+    self.on("POST", "/api/user/repos", create)
+    self.on("GET", "/api/user/repos", mine)
+    self.on("GET", r"/api/users/([^/]+)/repos", theirs)
+    self.on("GET", R + r"/pulls", lambda r: issue_list(r, True))
+    self.on("POST", R + r"/pulls", lambda r: issue_new(r, True))
+    self.on("GET", R + r"/pulls/(\d+)", lambda r: issue_one(r, True))
+    self.on("GET", R + r"/issues", lambda r: issue_list(r, False))
+    self.on("POST", R + r"/issues", lambda r: issue_new(r, False))
+    self.on("GET", R + r"/issues/(\d+)", lambda r: issue_one(r, False))
+    self.on("PATCH", R + r"/issues/(\d+)", issue_edit)
+    self.on("POST", R + r"/issues/(\d+)/comments", comment)
+    self.on("GET", R + r"/releases", rel_list)
+    self.on("POST", R + r"/releases", rel_new)
+    self.on("GET", R + r"/releases/tags/(.+)", rel_tag)
+    self.on("GET", R + r"/actions/runs", runs)
+    self.on("GET", R + r"/actions/runs/(\d+)", run_one)
+    self.on("GET", R + r"/actions/runs/(\d+)/jobs", jobs)
+    self.on("GET", R + r"/actions/workflows", workflows)
+    self.on("POST", R + r"/merge-upstream", sync)
+    self.on("GET", r"/api/search/repositories", search)
+    self.on("GET", R, one)
+
+
+FakeGitHub._model = _model  # type: ignore[attr-defined]

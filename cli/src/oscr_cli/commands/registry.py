@@ -80,8 +80,12 @@ def maps_of(ctx: Any, repo: RepoName) -> list[dict[str, Any]]:
 
 
 def _paper_link(ctx: Any, args: argparse.Namespace) -> int:
-    doi = normal_doi(args.doi)
-    repo = ctx.repo()
+    return link_paper(ctx, normal_doi(args.doi), ctx.repo(), no_browser=args.no_browser)
+
+
+def link_paper(ctx: Any, doi: str, repo: RepoName, *, no_browser: bool = False) -> int:
+    """The site's own write path for a paper link (D01-7): its page opened, pre-filled; the person confirms
+    and authorizes the one action on GitHub."""
     if repo.host != ctx.config.github_host:
         raise UsageError(f"{repo.host} is not GitHub: the registry links GitHub repositories (D00-16).")
     view = layer(ctx, repo)
@@ -99,7 +103,7 @@ def _paper_link(ctx: Any, args: argparse.Namespace) -> int:
     ctx.io.say(what)
     ctx.io.say("Confirm there, then GitHub asks you to authorize this one action: the registry never writes as you without it, "
                "and GitHub checks that you administer or maintain the repository.")
-    if args.no_browser:
+    if no_browser:
         ctx.io.print(url)
     else:
         ctx.browse(url)

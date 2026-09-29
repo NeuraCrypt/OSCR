@@ -158,7 +158,8 @@ def test_no_module_of_the_tool_runs_code_it_reads():
             assert bad not in text, f"{f.name}: {bad}"
         assert not re.search(r"(?<![.\w])(eval|exec|compile|__import__)\(", text), f.name
         for m in re.finditer(r"subprocess\.run\(\[([^\]]*)", text):
-            assert m.group(1).split(",")[0].strip() in ('"git"', '"security"', "self.program", "*shlex.split(setting)", '"security", "-i"'), f"{f.name}: {m.group(0)}"
+            # git; the keychain's own programs; and the person's own browser and editor, from their settings.
+            assert m.group(1).split(",")[0].strip() in ('"git"', '"security"', "self.program", "*shlex.split(setting)", "*shlex.split(cmd)"), f"{f.name}: {m.group(0)}"
 
 
 def test_cite(run, clone, site):
@@ -176,7 +177,7 @@ def test_cite(run, clone, site):
     r = run("cite", "--swhid", "--json", "swhid", cwd=clone)
     head = git(clone, "rev-parse", "HEAD").strip()
     assert json.loads(r.out)["swhid"]["revision"] == f"swh:1:rev:{head};origin=https://github.com/oscr-fixture/eeg-analysis"
-    gh.on("GET", "/api/repos/oscr-fixture/eeg-analysis/releases/tags/v1.2.0", lambda req: (200, {"tag_name": "v1.2.0", "body": "[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.777.svg)](https://doi.org/10.5281/zenodo.777)"}))
+    gh.on("GET", "/api/repos/oscr-fixture/eeg-analysis/releases/tags/v1.2.0", lambda req: (200, {"tag_name": "v1.2.0", "body": "[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.777.svg)](https://doi.org/10.5281/zenodo.777)"}), first=True)
     r = run("cite", "--release", "v1.2.0", "--format", "apa", cwd=clone)
     assert r.code == 0, r.err
     assert r.out.strip() == "Lovelace, A. (n.d.). eeg-analysis (Version 1.2.0) [Computer software]. https://doi.org/10.5281/zenodo.777"
