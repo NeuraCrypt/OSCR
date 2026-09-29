@@ -186,7 +186,7 @@ const toc = [
     <li>
       <h3>The Code ↔ Paper reader and its tracing maps</h3>
       <p>
-        For a paper whose code was read, the harvester pairs paragraphs of the paper with lines of the code (method
+        For a paper whose code was read, the harvester pairs paragraphs of the paper with lines of the code (method{" "}
         <code>lexical-v1</code>): both are reduced to technical terms — word stems, identifiers, constants, tool names,
         figure numbers — and a pair is kept only when several rare terms agree, so that a shared common word counts for
         nothing. A wrong highlight costs the reader more than a missing one. The <a href="/help/reader/">reader</a> puts
@@ -209,7 +209,7 @@ const toc = [
       <h3>A DOI, for validated maps only</h3>
       <p>
         A validated map is deposited on Zenodo, the free repository run by CERN, and receives a DOI. The DOI is on the
-        map — its links and metadata — never on the authors' code, which stays in their repository. The record is
+        map — its links and metadata — never on the authors' code, which stays in their repository. The record is{" "}
         <code>IsSupplementTo</code> the paper and <code>References</code> the code at the validated commit; its creators
         are the validating author, with their ORCID iD, and the platform. A map the machine proposed never receives a
         DOI (<a href="/policies/doi/">the DOI policy</a>).
@@ -301,8 +301,8 @@ const toc = [
     {SITE_NAME} is run by one independent operator{OPERATOR_NAME ? `, ${OPERATOR_NAME}` : ""}, who develops it, runs
     its harvester and decides what a machine cannot. No institution, company, publisher or funder is behind it,
     and it is affiliated with none of the services it reads or publishes to (Europe PMC, Crossref, DataCite, OpenAlex,
-    Zenodo, Hugging Face, Cloudflare, ORCID, GitHub, Google). Its source code is public under the Apache-2.0 licence:
-    <a href={SOURCE_URL}>{SOURCE_URL.replace(/^https:\/\//, "")}</a>. The operator's name and address are given on the
+    Zenodo, Hugging Face, Cloudflare, ORCID, GitHub, Google). Its source code is public under the Apache-2.0 licence:{" "}
+    <a href={SOURCE_URL}>{SOURCE_URL.replace(/^https:\/\//, "")}</a>. The operator's name and address are given on the{" "}
     <a href="/privacy/#controller">privacy page</a>.
   </p>
 
@@ -404,7 +404,7 @@ const toc = [
   <h2 id="contact">Feedback and contact</h2>
   <p>{SITE_NAME} has no email address, on purpose. To reach the operator:</p>
   <ul>
-    <li>about a paper's record — a missing or wrong link, authorship, a map — use the paper's
+    <li>about a paper's record — a missing or wrong link, authorship, a map — use the paper's{" "}
       <a href="/help/correct/">Contribute section</a>, signed in;</li>
     <li>to ask for something to be removed, the <a href="/help/removal/">removal request</a>;</li>
     <li>to add a paper, <a href="/submit/">submit it</a>;</li>

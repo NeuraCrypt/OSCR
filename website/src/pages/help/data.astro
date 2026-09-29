@@ -54,7 +54,7 @@ const toc = [
   </p>
   <dl class="terms">
     <dt><code>blocks/NNNNN.parquet</code></dt>
-    <dd>One row per unique file: <code>sha256</code> (of its text), <code>language</code>, <code>size</code>,
+    <dd>One row per unique file: <code>sha256</code> (of its text), <code>language</code>, <code>size</code>,{" "}
       <code>lines</code>, <code>content</code>. Rows sorted by language then size, 64 to a row group, pages compressed
       with zstd. A published block never changes: new files go into new blocks.</dd>
     <dt><code>manifests/&lt;xx&gt;/&lt;repository&gt;.json</code></dt>
@@ -78,7 +78,7 @@ SELECT sha256, lines FROM 'hf://datasets/OpenScientificCodeRegistry/Database/blo
 WHERE language = 'Python' ORDER BY lines DESC LIMIT 10;`}</pre>
   <p>
     To find a repository's files, read its manifest (plain JSON), then the rows it names. The dataset's card also declares
-    the blocks to Hugging Face's viewer and to the <code>datasets</code> library, as the configuration
+    the blocks to Hugging Face's viewer and to the <code>datasets</code> library, as the configuration{" "}
     <code>scripts</code>.
   </p>
 
