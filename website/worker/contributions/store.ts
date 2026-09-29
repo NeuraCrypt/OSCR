@@ -82,6 +82,8 @@ export interface AuthorClaimRow {
   message: string;
   created_at: number;
   decided_at: number | null;
+  /** 'rules' when the automatic moderator decided it (oscr/moderation.py), 'owner', 'system'. */
+  decided_by?: string;
 }
 
 /** The job that tells the Mac about a request: 1 row written (the table has no index). */
@@ -122,7 +124,9 @@ export const lists = {
 export const ofPaper = {
   claim: (db: D1Database, userId: string, paperId: string): D1PreparedStatement =>
     db
-      .prepare("SELECT id, status, evidence, message, created_at, decided_at FROM claims WHERE user_id = ? AND kind = 'author' AND paper_id = ? AND repo = ''")
+      .prepare(
+        "SELECT id, status, evidence, message, created_at, decided_at, decided_by FROM claims WHERE user_id = ? AND kind = 'author' AND paper_id = ? AND repo = ''",
+      )
       .bind(userId, paperId),
   validation: (db: D1Database, userId: string, paperId: string): D1PreparedStatement =>
     db.prepare(`SELECT ${VALIDATION} FROM validations WHERE user_id = ? AND paper_id = ? ORDER BY id DESC LIMIT 1`).bind(userId, paperId),
@@ -293,6 +297,25 @@ export async function createReport(db: D1Database, a: ReportFields & { userId: s
   return Number(inserted?.meta?.last_row_id ?? 0);
 }
 
+/** A refused request asked again, in a way the moderator's rules decide at once (lib/moderation.ts,
+ *  mayAskAgain): open again, everything it says replaced, its time now (its 30 days and the day's
+ *  limit count from it). 2 rows written (the row, the job). Returns false when it was not refused. */
+export async function reopenReport(db: D1Database, a: ReportFields & { id: number; userId: string; now: number }): Promise<boolean> {
+  const [updated] = await db.batch([
+    db
+      .prepare(
+        "UPDATE reports SET reason = ?, details = ?, requester_role = ?, author_verified = ?, scope = ?, scope_repo = ?, scope_path = ?, " +
+          "evidence_url = ?, confirmed = 1, status = 'open', message = '', decided_at = NULL, updated_at = NULL, created_at = ? " +
+          "WHERE id = ? AND user_id = ? AND status = 'rejected'",
+      )
+      .bind(a.reason, a.details, a.role, a.authorVerified ? 1 : 0, a.scope, a.repo, a.path, a.evidenceUrl, a.now, a.id, a.userId),
+    db
+      .prepare("INSERT INTO jobs (kind, ref, user_id, created_at) SELECT 'report', id, user_id, ? FROM reports WHERE id = ? AND user_id = ? AND status = 'open' AND created_at = ?")
+      .bind(a.now, a.id, a.userId, a.now),
+  ]);
+  return (updated?.meta?.changes ?? 0) > 0;
+}
+
 /** An open request completed: everything it says replaced, and when. 2 rows written (the row, the
  *  job). Returns false when it was decided meanwhile. */
 export async function updateReport(db: D1Database, a: ReportFields & { id: number; userId: string; now: number }): Promise<boolean> {
@@ -317,11 +340,26 @@ export function authorClaimOf(db: D1Database, userId: string, paperId: string): 
   return ofPaper.claim(db, userId, paperId).first<AuthorClaimRow>();
 }
 
-/** A claim waiting for the owner, and its job. New: 3 rows written (the row, its entry in
- *  claims_user_target, the job); asked again while pending: 2 (the evidence replaced, the job); a
- *  decided claim is left as it is. Returns the claim as it now is. */
+/** A claim waiting for the rules (oscr/moderation.py) or the owner, and its job. New: 3 rows written
+ *  (the row, its entry in claims_user_target, the job); asked again while pending: 2 (the evidence
+ *  replaced, the job); closed by the rules (nothing proved it in 30 days): asked again, 2 (the row
+ *  pending again, its time now, so that its 30 days start again; the job); decided otherwise: left as
+ *  it is. Returns the claim as it now is. */
 export async function pendingAuthorClaim(db: D1Database, userId: string, paperId: string, evidence: unknown, now: number): Promise<AuthorClaimRow> {
   const before = await authorClaimOf(db, userId, paperId);
+  if (before && before.status === "rejected" && before.decided_by === "rules") {
+    const [updated] = await db.batch([
+      db
+        .prepare(
+          "UPDATE claims SET status = 'pending', evidence = ?, message = '', decided_by = '', decided_at = NULL, created_at = ? " +
+            "WHERE id = ? AND status = 'rejected' AND decided_by = 'rules'",
+        )
+        .bind(JSON.stringify(evidence), now, before.id),
+      db.prepare("INSERT INTO jobs (kind, ref, user_id, created_at) SELECT 'claim', id, user_id, ? FROM claims WHERE id = ? AND status = 'pending'").bind(now, before.id),
+    ]);
+    if ((updated?.meta?.changes ?? 0) > 0) return { ...before, status: "pending", evidence: JSON.stringify(evidence), message: "", created_at: now, decided_at: null, decided_by: "" };
+    return (await authorClaimOf(db, userId, paperId)) ?? before;
+  }
   if (before && before.status !== "pending") return before;
   if (before) {
     await db.batch([

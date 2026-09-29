@@ -747,18 +747,20 @@ def _settled(runner: Runner, kinds: tuple[str, ...], ref: int, message: str) -> 
 
 def decide_claim(runner: Runner, claim_id: int, accept: bool, message: str = "") -> str:
     """A pending claim decided by the owner: verified (the role in D1, granted by the owner:
-    the automatic verification never takes it back) or rejected."""
+    the automatic verification never takes it back) or rejected. One the moderator's rules closed
+    may still be accepted: the owner overrides them."""
     rows = runner.d1.query(f"SELECT * FROM claims WHERE id = {int(claim_id)}")
     if not rows:
         raise SystemExit(f"no claim {claim_id} in the {runner.target} database")
     c = rows[0]
-    if c["status"] != "pending":
+    overridden = accept and c["status"] == "rejected" and c.get("decided_by") == moderation.RULES
+    if c["status"] != "pending" and not overridden:
         _settled(runner, ("claim",), claim_id, f"already {c['status']}")
         return f"claim {claim_id} is already {c['status']}"
     t = _stamp(runner)
     said = literal(words(message))
     sql = [f"UPDATE claims SET status = {literal('verified' if accept else 'rejected')}, decided_by = 'owner', "
-           f"decided_at = {t}, message = {said} WHERE id = {int(claim_id)} AND status = 'pending'"]
+           f"decided_at = {t}, message = {said} WHERE id = {int(claim_id)} AND status = {literal(c['status'])}"]
     if accept:
         role, kind, scope = ("verified_author", "paper", c["paper_id"]) if c["kind"] == "author" else ("maintainer", "repo", c["repo"])
         sql.append(f"INSERT OR IGNORE INTO roles (user_id, role, scope_kind, scope_id, granted_by, granted_at) VALUES "
@@ -801,7 +803,10 @@ def decide_report(runner: Runner, report_id: int, accept: bool, message: str = "
     if not rows:
         raise SystemExit(f"no request {report_id} in the {runner.target} database")
     r = rows[0]
-    if r["status"] != "open":
+    # A request the moderator's rules closed (no one reviewed it in time) may still be accepted.
+    overridden = accept and r["status"] == "rejected" and moderation.decided_by_rules(runner.state, runner.target, "report",
+                                                                                     int(report_id))
+    if r["status"] != "open" and not overridden:
         _settled(runner, ("report",), report_id, f"already {r['status']}")
         return f"request {report_id} is already {r['status']}"
     t = _stamp(runner)
@@ -812,7 +817,8 @@ def decide_report(runner: Runner, report_id: int, accept: bool, message: str = "
         if not known:
             runner.report(f"  {r['target_id']} is not in this database: nothing to withdraw on the Mac")
     _write(runner, [f"UPDATE reports SET status = {literal('accepted' if accept else 'rejected')}, "
-                    f"message = {literal(words(message))}, decided_at = {t} WHERE id = {int(report_id)} AND status = 'open'"])
+                    f"message = {literal(words(message))}, decided_at = {t} WHERE id = {int(report_id)} "
+                    f"AND status = {literal(r['status'])}"])
     _settled(runner, ("report",), report_id, "accepted" if accept else "rejected")
     moderation.unwait(runner.state, runner.target, "report", int(report_id))
     moderation.log(runner.state, runner.target, "report", int(report_id), "owner", "accepted" if accept else "rejected",
@@ -831,12 +837,14 @@ def _target(d: dict[str, Any]) -> str:
 
 def decide_submission(runner: Runner, submission_id: int, accept: bool, message: str = "") -> str:
     """A draft published by someone who is not among the paper's authors: the owner publishes it
-    or refuses it."""
+    or refuses it — one the moderator's rules refused included (the owner overrides them)."""
     rows = runner.d1.query(f"SELECT * FROM submissions WHERE id = {int(submission_id)}")
     if not rows:
         raise SystemExit(f"no submission {submission_id} in the {runner.target} database")
     s = rows[0]
-    if s["status"] != "moderation":
+    overridden = accept and s["status"] == "refused" and moderation.decided_by_rules(runner.state, runner.target, "submission",
+                                                                                    int(submission_id))
+    if s["status"] != "moderation" and not overridden:
         _settled(runner, ("publish",), submission_id, f"already {s['status']}")
         return f"submission {submission_id} is {s['status']}, not waiting for the owner"
     t = _stamp(runner)
@@ -847,7 +855,7 @@ def decide_submission(runner: Runner, submission_id: int, accept: bool, message:
     else:
         status, said = "refused", message or "The owner did not publish this submission."
     _write(runner, [f"UPDATE submissions SET status = {literal(status)}, message = {literal(words(said))}, "
-                    f"updated_at = {t} WHERE id = {int(submission_id)} AND status = 'moderation'"])
+                    f"updated_at = {t} WHERE id = {int(submission_id)} AND status = {literal(s['status'])}"])
     _settled(runner, ("publish",), submission_id, status)
     moderation.log(runner.state, runner.target, "submission", int(submission_id), "owner", status, user_id=s["user_id"],
                    paper=s["paper_id"], detail={"message": message}, now=runner.now())

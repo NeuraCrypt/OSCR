@@ -471,3 +471,36 @@ def test_corrections_and_validations_are_still_only_verified_peoples(w):
     w.poll()
     assert w.row("edits", eid)["status"] == "applied"
     assert rules(w) == []
+
+
+# ---------------------------------------------------------------------------------------
+# The owner overrides the rules.
+
+def test_the_owner_may_accept_what_the_rules_refused_or_closed(w):
+    # A submission the rules refused: published by the owner.
+    sid = _moderated(w)
+    w.poll()
+    assert w.row("submissions", sid)["status"] == "refused"
+    assert jobs.decide_submission(w.runner, sid, True, "We checked it with the authors.").endswith("published")
+    assert w.row("submissions", sid)["status"] == "published"
+    # A whole record's removal the rules closed after 30 days: accepted by the owner.
+    rid = ask(w)
+    w.poll()
+    w.clock.t = T + 31 * DAY
+    w.poll()
+    assert w.row("reports", rid)["status"] == "rejected"
+    assert "leaves the site at the next nightly" in jobs.decide_report(w.runner, rid, True, "Removed after review.")
+    assert (w.row("reports", rid)["status"], withdrawn(w, P1) != "") == ("accepted", True)
+    # A claim the rules closed: verified by the owner, a role the sign-in's sync never takes back.
+    cid = _claim(w)
+    w.poll()
+    w.clock.t = T + 62 * DAY
+    w.poll()
+    assert w.row("claims", cid)["decided_by"] == "rules"
+    jobs.decide_claim(w.runner, cid, True, "Welcome.")
+    assert (w.row("claims", cid)["status"], w.row("claims", cid)["decided_by"]) == ("verified", "owner")
+    # What the owner refused stays refused: the owner's own no is not overridden by these commands.
+    other = ask(w, user="u_s3")
+    w.poll()
+    jobs.decide_report(w.runner, other, False, "The record is correct.")
+    assert jobs.decide_report(w.runner, other, True).endswith("is already rejected")

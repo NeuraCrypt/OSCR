@@ -21,13 +21,14 @@ const choice = (group: string, value: string) => `${group}-${value.replace(/_/g,
 ---
 <Base
   title="Request a removal"
-  description="Ask for a paper's record, the copies of its authors' scripts or its tracing map to be removed: signed in, justified, reviewed by a moderator."
+  description="Ask for a paper's record, the copies of its authors' scripts or its tracing map to be removed: signed in, justified, decided by published rules."
   breadcrumb={[{ text: "Request a removal" }]}
 >
   <h1>Request a removal</h1>
   <p class="summary">
-    Ask {SITE_NAME} to remove a paper's record, the copies it keeps of the authors' scripts, or the paper's tracing map. A
-    moderator reviews every request: nothing is removed before.
+    Ask {SITE_NAME} to remove a paper's record, the copies it keeps of the authors' scripts (or their display from their
+    source), or the paper's tracing map. Published rules decide every request, and the operator reviews what they cannot
+    decide: there is no human moderator on duty at the moment (<a href="/policies/moderation/">how requests are decided</a>).
   </p>
   <noscript><p class="warning">This page runs in your browser: it needs JavaScript.</p></noscript>
   <p id="removal-message" role="status" aria-live="polite"></p>
@@ -46,8 +47,9 @@ const choice = (group: string, value: string) => `${group}-${value.replace(/_/g,
   <section id="removal-signed-out" aria-labelledby="removal-sign-in-title" hidden>
     <h2 id="removal-sign-in-title">Sign in to request its removal</h2>
     <p>
-      A removal request is made signed in: the moderator's answer comes back to this page and to your account page, with no
-      email address asked for or sent.
+      A removal request is made signed in: the decision comes back to this page and to your account page, with no email
+      address asked for or sent. Signed in with the ORCID iD the paper lists, you are recognized as its author, and your
+      request is applied without waiting.
     </p>
     <ul id="removal-sign-in">
       {providers.map((p) => (
@@ -152,9 +154,10 @@ const choice = (group: string, value: string) => `${group}-${value.replace(/_/g,
           <li>
             <input type="checkbox" id="removal-confirm-review" name="confirm_review" />
             <label for="removal-confirm-review">
-              I understand that a moderator reviews every request, and what can follow: the request may be accepted, in whole
-              or in part, or refused, with the moderator's words; accepted, the removal takes effect at the next nightly
-              publication.
+              I understand how requests are decided (<a href="/policies/moderation/">the moderation policy</a>) and what can
+              follow: the rules may apply the request at once, hide copies at once pending review, or leave it to the
+              operator, who may accept it, in whole or in part, refuse it or reverse what the rules did, with their words;
+              accepted, the removal takes effect at the next nightly publication.
             </label>
           </li>
         </ul>
@@ -183,21 +186,29 @@ const choice = (group: string, value: string) => `${group}-${value.replace(/_/g,
 
   <h2>What happens to a request</h2>
   <ol>
-    <li>A moderator reads it, with the evidence you give. An author's request is marked verified when your ORCID iD is
-      among the paper's authors in its metadata.</li>
+    <li>
+      {SITE_NAME}'s machine reads it within about ten minutes and applies its published rules
+      (<a href="/policies/moderation/">the moderation policy</a>): a request from a verified author of the paper (your ORCID
+      iD among its authors), or from a maintainer of the code it names, is applied without waiting; the copies of the
+      authors' code are hidden at once for copyright or personal data, pending review; any other request waits for the
+      operator, 30 days at most, and nothing is removed meanwhile. There is no human moderator on duty at the moment: a
+      request no one decided in 30 days is closed without removal, and may be asked again in a way the rules decide.
+    </li>
     <li>Accepted, what it names leaves {SITE_NAME} at the next nightly publication, at {NIGHTLY} (the registry's local time):
       its pages, its search, its DOI lookup and its open data. A whole record leaves every page; the copies of the authors'
-      scripts leave, and their links to the source stay; a tracing map leaves with its matches and its validation.</li>
-    <li>Refused, the moderator says why. Either way the decision shows on this page and on{" "}
+      scripts leave, and are no longer shown from their source, and their links to the source stay; a tracing map leaves
+      with its matches and its validation.</li>
+    <li>Refused, the decision says why. Either way it shows on this page and on{" "}
       <a href="/account/#removals">your account page</a>: no email is sent.</li>
   </ol>
 
   <h2>What is kept</h2>
   <ul>
     <li>Your request, with your account: who you are, what you ask to remove and why, your justification and your evidence
-      link, and the moderator's answer.</li>
+      link, the decision and the rule that made it.</li>
     <li>No email address: a justification that holds one is refused.</li>
-    <li>One request per account and record, which you may complete while it is open; ten new requests a day at most.</li>
+    <li>One request per account and record, which you may complete while it is open, and ask again once refused only in a way
+      the rules decide at once; ten requests a day at most.</li>
   </ul>
 
   <script>

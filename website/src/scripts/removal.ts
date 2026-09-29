@@ -4,7 +4,8 @@
 // /api/contributions/paper, only when the browser holds a session: the `__Host-oscr_signed_in` hint
 // cookie); then the request in three steps — the form, checked here with the Worker's own rules; its
 // review, where nothing has been sent yet; "Confirm and send" (POST /api/reports, with the session's
-// CSRF token), and the receipt. Revisited, the page shows the request's state and the moderator's
+// CSRF token), and the receipt: what the registry's rules will do with it (src/lib/moderation.ts).
+// Revisited, the page shows the request's state and the decision's
 // words. Everything is written as text nodes, never as HTML. Like every browser script, it never
 // names the platform: "the registry".
 import {
@@ -32,6 +33,8 @@ type Report = {
   created_at: string | null;
   updated_at: string | null;
   decided_at: string | null;
+  /** While it is open: what the moderator's rules will do with it, in words (worker's reportJson). */
+  expected?: { rule: string; outcome: string; words: string; deadline: string | null } | null;
 };
 type State = {
   signed_in: boolean;
@@ -200,12 +203,12 @@ function summary(dl: HTMLElement | null, r: Shown, lead: Row[] = []) {
   const items: Row[] = [...lead];
   const paper: Part[] = facts ? [{ href: `/paper/${facts.slug}/`, text: facts.title || facts.id }, facts.doi ? ` (doi:${facts.doi})` : ""] : [target?.id ?? ""];
   items.push(["Paper", paper]);
-  items.push(["You are", [capital(ROLE_WORDS[r.role] ?? r.role), r.role === "author" ? (r.author_verified ? " (verified: your ORCID iD is among its authors)" : " (a moderator checks it)") : ""]]);
+  items.push(["You are", [capital(ROLE_WORDS[r.role] ?? r.role), r.role === "author" ? (r.author_verified ? " (verified: your ORCID iD is among its authors)" : " (not verified: your ORCID iD is not among its authors)") : ""]]);
   items.push(["To remove", [capital(SCOPE_WORDS[r.scope] ?? r.scope), r.scope === "repository" ? `: ${r.repo}` : r.scope === "file" ? `: ${r.path}, in ${r.repo}` : ""]]);
   items.push(["Why", [reasonLabel(r.reason)]]);
   items.push(["Justification", [r.details || "—"], "text"]);
   items.push(["Evidence", [r.evidence_url ? { href: r.evidence_url, text: r.evidence_url } : "none"]]);
-  items.push(["Confirmations", [r.confirmed ? "The information is accurate; a moderator reviews the request." : "not given (a request made before this page)"]]);
+  items.push(["Confirmations", [r.confirmed ? "The information is accurate; you read how requests are decided." : "not given (a request made before this page)"]]);
   dl.replaceChildren(...items.flatMap(([label, parts, cls]) => [element("dt", "", label), element("dd", cls ?? "", ...parts)]));
 }
 
@@ -229,22 +232,23 @@ function removed(r: Pick<Report, "scope" | "repo" | "path">): string {
   return SCOPE_WORDS[r.scope] ?? "what it names";
 }
 
-/** A request's number, dates, status, the moderator's words, and when a decision takes effect. */
+/** A request's number, dates, status, what the rules will do, the decision's words, and when it takes effect. */
 function statusRows(r: Report): Row[] {
   const word = (tone: "ok" | "warning", text: string) => element("span", tone, text);
   const rows: Row[] = [["Request", [`No. ${r.id}`]]];
   rows.push(["Sent", [`${day(r.created_at)}${r.updated_at ? `; completed on ${day(r.updated_at)}` : ""}`]]);
   const nightly = `the nightly publication (${NIGHTLY}, the registry's local time)`;
   if (r.status === "open") {
-    rows.push(["Status", [word("warning", "Open"), ": it waits for a moderator"]]);
-    rows.push(["Takes effect", [`Once a moderator accepts it: at ${nightly} that follows, ${removed(r)} leaves the site.`]]);
+    rows.push(["Status", [word("warning", "Open"), r.expected?.outcome === "review" ? ": it waits for the operator" : ": the registry's rules decide it within minutes"]]);
+    if (r.expected) rows.push(["What happens", [r.expected.words]]);
+    rows.push(["Takes effect", [`Once accepted: at ${nightly} that follows, ${removed(r)} leaves the site.`]]);
   } else if (r.status === "accepted") {
     rows.push(["Status", [word("ok", "Accepted"), ` on ${day(r.decided_at)}`]]);
-    if (r.message) rows.push(["Moderator's words", [`“${r.message}”`], "text"]);
+    if (r.message) rows.push(["The decision's words", [`“${r.message}”`], "text"]);
     rows.push(["Takes effect", [r.scope === "record" && !facts ? "Done: the record has left the site." : `At ${nightly} that follows the decision: ${removed(r)} leaves the site.`]]);
   } else {
     rows.push(["Status", [word("warning", "Refused"), ` on ${day(r.decided_at)}`]]);
-    if (r.message) rows.push(["Moderator's words", [`“${r.message}”`], "text"]);
+    if (r.message) rows.push(["The decision's words", [`“${r.message}”`], "text"]);
   }
   return rows;
 }
@@ -273,14 +277,14 @@ function renderRequest(r: Report) {
   const out = byId("removal-request-state");
   const next = byId("removal-request-next");
   if (r.status === "open") {
-    write(out, "warning", "Your request waits for a moderator.");
+    write(out, "warning", r.expected?.outcome === "review" ? "Your request waits for the operator." : "Your request is being decided by the registry's rules.");
     write(next, "", facts ? "You may complete it below: what you send replaces it, and it keeps its number." : "");
   } else if (r.status === "accepted") {
     write(out, "ok", "Your request was accepted.");
     write(next, "", "");
   } else {
     write(out, "warning", "Your request was refused.");
-    write(next, "", "A decided request is not asked again from the same account.");
+    write(next, "", "It can be asked again as a verified author of the paper, as a maintainer of its code, or for the copies of its code only, for copyright or personal data: the rules decide those at once.");
   }
   summary(byId("removal-request-summary"), r, statusRows(r));
 }
@@ -361,8 +365,8 @@ function prepareForm(f: PaperFacts, before: Report | null) {
   if (correct) correct.href = `/paper/${f.slug}/#contribute`;
   const note = byId("removal-author-note");
   if (state.author) write(note, "ok", "(verified: your ORCID iD is among this paper's authors)");
-  else if (state.user?.orcid) write(note, "muted", "(a moderator checks it: your ORCID iD is not among this paper's authors in its metadata)");
-  else write(note, "muted", "(a moderator checks it; ", { href: "/account/", text: "link your ORCID iD" }, " to be recognized at once)");
+  else if (state.user?.orcid) write(note, "muted", "(not verified: your ORCID iD is not among this paper's authors in its metadata)");
+  else write(note, "muted", "(not verified; ", { href: "/account/", text: "link your ORCID iD" }, " to be recognized at once)");
   if (before) {
     for (const [name, value] of [["role", before.role], ["scope", before.scope], ["reason", before.reason]] as const) {
       for (const r of radios(name)) r.checked = r.value === value;
@@ -467,7 +471,7 @@ byId("removal-send")?.addEventListener("click", async (ev) => {
     byId<HTMLButtonElement>("removal-back")!.disabled = false;
     return refuse("review", "The registry could not be reached: nothing was sent. Check the connection, then confirm again.");
   }
-  const data = (await res.json().catch(() => ({}))) as { status?: string; updated?: boolean; report?: Report; error?: { code: string; message: string; field?: string } };
+  const data = (await res.json().catch(() => ({}))) as { status?: string; updated?: boolean; reopened?: boolean; report?: Report; error?: { code: string; message: string; field?: string } };
   button.disabled = false;
   byId<HTMLButtonElement>("removal-back")!.disabled = false;
   if (!res.ok) {
@@ -488,14 +492,18 @@ byId("removal-send")?.addEventListener("click", async (ev) => {
   const r = data.report;
   reviewed = null;
   write(byId("removal-receipt-title"), "", data.updated ? "Request completed" : "Request received");
-  write(byId("removal-receipt-state"), "ok", data.updated ? "Your request is completed, and keeps its number: a moderator reviews it." : "Your request is sent: a moderator reviews it.");
+  write(
+    byId("removal-receipt-state"),
+    "ok",
+    `${data.updated ? "Your request is completed, and keeps its number." : data.reopened ? "Your request is open again, and keeps its number." : "Your request is sent."} ${r?.expected?.words ?? ""}`.trim(),
+  );
   if (r) summary(byId("removal-receipt-summary"), r, statusRows(r));
   write(
     byId("removal-receipt-next"),
     "",
     "Follow it on this page and on ",
     { href: "/account/#removals", text: "your account page" },
-    ": the moderator's decision and words show on both, and no email is sent. While it is open, you may complete it here.",
+    ": the decision and its words show on both, and no email is sent. While it is open, you may complete it here.",
   );
   show("removal-request", false);
   step("receipt");

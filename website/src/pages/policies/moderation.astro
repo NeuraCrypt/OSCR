@@ -1,0 +1,141 @@
+---
+// The public moderation policy (decided 2026-09-29): there is no human moderator on duty, so what
+// readers ask is decided by published rules, in the safe direction, and nothing waits forever. The
+// rules it states are the code's: oscr/moderation.py (the Mac, which decides), src/lib/moderation.ts
+// (the base rules, which the site tells the requester; both read tests/fixtures/moderation_rules.json),
+// the Worker's own checks (worker/contributions/). science.css only.
+import Base from "../../layouts/Base.astro";
+import { SITE_NAME } from "../../config";
+import { CAMPAIGN, CAMPAIGN_DAYS, HIDE_PER_ACCOUNT, HIDE_PER_DAY, POLL_MINUTES, REVIEW_DAYS } from "../../lib/moderation";
+import { NIGHTLY } from "../../lib/removal";
+
+const ISSUES = "https://github.com/yannbellec/Open-Scientific-Code-Registry-OSCR-/issues";
+---
+<Base
+  title="How requests are decided"
+  description={`How ${SITE_NAME} decides removal requests, submissions and claims: published rules, what waits for the operator and for how long, how to appeal. There is currently no human moderator on duty.`}
+  breadcrumb={[{ text: "Policies" }, { text: "Moderation" }]}
+>
+  <h1>How requests are decided</h1>
+  <p class="summary">
+    <strong>There is currently no human moderator on duty.</strong> What readers ask of {SITE_NAME} — to remove something,
+    to add a paper's code, to be recognized as a paper's author — is decided by the published rules below, applied by
+    {" "}{SITE_NAME}'s own machine. The rules lean the safe way: hiding is automatic when in doubt, and publishing needs a
+    verified identity or checks that pass. The operator, who runs {SITE_NAME}, reviews what the rules cannot decide when
+    available, and can reverse what they did; nothing waits more than {REVIEW_DAYS} days.
+  </p>
+
+  <h2 id="when">When requests are decided</h2>
+  <ul>
+    <li>{SITE_NAME}'s machine reads the new requests about every {POLL_MINUTES} minutes and applies the rules at once. The
+      decision, and its words, show on the request's page and on your account page. No email is sent.</li>
+    <li>What a decision removes or adds reaches the site at its next nightly publication, at {NIGHTLY} (the registry's
+      local time).</li>
+    <li>Every automatic decision is recorded with the rule that made it, so that the operator can check it.</li>
+  </ul>
+
+  <h2 id="removals">Removal requests</h2>
+  <p>
+    A removal request names what to remove: a paper's whole record, the copies of its authors' scripts (or their display
+    from their source: <a href="/policies/code/">the code policy</a>), one repository's, one file's, or its tracing map.
+  </p>
+  <dl class="review">
+    <dt>From a verified author of the paper</dt>
+    <dd>
+      <strong>Applied at once</strong>, whatever it names. You are a verified author when you signed in with the ORCID iD
+      the paper lists among its authors (or your claim of authorship was verified).
+    </dd>
+    <dt>From a maintainer of the code it names</dt>
+    <dd>
+      <strong>Applied at once</strong> for the copies of the repositories you maintain (your own, checked on GitHub: owner,
+      public member of its organization, or contributor).
+    </dd>
+    <dt>Copies of the authors' code, for copyright or personal data, from anyone</dt>
+    <dd>
+      <strong>Hidden at once</strong>, pending the operator's review: the operator may restore what the request did not
+      justify. To prevent abuse, at most {HIDE_PER_ACCOUNT} such requests from one account and {HIDE_PER_DAY} in all are
+      hidden at once in a day; a justification sent with {CAMPAIGN} requests or more in {CAMPAIGN_DAYS} days, or a request the
+      operator already refused, waits for the operator instead.
+    </dd>
+    <dt>Anything else</dt>
+    <dd>
+      A whole record, a tracing map, or copies for another reason, from someone the registry cannot verify:{" "}
+      <strong>nothing is hidden</strong>; the request <strong>waits for the operator</strong>, {REVIEW_DAYS} days at most.
+      Unreviewed after {REVIEW_DAYS} days, it is <strong>closed without removal</strong>, with how to ask again. A record is
+      built from the paper's own public metadata and links: removing it on anyone's word would let anyone erase anyone's
+      work, so it takes a verified identity or the operator's decision.
+    </dd>
+  </dl>
+
+  <h2 id="submissions">Submissions of a paper and its code</h2>
+  <dl class="review">
+    <dt>From an author of the paper</dt>
+    <dd><strong>Published</strong> once you publish its draft (your ORCID iD among the paper's authors).</dd>
+    <dt>From anyone else</dt>
+    <dd>
+      <strong>Published</strong> when each code link is shown to be the paper's: the paper itself cites it, or the
+      repository's README cites the paper, or its owner is one of the paper's authors (an author's public ORCID record
+      links to the owner's GitHub account, or the owner's GitHub profile bears an author's full name). Otherwise{" "}
+      <strong>refused</strong>, saying which links and why, and how to ask again. A paper outside neuroscience is refused.
+    </dd>
+    <dt>A draft not published</dt>
+    <dd>Closed after {REVIEW_DAYS} days; it can be corrected and published again from your account page.</dd>
+  </dl>
+
+  <h2 id="claims">Claims</h2>
+  <dl class="review">
+    <dt>That you are a paper's author</dt>
+    <dd>
+      <strong>Verified at once</strong> when the paper lists your ORCID iD among its authors, or when your public ORCID
+      record lists the paper among your works — checked again every day. Otherwise, closed after {REVIEW_DAYS} days with how
+      to claim again.
+    </dd>
+    <dt>That you maintain a repository</dt>
+    <dd>
+      Verified at once when GitHub shows you as its owner, a public member of its organization or a contributor. Other
+      forges cannot be checked automatically: such a claim waits for the operator, {REVIEW_DAYS} days at most, then is closed
+      with how to be checked again.
+    </dd>
+  </dl>
+
+  <h2 id="verified-only">What only verified people can do</h2>
+  <ul>
+    <li><strong>Correct a record's links</strong>: a verified author of the paper, or a maintainer of its code for their
+      own repository. Every correction becomes a new version of the record, which says a verified person made it.</li>
+    <li><strong>Validate a tracing map</strong> and have it deposited on Zenodo: a verified author, with their ORCID iD.</li>
+  </ul>
+
+  <h2 id="text">Free text</h2>
+  <p>
+    No text a reader types appears on a public page: the notes, statements, justifications and evidence links of
+    requests are read by the operator only, and lose any email address. The only name of an account that can become
+    public — the creator of a tracing map, when the paper does not list the validator's ORCID iD — is kept only when it
+    looks like a name (no address, no link). So no automatic text filter is needed, and none is used.
+  </p>
+
+  <h2 id="limits">Limits</h2>
+  <ul>
+    <li>Every request needs an account; per account and per day: 10 removal requests, 10 submissions, 20 corrections, 10
+      validations, 10 claims (and 20 claims waiting at once).</li>
+    <li>One removal request per account and record: complete it while it is open; once refused, it can be asked again only in
+      a way the rules decide at once (as a verified author, as a maintainer, or for the copies only).</li>
+  </ul>
+
+  <h2 id="appeal">How to appeal</h2>
+  <ul>
+    <li>
+      <strong>A request refused or closed by the rules</strong>: ask again in a way the rules decide — sign in with the
+      ORCID iD the paper lists, verify your repository on GitHub from your account page, add the paper to your ORCID record,
+      add the paper's DOI to your repository's README, or ask for the copies only. The operator can also override the rules
+      and accept it.
+    </li>
+    <li>
+      <strong>Something the rules did wrongly</strong> (copies hidden without reason, a submission or a claim accepted by
+      mistake): the operator reviews the automatic decisions, and can reverse any of them.
+    </li>
+    <li>
+      <strong>Anything else</strong>: the project's <a href={ISSUES}>public issue tracker</a> — public, so put no personal
+      data there; for personal data, use the removal request page of the record, whose justification only the operator reads.
+    </li>
+  </ul>
+</Base>

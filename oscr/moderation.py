@@ -198,6 +198,15 @@ def describe_log(items: list[dict[str, Any]]) -> str:
     return "\n".join(out)
 
 
+def decided_by_rules(state: sqlite3.Connection, target: str, kind: str, ref: int) -> bool:
+    """Whether the latest decision on a request was the rules' (not the owner's): the owner may then
+    override it."""
+    ensure_schema(state)
+    r = state.execute("SELECT rule, decision FROM moderation_log WHERE target = ? AND kind = ? AND ref = ? "
+                      "ORDER BY at DESC, rowid DESC LIMIT 1", (target, kind, int(ref))).fetchone()
+    return r is not None and not r["rule"].startswith("owner") and r["decision"] != "review"
+
+
 def wait(state: sqlite3.Connection, target: str, kind: str, ref: int, since: float, rule: str, *,
          due: float | None = None, next_check: float = 0) -> float:
     """The request waits (for the operator, or for its author); the rules close it at `due`

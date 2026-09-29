@@ -59,7 +59,7 @@ import { checkMaintainer, GithubUnavailable } from "./verify.ts";
 
 export type { AccountEnv } from "./types.ts";
 
-/** Claims a user may have waiting for a moderator at once. */
+/** Claims a user may have waiting at once (for a proof, or the operator: oscr/moderation.py). */
 export const MAX_PENDING = 20;
 
 /** The accounts' answer to `request`, or null when its path is not theirs. `env` is the Worker's
@@ -358,10 +358,10 @@ async function maintainer(request: Request, env: AccountEnv, url: URL, t: number
   if (!facts) return problem(404, "unknown_repo", "This repository is not the code of a paper in the registry.", s.cookies);
   if (await hasRole(db, user.id, "maintainer", "repo", repo)) return json({ status: "verified", repo, already: true }, 200, s.cookies);
   if ((await pendingClaims(db, user.id)) >= MAX_PENDING) {
-    return problem(429, "too_many_claims", `You have ${MAX_PENDING} claims waiting for a moderator: please wait for them.`, s.cookies);
+    return problem(429, "too_many_claims", `You have ${MAX_PENDING} claims waiting: please wait until they are decided.`, s.cookies);
   }
   if (facts.host !== "github.com") {
-    // Only GitHub can be checked automatically: the claim waits for a moderator.
+    // Only GitHub can be checked automatically: the claim waits (30 days at most, oscr/moderation.py).
     const claim = await pendingMaintainer(db, user.id, repo, { reason: "not_github", host: facts.host, at: t }, t);
     return json({ status: claim.status, repo, claim: claim.id }, claim.status === "pending" ? 202 : 200, s.cookies);
   }

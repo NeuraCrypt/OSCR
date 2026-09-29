@@ -10,11 +10,12 @@
 #    values only, never real client ids or secrets;
 # 4. tests/account/e2e.ts: sign-ins, linking, verifications, sign-out, D1's count of rows written;
 # 5. tests/contributions/e2e.ts, in three steps with the Mac's job runner between them (`oscr jobs
-#    poll --local`, offline, its deposits on the mock Zenodo sandbox) and the owner's decisions
-#    (`oscr claims accept`, `oscr reports reject`, `oscr submissions accept`);
+#    poll --local`, offline, its deposits on the mock Zenodo sandbox), the moderator's rules
+#    (oscr/moderation.py) and the owner's decisions (`oscr claims accept`, `oscr reports reject`, and
+#    `oscr submissions accept`, which overrides the rules' refusal);
 # 6. the removal request's page in a real browser (tests/contributions/removal-e2e.ts): a headless
 #    Chrome, every address outside this machine blocked, signs in, opens /removal/?paper=…, sends a
-#    request through its review step; the owner accepts it (`oscr reports accept --local`); the page
+#    request through its review step; the rules apply it at the poll (a verified author's); the page
 #    and the account page show it accepted, and the Mac withholds the file's copy. Skipped, and said,
 #    without Chrome (CHROME: its binary). SCREENS=<folder> saves the pages' screenshots there.
 #
@@ -88,6 +89,10 @@ mac() {
 owner_list() {
   (cd "$ROOT" && "$PYTHON" -m oscr --db "$TMP/mac.db" --cache "$TMP/cache" "$1" list --folder "$TMP/community")
 }
+# What the moderator's rules decided (oscr/moderation.py), for the owner's audit.
+owner_log() {
+  (cd "$ROOT" && "$PYTHON" -m oscr --db "$TMP/mac.db" --cache "$TMP/cache" "$1" list --auto-log --folder "$TMP/community")
+}
 export SITE="http://localhost:$SITE_PORT" MOCK JARS="$TMP/jars.json"
 node --experimental-strip-types tests/contributions/e2e.ts ask
 mac jobs poll
@@ -97,7 +102,9 @@ mac claims accept "$CLAIM" --message "Welcome."
 mac reports reject "$REPORT" --message "The record is correct."
 node --experimental-strip-types tests/contributions/e2e.ts answers
 mac jobs poll
-SUBMISSION=$(owner_list submissions | sed -n 's/^submission \([0-9]*\):.*/\1/p' | head -n 1)
+# Offline, nothing ties the submitted link to the paper: the rules refuse it; the owner overrides them.
+SUBMISSION=$(owner_log submissions | sed -n 's/.* submission \([0-9]*\)  submission\.uncorroborated → refused.*/\1/p' | head -n 1)
+[ -n "$SUBMISSION" ] || { echo "FAIL the rules did not decide the submission"; exit 1; }
 mac submissions accept "$SUBMISSION"
 mac jobs poll
 node --experimental-strip-types tests/contributions/e2e.ts published
@@ -123,9 +130,9 @@ if [ -x "$CHROME" ]; then
   export CDP_PORT REMOVAL_STATE="$TMP/removal.json" SCREENS="${SCREENS:-}"
   node --experimental-strip-types tests/contributions/removal-e2e.ts ask
   mac jobs poll
-  REMOVAL=$(owner_list reports | sed -n 's/^request \([0-9]*\): remove the copy of one file .*/\1/p' | head -n 1)
-  [ -n "$REMOVAL" ] || { echo "FAIL the removal request is not in the owner's list"; exit 1; }
-  mac reports accept "$REMOVAL" --message "The file's copy is withheld."
+  # A verified author's request: the rules apply it at the poll, and log it for the owner.
+  REMOVAL=$(owner_log reports | sed -n 's/.* report \([0-9]*\)  report\.verified_author → accepted.*/\1/p' | head -n 1)
+  [ -n "$REMOVAL" ] || { echo "FAIL the rules did not apply the verified author's removal request"; exit 1; }
   # What the next nightly publishes: the file listed, its text withheld; the rest of the code kept.
   (cd "$ROOT" && "$PYTHON" - "$TMP/mac.db" <<'PY'
 import sqlite3, sys

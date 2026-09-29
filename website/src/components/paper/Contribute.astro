@@ -84,8 +84,9 @@ const digest = map?.digest ?? "";
       <p id="claim-state"></p>
       <form id="claim-form" method="post" action="/api/claims" hidden>
         <p>
-          Your ORCID iD is not among this paper's authors in its metadata: say why you are one of them, and a moderator
-          looks at your claim.
+          Your ORCID iD is not among this paper's authors in its metadata: say why you are one of them. The registry's rules
+          verify the claim as soon as your public ORCID record lists this paper (checked each day, 30 days at most;{" "}
+          <a href="/policies/moderation/">how claims are decided</a>).
         </p>
         <p><label for="claim-statement">Why you are one of its authors</label><br />
           <textarea id="claim-statement" name="statement" rows="3" maxlength="1000" required></textarea></p>
@@ -190,9 +191,9 @@ const digest = map?.digest ?? "";
 
   <h3 id="removal">Request its removal</h3>
   <p>
-    To ask {SITE_NAME} to remove this record, the copies of its authors' scripts or its tracing map, use
+    To ask {SITE_NAME} to remove this record, the copies of its authors' scripts or its tracing map, use{" "}
     <a href={removalUrl(a.id)}>the removal request page</a>: signed in, you say who you are, what to remove and why, then
-    review and confirm the request. A moderator reviews every request.
+    review and confirm the request. Published rules decide every request (<a href="/policies/moderation/">how</a>).
   </p>
   <p id="removal-state"></p>
 </section>

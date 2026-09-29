@@ -283,7 +283,12 @@ export async function pendingMaintainer(db: D1Database, userId: string, repo: st
     db
       .prepare(
         "INSERT INTO claims (user_id, kind, repo, evidence, status, created_at) VALUES (?, 'maintainer', ?, ?, 'pending', ?) " +
-          "ON CONFLICT (user_id, kind, paper_id, repo) DO UPDATE SET evidence = excluded.evidence WHERE claims.status = 'pending'",
+          // Pending: its evidence replaced. Closed by the moderator's rules (oscr/moderation.py, 30 days
+          // without a proof): pending again, its 30 days from now.
+          "ON CONFLICT (user_id, kind, paper_id, repo) DO UPDATE SET evidence = excluded.evidence, " +
+          "created_at = CASE claims.status WHEN 'rejected' THEN excluded.created_at ELSE claims.created_at END, " +
+          "status = 'pending', decided_by = '', decided_at = NULL, message = '' " +
+          "WHERE claims.status = 'pending' OR (claims.status = 'rejected' AND claims.decided_by = 'rules')",
       )
       .bind(userId, repo, JSON.stringify(evidence), now),
     db

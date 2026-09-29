@@ -98,7 +98,7 @@ function sayClaim(s: State) {
     return;
   }
   const c = s.claim;
-  if (c?.status === "pending") write(out, "warning", "Your claim waits for a moderator.");
+  if (c?.status === "pending") write(out, "warning", "Your claim waits: the registry's rules check your ORCID record each day, 30 days at most.");
   else if (c?.status === "rejected") write(out, "warning", `Your claim was refused${c.message ? `: ${c.message}` : "."}`);
   else if (c?.status === "verified") write(out, "ok", "Your claim was accepted: you are a verified author of this paper.");
   else if (!s.user?.orcid) {
@@ -164,7 +164,7 @@ function sayRemoval(s: State) {
   const r = s.report;
   if (!r) return write(out, "");
   const link = { href: r.removal_url || `/removal/?paper=${encodeURIComponent(paper)}`, text: `Your removal request${r.id ? ` No. ${r.id}` : ""}` };
-  if (r.status === "open") write(out, "warning", link, " waits for a moderator: you may complete it on its page.");
+  if (r.status === "open") write(out, "warning", link, " is open: the registry's rules decide it, or the operator; you may complete it on its page.");
   else if (r.status === "accepted") write(out, "ok", link, " was accepted", r.message ? `: ${r.message}` : ".");
   else write(out, "warning", link, " was refused", r.message ? `: ${r.message}` : ".");
 }
@@ -223,7 +223,7 @@ onSubmit("claim-form", async () => {
   const r = await post("/api/claims", { paper_id: paper, statement: value("claim-statement"), link: value("claim-link") });
   if (!r.ok) return write(byId("claim-state"), "warning", problem(r.data));
   if (r.data.status === "verified") write(byId("claim-state"), "ok", "You are a verified author of this paper.");
-  else write(byId("claim-state"), "warning", "Your claim waits for a moderator: your account page follows it.");
+  else write(byId("claim-state"), "warning", "Your claim waits: the registry's rules verify it once your public ORCID record lists this paper (checked each day, 30 days at most). Your account page follows it.");
   byId("claim-form")?.setAttribute("hidden", "");
 });
 

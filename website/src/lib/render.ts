@@ -481,7 +481,8 @@ function contribute(p: PaperRecord): string {
     `<div id="contribute-signed-in" hidden><p id="contribute-who"></p>` +
     `<div id="claim-block" hidden><h3>Claim this paper</h3><p id="claim-state"></p>` +
     `<form id="claim-form" method="post" action="/api/claims" hidden>` +
-    `<p>Your ORCID iD is not among this paper's authors in its metadata: say why you are one of them, and a moderator looks at your claim.</p>` +
+    `<p>Your ORCID iD is not among this paper's authors in its metadata: say why you are one of them. The registry's rules verify ` +
+    `the claim as soon as your public ORCID record lists this paper (checked each day, 30 days at most; ${a("how claims are decided", "/policies/moderation/")}).</p>` +
     `<p><label for="claim-statement">Why you are one of its authors</label><br>` +
     `<textarea id="claim-statement" name="statement" rows="3" maxlength="1000" required></textarea></p>` +
     `<p><label for="claim-link">A page that shows it (optional)</label><br>` +
@@ -504,7 +505,7 @@ function contribute(p: PaperRecord): string {
     `<h3 id="removal">Request its removal</h3>` +
     `<p>To ask for this record, the copies of its authors' scripts or its tracing map to be removed, use ` +
     `${a("the removal request page", removalUrl(p.id))}: signed in, you say who you are, what to remove and why, then review ` +
-    `and confirm the request. A moderator reviews every request.</p>` +
+    `and confirm the request. Published rules decide every request (${a("how", "/policies/moderation/")}).</p>` +
     `<p id="removal-state"></p>` +
     `</section>`
   );

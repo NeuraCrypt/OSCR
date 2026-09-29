@@ -18,6 +18,7 @@
 // accounts'); every answer is JSON, `Cache-Control: no-store`. The contract, the rows each route
 // writes and the free plan's budget: docs/CONTRIBUTIONS.md.
 
+import { ASK_AGAIN, mayAskAgain, reportPath } from "../../src/lib/moderation.ts";
 import { checkRequest, loadFacts, type PaperFacts } from "../../src/lib/removal.ts";
 import { MAX_PENDING, paperSlug } from "../account/index.ts";
 import { measured, now, readJson, ready, signedIn, staleCookies, type SignedIn } from "../account/guard.ts";
@@ -48,6 +49,7 @@ import {
   latestValidation,
   lists,
   MAX_REVISIONS,
+  reopenReport,
   mySubmission,
   ofPaper,
   pendingAuthorClaim,
@@ -161,7 +163,7 @@ async function mine(request: Request, env: ContributionsEnv, t: number): Promise
       submissions: ((subs?.results ?? []) as unknown as SubmissionRow[]).map(submissionJson),
       edits: ((edits?.results ?? []) as unknown as EditRow[]).map(editJson),
       validations: ((validations?.results ?? []) as unknown as ValidationRow[]).map(validationJson),
-      reports: ((reports?.results ?? []) as unknown as ReportRow[]).map(reportJson),
+      reports: ((reports?.results ?? []) as unknown as ReportRow[]).map((r) => reportJson(r)),
       limits: LIMITS,
     },
     200,
@@ -364,11 +366,12 @@ async function claim(request: Request, env: ContributionsEnv, t: number): Promis
     return problem(400, "bad_link", "The link must be a web address (https://…).", s.cookies);
   }
   if ((await pendingClaims(db, user.id)) >= MAX_PENDING) {
-    return problem(429, "too_many_claims", `You have ${MAX_PENDING} claims waiting for a moderator: please wait for them.`, s.cookies);
+    return problem(429, "too_many_claims", `You have ${MAX_PENDING} claims waiting: please wait until they are decided.`, s.cookies);
   }
   const n = await authorClaimsSince(db, user.id, t - DAY);
   if (n >= LIMITS.claims) return tooMany(s, "claims", n);
-  const evidence = { statement, link, orcid: user.orcid ?? "", github: user.github_login ?? "", at: t };
+  // Which ORCID the iD is from: the moderator's rules look the claimant's record up there (oscr/moderation.py).
+  const evidence = { statement, link, orcid: user.orcid ?? "", github: user.github_login ?? "", orcid_issuer: orcidProof(env) === "orcid" ? "orcid" : "sandbox", at: t };
   const row = await pendingAuthorClaim(db, user.id, paper, evidence, t);
   const answer = { status: row.status, claim: authorClaimJson(row) };
   return json(answer, row.status === "pending" ? 202 : 200, s.cookies);
@@ -538,12 +541,23 @@ async function report(request: Request, env: ContributionsEnv, t: number): Promi
   if (!checked.ok) return json({ error: { code: checked.code, message: checked.message, field: checked.field } }, checked.status, s.cookies);
   const r = checked.request;
   const before = await reportOf(db, user.id, paper);
-  if (before && before.status !== "open") {
-    return json({ error: { code: "already_decided", message: "Your request about this record has been decided." }, report: reportJson(before) }, 409, s.cookies);
+  // The account's roles (one read): a verified author of the paper, a maintainer of the code the
+  // request names. With them, what the moderator's rules will do (lib/moderation.ts).
+  const roles = ((await reads.roles(db, user.id).all<Role>()).results ?? []) as Role[];
+  const isAuthor = roles.some((x) => x.role === "verified_author" && x.scope_kind === "paper" && x.scope_id === paper);
+  const named = r.scope === "scripts" ? facts.repos.map((x) => x.repo) : r.repo ? [r.repo] : [];
+  const maintainer = roles.some((x) => x.role === "maintainer" && x.scope_kind === "repo" && named.includes(x.scope_id));
+  const path = reportPath(r.scope, r.reason, isAuthor, maintainer);
+  if (before && before.status !== "open" && !(before.status === "rejected" && mayAskAgain(path))) {
+    return json(
+      { error: { code: "already_decided", message: before.status === "rejected" ? ASK_AGAIN : "Your request about this record has been accepted." }, report: reportJson(before) },
+      409,
+      s.cookies,
+    );
   }
   // An author's request is verified when the account is a verified author of the paper (its ORCID
-  // iD among the paper's authors, Phase 5; or the owner's decision).
-  const authorVerified = r.role === "author" && (await hasRole(db, user.id, "verified_author", "paper", paper));
+  // iD among the paper's authors, Phase 5; or the owner's or the rules' decision).
+  const authorVerified = r.role === "author" && isAuthor;
   const fields = {
     reason: r.reason,
     details: cleanText(r.details, 2000),
@@ -554,16 +568,24 @@ async function report(request: Request, env: ContributionsEnv, t: number): Promi
     path: r.path,
     evidenceUrl: r.evidence_url,
   };
-  if (before) {
+  if (before?.status === "open") {
     if (!(await updateReport(db, { id: before.id, userId: user.id, ...fields, now: t }))) {
       return problem(409, "already_decided", "Your request about this record has been decided meanwhile: reload the page.", s.cookies);
     }
     const row = (await reportOf(db, user.id, paper)) ?? before;
-    return json({ status: "open", updated: true, report: reportJson(row) }, 200, s.cookies);
+    return json({ status: "open", updated: true, report: reportJson(row, path) }, 200, s.cookies);
   }
+  // A new request, or a refused one asked again in a way the rules decide at once: the day's limit.
   const n = await countSince(db, "reports", user.id, t - DAY);
   if (n >= LIMITS.reports) return tooMany(s, "requests", n);
+  if (before) {
+    if (!(await reopenReport(db, { id: before.id, userId: user.id, ...fields, now: t }))) {
+      return problem(409, "already_decided", "Your request about this record changed meanwhile: reload the page.", s.cookies);
+    }
+    const row = (await reportOf(db, user.id, paper)) ?? before;
+    return json({ status: "open", reopened: true, report: reportJson(row, path) }, 202, s.cookies);
+  }
   await createReport(db, { userId: user.id, paperId: paper, ...fields, now: t });
   const row = await reportOf(db, user.id, paper);
-  return json({ status: "open", report: row ? reportJson(row) : null }, 202, s.cookies);
+  return json({ status: "open", report: row ? reportJson(row, path) : null }, 202, s.cookies);
 }
