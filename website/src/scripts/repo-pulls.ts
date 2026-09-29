@@ -13,6 +13,7 @@
 // Everything is text nodes; like every browser script, it never names the platform.
 
 import { GitBackendError } from "../../worker/forge/errors.ts";
+import { maskEmails } from "../../worker/forge/mask.ts";
 import { codeownersPath, ownerInWords, parseCodeowners } from "../lib/codeowners.ts";
 import { repoPath } from "../lib/forge.ts";
 import { detectLanguage } from "../lib/highlight.ts";
@@ -40,9 +41,8 @@ import {
   summaryInWords,
 } from "../lib/pulls.ts";
 import { type El, h } from "../lib/repo-view.ts";
-import { el } from "./code-editor.ts";
 import { show, toDom } from "./dom.ts";
-import { confirmAction, signedInHint, signInLine, textAt, whoIsHere } from "./pull-common.ts";
+import { confirmAction, el, signedInHint, signInLine, textAt, whoIsHere } from "./pull-common.ts";
 import { type CodeEnv, codeViews, failed, repoRef } from "./repo-code.ts";
 import { type CompareContext, compareExtras } from "./repo-history.ts";
 import { changeTouches } from "./repo-traced.ts";
@@ -249,8 +249,10 @@ async function buildForm(into: HTMLElement, env: CodeEnv, c: CompareContext, sid
   const changed = c.cmp.files.items.map((f) => f.path);
 
   const title = el("input", { type: "text", id: "pr-title", name: "title", maxlength: "256", autocomplete: "off" });
-  title.value = prefill.title ?? defaultTitle(sides.head, c.cmp.commits);
+  // No email address is shown (CLAUDE.md): the prefilled texts are masked; the person writes theirs.
+  title.value = maskEmails(prefill.title ?? defaultTitle(sides.head, c.cmp.commits));
   const text = el("textarea", { id: "pr-body", name: "body", rows: "12", spellcheck: "true" });
+  body = maskEmails(body);
   text.value = body;
   const preview = el("div", { class: "pull-preview", hidden: "" });
   const draft = el("input", { type: "checkbox", id: "pr-draft", name: "draft" });
@@ -299,8 +301,8 @@ async function buildForm(into: HTMLElement, env: CodeEnv, c: CompareContext, sid
     if (!v) return;
     const next = v === "research" ? researchTemplate(papers) : defHead ? await textAt(env, defHead, v, 64 * 1024) : null;
     if (next !== null && (!text.value.trim() || text.value === body || confirm("Replace the description with the template?"))) {
-      text.value = next;
-      body = next;
+      text.value = maskEmails(next);
+      body = text.value;
       refresh();
     }
   });
@@ -320,7 +322,7 @@ async function buildForm(into: HTMLElement, env: CodeEnv, c: CompareContext, sid
   const form = el(
     "section",
     { class: "pull-form", "aria-label": "Open a pull request" },
-    el("h2", {}, `Open a pull request: ${sides.head} → ${sides.base}`),
+    el("h2", {}, maskEmails(`Open a pull request: ${sides.head} → ${sides.base}`)),
     el("p", {}, el("label", { for: "pr-title" }, "Title"), el("br"), title),
     el("p", { class: "pull-form-tools" }, el("label", { for: "pr-template" }, "Description "), templatePick, " ", previewButton),
     text,
@@ -328,15 +330,15 @@ async function buildForm(into: HTMLElement, env: CodeEnv, c: CompareContext, sid
     closing,
     el("p", { class: "explain" }, "Closing keywords (“Fixes #12”) close those issues when it merges into the default branch. Markdown and math are shown as in the registry's viewer."),
     el("fieldset", { class: "choices" }, el("legend", {}, "Options"),
-      el("p", {}, draft, " ", el("label", { for: "pr-draft" }, "A draft: not ready for review, nobody can merge it yet")),
-      sides.fork ? el("p", {}, edits, " ", el("label", { for: "pr-edits" }, "Allow edits by the repository's maintainers (they may push to your fork's branch: applying suggestions, resolving conflicts)")) : null,
+      el("label", { for: "pr-draft" }, draft, " A draft: not ready for review, nobody can merge it yet"),
+      sides.fork ? el("label", { for: "pr-edits" }, edits, " Allow edits by the repository's maintainers (they may push to your fork's branch: applying suggestions, resolving conflicts)") : null,
     ),
     el("p", {}, el("label", { for: "pr-reviewers" }, "Reviewers "), reviewers),
     suggested.length
       ? el("ul", { class: "pull-suggested" }, ...suggested.map((s) =>
           s.login
-            ? el("li", {}, el("button", { type: "button", class: "link", "data-login": s.login }, `Ask ${s.login}`), `: ${s.reasons.join("; ")}`)
-            : el("li", {}, `${s.owner ? ownerInWords(s.owner) : "An owner"}: ${s.reasons.join("; ")} (the registry asks people, not teams or addresses)`),
+            ? el("li", {}, el("button", { type: "button", class: "link", "data-login": s.login }, `Ask ${s.login}`), maskEmails(`: ${s.reasons.join("; ")}`))
+            : el("li", {}, maskEmails(`${s.owner ? ownerInWords(s.owner) : "An owner"}: ${s.reasons.join("; ")} (the registry asks people, not teams or addresses)`)),
         ))
       : null,
     el("div", { class: "pull-summary" }, el("p", { class: "traced-title" }, "The change, in numbers"), ...summary.map((s) => el("p", {}, s))),

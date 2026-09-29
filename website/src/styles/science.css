@@ -774,7 +774,7 @@ section.review-panel fieldset.choices legend { font-weight: bold; }
 p.file-review { margin: 0; padding: .15em .7em; font-size: .88em; border-bottom: 1px solid var(--rule); background: var(--bg-sidebar); }
 table.diff td.num.commentable { cursor: pointer; }
 table.diff td.num.commentable:hover { text-decoration: underline; color: var(--link); }
-table.diff tr.comment-row td { padding: .3em .7em .5em; background: var(--bg); font-family: var(--font); font-size: 1.2em; white-space: normal; border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule); }
+table.diff > tbody > tr.comment-row > td { padding: .3em .7em .5em; background: var(--bg); font-family: var(--font); font-size: 1.2em; white-space: normal; border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule); }
 .comment-box p { margin: .3em 0; }
 .thread.pending { border-left-color: var(--warning); }
 .suggestion { margin: .3em 0; border: 1px solid var(--rule); }

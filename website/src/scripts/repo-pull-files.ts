@@ -20,6 +20,7 @@
 // review comments (1), the maps' shard (a file of this site) and, for maps, the merge base (1) and
 // raw files (not counted). Signed out, the Worker is asked nothing.
 
+import { maskEmails } from "../../worker/forge/mask.ts";
 import type { PayloadChange } from "../../worker/forge/service/act-commit.ts";
 import type * as T from "../../worker/forge/types.ts";
 import { declareCommit } from "../lib/commit-view.ts";
@@ -46,10 +47,9 @@ import {
 } from "../lib/pulls.ts";
 import { type El, h } from "../lib/repo-view.ts";
 import { commitTouches, readerUrl, pairClass, type Touched } from "../lib/traced.ts";
-import { el } from "./code-editor.ts";
 import { show, toDom } from "./dom.ts";
 import { localStore } from "./forge-client.ts";
-import { confirmAction, signInLine, textAt, whoIsHere } from "./pull-common.ts";
+import { confirmAction, el, signInLine, textAt, whoIsHere } from "./pull-common.ts";
 import { type CodeEnv, repoRef } from "./repo-code.ts";
 import { diffOptions, mountFiles } from "./repo-history.ts";
 import { type PullFrame, pullFrame } from "./repo-pull.ts";
@@ -248,7 +248,7 @@ function reviewPanel(st: FilesState, bar: HTMLElement): void {
     const id = `review-${value.toLowerCase()}`;
     const input = el("input", { type: "radio", name: "review-event", id, value });
     input.checked = checked;
-    return el("p", {}, input, " ", el("label", { for: id }, label), el("span", { class: "explain" }, ` ${explain}`));
+    return el("label", { for: id }, input, ` ${label}`, el("span", { class: "explain" }, explain));
   };
   const said = el("div", { "aria-live": "polite" });
   const submit = el("button", { type: "button", class: "primary", id: "review-submit" }, "Submit the review");
@@ -397,7 +397,7 @@ function commentForm(
 ): void {
   row.closest("tbody")?.querySelectorAll("tr.comment-form-row").forEach((r) => r.remove());
   const text = el("textarea", { class: "pull-text", rows: "4", "aria-label": `Your comment on ${file.path}` });
-  const where = el("p", { class: "thread-where" }, `${file.path}, ${start === end ? `line ${end}` : `lines ${start} to ${end}`}${side === "LEFT" ? " of the old version" : ""}`);
+  const where = el("p", { class: "thread-where" }, maskEmails(`${file.path}, ${start === end ? `line ${end}` : `lines ${start} to ${end}`}${side === "LEFT" ? " of the old version" : ""}`));
   const said = el("div", { "aria-live": "polite" });
   const suggest = el("button", { type: "button" }, "Suggest a change");
   suggest.disabled = side === "LEFT";
@@ -405,6 +405,12 @@ function commentForm(
     const lines = await linesOf(st, file.path, start, end);
     if (!lines) {
       said.replaceChildren(el("p", { class: "warning" }, "The file could not be read to start the suggestion from its lines."));
+      return;
+    }
+    // Lines that hold an email address are never shown, so they are not offered for editing: the
+    // suggestion would write the hidden form back.
+    if (lines.some((l) => maskEmails(l) !== l)) {
+      said.replaceChildren(el("p", { class: "warning" }, "These lines hold an email address, which the registry never shows: describe the change in words instead."));
       return;
     }
     text.value = `${text.value ? `${text.value}\n` : ""}${suggestionBody(lines)}`;
@@ -443,7 +449,7 @@ function commentForm(
 }
 
 function pendingNode(st: FilesState, c: PendingComment): HTMLElement {
-  const node = el("div", { class: "thread pending" }, el("p", { class: "thread-where" }, `${threadWhere({ path: c.path, line: c.line, startLine: c.startLine ?? null, side: c.side, outdated: false })} — pending, in this browser`));
+  const node = el("div", { class: "thread pending" }, el("p", { class: "thread-where" }, maskEmails(`${threadWhere({ path: c.path, line: c.line, startLine: c.startLine ?? null, side: c.side, outdated: false })} — pending, in this browser`)));
   void renderMarkdown(c.body, { repo: st.f.env.repo }).then((r) => node.append(toDom(r.el)));
   const drop = el("button", { type: "button", class: "link" }, "Delete it");
   drop.addEventListener("click", () => {

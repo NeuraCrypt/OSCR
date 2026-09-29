@@ -626,3 +626,41 @@ the commit, as the person.
 - **Files added to the site**: none (the page scripts' chunks grow).
 - **The screenshots**: `docs/night-screenshots/phase-03/` (desktop 1280×860, phone 390×844, against
   the fake GitHub and `wrangler dev`, signed in).
+
+### Forks and pull requests (phase 04): reviewed and merged in the registry
+
+Built on the night of 2026-09-29; the details are [PULL_REQUESTS.md](PULL_REQUESTS.md), the
+decisions D04-1 to D04-19 in [DECISIONS.md](DECISIONS.md). Pull requests stay GitHub's objects;
+they are read, reviewed and merged in the registry, and GitHub makes every fork, review, commit and
+merge, as the person.
+
+- **The views** are GitHub's shapes in the `/r/*` shell (D04-2): `pulls` (the list),
+  `pull/<n>[/commits|checks|files|conflicts]`, `pull/new/<branch>`, the comparison's
+  `?expand=1`, `fork`, `forks`. `repo-pulls.ts` registers the list, the creation form (a
+  `compareExtras` hook of `repo-history.ts`) and the dispatcher of `pull/<n>`, whose tabs the other
+  scripts register (`pullTabs`: `repo-pull.ts`, `repo-pull-files.ts`, `repo-conflicts.ts`);
+  `repo-forks.ts` the fork pages and a fork's standing on its home. Their pure parts —
+  `src/lib/pulls.ts`, `codeowners.ts`, `pull-view.ts`, `pull-page.ts`, `conflicts.ts` — are tested
+  in Node.
+- **The actions** (D04-1): ten kinds in `act-pulls.ts` and `act-forks.ts`, each one act as the
+  person, 1 D1 row (`migrations/d1-forge/0003_pulls.sql`); a merge at the head the page showed
+  (D04-4); bulk close and reopen in one authorization (D04-14). A suggestion applied and a conflict
+  resolved are phase 03's `commit` — a resolution with `mergeParent`, two parents (D04-5); without
+  write on the repository GitHub decides, for a maintainer's edit of a fork's branch (D04-6).
+- **Files changed** reuses phase 02's diffs through hooks (`DiffContext.hooks`: the number cells
+  name their side and line; each drawn file is decorated with its conversations and comment forms);
+  the pending review and "Viewed" stay in the reader's browser (D04-8).
+- **The research layer** (D04-10, D04-12, D04-13): the tracing-map links a pull request touches, per
+  file (paper, paragraph, lines), in the creation form, the sidebar and Files changed
+  (`repo-traced.ts` `changeTouches` from the merge base); the paper's verified authors suggested as
+  reviewers and labelled as such (`GET /api/forge/repo` `reviewers`, to the people who manage the
+  code; `migrations/d1-community/0003_roles_by_paper.sql`); the research pull request template.
+- **GitBackend** gains `repos.forks` and `repos.syncFork` (adapter, double, fake, contract).
+- **Safety**: every action declared with the Worker's own rules and sentence (`declarePull`,
+  D01-28); texts shown masked, and no hidden address ever written back (D04-16); the callback keeps
+  `/r/` links only, `?expand=1` the one query allowed (D04-17); comments rendered by the registry's
+  own renderer into view trees, never HTML, never run. `FORGE_OPEN` unset: only the owner may act
+  (the end-to-end run checks another account's fork and comment refused).
+- **Files added to the site**: none (the page scripts' chunks grow).
+- **The screenshots**: `docs/night-screenshots/phase-04/` (desktop 1280×860, phone 390×844, against
+  the fake GitHub and `wrangler dev`, signed in).

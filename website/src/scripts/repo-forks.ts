@@ -13,9 +13,8 @@ import { repoPath } from "../lib/forge.ts";
 import { declarePull, forkRow, forkStatusWords } from "../lib/pull-view.ts";
 import { newPullPath } from "../lib/pulls.ts";
 import { h } from "../lib/repo-view.ts";
-import { el } from "./code-editor.ts";
 import { show } from "./dom.ts";
-import { confirmAction, signedInHint, signInLine, whoIsHere } from "./pull-common.ts";
+import { confirmAction, el, signedInHint, signInLine, whoIsHere } from "./pull-common.ts";
 import { type CodeEnv, codeViews, failed, repoRef } from "./repo-code.ts";
 
 /** Forks listed on one page (GitHub's largest page). */

@@ -12,7 +12,9 @@
 #    Ada;
 # 4. tests/forge-service/e2e.ts: sign-in, create, link, settings, branches, autolinks, webhooks,
 #    FORGE_OPEN closed to another account, with D1's count of rows written; phase 03's web commits:
-#    an edit committed through the fake GitHub, a branch that moved refused, a new branch, a move.
+#    an edit committed through the fake GitHub, a branch that moved refused, a new branch, a move;
+#    phase 04's pull requests: one opened, a line comment with a suggestion, the suggestion applied,
+#    a merge at a head that moved refused, the merge, and a second one refused on its conflict.
 #
 #   cd website && SITE_PORT=8791 MOCK_PORT=9491 FAKE_PORT=9490 sh tests/forge-service/e2e.sh
 #   (KEEP=1 leaves the three servers running, for screenshots; kill them after.)

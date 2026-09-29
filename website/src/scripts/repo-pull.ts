@@ -17,6 +17,7 @@
 // Comments are someone's text: rendered by the registry's own Markdown renderer into view trees,
 // email addresses masked, never HTML, never run.
 
+import { maskEmails } from "../../worker/forge/mask.ts";
 import type * as T from "../../worker/forge/types.ts";
 import { codeownersPath, ownersOfChange, parseCodeowners } from "../lib/codeowners.ts";
 import { commitList } from "../lib/history.ts";
@@ -52,9 +53,8 @@ import {
 } from "../lib/pulls.ts";
 import { type El, h } from "../lib/repo-view.ts";
 import { commitTouches } from "../lib/traced.ts";
-import { el } from "./code-editor.ts";
 import { show, toDom } from "./dom.ts";
-import { confirmAction, signedInHint, signInLine, textAt } from "./pull-common.ts";
+import { confirmAction, el, signedInHint, signInLine, textAt } from "./pull-common.ts";
 import { type CodeEnv, repoRef } from "./repo-code.ts";
 import { pullFailed, pullTabs } from "./repo-pulls.ts";
 import { changeTouches, tracedMaps } from "./repo-traced.ts";
@@ -298,9 +298,10 @@ function mergeBoxView(f: PullFrame, into: HTMLElement, box: MergeBox, commits: r
   const del = el("input", { type: "checkbox", id: "merge-delete" });
   del.checked = env.info.features.deleteBranchOnMerge || headIsHere(f);
   const fill = () => {
+    // GitHub's default message, masked like every text the page shows (the person writes theirs).
     const d = defaultMergeMessage(pr, method.value as T.MergeMethod, commits);
-    title.value = d.title;
-    message.value = d.message;
+    title.value = maskEmails(d.title);
+    message.value = maskEmails(d.message);
     const rebase = method.value === "rebase";
     title.disabled = rebase;
     message.disabled = rebase;
@@ -384,7 +385,7 @@ async function sidebar(f: PullFrame, roles: Roles, reviews: ReturnType<typeof re
   parts.push(suggestedBox, said);
 
   // Labels, assignees.
-  if (pr.labels.length) parts.push(el("h3", {}, "Labels"), el("p", {}, pr.labels.join(", ")));
+  if (pr.labels.length) parts.push(el("h3", {}, "Labels"), el("p", {}, maskEmails(pr.labels.join(", "))));
   if (pr.labels.some((l) => /alters[ -]reported[ -]results/i.test(l))) parts.push(el("p", { class: "warning" }, "Its author or a reviewer says it alters results reported in the paper."));
   if (pr.assignees.length) parts.push(el("h3", {}, "Assignees"), el("p", {}, pr.assignees.join(", ")));
 

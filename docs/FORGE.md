@@ -3,7 +3,9 @@
 The "GitHub" side of OSCR: hosting, versioning and evolving research code, linked to papers.
 Phase 02's code views (the registry's own viewer, history, Markdown, tracing maps, notebooks,
 search) are described in [CODE_NAVIGATION.md](CODE_NAVIGATION.md), phase 03's editor and web commits
-(the action `commit`) in [WEB_EDITING.md](WEB_EDITING.md). This
+(the action `commit`) in [WEB_EDITING.md](WEB_EDITING.md), phase 04's forks and pull requests (ten
+action kinds, the pull request pages, conflicts resolved in the browser) in
+[PULL_REQUESTS.md](PULL_REQUESTS.md). This
 page is the contract the parts of phase 01 build on: the routes, the authorized actions and their
 payloads, the rows each writes, the caps, the switch `FORGE_OPEN`, the pages, the static layer,
 the Mac's jobs and the budget. The decisions behind it: [DECISIONS.md](DECISIONS.md) D00-1 to
@@ -44,7 +46,7 @@ the accounts set up (`COMMUNITY` and `SESSION_KEY`, else 503 `not_configured`).
 | `POST /api/forge/start` | signed in; Origin and CSRF (`account/guard.ts` `signedIn`) | `{kind, repo, branch, expectedHead, digest, back, install?}` (≤ 8 KiB) → `{location}` | reads only (caps) | E1 |
 | `POST /api/forge/act` | signed in; Origin and CSRF | `{code, state, payload}` (payload ≤ 1 MiB) → `{result, sentence}` | the action row + the spec's rows, one batch | E1 |
 | `POST /api/forge/webhook` | GitHub (HMAC-SHA-256, `GITHUB_APP_WEBHOOK_SECRET`); not gated by `FORGE_OPEN` | the delivery (≤ 1 MiB, else 413 before hashing) → `{ok, stored}` | ≤ 2 rows: a one-row change with its delivery row, a two-row change without it (D01-24) | E3 |
-| `GET /api/forge/repo?id=<forge>:<id>` or `?path=<owner>/<name>` | signed in | OSCR's layer for one repository | ~10 read, 0 written | E6 |
+| `GET /api/forge/repo?id=<forge>:<id>` or `?path=<owner>/<name>` | signed in | OSCR's layer for one repository; phase 04: `reviewers`, the linked papers' verified authors by GitHub login, to the people who manage the repository or authored a paper (D04-10) | ~10 read, 0 written | E6 |
 | `GET /api/forge/mine` | signed in | "Your repositories", paged by name, `?mode=`, `?template=` | the account's repositories | E6 |
 
 `start`'s body (`src/lib/forge.ts` `apiStart` builds it):
@@ -130,7 +132,17 @@ The rules every spec keeps:
 | `restore` | act-delete.ts (E4) | known | `{}` | repos 1 + action 1 | – |
 | `delete_final` | act-delete.ts (E4) | known | `{confirmName}` (only in `pending_deletion`) | repos 1 + action 1 | – |
 | `software_heritage` | act-delete.ts (E4) | known | `{}` | job `archive` 1 + action 1 | – |
-| `commit` (phase 03) | act-commit.ts | any public repository the person may write to (or fork: `propose`); start's `branch` and `expectedHead` required | `{branch, base, newBranch?, propose?, message, description?, coAuthors?: [{login, id}], signOff?, changes: [{op: "put", path, text \| base64, executable?} \| {op: "delete", path} \| {op: "move", from, to}]}` (≤ 100 changes, ≤ 1 MiB) | action 1 | – |
+| `commit` (phase 03) | act-commit.ts | any public repository the person may write to (or fork: `propose`); start's `branch` and `expectedHead` required | `{branch, base, newBranch?, propose?, mergeParent?, message, description?, coAuthors?: [{login, id}], signOff?, changes: [{op: "put", path, text \| base64, executable?} \| {op: "delete", path} \| {op: "move", from, to}]}` (≤ 100 changes, ≤ 1 MiB; phase 04: `mergeParent` makes a merge commit with two parents, its changes possibly none; without write and without `propose`, GitHub decides: a maintainer's edit of a fork's pull request branch) | action 1 | – |
+| `fork` (phase 04) | act-forks.ts | the repository forked (any public one) | `{owner?, name?, defaultBranchOnly?}` | action 1 | – |
+| `fork_sync` (phase 04) | act-forks.ts | the fork | `{branch}` (GitHub's merge-upstream; a conflict leaves it) | action 1 | – |
+| `pull_open` (phase 04) | act-pulls.ts | the base repository; start's `branch` = the base | `{base, head ("branch" or "owner:branch"), title, body?, draft?, maintainerCanModify?, reviewers?: logins}` | action 1 | – |
+| `pull_edit` (phase 04) | act-pulls.ts | the base repository | `{number \| numbers (≤ 25, close or reopen only), title?, body?, base?, state?, draft?, reviewers?: {add?, remove?}, autoMerge?: method \| null, headBranch?: "delete" \| "restore"}` | action 1 | – |
+| `pull_review` (phase 04) | act-pulls.ts | the base repository | `{number, commit, event: COMMENT \| APPROVE \| REQUEST_CHANGES, body?, comments?: [{path, line, side?, startLine?, startSide?, body}] (≤ 100)}` (the author may not approve their own) | action 1 | – |
+| `pull_comment` (phase 04) | act-pulls.ts | the base repository | `{number, body, replyTo?: a review comment's id}` | action 1 | – |
+| `pull_thread` (phase 04) | act-pulls.ts | the base repository | `{number, comment: the conversation's first comment id, resolved}` | action 1 | – |
+| `pull_merge` (phase 04) | act-pulls.ts | the base repository; start's `expectedHead` = `head` | `{number, method: merge \| squash \| rebase, head, title?, message?, deleteBranch?}` (a head that moved: 409 offer reload; GitHub's refusal: 409 offer conflicts) | action 1 | – |
+| `pull_update` (phase 04) | act-pulls.ts | the base repository | `{number, head}` | action 1 | – |
+| `pull_revert` (phase 04) | act-pulls.ts | the base repository | `{number}` (a merged one; GitHub opens the revert) | action 1 | – |
 
 A paper is a DOI (`10.…`), stored as `doi:10.…` in lower case, as `oscr_community`'s paper ids.
 Its status is `linked` when the person is a verified author of the paper or a maintainer of the
@@ -139,8 +151,8 @@ authorized actions an account may make in 24 hours.
 
 ## The rows of `oscr_forge`
 
-`migrations/d1-forge/0001_forge.sql` (and `0002_commit.sql`, phase 03: `actions` rebuilt with the
-kind `commit`): WITHOUT ROWID where the key is text, one index in the whole
+`migrations/d1-forge/0001_forge.sql` (and `0002_commit.sql`, phase 03, and `0003_pulls.sql`, phase
+04: `actions` rebuilt with the kinds `commit`, then `fork` … `pull_revert`): WITHOUT ROWID where the key is text, one index in the whole
 database (`repos_path`), Unix seconds, no email, token or Git object column, public repositories
 only.
 
@@ -333,7 +345,12 @@ links repositories through real redirects, changes settings, branches and autoli
 commits (phase 03: an edit, a branch that moved refused, a new branch, a move), sends signed
 webhooks, and checks the rows written and `FORGE_OPEN`'s refusal. The fake also answers GitHub's
 `/users/{login}`, `/licenses/{key}` and `/codes_of_conduct/{key}` (the editor's co-authors and
-templates). A test browser that shows the
+templates), and `…/forks` and `…/merge-upstream` (phase 04). Phase 04's checks: the pull request
+pages are the shell; a pull request opened, a line comment with a suggestion, the suggestion
+applied as a commit on its branch, a merge at a head that moved refused, the merge (squash, the
+branch deleted), a second pull request refused on its conflict, another account's fork and comment
+refused (`FORGE_OPEN`). The fake starts with a CODEOWNERS file, an issue, and Bob's pull request from
+his fork, reviewed with a suggestion (`tests/forge/fake-github-seed.ts` `seedPulls`). A test browser that shows the
 `/r/` pages against the fake needs the Content-Security-Policy bypassed for them (it allows
 GitHub's own hosts, not the fake's): the screenshots in `docs/night-screenshots/phase-01/` were
 taken so, in headless Chrome only.

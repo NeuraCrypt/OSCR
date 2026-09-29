@@ -196,6 +196,67 @@ check("commit: main untouched by the new branch", (await headOf()) === after1);
 const moved = await ada.act("commit", { forge: "github", id }, { branch: "main", base: after1, message: "Move the docs", propose: false, changes: [{ op: "move", from: "docs/methods.md", to: "docs/methods/index.md" }] }, "/r/oscr-fixture/eeg-analysis/", { branch: "main", expectedHead: after1 });
 check("commit: a move through the Git data API", moved.status === 200 && (await rawAt("main", "docs/methods/index.md")).length > 0, moved.data);
 
+// 4c. Phase 04: pull requests through the fake GitHub — open one, comment on a line with a
+// suggestion, apply it (a commit on the pull request's branch), a merge at a head that moved refused,
+// the merge, and a second pull request refused on its conflict.
+for (const page of [
+  "/r/oscr-fixture/eeg-analysis/pulls/",
+  "/r/oscr-fixture/eeg-analysis/pull/2",
+  "/r/oscr-fixture/eeg-analysis/pull/2/files",
+  "/r/oscr-fixture/eeg-analysis/pull/2/conflicts",
+  "/r/oscr-fixture/eeg-analysis/fork/",
+  "/r/oscr-fixture/eeg-analysis/forks/",
+]) {
+  const res = await anon.request(`${SITE}${page}`);
+  check(`GET ${page}: 200, the shell`, res.status === 200 && /text\/html/.test(res.headers.get("Content-Type") ?? ""), res.status);
+}
+{
+  const branchHead = async (b: string) => String(((await (await fetch(`${FAKE}/api/repos/oscr-fixture/eeg-analysis/branches/${b}`)).json()) as Json).commit?.sha ?? "");
+  const start = await headOf();
+  const analysis = await rawAt(start, "analysis.py");
+  const line = "    f, pxx = welch(x, fs=fs, nperseg=2 * fs)";
+  check("pulls: analysis.py has the line the map links", analysis.includes(line));
+  const onBranch = async (branch: string, text: string, message: string) =>
+    ada.act("commit", { forge: "github", id }, { branch: "main", base: start, newBranch: branch, message, propose: false, changes: [{ op: "put", path: "analysis.py", text }] }, "/r/oscr-fixture/eeg-analysis/", { branch: "main", expectedHead: start });
+  const welch = await onBranch("e2e-welch", analysis.replace(line, `${line.slice(0, -1)}, window="hann")`), "Use a Hann window");
+  const clash = await onBranch("e2e-clash", analysis.replace(line, `${line.slice(0, -1)}, window="boxcar")`), "Use a boxcar window");
+  check("pulls: two branches from the same main", welch.status === 200 && clash.status === 200, [welch.data, clash.data]);
+  const open = (head: string, title: string) => ada.act("pull_open", { forge: "github", id }, { base: "main", head, title, body: "Fixes #1." }, "/r/oscr-fixture/eeg-analysis/pulls", { branch: "main" });
+  const a = await open("e2e-welch", "Use a Hann window (e2e)");
+  check("pull_open: a pull request opened as Ada, the action row only", a.status === 200 && Number.isInteger(a.data.result?.number) && a.written === 1, [a.status, a.data, a.written]);
+  check("pull_open: its page in the registry", a.data.result?.page === `/r/oscr-fixture/eeg-analysis/pull/${a.data.result?.number}`, a.data.result?.page);
+  check("pull_open: no token in the answer", !/gh[opsu]_|memtok|token/i.test(JSON.stringify(a.data)), a.data);
+  const b = await open("e2e-clash", "Use a boxcar window (e2e)");
+  check("pull_open: a second one, on the same lines", b.status === 200, b.data);
+  const na = Number(a.data.result?.number);
+  const nb = Number(b.data.result?.number);
+  const headA = await branchHead("e2e-welch");
+  const lineNo = (await rawAt(headA, "analysis.py")).split("\n").findIndex((l) => l.includes('window="hann"')) + 1;
+  const suggestion = `Say which paragraph this follows:\n\`\`\`suggestion\n${line.slice(0, -1)}, window="hann")  # Methods\n\`\`\``;
+  const review = await ada.act("pull_review", { forge: "github", id }, { number: na, commit: headA, event: "COMMENT", comments: [{ path: "analysis.py", line: lineNo, side: "RIGHT", body: suggestion }] }, `/r/oscr-fixture/eeg-analysis/pull/${na}/files`);
+  check("pull_review: a comment on a line, with a suggestion, the action row only", review.status === 200 && review.data.result?.comments === 1 && review.written === 1, [review.status, review.data, review.written]);
+  const comments = (await (await fetch(`${FAKE}/api/repos/oscr-fixture/eeg-analysis/pulls/${na}/comments`)).json()) as Json[];
+  check("pull_review: GitHub holds the comment on its line", comments.length === 1 && comments[0].line === lineNo && /```suggestion/.test(String(comments[0].body)), comments.map((c) => [c.line, c.path]));
+  // The page applies it: the head's file with the suggestion's lines, one commit on the branch.
+  const { applySuggestions, suggestionOf } = await import("../../src/lib/pulls.ts");
+  const sug = suggestionOf({ id: String(comments[0].id), path: "analysis.py", line: lineNo, startLine: null, side: "RIGHT", body: String(comments[0].body), author: { name: "ada-fixture", login: "ada-fixture", id: seed.ada.id } });
+  const applied = sug && typeof sug === "object" ? applySuggestions(await rawAt(headA, "analysis.py"), [sug]) : null;
+  check("suggestion: read and applied in the page", typeof applied === "string" && applied.includes("# Methods"), applied);
+  const commit = await ada.act("commit", { forge: "github", id }, { branch: "e2e-welch", base: headA, message: "Apply suggestion from code review", propose: false, changes: [{ op: "put", path: "analysis.py", text: applied }] }, `/r/oscr-fixture/eeg-analysis/pull/${na}/files`, { branch: "e2e-welch", expectedHead: headA });
+  const headA2 = await branchHead("e2e-welch");
+  check("suggestion: applied as one commit on the pull request's branch", commit.status === 200 && commit.data.result?.sha === headA2 && (await rawAt(headA2, "analysis.py")).includes("# Methods"), commit.data);
+  const stale = await ada.act("pull_merge", { forge: "github", id }, { number: na, method: "squash", head: headA }, `/r/oscr-fixture/eeg-analysis/pull/${na}`, { expectedHead: headA });
+  check("pull_merge: at a head that moved, refused (409, offer reload), nothing written", stale.status === 409 && stale.data.error?.offer === "reload" && stale.written === 0, [stale.status, stale.data, stale.written]);
+  const merged = await ada.act("pull_merge", { forge: "github", id }, { number: na, method: "squash", head: headA2, deleteBranch: true }, `/r/oscr-fixture/eeg-analysis/pull/${na}`, { expectedHead: headA2 });
+  check("pull_merge: squashed by GitHub as Ada, the branch deleted, the action row only", merged.status === 200 && merged.data.result?.sha === (await headOf()) && merged.data.result?.branchDeleted === true && merged.written === 1, [merged.status, merged.data, merged.written]);
+  check("pull_merge: main has the suggestion", (await rawAt("main", "analysis.py")).includes('window="hann")  # Methods'));
+  const headB = await branchHead("e2e-clash");
+  const conflict = await ada.act("pull_merge", { forge: "github", id }, { number: nb, method: "merge", head: headB }, `/r/oscr-fixture/eeg-analysis/pull/${nb}`, { expectedHead: headB });
+  check("pull_merge: a conflict is refused (409, offer conflicts), nothing merged, nothing written", conflict.status === 409 && conflict.data.error?.code === "not_mergeable" && conflict.data.error?.offer === "conflicts" && conflict.written === 0, [conflict.status, conflict.data, conflict.written]);
+  const pr = (await (await fetch(`${FAKE}/api/repos/oscr-fixture/eeg-analysis/pulls/${nb}`)).json()) as Json;
+  check("pull_merge: the conflicting one still open", pr.state === "open" && pr.merged !== true, [pr.state, pr.merged]);
+}
+
 // 5. Webhooks: GitHub's signature, an installation, a push.
 async function deliver(event: string, payload: Json, secret = WEBHOOK_SECRET): Promise<{ status: number; data: Json; written: number }> {
   const body = JSON.stringify(payload);
@@ -242,6 +303,11 @@ check("FORGE_OPEN unset: Bob's action is refused at start (403 forge_closed)", c
 const bobHead = String(((await (await fetch(`${FAKE}/api/repos/oscr-fixture/eeg-analysis/branches/main`)).json()) as Json).commit?.sha ?? "");
 const bobCommit = await bob.act("commit", { forge: "github", id }, { branch: "main", base: bobHead, message: "Bob's", propose: true, changes: [{ op: "put", path: "b.txt", text: "b\n" }] }, "/r/oscr-fixture/eeg-analysis/", { branch: "main", expectedHead: bobHead });
 check("FORGE_OPEN unset: Bob's commit is refused at start too", bobCommit.start === 403 && bobCommit.data.error?.code === "forge_closed", bobCommit.data);
+// Phase 04: Bob's fork and pull request actions are refused at start too (FORGE_OPEN unset).
+const bobFork = await bob.act("fork", { forge: "github", id }, {}, "/r/oscr-fixture/eeg-analysis/fork/");
+check("FORGE_OPEN unset: Bob's fork is refused at start (403 forge_closed)", bobFork.start === 403 && bobFork.data.error?.code === "forge_closed", bobFork.data);
+const bobPull = await bob.act("pull_comment", { forge: "github", id }, { number: 2, body: "Bob's comment" }, "/r/oscr-fixture/eeg-analysis/pull/2");
+check("FORGE_OPEN unset: Bob's comment is refused at start (403 forge_closed)", bobPull.start === 403 && bobPull.data.error?.code === "forge_closed", bobPull.data);
 const bobMine = await bob.request(`${SITE}/api/forge/mine`);
 check("Bob may still read his dashboard", bobMine.status === 200, bobMine.status);
 await post(`${FAKE}/control`, { login: "ada-fixture" });

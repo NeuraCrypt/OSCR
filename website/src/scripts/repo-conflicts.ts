@@ -18,9 +18,8 @@ import { declareCommit } from "../lib/commit-view.ts";
 import { type Choice, commandLine, type FileMerge, hasMarkers, mergeFile, mergePlan, type ResolutionChange, resolutionFits, resolutionMessage, resolveFile, withMarkers } from "../lib/conflicts.ts";
 import { pullPath } from "../lib/pulls.ts";
 import { h } from "../lib/repo-view.ts";
-import { el } from "./code-editor.ts";
 import { show } from "./dom.ts";
-import { confirmAction, signInLine, textAt } from "./pull-common.ts";
+import { confirmAction, el, signInLine, textAt } from "./pull-common.ts";
 import { type CodeEnv, repoRef } from "./repo-code.ts";
 import { pullFrame } from "./repo-pull.ts";
 import { pullFailed, pullTabs } from "./repo-pulls.ts";
@@ -156,7 +155,7 @@ const toNode = (e: ReturnType<typeof h>): Node => {
 /** One file's conflicts: each with its three versions and its choices; or the whole file, edited. */
 function fileSection(m: FileMerge, i: number, choices: (Choice | null)[], whole: Map<number, string>, pr: T.PullRequest, count: () => number): HTMLElement {
   const section = el("section", { class: "file-diff conflict-file", id: `conflict-${i + 1}` });
-  const head = el("header", {}, el("h3", {}, m.path), el("p", {}, `${m.conflicts} ${m.conflicts === 1 ? "conflict" : "conflicts"}`));
+  const head = el("header", {}, el("h3", {}, maskEmails(m.path)), el("p", {}, `${m.conflicts} ${m.conflicts === 1 ? "conflict" : "conflicts"}`));
   const body = el("div", { class: "file-body" });
   let n = 0;
   let stable: string[] = [];
@@ -174,6 +173,9 @@ function fileSection(m: FileMerge, i: number, choices: (Choice | null)[], whole:
     flushStable();
     const index = n++;
     const own = el("textarea", { class: "pull-text", rows: String(Math.min(12, Math.max(3, c.ours.length + c.theirs.length))), "aria-label": "The lines the merge keeps", hidden: "" });
+    // Lines that hold an email address are never shown, so they are not offered for writing by
+    // hand: the merge would write the hidden form back. The sides' own lines stay choosable.
+    const mailed = [...c.ours, ...c.theirs].some((l) => maskEmails(l) !== l);
     own.value = [...c.ours, ...c.theirs].join("\n");
     own.addEventListener("input", () => {
       choices[index] = { lines: own.value.split("\n") };
@@ -181,6 +183,10 @@ function fileSection(m: FileMerge, i: number, choices: (Choice | null)[], whole:
     });
     const radios = el("fieldset", { class: "choices" }, el("legend", {}, `Conflict ${index + 1}`));
     for (const [value, label] of CHOICES) {
+      if (value === "own" && mailed) {
+        radios.append(el("p", { class: "explain" }, "These lines hold an email address, which the registry never shows: keep one side's or both, or write them with git."));
+        continue;
+      }
       const id = `c-${i + 1}-${index + 1}-${value}`;
       const r = el("input", { type: "radio", name: `c-${i + 1}-${index + 1}`, id, value });
       r.addEventListener("change", () => {
@@ -188,15 +194,15 @@ function fileSection(m: FileMerge, i: number, choices: (Choice | null)[], whole:
         choices[index] = value === "own" ? { lines: own.value.split("\n") } : value;
         count();
       });
-      radios.append(el("p", {}, r, " ", el("label", { for: id }, label)));
+      radios.append(el("label", { for: id }, r, ` ${label}`));
     }
     body.append(
       el(
         "div",
         { class: "conflict" },
-        el("p", { class: "conflict-side" }, `The pull request (${pr.head.ref}):`),
+        el("p", { class: "conflict-side" }, maskEmails(`The pull request (${pr.head.ref}):`)),
         el("pre", { class: "conflict-ours" }, maskEmails(c.ours.join("\n")) || "(these lines deleted)"),
-        el("p", { class: "conflict-side" }, `The base (${pr.base.ref}):`),
+        el("p", { class: "conflict-side" }, maskEmails(`The base (${pr.base.ref}):`)),
         el("pre", { class: "conflict-theirs" }, maskEmails(c.theirs.join("\n")) || "(these lines deleted)"),
         c.base.length ? el("details", {}, el("summary", {}, "As they were before both changes"), el("pre", {}, maskEmails(c.base.join("\n")))) : null,
         radios,
@@ -205,13 +211,19 @@ function fileSection(m: FileMerge, i: number, choices: (Choice | null)[], whole:
     );
   }
   flushStable();
-  // Or the whole file, with git's markers, edited by hand.
+  // Or the whole file, with git's markers, edited by hand — not when it holds an email address
+  // (never shown, so never written back from the page).
+  const marked = withMarkers(m, { ours: pr.head.ref, theirs: pr.base.ref });
+  if (maskEmails(marked) !== marked) {
+    section.append(head, body, el("p", { class: "conflict-whole" }, "This file holds an email address, which the registry never shows: resolve it conflict by conflict above, or with git."));
+    return section;
+  }
   const edit = el("button", { type: "button", class: "link" }, "Edit the whole file instead");
   const area = el("textarea", { class: "pull-text", rows: "16", "aria-label": `${m.path}, with its conflict markers`, hidden: "" });
   edit.addEventListener("click", () => {
     area.hidden = !area.hidden;
     if (!area.hidden) {
-      area.value = whole.get(i) ?? withMarkers(m, { ours: pr.head.ref, theirs: pr.base.ref });
+      area.value = whole.get(i) ?? marked;
       whole.set(i, area.value);
     } else whole.delete(i);
     count();

@@ -8,7 +8,7 @@
 import { maskEmails } from "../../worker/forge/mask.ts";
 import { text as utf8Text } from "../../worker/forge/objects.ts";
 import type { Declared } from "../lib/pull-view.ts";
-import { el } from "./code-editor.ts";
+import { el as plain } from "./code-editor.ts";
 import { showConfirm, startAction } from "./forge-client.ts";
 import { type CodeEnv, repoRef } from "./repo-code.ts";
 
@@ -16,6 +16,14 @@ const HINT = "__Host-oscr_signed_in=1";
 
 /** Whether the reader is signed in, as the hint cookie says (no request). */
 export const signedInHint = (): boolean => typeof document !== "undefined" && document.cookie.split(/;\s*/).includes(HINT);
+
+type Kid = Node | string | null | false | undefined;
+
+/** An element, its text children masked for email addresses (branch names, paths, labels and
+ *  messages are someone's text: CLAUDE.md, no address shown). */
+export function el<K extends keyof HTMLElementTagNameMap>(tag: K, attrs: Record<string, string> = {}, ...kids: Kid[]): HTMLElementTagNameMap[K] {
+  return plain(tag, attrs, ...kids.map((k) => (typeof k === "string" ? maskEmails(k) : k)));
+}
 
 export type Me = { csrf: string; login: string | null } | { message: string; signIn: boolean };
 

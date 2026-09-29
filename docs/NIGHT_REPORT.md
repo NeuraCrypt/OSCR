@@ -36,7 +36,16 @@ Mis à jour au fil de la nuit. La mission est dans `docs/NIGHT_RUN.md`, le journ
   - **Coût** : éditer ne demande rien au Worker ; un commit coûte 4 requêtes Worker (le plan en comptait 2 : les deux lectures du jeton CSRF viennent du flux de la phase 01) et 1 ligne D1.
   - **Essai de bout en bout** : tout passe, dont un commit à travers le faux GitHub, un refus quand la branche a bougé, une nouvelle branche, un déplacement, et le refus d'un autre compte (`FORGE_OPEN` non posé). Captures : `docs/night-screenshots/phase-03/` (30 images, bureau et téléphone, connecté, jusqu'à la page de retour après un vrai commit).
   - **Tests à la clôture** : pytest 472 ; ruff propre ; `npm test` 983 sous Node 26 et Node 22 ; build 45 pages, 227 fichiers (aucun nouveau) ; `check --every-route` ok ; `tsc --strict` propre.
-- **Suite** : phase 04 (forks et pull requests) sur la branche `night/phase-04-pull-requests`, créée et poussée.
+- **Phase 04 (forks et pull requests) : terminée**, branche `night/phase-04-pull-requests`, poussée (7 commits : les éléments E1 à E6, la clôture). Rien fusionné, rien déployé.
+  - **Les pull requests se lisent, se relisent et se fusionnent dans OSCR** (ta consigne : GitHub est le concurrent). GitHub garde les pull requests (ce sont ses objets) et fait chaque fork, revue, commit et fusion en ton nom, une autorisation à la fois ; OSCR n'enregistre qu'une ligne D1 par action, jamais un titre, un texte ou un commentaire.
+  - **Dix nouvelles actions** : forker, synchroniser un fork, ouvrir une pull request (brouillon, relecteurs, modifications autorisées aux mainteneurs pour un fork), la modifier (titre, description, base, fermer ou rouvrir — jusqu'à 25 d'un coup en une seule autorisation —, brouillon ou prête, relecteurs, fusion automatique, supprimer ou restaurer la branche), relire (Commenter, Approuver, Demander des changements, avec des commentaires sur une ligne ou plusieurs et des suggestions ; l'auteur ne peut pas s'approuver), commenter et répondre, résoudre une conversation, fusionner (commit de fusion, squash ou rebase, à la tête que la page montrait : si un commit arrive entre-temps, rien n'est fusionné), mettre la branche à jour, annuler une pull request fusionnée.
+  - **Les pages**, aux adresses de GitHub dans la coquille `/r/` (aucun fichier par pull request) : la liste avec les qualificatifs de GitHub (`is:`, `author:`, `label:`, `review-requested:`, `base:`… avec ET, OU, parenthèses, négation) ; le formulaire de création sous une comparaison (titre tiré de la branche, modèle du dépôt ou **modèle de recherche** — ce qui change, si cela modifie des résultats publiés, l'article, comment c'est vérifié —, aperçu, relecteurs suggérés, mots-clés de fermeture annoncés, le changement en chiffres) ; la page d'une pull request (la conversation, les étiquettes de rôle en mots : auteur, **auteur vérifié de l'article**, propriétaire du code ; la boîte de fusion ; les commits ; les vérifications lues sur GitHub) ; les forks (formulaire, liste, état d'un fork face à l'original avec « Sync fork » et « Contribuer »).
+  - **« Files changed » dans la visionneuse d'OSCR** : diffs unifiés et côte à côte de la phase 02, fichiers « vus » gardés dans le navigateur, un clic sur un numéro de ligne pour commenter (maj-clic pour plusieurs lignes), une revue en attente gardée dans le navigateur et envoyée d'un seul coup, les suggestions montrées comme le changement qu'elles font et **appliquées en un commit** sur la branche de la pull request (une ou par lot, les auteurs des suggestions en co-auteurs).
+  - **Les conflits se résolvent dans le navigateur** : les trois versions viennent de GitHub, les conflits sont calculés sur l'ordinateur du lecteur, chacun reçoit un choix (un côté, les deux, ou ses propres lignes), puis **un seul commit à deux parents** sur la branche, fait par GitHub en ton nom. Ce qui dépasse (fichier supprimé ou renommé d'un côté, binaire, plus de 100 fichiers ou 1 Mio) est dit, avec les commandes git.
+  - **La couche recherche** : chaque pull request dit quels liens de carte de traçage elle touche, fichier par fichier (l'article, le paragraphe des Méthodes, les lignes, et si elles changent) ; les auteurs vérifiés de l'article sont suggérés comme relecteurs (aux seules personnes qui gèrent le code) ; CODEOWNERS est lu comme GitHub le lit.
+  - **Essai de bout en bout** : tout passe (77 vérifications), dont ouvrir une pull request, un commentaire de ligne avec une suggestion, la suggestion appliquée, une fusion refusée parce que la tête a bougé, la fusion, un conflit refusé, et le fork et le commentaire d'un autre compte refusés (`FORGE_OPEN` non posé). Captures : `docs/night-screenshots/phase-04/` (28 images, bureau et téléphone, connecté).
+  - **Tests à la clôture** : pytest 472 ; ruff propre ; `npm test` 1 036 sous Node 26 et Node 22 ; build 45 pages, 227 fichiers (aucun nouveau) ; `check --every-route` ok ; `tsc --strict` propre.
+- **Suite** : phase 05 (issues) sur la branche `night/phase-05-issues`, créée et poussée.
 
 ## 2. À valider par Yann
 
@@ -97,9 +106,19 @@ Mis à jour au fil de la nuit. La mission est dans `docs/NIGHT_RUN.md`, le journ
 33. **Types de fichiers téléversés non restreints** (D03-12) : rien de téléversé n'est jamais exécuté ni servi comme une page par OSCR ; les motifs LFS sont respectés ; au-delà d'environ 1 Mio, la page de GitHub, avec la raison.
 34. **Coût mesuré** (D03-19) : 4 requêtes Worker par commit (le plan en comptait 2), 1 ligne D1.
 
+**Phase 04, à relire (décisions prises, D04-1 à D04-19) :**
+
+35. **À faire au moment de fusionner** : appliquer les deux nouvelles migrations (`npx wrangler d1 migrations apply oscr_forge --remote` et `… oscr_community --remote`, ou relancer `sh tools/setup_cloudflare.sh`) : `0003_pulls.sql` (les dix sortes d'actions) et `0003_roles_by_paper.sql` (un index pour trouver les auteurs vérifiés d'un article).
+36. **Auteurs de l'article suggérés comme relecteurs** (D04-10) : leur identifiant GitHub est montré seulement aux personnes qui gèrent le dépôt (propriétaire, mainteneur, qui l'a lié) ou qui ont écrit un des articles ; jamais hors connexion ni dans un fichier statique. Si tu préfères que chaque auteur l'accepte d'abord, c'est à changer.
+37. **Le garde des cartes de traçage vit dans OSCR** (D04-12) : la vérification que l'App posterait sur GitHub (« tracing-map links touched ») est reportée ; les liens touchés sont montrés dans les pages d'OSCR.
+38. **Un commit sans droit d'écriture sur le dépôt est tenté, et GitHub décide** (D04-6) : c'est le cas d'un mainteneur qui applique une suggestion ou résout un conflit sur la branche d'un fork (« Allow edits by maintainers ») ; un refus de GitHub est dit, avec l'offre de proposer depuis un fork.
+39. **Les méthodes de fusion permises** (D04-4) : l'API anonyme ne dit pas lesquelles le dépôt autorise ; les trois sont proposées et un refus de GitHub est dit en mots.
+40. **Résoudre une conversation** (D04-9) : GitHub ne donne cet état qu'en GraphQL authentifié ; OSCR sait résoudre ou rouvrir, mais ne montre pas l'état aux lecteurs.
+41. **À tester avec la vraie App** : qu'un jeton utilisateur de l'App puisse committer sur la branche d'un fork dont la pull request autorise les mainteneurs ; `resolveReviewThread` et `revertPullRequest` avec ce jeton ; `merge-upstream` ; le message de GitHub quand une méthode de fusion n'est pas permise (405) ; la file de GitHub des « suggested changes » quand la même ligne a plusieurs suggestions.
+
 ## 3. Décisions prises
 
-Voir [`docs/DECISIONS.md`](DECISIONS.md) (entrées D00-1 à D00-16, puis D01-1 à D01-29 pour la phase 01 : les dix du plan, et dix-neuf prises en construisant ; D02-1 à D02-19 pour la phase 02, décrites dans [`docs/CODE_NAVIGATION.md`](CODE_NAVIGATION.md) ; D03-1 à D03-19 pour la phase 03, décrites dans [`docs/WEB_EDITING.md`](WEB_EDITING.md)).
+Voir [`docs/DECISIONS.md`](DECISIONS.md) (entrées D00-1 à D00-16, puis D01-1 à D01-29 pour la phase 01 : les dix du plan, et dix-neuf prises en construisant ; D02-1 à D02-19 pour la phase 02, décrites dans [`docs/CODE_NAVIGATION.md`](CODE_NAVIGATION.md) ; D03-1 à D03-19 pour la phase 03, décrites dans [`docs/WEB_EDITING.md`](WEB_EDITING.md) ; D04-1 à D04-19 pour la phase 04, décrites dans [`docs/PULL_REQUESTS.md`](PULL_REQUESTS.md)).
 
 Décision de stockage : aucune option ne permet à OSCR d'héberger lui-même des dépôts Git à coût nul avec une conformité certaine aux conditions des services (D00-1). Les dépôts vivent donc dans le compte GitHub du chercheur, créés et pilotés par l'App GitHub d'OSCR avec son autorisation, une autorisation par action, plus le mode miroir pour les dépôts existants ; OSCR ne garde que sa propre couche (articles, DOI, cartes de traçage, revues) dans une nouvelle base D1 `oscr_forge` et sur le Mac (D00-2).
 
@@ -151,13 +170,20 @@ Décision de stockage : aucune option ne permet à OSCR d'héberger lui-même de
 35. **Serveurs de test** : l'essai de bout en bout et les captures ont tourné sur 8791, 9490 et 9491 (wrangler dev, faux GitHub, simulateurs de connexion), plus le faux GitHub sur 9492, un serveur statique sur 8793 et Chrome headless sur 9390 ; tout est arrêté. Le port 8790 (ton tableau de bord) et le Chrome 9396 de l'agent `code-first` n'ont pas été touchés. Un `wrangler deploy` lancé depuis le checkout de production (pas par moi) tournait pendant la clôture : laissé intact.
 36. **Non vérifiable sans la vraie App** : qu'un jeton utilisateur de l'App puisse committer sur un dépôt où l'App n'est pas installée (GitHub le refuse sans doute : la page le dit alors en mots) ; le délai de copie d'un fork tout neuf avant un commit (la page dit d'attendre une minute) ; l'application de l'exigence de « sign-off » à `createCommitOnBranch`.
 
+**Phase 04 :**
+
+37. **Reporté** : la vérification « liens de carte touchés » postée par l'App sur GitHub (jeton d'installation sur les webhooks `pull_request`) ; le tableau de bord des pull requests avec sa boîte de réception et ses vues enregistrées (la boîte de réception est de la phase 08) ; la fusion d'une pile de pull requests d'un coup ; poser l'étiquette « Alters reported results » (les étiquettes sont de la phase 05 ; la page l'affiche quand elle est posée) ; le ré-ancrage d'une carte après une fusion (le Mac) ; la file de fusion ; archiver une pull request ; les réactions ; la bannière « Compare & pull request » ; les commentaires sur un fichier entier ou sur un commit ; « Update with rebase » ; les diffs riches de notebooks ; les propriétaires du code dans la vue d'un fichier ; rejeter une revue ; relecteurs requis et équipes (phase 09) ; étiquettes, assignés et jalons modifiés depuis la page (phase 05).
+38. **Serveurs de test** : l'essai de bout en bout et les captures ont tourné sur 8791, 9490 et 9491 (wrangler dev, faux GitHub, simulateurs de connexion) et Chrome headless sur 9390 ; tout est arrêté. Le port 8790 (ton tableau de bord) n'a pas été touché.
+39. **Limites du faux GitHub, corrigées pour cette phase** : il garde désormais la tête d'une pull request après la suppression de sa branche (comme `refs/pull/<n>/head` de GitHub) et permet à un mainteneur de la base de committer sur la branche d'un fork dont la pull request l'autorise. La carte de traçage de la fixture pointe vers un commit fictif (`000…0`) : ses lignes sont retrouvées par le symbole, et le navigateur note une lecture brute 404 sans conséquence.
+
 ## 5. Branches, dans l'ordre de fusion
 
 1. `night/phase-00-research` : terminée et poussée.
 2. `night/phase-01-git-hosting` : terminée et poussée (construite sur la précédente).
 3. `night/phase-02-code-navigation` : terminée et poussée (construite sur la précédente).
 4. `night/phase-03-web-editing` : terminée et poussée (construite sur la précédente).
-5. `night/phase-04-pull-requests` : créée à partir de `night/phase-03-web-editing`, poussée, à construire.
+5. `night/phase-04-pull-requests` : terminée et poussée (construite sur la précédente).
+6. `night/phase-05-issues` : créée à partir de `night/phase-04-pull-requests`, poussée, à construire.
 
 ## 6. Ajouts à `science.css`
 
@@ -186,4 +212,12 @@ Décision de stockage : aucune option ne permet à OSCR d'héberger lui-même de
   - la boîte de commit : `section.commit-dialog`, `.secret-warning` ;
   - téléversements et suppressions : `.upload-drop`, `table.upload-files`, `ul.delete-files`, `p.editor-extra` ;
   - modèles et aides : `.template-picker`, `.md-toolbar`, `p.metadata-check`, `p.community-missing` ;
+  - leurs réglages pour le téléphone.
+- Phase 04, dans le même esprit :
+  - la liste : `form.pull-filter`, `p.pull-quick`, `ul.pull-list` et `li.pull-row` (l'état dit en un mot avant le titre, `.pull-state`, jamais une pastille), `p.pull-bulk` ;
+  - la création : `section.pull-form`, `.pull-preview`, `ul.pull-suggested`, `.pull-summary`, `p.closing`, `textarea.pull-text` ;
+  - la page d'une pull request : `.pull-head` et `.pull-number`, `p.merge-status`, `nav.pull-tabs`, `.pull-record`, `.pull-wide`, `.comment` et `p.comment-head` (le rôle en mots), `.review-*`, `.thread` (et `.outdated`, `.pending`), `p.thread-where`, `p.timeline-event`, `section.merge-box`, `.merge-form`, `section.comment-form`, `ul.reviewers`, `p.ask-review` ;
+  - « Files changed » : `form.commit-select`, `.review-bar`, `section.review-panel`, `p.file-review`, `td.num.commentable`, les lignes de commentaires sous leurs lignes, `.suggestion`, `.file-traced` ;
+  - les conflits : `.conflict`, `pre.conflict-ours`, `pre.conflict-theirs`, `pre.conflict-context`, `section.conflict-guide` ;
+  - les forks : `ul.fork-list`, `p.fork-links`, `p.fork-status`, `form.fork-form` ;
   - leurs réglages pour le téléphone.

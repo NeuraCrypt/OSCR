@@ -1264,3 +1264,197 @@ hands it to the start; after GitHub, the callback page reads it again, then acts
 plan counted start and act), 1 row. Editing, previewing and uploading ask the Worker nothing.
 
 **Why.** Phase 01's flow; ~600 requests a day at ~150 commits, inside the GitHub side's 40,000.
+
+## Phase 04: forks and pull requests (2026-09-29)
+
+Taken while building forks and pull requests in the registry ([PULL_REQUESTS.md](PULL_REQUESTS.md)),
+under the owner's directive of 2026-09-29 (GitHub is OSCR's competitor: pull requests are read,
+reviewed and merged in OSCR) and D00-4, D00-6, D00-7 (every write the person's own, one
+authorization each; pull requests are GitHub's objects; GitHub makes commits and merges).
+
+### D04-1. Ten action kinds, each one act made by GitHub as the person; no pull request in D1
+
+**Decision.** `fork`, `fork_sync` (`act-forks.ts`) and `pull_open`, `pull_edit`, `pull_review`,
+`pull_comment`, `pull_thread`, `pull_merge`, `pull_update`, `pull_revert` (`act-pulls.ts`), in the
+registry of phase 01; `migrations/d1-forge/0003_pulls.sql` rebuilds `actions` with the kinds. Each
+writes the action row only (1 row) and none needs the repository to be one the registry follows
+(`needsRepo: false`): GitHub decides who may. The target is the repository by GitHub's id (followed
+through renames); a pull request's number, title, body or comment never reaches D1 or a log.
+
+**Why.** D00-6: one source of truth; the row budget of §15.6; one write path to secure and cap.
+
+### D04-2. GitHub's pull request addresses, in the one /r/ shell
+
+**Decision.** `pulls/?q=`, `pull/<n>`, `pull/<n>/files` (and GitHub's newer `/changes`), `commits`,
+`checks`, `conflicts`, `pull/new/<branch>`, `compare/<base>...<head>?expand=1`, `fork/`, `forks/`,
+after `/r/<owner>/<name>/`. No file per pull request.
+
+**Why.** D02-1: a GitHub address becomes the registry's by changing its start; the file budget.
+
+### D04-3. Read on the reader's quota; GitHub's search only for what only it knows
+
+**Decision.** The list asks GitHub's list endpoint (100 a page) and filters in the browser with
+GitHub's qualifiers; a query that names reviews, reviewers or comments goes to GitHub's search (10 a
+minute). A pull request's page reads its parts anonymously (about 7 requests; the files and the
+merge base only when the repository has tracing maps); the tab keeps what never changes.
+
+**Why.** D00-5: signed out, the Worker is asked nothing; the reader's 60 anonymous requests an hour
+go to what the page shows.
+
+### D04-4. A merge carries the head the page showed; the methods allowed are GitHub's to refuse
+
+**Decision.** `pull_merge` sends GitHub the head the page showed (`sha`, and the target's
+`expectedHead`): a commit that arrived meanwhile makes GitHub refuse (409, offer "reload"), nothing
+merged. The three methods are offered with GitHub's default messages; GitHub's anonymous API does
+not say which the repository allows, so its refusal is said in words ("the repository does not
+allow this method", with the other reasons GitHub gives none of).
+
+**Why.** The reviewer merges what they read (GitHub's own compare-and-swap); no request spent to
+learn a setting GitHub enforces anyway.
+
+### D04-5. Conflicts resolved in the browser: ONE commit with two parents on the pull request's branch
+
+**Decision.** The merge base and both sides' changes come from two comparisons, the three texts
+from raw reads; `diff3` runs on the reader's CPU; each conflict takes one side, both, or the
+reader's lines (or the whole file with git's markers). The resolution is phase 03's `commit` with
+`mergeParent`: parents [the pull request's head, the base's head], built by the Git data API from
+the pull request's tree, so the files only the base changed are written too (texts as text, bytes
+as base64). A resolution that keeps every line of the branch makes no new tree. Deletions or renames
+against changes, binaries changed on both sides, and resolutions over 100 files or 1 MiB are said,
+with the command line.
+
+**Why.** D00-7 ("the conflicting hunks are computed on the reader's own CPU; the result is committed
+with two parents"); nothing is built in the Worker; the commit's caps (D03-12).
+
+### D04-6. A commit without write on the repository is tried, and GitHub decides
+
+**Decision.** Without `propose`, `commit` no longer refuses before GitHub when GitHub says the person
+may not write to the repository: it asks, and GitHub's refusal is said (403, offer "propose"). The
+case is a maintainer's edit of a fork's pull request branch ("Allow edits by maintainers"), which
+GitHub's repository permission does not show. The double models it (`memory-git.ts`
+`maintainerEdit`).
+
+**Why.** GitHub's rule is branch-specific and GitHub enforces it; one more request only on a path
+that was refused before.
+
+### D04-7. Suggestions: shown as a change, applied as one commit, suggesters credited
+
+**Decision.** A comment's ```` ```suggestion ```` block is shown as the change it makes; "Apply" or
+a batch makes ONE commit on the pull request's branch ("Apply suggestion(s) from code review"),
+each suggester a co-author by GitHub's no-reply address (D03-9), the person applying excepted.
+Outdated suggestions, several blocks in one comment, and the old side are said, not applied.
+
+**Why.** GitHub's "Commit suggestion" and "batch", through the one commit path.
+
+### D04-8. The pending review and "Viewed" are kept in the reader's browser
+
+**Decision.** Line comments can wait in a pending review in `localStorage` (under the editor's draft
+prefix, a month), submitted as ONE review (Comment, Approve, Request changes) on the commit they were
+written on; the callback page drops it once GitHub took the review, and only then (the drafts
+mechanism of D03-5). "Viewed" is kept per file and blob: a file changed since is unviewed again.
+
+**Why.** GitHub's pending review and "Viewed" without any server state: nothing of a person's
+unsubmitted work is kept by the registry.
+
+### D04-9. Resolving a conversation: found by the Worker as the person; its state not shown
+
+**Decision.** GitHub keeps whether a conversation is resolved in GraphQL only, which anonymous
+readers cannot query. `pull_thread` names the conversation by its first comment's id (which the page
+reads anonymously); the Worker finds the thread as the person (at most 5 pages of 100) and resolves
+or unresolves it. The page offers both, without showing the state.
+
+**Why.** D00-5 (no token for reads); resolving still works in the registry.
+
+### D04-10. The paper's verified authors are suggested as reviewers, to the people who manage the code
+
+**Decision.** `GET /api/forge/repo` answers `reviewers`: the GitHub logins of the linked papers'
+verified authors (the registry's roles, the users' GitHub handle), only to a reader who is the
+repository's owner, maintainer, the person who linked it, or a verified author of one of its papers;
+anyone else gets none. `migrations/d1-community/0003_roles_by_paper.sql` adds `roles_scope` (the
+query 0001 foresaw): read by index, never a scan (10 rows read for the seeded example). GitHub asks
+reviews of collaborators only; an author who is not one reviews in the registry by commenting, said.
+
+**Why.** The plan's research layer ("the paper's authors are suggested as reviewers"). A verified
+author linked their GitHub account to act on their paper's code; the pairing is shown to the people
+who manage that code, never to signed-out readers or in a static file.
+
+**What would change it.** The owner preferring an opt-in per author.
+
+### D04-11. CODEOWNERS read in the browser, as GitHub reads it
+
+**Decision.** `src/lib/codeowners.ts`: GitHub's places in its order (`.github/`, the root, `docs/`)
+on the default branch, its patterns (no `!`, no `[ ]`, `docs/*` one level, the last rule wins), the
+lines GitHub skips said with why. Its owners are suggested as reviewers and labelled "code owner";
+a team or an owner named by an email address is said (never its address), not asked.
+
+**Why.** GitBackend has no CODEOWNERS method (the design's note); a raw read costs no quota.
+
+### D04-12. The tracing-map guard lives in the registry's pages; the GitHub check run is deferred
+
+**Decision.** The creation form, the conversation's sidebar and Files changed list the tracing-map
+links a pull request touches — for each file, the paper, the Methods paragraph (opening the reader)
+and the lines, and whether they change — computed from the merge base (`repo-traced.ts`
+`changeTouches`). The check run the App would post on GitHub is deferred.
+
+**Why.** The owner's directive: the review happens in the registry, where the maps are. The check
+run needs the App's installation token on `pull_request` webhooks and would show the registry's
+work on GitHub's page; it stays in the plan (phase 10's checks).
+
+### D04-13. The research pull request template
+
+**Decision.** When the default branch has no template of its own and the repository is linked to a
+paper, the form starts from the registry's research template (what changes; whether it alters
+results reported in the paper; the paper; how it was checked; the issues it fixes); it can always be
+chosen. A label "alters reported results" set on GitHub is said on the page; setting it is phase
+05's (labels).
+
+**Why.** The inventory's adaptation; the author's own words come first.
+
+### D04-14. Bulk close and reopen: one authorization for up to 25
+
+**Decision.** `pull_edit` with `numbers` (≤ 25) closes or reopens them, one GitHub request each, the
+sentence naming each number; a refusal midway is said, the ones before it kept.
+
+**Why.** GitHub's bulk actions, within the Worker's 50 subrequests and one authorization.
+
+### D04-15. Forks: made by GitHub; synced by GitHub; leaving the network is GitHub Support's
+
+**Decision.** `fork` into the person's account or an organization of theirs, the default branch
+only by default; the list anonymously (`repos.forks`); `fork_sync` through GitHub's merge-upstream
+(`repos.syncFork`, added to GitBackend with the adapter, the double, the fake and the contract), a
+conflict leaving the branch as it was. The network's rules (public, kept when the original goes)
+are said in the form.
+
+**Why.** GitHub's semantics, the person's own consent (D03-8's rule: no copy made without it).
+
+### D04-16. Texts shown are masked; addresses are never written back from the page
+
+**Decision.** Every text the pages show — titles, bodies, comments, labels, branch names, paths,
+GitHub's default merge messages, a template or a title prefilled in a form — is masked for email
+addresses (`pull-common.ts` `el`, `h`, `maskEmails`). Lines that hold an address are never offered
+for editing (a suggestion's start, a conflict's own lines, the whole file with markers): the page
+would write the hidden form back. A side's own lines can still be kept.
+
+**Why.** CLAUDE.md (no address shown), without corrupting a file (D03-4's reasoning).
+
+### D04-17. The callback's links: the creation form's "?expand=1", nothing else after a path
+
+**Decision.** `forge-client.ts` `VIEWER_PATH` accepts `?expand=1` at the end of a `/r/` path, and no
+other query: phase 03's commit on a new branch links "Open a pull request into main" to the form.
+
+**Why.** No open redirect (D03-18); the one query the flow needs.
+
+### D04-18. An action costs 4 Worker requests and 1 D1 row
+
+**Decision.** As D03-19: the CSRF read and start, then after GitHub the CSRF read and act; the
+action row. At ~150 actions a day: ~600 requests and ~150 rows, inside §15.4's share for phase 04.
+
+### D04-19. The test world: a reviewed pull request from a fork; maintainers' edits and pull refs in the double
+
+**Decision.** The fake GitHub starts with a CODEOWNERS file, an issue, and Bob's pull request from
+his fork (a Hann window in `band_power`, the lines the fixture's map links), reviewed by Ada with a
+suggestion and answered — what the screenshots show. The double keeps a pull request's head
+reachable after its branch is deleted (GitHub's `refs/pull/<n>/head`) and lets a maintainer of the
+base commit to a fork's pull request branch that allows it.
+
+**Why.** The pages and the end-to-end run need GitHub's semantics where the contract depends on them.
