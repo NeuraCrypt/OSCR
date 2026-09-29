@@ -2520,3 +2520,33 @@ most, open whatever FORGE_OPEN says and to a suspended account; `POST /api/forge
 owner) answers or refuses with words the person reads on `/account/moderation/`, never by email. The
 owner's queue shows the person's public handles (never the account's id) and the date due (one month).
 Self-service export and deletion come with phase 09. 3 rows a request, 2 an answer.
+
+### D16-19. Known malware: never copied, the repository hidden, nothing run, the list the owner's
+
+**Decision.** `oscr/malware.py` reads a local list of SHA-256 digests (one a line, `#` comments; for
+example MalwareBazaar's export, CC0) at `data/malware/sha256.txt` or `OSCR_MALWARE_LIST`; the owner
+fetches it (no outside contact from the registry's code). The harvester hashes every file's bytes
+already (`contents.read`); a listed file keeps its path, size, digest and a note, and no text: it is
+never stored, published, shown nor put in the scripts' dataset. `oscr malware scan` (and the nightly,
+before the export) drops the text of files stored before the list knew them, and hides from the GitHub
+side's pages each repository holding one (a `moderation` row by 'registry', reason malware, a public
+notice), never over the owner's restoring it (`ON CONFLICT DO NOTHING`). Repositories the registry never
+copied (the GitHub side's own, read in the reader's browser) are not scanned: their files would have to
+be downloaded; a report ("malware") and the owner's decision cover them. Nothing is ever executed; the
+module imports neither a process nor a network library (a test says so).
+
+### D16-20. What phase 16 leaves for later
+
+- **Moderators by role**: the queue is the owner's alone; the community's 'moderator' role is read by
+  research issues' triage only (D05-12). Organisation-wide blocks and limits come with phase 09.
+- **Turnstile on bursts** of stars and follows (D16-14); on GitHub's authorized actions (GitHub's own
+  authorization stands in).
+- **Closing a blocked person's open contributions** in the registry (GitHub's "unassign, close");
+  hiding GitHub's own issues and pull requests' **comments** one by one (their threads can be hidden;
+  GitHub keeps its own moderation); commit comments off.
+- **Retention of statuses of commits no longer in their repository** (needs GitHub's answer).
+- **The policies in a public repository under CC0** (the owner's choice); translations.
+- **Self-service export and deletion** of an account (phase 09).
+- **Snippets'** reports (phase 13 builds snippets: the report kind is reserved).
+- **The context notice on retracted papers** (the plan's "Research" line): the catalogue's pages
+  already say a retraction first (main's `notices`, PROMINENT); nothing more was needed tonight.

@@ -38,6 +38,14 @@ async function main(): Promise<void> {
   }
   what.textContent = `You report ${KIND_WORDS[target.kind]}${label ? `: “${label}”` : ""}.`;
   form.hidden = false;
+  // Night phase 16 (E5): what a copyright notice or a report of private information needs, said as the
+  // reason is chosen.
+  const onGithub = ["repo", "issue", "pull", "release"].includes(target.kind);
+  form.addEventListener("change", () => {
+    const reason = (form.querySelector('input[name="reason"]:checked') as HTMLInputElement | null)?.value;
+    (document.getElementById("report-github") as HTMLElement).hidden = !(reason === "copyright" && onGithub);
+    (document.getElementById("report-private") as HTMLElement).hidden = reason !== "private_information";
+  });
   const check = await humanCheck(document.getElementById("report-check") as HTMLElement);
   if (!check) {
     send.disabled = true;

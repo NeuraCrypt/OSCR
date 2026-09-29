@@ -160,6 +160,11 @@ export async function handleReport(r: ForgeRequest): Promise<Response> {
   if (body instanceof ForgeProblem) return say(body);
   const p = validateReport(body);
   if (p instanceof ForgeProblem) return say(p);
+  // Night phase 16 (E5): a copyright notice names its claimant, who is answered in the site: it needs an
+  // account. A report of private information does not (the person concerned may not want one).
+  if (p.reason === "copyright" && !s) {
+    return say(new ForgeProblem(401, "sign_in_required", "A copyright notice needs an account, so that the owner can answer you in the site (never by email): sign in, then send it again."));
+  }
   const human = await checkTurnstile(r.env, p.turnstile, r.deps.turnstileFetch);
   if (human) return say(human);
   const community = r.env.COMMUNITY;

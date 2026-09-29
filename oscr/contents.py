@@ -94,6 +94,12 @@ def read(path: str, data: bytes) -> dict[str, Any]:
         "kind": "doc" if is_doc(path) else "script", "size": len(data),
         "digest": hashlib.sha256(data).hexdigest(), "text": None, "truncated": 0,
         "note": "", "lines": None}
+    # Night phase 16: a file whose SHA-256 is on the known-malware list is never copied: no text is
+    # kept, only its path, size, digest and a note (oscr/malware.py). Nothing is ever run.
+    from . import malware
+    if malware.known(record["digest"]):
+        record["note"] = malware.NOTE
+        return record
     if path.lower().endswith(".mlx") or b"\x00" in data[:8000]:
         record["note"] = "binary file: readable only at the source"
         return record

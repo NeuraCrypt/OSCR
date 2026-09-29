@@ -390,6 +390,15 @@ def main(argv: list[str] | None = None) -> int:
     fg.add_argument("--instance", choices=["sandbox", "zenodo"], default=cfg.get("OSCR_ZENODO_INSTANCE", "sandbox"),
                     help="poll: the Zenodo of a release map's deposit (night phase 07; the sandbox by default)")
 
+    mw = sp.add_parser("malware", help="night phase 16: files whose SHA-256 is on the local known-malware list "
+                                       "(data/malware/sha256.txt or OSCR_MALWARE_LIST) lose their text; the GitHub side's "
+                                       "repositories holding one are hidden. Nothing is run, nothing fetched.")
+    mw.add_argument("action", choices=["scan", "status"])
+    mw_where = mw.add_mutually_exclusive_group()
+    mw_where.add_argument("--local", action="store_true", help="also hide in the local D1 of `wrangler dev --env local`")
+    mw_where.add_argument("--remote", action="store_true", help="also hide in the Cloudflare database oscr_forge")
+    mw.add_argument("--persist-to", default="", help="the local D1's state folder, when not website/.wrangler/state")
+
     so = sp.add_parser("social", help="the social layer (night phase 08): the static shards of stars, follows and "
                                       "profiles, the Explore page, the collections (docs/SOCIAL.md)")
     so.add_argument("action", choices=["layer", "search", "collections", "accept", "decline"])
@@ -473,6 +482,16 @@ def main(argv: list[str] | None = None) -> int:
         elif a.command == "nightly":
             now = lambda: time.strftime("%Y-%m-%d %H:%M")  # noqa: E731
             out = Path(a.out)
+            # Night phase 16: a file known as malware loses its text before anything is exported, and the
+            # GitHub side's repository holding it is hidden (oscr/malware.py). Nothing is run.
+            from . import malware
+            if malware.load():
+                try:
+                    from . import community
+                    forge_d1 = community.open_d1("remote", settings=cfg, database="oscr_forge") if cfg.get("OSCR_FORGE_PUSH") == "remote" else None
+                    print(f"{now()} " + malware.scan(con, forge_d1), flush=True)
+                except Exception as e:  # noqa: BLE001 — the nightly goes on; the harvester already refuses listed files
+                    print(f"{now()} malware scan failed: {e}", flush=True)
             print(f"{now()} public catalogue → {catalog.generate(con, out, public=True)}", flush=True)
             from . import publish
             # Each upload is attempted on its own: Hugging Face being down does not keep
@@ -591,6 +610,17 @@ def main(argv: list[str] | None = None) -> int:
             from . import community
             print(community.command(con, a.action, target="remote" if a.remote else "local" if a.local else None,
                                     folder=Path(a.folder), budget=a.budget, settings=cfg))
+        elif a.command == "malware":
+            from . import community, malware
+            digests = malware.load()
+            if a.action == "status":
+                print(f"{len(digests):,} digests on the list at {malware.list_path()}" if digests else
+                      f"no list at {malware.list_path()}: fetch one (docs/MODERATION.md, “Known malware”)")
+            else:
+                target = "remote" if a.remote else "local" if a.local else None
+                forge_d1 = community.open_d1(target, settings=cfg, persist_to=Path(a.persist_to) if a.persist_to else None,
+                                             database="oscr_forge") if target and digests else None
+                print(malware.scan(con, forge_d1, digests=digests))
         elif a.command in ("jobs", "claims", "reports", "submissions"):
             print(_jobs(con, a, cfg, client, opts))
         elif a.command == "forge":
