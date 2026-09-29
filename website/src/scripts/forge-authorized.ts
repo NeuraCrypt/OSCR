@@ -15,6 +15,8 @@
 import { stashAnswer } from "../lib/release-stash.ts";
 import {
   completeAction,
+  completeUpload,
+  indexedFiles,
   dropDrafts,
   localStore,
   hasReturn,
@@ -105,7 +107,22 @@ export async function arrive(search: string, deps: ClientDeps = {}): Promise<Out
     return out;
   }
 
-  const res = await completeAction(ret, pending, deps);
+  // Phase 07: a release asset's file waited in the tab's IndexedDB; it goes to the asset route.
+  let res: Awaited<ReturnType<typeof completeAction>>;
+  if (pending.kind === "asset_upload") {
+    const files = deps.files === undefined ? indexedFiles() : deps.files;
+    const file = files ? await files.take(pending.digest) : null;
+    if (!file) {
+      return [
+        {
+          tone: "warning",
+          text: ["The file you chose was not kept in this tab for GitHub's return (a private window, another tab, or more than ten minutes): nothing was done. Go back to the release, then attach it again."],
+          links: [{ href: pending.back, text: "Back to the page you came from" }],
+        },
+      ];
+    }
+    res = await completeUpload(ret, pending, file, deps);
+  } else res = await completeAction(ret, pending, deps);
   // A commit made: the editor's drafts it carried are dropped (phase 03); kept on any failure, so
   // the change is still there when the person goes back.
   if (res?.status === 200 && pending.drafts?.length) dropDrafts(pending.drafts, deps.local === undefined ? localStore() : deps.local);

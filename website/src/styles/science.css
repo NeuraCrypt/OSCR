@@ -908,6 +908,11 @@ section.release-form fieldset.release-research { margin: 1em 0; padding: .2em .9
 ul.release-toc { list-style: none; margin: .2em 0 .6em; padding: 0; font-size: .9em; }
 ul.release-toc li { margin: .15em 0; overflow-wrap: anywhere; }
 table.tags td.archives { white-space: nowrap; }
+section.asset-form { margin: .6em 0 1em; padding: .1em .9em .5em; border: 1px solid var(--rule); }
+section.asset-form h4 { margin: .4em 0 .2em; }
+section.asset-form p { margin: .35em 0; }
+section.asset-form input[type="text"], section.asset-form select { font: inherit; border-radius: 0; max-width: 100%; }
+section.asset-form input[type="text"] { width: min(24em, 100%); padding: .1em .3em; border: 1px solid #777; box-sizing: border-box; }
 
 footer {
   max-width: var(--width); margin: 0 auto; padding: 1em;

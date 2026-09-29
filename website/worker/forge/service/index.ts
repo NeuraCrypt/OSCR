@@ -3,6 +3,8 @@
 //
 //   POST /api/forge/start     signed in   the first half of one authorized action → {location}   start.ts (E1)
 //   POST /api/forge/act       signed in   its second half: {code, state, payload} → the result     act.ts (E1)
+//   POST /api/forge/asset     signed in   phase 07: the second half of asset_upload, the file as the    asset.ts
+//                                         body (≤ 25 MiB, streamed, never parsed)
 //   POST /api/forge/webhook   GitHub      a delivery of the mirror mode (HMAC, ≤ 1 MiB)             webhook.ts (E3)
 //   GET  /api/forge/repo      signed in   OSCR's layer for one repository (?id= or ?path=)         read.ts (E6)
 //   GET  /api/forge/mine      signed in   "Your repositories"                                       read.ts (E6)
@@ -27,6 +29,7 @@ import { counted } from "../../account/metrics.ts";
 import type { AccountEnv } from "../../account/types.ts";
 import type { GitBackend } from "../gitbackend.ts";
 import { handleAct } from "./act.ts";
+import { handleAsset } from "./asset.ts";
 import { ACTIONS } from "./actions.ts";
 import { forgeBackend } from "./backend.ts";
 import { failure, problem, wrongMethod } from "./http.ts";
@@ -49,6 +52,7 @@ interface Route {
 export const FORGE_ROUTES: Readonly<Record<string, Route>> = {
   "/api/forge/start": { method: "POST", signedIn: true, handle: (r) => handleStart(r) },
   "/api/forge/act": { method: "POST", signedIn: true, handle: (r) => handleAct(r) },
+  "/api/forge/asset": { method: "POST", signedIn: true, handle: (r) => handleAsset(r) },
   "/api/forge/webhook": { method: "POST", signedIn: false, handle: (r) => handleWebhook(r) },
   "/api/forge/repo": { method: "GET", signedIn: true, handle: (r) => handleRepo(r) },
   "/api/forge/mine": { method: "GET", signedIn: true, handle: (r) => handleMine(r) },

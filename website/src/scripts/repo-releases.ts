@@ -75,7 +75,7 @@ export const TAGS_PAGE = 100;
 /** Panels a later element adds to a release's page, after its files. */
 export const releaseExtras: ((slot: HTMLElement, env: CodeEnv, release: T.Release, commit: string | null) => Promise<void>)[] = [];
 /** The upload of a file to a release (E5), when built: it mounts its form in `slot`. */
-export const assetUpload: { mount: ((slot: HTMLElement, env: CodeEnv, release: Pick<T.Release, "id" | "tagName" | "draft" | "immutable">) => void) | null } = { mount: null };
+export const assetUpload: { mount: ((slot: HTMLElement, env: CodeEnv, release: T.Release) => void) | null } = { mount: null };
 
 // ─── the registry's layer for the releases ───────────────────────────────────
 

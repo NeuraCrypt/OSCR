@@ -22,6 +22,8 @@
 // D1, a cookie, a log, an error or the answer: it lives in this function's scope only.
 // A `conflict` (the branch moved) answers 409 with offer "new_branch" (http.ts `gitProblem`).
 // A refused action writes nothing, not even an action row.
+// Phase 07: the steps are `runAction`, which the file route (asset.ts: a release asset streamed as the
+// request's body) shares; act itself never carries a file.
 
 import { sameText } from "../../account/crypto.ts";
 import { signedIn } from "../../account/guard.ts";
@@ -85,6 +87,27 @@ export async function handleAct(r: ForgeRequest): Promise<Response> {
   if (text === null) return say(tooLarge());
   const body = readBody(text);
   if (!body) return say(new ForgeProblem(400, "bad_request", "The request is not the completion of an action."));
+  return runAction(r, s, cookies, body);
+}
+
+/** What the file route (asset.ts, phase 07) hands to `runAction`: the file streamed, its length. */
+export interface Streamed {
+  upload: { body: ReadableStream<Uint8Array>; size: number };
+  /** The only kind this route completes. */
+  kind: AnyActionSpec["kind"];
+}
+
+/** Steps 1 to 8 of one authorized action, from its completion ({code, state, payload}); for the file
+ *  route, with the file streamed to the spec (ctx.upload). Every answer carries `cookies` (the flow
+ *  cleared). */
+export async function runAction(
+  r: ForgeRequest,
+  s: Exclude<Awaited<ReturnType<typeof signedIn>>, Response>,
+  cookies: string[],
+  body: { code: string; state: string; payload: string },
+  streamed?: Streamed,
+): Promise<Response> {
+  const say = (p: ForgeProblem) => problemAnswer(p, cookies);
 
   // 1. The flow: this server's, for this state, from this session.
   const flow = await openForgeFlow(r.env.SESSION_KEY as string, readCookie(r.request, FORGE_COOKIE), r.t);
@@ -100,6 +123,9 @@ export async function handleAct(r: ForgeRequest): Promise<Response> {
       new ForgeProblem(400, "bad_digest", "What this page sent is not the action you confirmed: nothing was done. Go back to the page, then start again."),
     );
   }
+
+  // The file route completes its own kind only; any other action comes through act.
+  if (streamed && flow.act.kind !== streamed.kind) return say(new ForgeProblem(400, "bad_request", "This authorization is not for a file: nothing was done."));
 
   // 3. The spec's checks, before GitHub.
   const spec = r.actions.get(flow.act.kind);
@@ -127,7 +153,7 @@ export async function handleAct(r: ForgeRequest): Promise<Response> {
     return withCookies(failure(err, r.path, r.t), cookies);
   }
   try {
-    return await asThePerson(r, { flow, spec, parsed, target, repo, auth, token, cookies, user: s.user, community: s.db });
+    return await asThePerson(r, { flow, spec, parsed, target, repo, auth, token, cookies, user: s.user, community: s.db, upload: streamed?.upload });
   } catch (err) {
     return withCookies(failure(err, r.path, r.t), cookies);
   } finally {
@@ -165,6 +191,7 @@ interface Acting {
   cookies: string[];
   user: ActionContext<unknown>["user"];
   community: ActionContext<unknown>["community"];
+  upload?: ActionContext<unknown>["upload"];
 }
 
 /** Steps 5 to 8, with the person's token. */
@@ -203,6 +230,7 @@ async function asThePerson(r: ForgeRequest, a: Acting): Promise<Response> {
       list: (page) => a.auth.installations(a.token, page),
       repositories: (id, page) => a.auth.installationRepositories(a.token, id, page),
     },
+    ...(a.upload ? { upload: a.upload } : {}),
   };
   const out = await a.spec.perform(ctx);
   if (!a.spec.check(out.result, a.parsed, ctx)) {

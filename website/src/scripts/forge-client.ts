@@ -67,6 +67,8 @@ export interface ClientDeps {
   now?: () => number;
   /** The session's CSRF token, when the page already has it. */
   csrf?: string;
+  /** Phase 07: where a release asset's file waits for GitHub's authorization (the tab's IndexedDB). */
+  files?: FileStore | null;
 }
 
 // deno-lint-ignore no-explicit-any
@@ -297,6 +299,95 @@ export function readReturn(search: string): Return {
 
 /** Whether the address carries anything of GitHub's (then the page removes it at once). */
 export const hasReturn = (search: string): boolean => /[?&](code|state|installation_id|setup_action|error|error_description)=/.test(search);
+
+// ─── phase 07: a release asset's file, kept across GitHub's authorization ────
+
+/** The route that completes asset_upload with the file as its body (worker/forge/service/asset.ts). */
+export const ASSET_PATH = "/api/forge/asset";
+
+/** Where a file waits while the tab is on GitHub's authorization page: the site's IndexedDB, keyed by
+ *  the action's digest, taken once (and dropped) by the callback page; a file left more than the
+ *  flow's ten minutes is dropped at the next use. Nothing leaves the browser but to the registry's own
+ *  route, after GitHub's authorization. */
+export interface FileStore {
+  put(key: string, file: Blob): Promise<boolean>;
+  take(key: string): Promise<Blob | null>;
+}
+
+const FILES_DB = "forge-files";
+const FILES_STORE = "files";
+
+function request<T>(r: IDBRequest<T>): Promise<T> {
+  return new Promise((resolve, reject) => {
+    r.onsuccess = () => resolve(r.result);
+    r.onerror = () => reject(r.error);
+  });
+}
+
+/** The tab's IndexedDB as a FileStore, or null when the browser keeps none (a private window). */
+export function indexedFiles(now: () => number = nowSeconds): FileStore | null {
+  const idb = (globalThis as { indexedDB?: IDBFactory }).indexedDB;
+  if (!idb) return null;
+  const open = async (): Promise<IDBDatabase> => {
+    const req = idb.open(FILES_DB, 1);
+    req.onupgradeneeded = () => req.result.createObjectStore(FILES_STORE);
+    return request(req);
+  };
+  const store = async (mode: IDBTransactionMode) => (await open()).transaction(FILES_STORE, mode).objectStore(FILES_STORE);
+  const sweep = async () => {
+    const s = await store("readwrite");
+    const keys = (await request(s.getAllKeys())) as string[];
+    for (const k of keys) {
+      const v = (await request((await store("readonly")).get(k))) as { at?: number } | undefined;
+      if (!v || typeof v.at !== "number" || now() - v.at > FLOW_SECONDS) await request((await store("readwrite")).delete(k));
+    }
+  };
+  return {
+    async put(key, file) {
+      try {
+        await sweep();
+        await request((await store("readwrite")).put({ file, at: now() }, key));
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    async take(key) {
+      try {
+        const v = (await request((await store("readonly")).get(key))) as { file?: Blob; at?: number } | undefined;
+        await request((await store("readwrite")).delete(key));
+        if (!v || !(v.file instanceof Blob) || typeof v.at !== "number" || now() - v.at > FLOW_SECONDS) return null;
+        return v.file;
+      } catch {
+        return null;
+      }
+    },
+  };
+}
+
+/** A text as base64url, without padding (the payload's header: worker/forge/service/asset.ts reads it). */
+export function toBase64url(text: string): string {
+  let bin = "";
+  for (const b of encoder.encode(text)) bin += String.fromCharCode(b);
+  return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+/** Step 3 for a file: POST it to the asset route, the completion in headers. */
+export async function completeUpload(ret: Return, pending: Pending, file: Blob, deps: ClientDeps = {}): Promise<{ status: number; body: Json } | null> {
+  const token = await readCsrf(deps);
+  if ("message" in token) return { status: token.signIn ? 401 : 503, body: { error: { code: token.signIn ? "signed_out" : "unavailable", message: token.message } } };
+  return getJson(deps.fetch ?? fetch, ASSET_PATH, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/octet-stream",
+      "X-CSRF-Token": token.csrf,
+      "X-Forge-Code": ret.code ?? "",
+      "X-Forge-State": ret.state ?? "",
+      "X-Forge-Payload": toBase64url(pending.payload),
+    },
+    body: file,
+  });
+}
 
 /** Step 3: POST {code, state, payload} to act. */
 export async function completeAction(ret: Return, pending: Pending, deps: ClientDeps = {}): Promise<{ status: number; body: Json } | null> {
