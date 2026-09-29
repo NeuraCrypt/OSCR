@@ -49,7 +49,7 @@ import { commitTouches, readerUrl, pairClass, type Touched } from "../lib/traced
 import { el } from "./code-editor.ts";
 import { show, toDom } from "./dom.ts";
 import { localStore } from "./forge-client.ts";
-import { confirmAction, signInLine, textAt } from "./pull-common.ts";
+import { confirmAction, signInLine, textAt, whoIsHere } from "./pull-common.ts";
 import { type CodeEnv, repoRef } from "./repo-code.ts";
 import { diffOptions, mountFiles } from "./repo-history.ts";
 import { type PullFrame, pullFrame } from "./repo-pull.ts";
@@ -552,7 +552,10 @@ async function applyBatch(st: FilesState, list: Suggestion[], box: HTMLElement =
     }
     changes.push({ op: "put", path, text: next });
   }
-  const coAuthors = [...new Map(list.filter((s) => s.author.login && s.author.id && /^\d+$/.test(s.author.id)).map((s) => [s.author.id as string, { login: s.author.login as string, id: s.author.id as string }])).values()].slice(0, 10);
+  // Each suggester is a co-author, but the person who commits (as on GitHub).
+  const who = await whoIsHere();
+  const me = "login" in who && who.login ? who.login.toLowerCase() : "";
+  const coAuthors = [...new Map(list.filter((s) => s.author.login && s.author.login.toLowerCase() !== me && s.author.id && /^\d+$/.test(s.author.id)).map((s) => [s.author.id as string, { login: s.author.login as string, id: s.author.id as string }])).values()].slice(0, 10);
   const payload = {
     branch: head.ref,
     base: head.sha,

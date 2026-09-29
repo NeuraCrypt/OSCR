@@ -783,6 +783,19 @@ table.diff tr.comment-row td { padding: .3em .7em .5em; background: var(--bg); f
 .traced-note.file-traced { margin: 0; border-width: 0 0 1px 0; }
 p.review-said, .review-said p { margin: .3em 0; }
 
+/* Conflicts resolved in the browser (night phase 04, E6): each conflict shows the two sides' lines
+   in ruled blocks, its choices as sentences; the lines alike around it are folded */
+.conflict-file .file-body { padding: .3em .7em .6em; }
+.conflict { margin: .5em 0; padding: .3em .6em; border-left: 3px solid var(--warning); background: var(--bg); }
+p.conflict-side { margin: .3em 0 .1em; font-size: .9em; font-weight: bold; }
+pre.conflict-ours, pre.conflict-theirs, pre.conflict-context, .conflict details pre { margin: 0 0 .3em; padding: .2em .5em; font-size: .85em; white-space: pre-wrap; overflow-wrap: anywhere; border: 1px solid var(--rule); }
+pre.conflict-ours { background: #e8f5e8; }
+pre.conflict-theirs { background: #eef2f6; }
+pre.conflict-context { color: var(--muted); background: var(--bg-sidebar); }
+.conflict fieldset.choices p { margin: .15em 0; }
+p.conflict-whole { margin: .2em .7em .5em; font-size: .9em; }
+section.conflict-guide { margin: 1.2em 0; }
+
 footer {
   max-width: var(--width); margin: 0 auto; padding: 1em;
   border-top: 1px solid var(--rule); font-size: .85em; color: var(--muted);
