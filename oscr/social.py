@@ -531,13 +531,14 @@ def decide(forge: community.D1, people: community.D1, handle: str, list_id: int,
 
 
 def command(con: sqlite3.Connection, action: str, *, target: str | None, out: Path, settings: dict[str, str] | None = None,
-            persist_to: Path | None = None, handle: str = "", list_id: int = 0, now: float | None = None) -> str:
+            persist_to: Path | None = None, handle: str = "", list_id: int = 0, now: float | None = None,
+            folder: Path | None = None) -> str:
     """``oscr social layer|search|collections|accept|decline``: its answer in words."""
     if target not in ("local", "remote"):
         raise SystemExit("social: add --local (the local D1 of `wrangler dev`) or --remote (the Cloudflare databases)")
     if action == "search":
         from . import forgelayer
-        state = forgelayer.open_state(forgelayer.STATE_FOLDER)
+        state = forgelayer.open_state(folder or forgelayer.STATE_FOLDER)
         try:
             search = community.open_d1(target, settings=settings, persist_to=persist_to, database="oscr_search")
             return push_search(search, search_docs(out), state)

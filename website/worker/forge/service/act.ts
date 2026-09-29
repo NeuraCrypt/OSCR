@@ -37,7 +37,7 @@ import { failure, json, problem, problemAnswer, redact } from "./http.ts";
 import { requireIdentity } from "./identity.ts";
 import { loadRepo, unknownRepo } from "./start.ts";
 import { actionEventWrites, eventsOfAction } from "./events.ts";
-import { actionRow, newNonce, rowsOf, statements } from "./store.ts";
+import { actionRow, first, newNonce, repoByKey, rowsOf, statements } from "./store.ts";
 import { ForgeProblem, isProblem, type ActionContext, type ActionTarget, type AnyActionSpec, type ForgeRequest, type RepoRow } from "./types.ts";
 
 /** The largest body read: the payload's text, escaped inside a JSON string (quotes and backslashes
@@ -245,17 +245,20 @@ async function asThePerson(r: ForgeRequest, a: Acting): Promise<Response> {
     );
   }
 
-  // 8. One batch: the action row and the spec's rows. Phase 08: the action's events (events.ts: a
-  // repository's only when the App is not installed on it, its webhook bringing them otherwise; a
-  // paper's always) and the threads the person now takes part in.
+  // 8. One batch: the action row and the spec's rows. Phase 08: the action's events (events.ts: each
+  // written once, whether GitHub's webhook for the same act lands before or after) and the threads the
+  // person now takes part in.
   const named = out.repo ?? (a.repo ? { forge: a.repo.forge, repoId: a.repo.repo_id } : null);
-  const path = a.repo && a.repo.name ? `${a.repo.owner_login}/${a.repo.name}` : "";
+  // The repository the registry knows (read by its key when the spec did not need it): its events
+  // only while it is alive in the registry, under its path.
+  const known = a.repo ?? (named ? await first<RepoRow>(repoByKey(r.db, named.forge, named.repoId)) : null);
+  const alive = known && known.name && (known.state === "active" || known.state === "archived") ? known : null;
+  const path = alive ? `${alive.owner_login}/${alive.name}` : "";
   const social = eventsOfAction({
     kind: a.flow.act.kind,
     parsed: a.parsed,
     result: out.result,
     repo: named && path ? { forge: named.forge, repoId: named.repoId, path } : null,
-    installed: !!a.repo?.installation_id,
     user: { id: user.id, github: github.id, login: github.login },
     t: r.t,
     nonce: ctx.nonce,

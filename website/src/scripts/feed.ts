@@ -6,7 +6,7 @@
 
 import { el } from "./pull-common.ts";
 import { authorPapers, getJson, postJson, problemOf, signedIn } from "./social-client.ts";
-import { targetHref, targetWords } from "../lib/social.ts";
+import { sitePath, targetHref, targetWords } from "../lib/social.ts";
 
 const root = document.getElementById("feed-shell");
 
@@ -67,7 +67,7 @@ async function main(): Promise<void> {
         `${new Date(i.at * 1000).toISOString().slice(0, 10)} · `,
         i.actor ? el("strong", {}, i.actor) : "",
         ` ${i.words} `,
-        i.url ? el("a", { href: i.url }, i.title || i.about) : i.title || i.about,
+        sitePath(i.url) ? el("a", { href: sitePath(i.url)! }, i.title || i.about) : i.title || i.about,
         i.title && i.about ? ` · ${i.about}` : "",
         " ",
         less(i.kind),

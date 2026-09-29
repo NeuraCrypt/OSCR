@@ -8,7 +8,7 @@
 // and the quota message says when the index's share is spent (api.ts). The query: words (all of them),
 // "quoted phrases", -excluded words, and GitHub's qualifiers the index knows: is:open, is:closed
 // (issues), type:code-error|mismatch|reproduction (issues), user:<login> and org:<login>
-// (repositories, the owner), doi:<DOI>, in:title. Anything else is searched as words, and the answer
+// (repositories, the owner), repo:owner/name (a repository, its research issues), doi:<DOI>, in:title. Anything else is searched as words, and the answer
 // says which qualifiers it did not use. Every term is quoted before it reaches FTS5: nothing a reader
 // types is ever FTS5 syntax.
 //
@@ -45,6 +45,8 @@ export interface ParsedForge {
   is: "open" | "closed" | null;
   researchType: "code_error" | "mismatch" | "reproduction" | null;
   owner: string | null;
+  /** repo:owner/name: the repository's research issues, or the repository itself. */
+  repo: string[] | null;
   doi: string | null;
   inTitle: boolean;
   unused: string[];
@@ -64,7 +66,7 @@ function tokens(text: string): string[] {
 
 /** A reader's query, as the index uses it. */
 export function parseForgeQuery(input: string): ParsedForge {
-  const out: ParsedForge = { words: [], phrases: [], not: [], is: null, researchType: null, owner: null, doi: null, inTitle: false, unused: [] };
+  const out: ParsedForge = { words: [], phrases: [], not: [], is: null, researchType: null, owner: null, repo: null, doi: null, inTitle: false, unused: [] };
   const text = input.slice(0, MAX_QUERY);
   for (const m of text.matchAll(/(-?)"([^"]*)"|(\S+)/g)) {
     if (m[2] !== undefined) {
@@ -81,6 +83,7 @@ export function parseForgeQuery(input: string): ParsedForge {
       if (key === "is" && (value === "open" || value === "closed")) out.is = value;
       else if (key === "type" && RESEARCH_TYPES[value.toLowerCase()]) out.researchType = RESEARCH_TYPES[value.toLowerCase()];
       else if ((key === "user" || key === "org") && /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})$/.test(value)) out.owner = value.toLowerCase();
+      else if (key === "repo" && /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})\/[A-Za-z0-9._-]{1,100}$/.test(value)) out.repo = tokens(value);
       else if (key === "doi" && /^10\.\d{4,9}\/\S+$/.test(value)) out.doi = value.toLowerCase();
       else if (key === "in" && value.toLowerCase() === "title") out.inTitle = true;
       else {
@@ -112,6 +115,7 @@ export function forgeMatch(type: ForgeType, p: ParsedForge): string {
   if (p.is && type === "issues") clauses.push(`{kind} : ${quote(`zzs${p.is}`)}`);
   if (p.researchType && type === "issues") clauses.push(`{kind} : ${quote(`zzt${p.researchType.replace("_", "")}`)}`);
   if (p.owner && type === "repositories") clauses.push(`{ids} : ${quote(tokens(p.owner).join(" "))}`);
+  if (p.repo?.length && (type === "repositories" || type === "issues")) clauses.push(`{ids} : ${quote(p.repo.join(" "))}`);
   if (p.doi) clauses.push(`{ids} : ${quote(tokens(p.doi).join(" "))}`);
   let match = clauses.join(" AND ");
   for (const n of p.not) match += ` NOT {title text ids} : ${quote(n)}`;
@@ -147,7 +151,7 @@ export async function runForgeSearch(db: D1Database, query: ForgeQuery): Promise
   const p = parseForgeQuery(query.q);
   const notices: string[] = [];
   if (p.unused.length) notices.push(`Not used as qualifiers: ${p.unused.join(", ")} (searched as words).`);
-  if (!p.words.length && !p.phrases.length && !p.is && !p.researchType && !p.owner && !p.doi) {
+  if (!p.words.length && !p.phrases.length && !p.is && !p.researchType && !p.owner && !p.repo && !p.doi) {
     notices.push("Type words to search for: everything of this type is listed meanwhile, the most relevant first.");
   }
   const size = FORGE_PAGE_SIZE;

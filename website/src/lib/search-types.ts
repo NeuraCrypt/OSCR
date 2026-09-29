@@ -115,7 +115,7 @@ export function parseCommitHits(body: unknown, scope: Scope): GithubCommitHit[] 
 
 /** One result of the registry's index, as the page shows it. Only addresses of this site. */
 export function resultView(r: Record<string, unknown>): El | null {
-  const url = typeof r.url === "string" && r.url.startsWith("/") && !r.url.startsWith("//") ? r.url : null;
+  const url = typeof r.url === "string" && /^\/(?![/\\])[^\s\\]{0,399}$/.test(r.url) ? r.url : null;
   if (!url) return null;
   const n = (v: unknown) => (typeof v === "number" && v > 0 ? v : 0);
   switch (r.k) {
@@ -132,7 +132,7 @@ export function resultView(r: Record<string, unknown>): El | null {
       return h("li", null, h("a", { href: url }, String(r.name || r.handle || "")), r.name ? ` ${String(r.handle ?? "")}` : "",
         r.bio ? h("p", { class: "line" }, String(r.bio)) : null);
     case "topic":
-      return h("li", null, h("a", { href: url }, String(r.name ?? "")), r.featured ? " · featured" : "", n(r.stars) ? ` · ${n(r.stars)} stars` : "",
+      return h("li", null, h("a", { href: url }, String(r.name ?? "")), r.featured ? " · featured" : "", n(r.stars) ? ` · ${n(r.stars)} ${n(r.stars) === 1 ? "star" : "stars"}` : "",
         r.description ? h("p", { class: "line" }, String(r.description)) : null);
     default:
       return null;

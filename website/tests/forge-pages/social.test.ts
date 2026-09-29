@@ -20,6 +20,7 @@ import {
   parsePersonPath,
   personUrl,
   ris,
+  sitePath,
   socialShard,
   subjectHref,
   subjectWords,
@@ -59,6 +60,11 @@ describe("the social layer's addresses", () => {
     for (const bad of ["/u/", "/u/a--b/", "/u/-x/", "/u/a/b/", "/u/%E0%A4%A/"]) assert.equal(parsePersonPath(bad), null, bad);
     assert.equal(personUrl("Alex"), "/u/alex/");
     assert.equal(personUrl("0000-0002-1825-009x"), "/u/0000-0002-1825-009X/");
+  });
+
+  it("an address a page is given is a path of this site, or nothing: no open redirect", () => {
+    for (const ok of ["/r/lab/eeg/issues/3", "/research/1", "/lookup/?doi=10.1%2Fx"]) assert.equal(sitePath(ok), ok);
+    for (const bad of ["//evil.example/", "/\\evil.example", "https://evil.example/", "javascript:alert(1)", "/a b", "", null, 7]) assert.equal(sitePath(bad), null, String(bad));
   });
 
   it("subjects and targets link to this site's pages, in words", () => {

@@ -375,7 +375,8 @@ describe("the research issue on GitHub and in a merge", () => {
     assert.deepEqual(run.actBody!.result.closed, [1]);
     assert.match(run.actBody!.result.notes.join(" "), /research#2 stays open: the pull request does not say it fixes it/);
     assert.match(run.actBody!.sentence, /closes the research issues research#1, research#2 as fixed in the code/);
-    assert.equal(w.forge.totals.written, 2);
+    // The research issue closed and the action row; phase 08: the merge's event (no App on the repository).
+    assert.equal(w.forge.totals.written, 3);
     const [one, two] = forgeRows(w.forge, "research_issues");
     assert.equal(one.state, "closed");
     assert.equal(one.resolution, "fixed_in_code");

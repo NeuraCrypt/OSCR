@@ -110,6 +110,7 @@ CREATE TABLE events (
     actor_name     TEXT NOT NULL DEFAULT '' CHECK (length(actor_name) <= 100 AND instr(actor_name, '@') = 0),
     thread_author  TEXT NOT NULL DEFAULT '' CHECK (length(thread_author) <= 80),
     mentions       TEXT NOT NULL DEFAULT '' CHECK (length(mentions) <= 400 AND instr(mentions, '@') = 0),
+    ref            TEXT NOT NULL DEFAULT '' CHECK (length(ref) <= 150),   -- GitHub's object ("comment:<id>", "issue:<n>:opened"): the same act from an action and its webhook is one event
     PRIMARY KEY (subject, at, nonce)
 ) WITHOUT ROWID;
 

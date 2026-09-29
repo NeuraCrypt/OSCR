@@ -6,11 +6,13 @@
 // - the registry's research issues (research.ts): opened, commented, closed, reopened, under the
 //   paper's subject;
 // - the authorized actions (act.ts): an issue or a pull request opened, commented, reviewed, closed,
-//   merged; a release published — only on a repository the App is not installed on (no webhook will
-//   come: the App's webhook writes the same event otherwise, and the registry never writes it twice);
-//   a repository linked to papers and a release tied to a paper's version, under the paper's subject;
+//   merged; a release published, on a repository the registry knows; a repository linked to papers
+//   and a release tied to a paper's version, under the paper's subject;
 // - the App's webhooks (webhook.ts): GitHub's issues, comments, pull requests and releases on a
 //   repository the registry follows, 1 row with the delivery's row (D01-24's 2).
+// The same act seen both ways (the action, then GitHub's webhook for it, in either order) is ONE event:
+// both name GitHub's object (`ref`: "comment:<id>", "issue:<n>:opened"…), and each insert is
+// conditional on no event of the same subject naming it by the same GitHub account within a day.
 // A person who takes part in a thread through the registry (opens it, comments) follows it (a
 // `follows` row "thread:<subject>#<thread>", auto = 1, written once): the inbox's "participating".
 //
@@ -90,6 +92,9 @@ export interface NewEvent {
   actorName?: string;
   threadAuthor?: string;
   mentions?: string[];
+  /** GitHub's object the event is about ("comment:<id>", "issue:<n>:opened", "release:<tag>"): an
+   *  authorized action and GitHub's webhook for the same act name the same one. */
+  ref?: string;
 }
 
 export interface EventRow {
@@ -107,6 +112,7 @@ export interface EventRow {
   actor_name: string;
   thread_author: string;
   mentions: string;
+  ref: string;
 }
 
 /** Retention: the inbox and the feed read 3 months back (GitHub's own); saved threads keep their
@@ -115,9 +121,10 @@ export const RETENTION_SECONDS = 90 * 86_400;
 
 const cut = (s: string | undefined, n: number): string => [...(s ?? "").replace(/[\u0000-\u001f\u007f]/g, " ")].slice(0, n).join("");
 const LOGIN = /^[a-z0-9](?:[a-z0-9-]{0,38})$/;
-const safeUrl = (u: string): string => (u.startsWith("/") && !u.startsWith("//") && u.length <= 300 ? u : "/");
+/** A path of this site, never another site's address ("//host", "/\\host" a browser reads as one). */
+const safeUrl = (u: string): string => (/^\/(?![/\\])[^\s\\]{0,299}$/.test(u) ? u : "/");
 
-const COLUMNS = "(subject, at, nonce, kind, thread, title, url, repo_path, paper_id, actor_user, actor_github, actor_name, thread_author, mentions)";
+const COLUMNS = "(subject, at, nonce, kind, thread, title, url, repo_path, paper_id, actor_user, actor_github, actor_name, thread_author, mentions, ref)";
 
 function values(e: NewEvent): unknown[] {
   return [
@@ -135,13 +142,34 @@ function values(e: NewEvent): unknown[] {
     cut(e.actorName, 100).replace(/[@＠]/g, " "),
     cut(e.threadAuthor, 80),
     (e.mentions ?? []).map((m) => m.toLowerCase()).filter((m) => LOGIN.test(m)).slice(0, 10).join(" "),
+    cut(e.ref, 150),
   ];
 }
 
+/** How far apart an authorized action and GitHub's webhook for the same act may land and still make
+ *  one event. */
+export const SAME_EVENT_SECONDS = 86_400;
+
+const MARKS = COLUMNS.split(",").map(() => "?").join(", ");
+
 /** ONE event row (1 row written). Every value is cut to its column's CHECK first (values), so the
- *  insert never fails on a text: a plain INSERT, whose failure would show, not an ignored one. */
+ *  insert never fails on a text: a plain INSERT, whose failure would show, not an ignored one. With a
+ *  `ref` (GitHub's object), it is written only when no event of the same subject names the same object
+ *  by the same GitHub account within a day: an authorized action and the App's webhook for it make
+ *  ONE event, whichever lands first (the key's prefix and a range of time: never a scan). */
 export function eventWrite(db: D1Database, e: NewEvent): Write {
-  return { rows: 1, stmt: db.prepare(`INSERT INTO events ${COLUMNS} VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).bind(...values(e)) };
+  const v = values(e);
+  const ref = v[14] as string;
+  if (!ref) return { rows: 1, stmt: db.prepare(`INSERT INTO events ${COLUMNS} VALUES (${MARKS})`).bind(...v) };
+  return {
+    rows: 1,
+    stmt: db
+      .prepare(
+        `INSERT INTO events ${COLUMNS} SELECT ${MARKS} WHERE NOT EXISTS ` +
+          "(SELECT 1 FROM events WHERE subject = ? AND at > ? AND at < ? AND ref = ? AND actor_github = ?)",
+      )
+      .bind(...v, v[0], Number(v[1]) - SAME_EVENT_SECONDS, Number(v[1]) + SAME_EVENT_SECONDS, ref, v[10]),
+  };
 }
 
 /** A research issue's event when its number is the one the same batch just gave (the newest row of
@@ -154,7 +182,7 @@ export function researchOpenedWrites(db: D1Database, userId: string, e: Omit<New
       rows: 1,
       stmt: db
         .prepare(
-          `INSERT INTO events ${COLUMNS} SELECT ?, ?, ?, ?, 'research:' || max(id), ?, '/research/' || max(id), ?, ?, ?, ?, ?, ?, ? FROM research_issues`,
+          `INSERT INTO events ${COLUMNS} SELECT ?, ?, ?, ?, 'research:' || max(id), ?, '/research/' || max(id), ?, ?, ?, ?, ?, ?, ?, '' FROM research_issues`,
         )
         .bind(v[0], v[1], v[2], v[3], v[5], v[7], v[8], v[9], v[10], v[11], v[12], v[13]),
     },
@@ -175,8 +203,6 @@ interface ActionFacts {
   result: unknown;
   /** The repository the action named: its key and its path as GitHub serves it. */
   repo: { forge: string; repoId: string; path: string } | null;
-  /** Whether the App is installed on it (its webhooks bring GitHub's events). */
-  installed: boolean;
   user: { id: string; github: string; login: string };
   t: number;
   nonce: string;
@@ -187,8 +213,7 @@ const obj = (v: unknown): J => (v && typeof v === "object" && !Array.isArray(v) 
 const str = (v: unknown): string => (typeof v === "string" ? v : "");
 const int = (v: unknown): number | null => (typeof v === "number" && Number.isInteger(v) && v > 0 ? v : null);
 
-/** The events an authorized action makes, and the threads the person now takes part in (followed).
- *  A repository's events only when no webhook will bring them (the App is not installed on it). */
+/** The events an authorized action makes, and the threads the person now takes part in (followed). */
 export function eventsOfAction(a: ActionFacts): { events: NewEvent[]; threads: string[] } {
   const p = obj(a.parsed);
   const r = obj(a.result);
@@ -200,7 +225,7 @@ export function eventsOfAction(a: ActionFacts): { events: NewEvent[]; threads: s
   const page = str(r.page) || (repo ? `/r/${repo.path}/` : "/");
   const push = (kind: EventKind, thread: string, extra: Partial<NewEvent> = {}) => {
     if (!repo) return;
-    if (!a.installed) events.push({ subject, at: a.t, nonce: a.nonce, kind, thread, title: "", url: page, repoPath: repo.path, ...actor, ...extra });
+    events.push({ subject, at: a.t, nonce: a.nonce, kind, thread, title: "", url: page, repoPath: repo.path, ...actor, ...extra });
   };
   const follow = (thread: string) => {
     if (repo) threads.push(`${subject}#${thread}`);
@@ -209,27 +234,27 @@ export function eventsOfAction(a: ActionFacts): { events: NewEvent[]; threads: s
     case "issue_open": {
       const n = int(r.number);
       if (!n) break;
-      push("issue_opened", `issue:${n}`, { title: str(p.title), threadAuthor: `user:${a.user.id}`, mentions: mentionsIn(p.body) });
+      push("issue_opened", `issue:${n}`, { title: str(p.title), threadAuthor: `user:${a.user.id}`, mentions: mentionsIn(p.body), ref: `issue:${n}:opened` });
       follow(`issue:${n}`);
       break;
     }
     case "issue_comment": {
       const n = int(p.number);
       if (!n || p.comment || p.delete) break;
-      push("issue_comment", `issue:${n}`, { mentions: mentionsIn(p.body) });
+      push("issue_comment", `issue:${n}`, { mentions: mentionsIn(p.body), ref: str(r.comment) ? `comment:${str(r.comment)}` : "" });
       follow(`issue:${n}`);
       break;
     }
     case "issue_edit": {
       const numbers = Array.isArray(p.numbers) ? p.numbers : [];
       if (numbers.length !== 1 || (p.state !== "closed" && p.state !== "open")) break;
-      push(p.state === "closed" ? "issue_closed" : "issue_reopened", `issue:${numbers[0]}`, { title: str(p.title) });
+      push(p.state === "closed" ? "issue_closed" : "issue_reopened", `issue:${numbers[0]}`, { title: str(p.title), ref: `issue:${numbers[0]}:${p.state === "closed" ? "closed" : "reopened"}` });
       break;
     }
     case "pull_open": {
       const n = int(r.number);
       if (!n) break;
-      push("pull_opened", `pull:${n}`, { title: str(p.title), threadAuthor: `user:${a.user.id}`, mentions: mentionsIn(p.body) });
+      push("pull_opened", `pull:${n}`, { title: str(p.title), threadAuthor: `user:${a.user.id}`, mentions: mentionsIn(p.body), ref: `pull:${n}:opened` });
       follow(`pull:${n}`);
       break;
     }
@@ -237,30 +262,33 @@ export function eventsOfAction(a: ActionFacts): { events: NewEvent[]; threads: s
     case "pull_review": {
       const n = int(p.number);
       if (!n) break;
-      push(a.kind === "pull_comment" ? "pull_comment" : "pull_review", `pull:${n}`, { mentions: mentionsIn(p.body) });
+      const review = obj(r.review);
+      const ref = a.kind === "pull_comment" ? (str(r.comment) ? `comment:${str(r.comment)}` : "") : str(review.id) ? `review:${str(review.id)}` : "";
+      push(a.kind === "pull_comment" ? "pull_comment" : "pull_review", `pull:${n}`, { mentions: mentionsIn(p.body), ref });
       follow(`pull:${n}`);
       break;
     }
     case "pull_merge": {
       const n = int(p.number);
-      if (n) push("pull_merged", `pull:${n}`, { title: str(p.title) });
+      if (n) push("pull_merged", `pull:${n}`, { title: str(p.title), ref: `pull:${n}:merged` });
       break;
     }
     case "pull_edit": {
       const numbers = Array.isArray(p.numbers) ? p.numbers : [];
       if (numbers.length !== 1 || (p.state !== "closed" && p.state !== "open")) break;
-      push(p.state === "closed" ? "pull_closed" : "pull_reopened", `pull:${numbers[0]}`, { title: str(p.title) });
+      push(p.state === "closed" ? "pull_closed" : "pull_reopened", `pull:${numbers[0]}`, { title: str(p.title), ref: `pull:${numbers[0]}:${p.state === "closed" ? "closed" : "reopened"}` });
       break;
     }
     case "release_create":
     case "release_edit": {
       const tag = str(r.tag);
       const published = a.kind === "release_create" ? p.draft === false : p.draft === false;
-      if (tag && published) push("release_published", `release:${tag}`, { title: str(p.name) || tag });
+      if (tag && published) push("release_published", `release:${tag}`, { title: str(p.name) || tag, ref: `release:${tag}` });
+      // The tie as parsed (act-releases.ts PaperTie: its paperId, "doi:10.…"), or as a page names it.
       const tie = obj(p.paper);
-      const doi = str(tie.doi);
+      const doi = str(tie.paperId) || str(tie.doi);
       if (tag && doi && repo) {
-        const paper = doi.startsWith("doi:") ? doi : `doi:${doi.toLowerCase()}`;
+        const paper = doi.startsWith("doi:") ? doi.toLowerCase() : `doi:${doi.toLowerCase()}`;
         events.push({ subject: `paper:${paper}`, at: a.t, nonce: `${a.nonce}.tie`, kind: "release_tied", thread: `release:${tag}`, title: `${repo.path} ${tag}`, url: page, repoPath: repo.path, paperId: paper, ...actor });
       }
       break;
@@ -284,7 +312,8 @@ export function eventsOfAction(a: ActionFacts): { events: NewEvent[]; threads: s
   return { events, threads };
 }
 
-/** The writes of an action's events and followed threads (1 row each; a followed thread only once). */
+/** The writes of an action's events (each once, by its `ref`: GitHub's webhook may bring it too) and
+ *  followed threads (1 row each; a followed thread only once). */
 export function actionEventWrites(db: D1Database, userId: string, x: { events: NewEvent[]; threads: string[] }, t: number): Write[] {
   return [...x.events.map((e) => eventWrite(db, e)), ...x.threads.map((k) => autoFollowWrite(db, userId, k, t))];
 }
@@ -301,7 +330,7 @@ export function eventOfDelivery(event: ForgeEvent, repo: RepoRow, t: number): Ne
     case "issues": {
       const kind = ({ opened: "issue_opened", closed: "issue_closed", reopened: "issue_reopened" } as const)[event.action as "opened"];
       if (!kind) return null;
-      return { ...base, nonce: `delivery:${event.delivery}`, kind, thread: `issue:${event.number}`, title: event.title, url: `/r/${path}/issues/${event.number}`, threadAuthor: author(event.author), mentions: event.action === "opened" ? event.mentions : [], ...who(event.sender) };
+      return { ...base, nonce: `delivery:${event.delivery}`, kind, thread: `issue:${event.number}`, title: event.title, url: `/r/${path}/issues/${event.number}`, threadAuthor: author(event.author), mentions: event.action === "opened" ? event.mentions : [], ref: `issue:${event.number}:${event.action}`, ...who(event.sender) };
     }
     case "issue_comment": {
       if (event.action !== "created") return null;
@@ -315,6 +344,7 @@ export function eventOfDelivery(event: ForgeEvent, repo: RepoRow, t: number): Ne
         url: `/r/${path}/${pull ? "pull" : "issues"}/${event.number}`,
         threadAuthor: author(event.author),
         mentions: event.mentions,
+        ref: `comment:${event.commentId}`,
         ...who(event.sender),
       };
     }
@@ -322,11 +352,11 @@ export function eventOfDelivery(event: ForgeEvent, repo: RepoRow, t: number): Ne
       const kind =
         event.action === "opened" ? "pull_opened" : event.action === "reopened" ? "pull_reopened" : event.action === "closed" ? (event.merged ? "pull_merged" : "pull_closed") : null;
       if (!kind) return null;
-      return { ...base, nonce: `delivery:${event.delivery}`, kind, thread: `pull:${event.number}`, title: event.title ?? "", url: `/r/${path}/pull/${event.number}`, threadAuthor: author(event.author), mentions: kind === "pull_opened" ? (event.mentions ?? []) : [], ...who(event.sender) };
+      return { ...base, nonce: `delivery:${event.delivery}`, kind, thread: `pull:${event.number}`, title: event.title ?? "", url: `/r/${path}/pull/${event.number}`, threadAuthor: author(event.author), mentions: kind === "pull_opened" ? (event.mentions ?? []) : [], ref: `pull:${event.number}:${kind.slice(5)}`, ...who(event.sender) };
     }
     case "release": {
       if (event.action !== "published" || event.draft) return null;
-      return { ...base, nonce: `delivery:${event.delivery}`, kind: "release_published", thread: `release:${event.tagName}`, title: event.name || event.tagName, url: `/r/${path}/releases/tag/${encodeURIComponent(event.tagName)}`, ...who(event.sender) };
+      return { ...base, nonce: `delivery:${event.delivery}`, kind: "release_published", thread: `release:${event.tagName}`, title: event.name || event.tagName, url: `/r/${path}/releases/tag/${encodeURIComponent(event.tagName)}`, ref: `release:${event.tagName}`, ...who(event.sender) };
     }
     default:
       return null;

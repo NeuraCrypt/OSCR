@@ -82,7 +82,7 @@ const MAP = "a".repeat(64);
 const memRepo = (id: string) => w.backend.repos.get(id)!;
 
 describe("release_create", () => {
-  test("publishes at the commit the page showed, tied to the accepted manuscript, with Software Heritage and Zenodo asked: 5 rows, one batch", async () => {
+  test("publishes at the commit the page showed, tied to the accepted manuscript, with Software Heritage and Zenodo asked: 5 rows (7 with phase 08's events), one batch", async () => {
     const b = await signIn(w);
     const { id, head } = await repository();
     adaAuthor();
@@ -118,8 +118,10 @@ describe("release_create", () => {
     assert.equal(await ada().git.resolve(REF, "refs/tags/v1.0.0"), head);
     assert.equal((await anon().releases.latest(REF))?.id, made.id);
     assert.equal(run.actBody!.sentence, "Publish the release v1.0.0 “Code of the accepted manuscript” at commit " + head.slice(0, 7) + " (set as the latest); tie it to the accepted manuscript (revision 2) of doi:10.1234/eeg.2026, with the tracing map aaaaaaaaaaaa; ask Software Heritage to archive it; ask for the Zenodo deposit of its tracing map, validated by you");
-    // One batch: the action row (5), the tie, three jobs.
-    assert.equal(w.forge.totals.written, 5);
+    // One batch: the action row (5), the tie, three jobs; phase 08: the release's event (no App on the
+    // repository: no webhook will bring it) and the tie's event on the paper (7).
+    assert.deepEqual(forgeRows(w.forge, "events").map((e) => [e.subject, e.kind]).sort(), [[`paper:${PAPER}`, "release_tied"], [`repo:memory:${id}`, "release_published"]]);
+    assert.equal(w.forge.totals.written, 7);
     const [tie] = forgeRows(w.forge, "release_papers");
     assert.equal(tie.tag, "v1.0.0");
     assert.equal(tie.paper_id, PAPER);
@@ -136,7 +138,7 @@ describe("release_create", () => {
     assert.deepEqual(jobs.map((j) => j.proof), ["", "", "orcid-sandbox"]);
     const [action] = forgeRows(w.forge, "actions");
     assert.equal(action.kind, "release_create");
-    assert.equal(action.rows, 5);
+    assert.equal(action.rows, 7);
     assert.equal(action.repo_id, id);
     assert.ok(!JSON.stringify(forgeRows(w.forge, "release_papers")).includes("Figures"));
     assert.deepEqual(seen.revoked, seen.issued);
@@ -249,7 +251,9 @@ describe("release_edit, release_delete, release_drafts", () => {
     assert.equal(pub.actBody!.sentence, "Publish the draft release: its title to “Submitted”");
     assert.equal(await ada().git.resolve(REF, "refs/tags/v1.1.0"), head);
     assert.deepEqual(forgeRows(w.forge, "jobs").map((j) => [j.kind, j.paper_id]), [["release", PAPER]]);
-    assert.equal(forgeRows(w.forge, "actions")[0].rows, 2);
+    // The action row and the job; phase 08: the release's event (published now, no App on the repository).
+    assert.deepEqual(forgeRows(w.forge, "events").map((e) => e.kind).sort(), ["release_published", "release_tied"]);
+    assert.equal(forgeRows(w.forge, "actions")[0].rows, 3);
     const retag = await authorize(w, b, on("release_edit", id, { id: rid, tag: "v1.1.1" }));
     assert.equal(retag.act?.status, 409);
     assert.equal(retag.actBody!.error.code, "published_tag");

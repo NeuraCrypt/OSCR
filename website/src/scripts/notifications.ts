@@ -6,7 +6,7 @@
 // Like every browser script, it never names the platform.
 
 import { h, type El } from "../lib/repo-view.ts";
-import { groupThreads, inView, LEVEL_WORDS, matchesThread, parseInboxQuery, targetHref, targetWords, VIEW_WORDS, VIEWS, type Thread, type View } from "../lib/social.ts";
+import { groupThreads, inView, LEVEL_WORDS, matchesThread, parseInboxQuery, sitePath, targetHref, targetWords, VIEW_WORDS, VIEWS, type Thread, type View } from "../lib/social.ts";
 import { show, toDom } from "./dom.ts";
 import { el } from "./pull-common.ts";
 import { getJson, postJson, problemOf, signedIn, type Json } from "./social-client.ts";
@@ -52,13 +52,15 @@ function threadRow(t: Thread, selected: Set<string>, redraw: () => void, said: H
   const pick = el("input", { type: "checkbox", "aria-label": `Select ${t.title || t.words}` });
   (pick as HTMLInputElement).checked = selected.has(t.key);
   pick.addEventListener("change", () => ((pick as HTMLInputElement).checked ? selected.add(t.key) : selected.delete(t.key)));
-  const title = el("a", { href: t.url }, t.title || t.words);
+  // Only a path of this site: the registry shows everything; a thread's address is its own page here.
+  const url = sitePath(t.url) ?? "/notifications/";
+  const title = el("a", { href: url }, t.title || t.words);
   // Opening a thread marks it read (one request), then goes there.
   title.addEventListener("click", async (ev) => {
     if (ev.button !== 0 || ev.metaKey || ev.ctrlKey || ev.shiftKey || !t.unread) return;
     ev.preventDefault();
     await change("read", [t], said);
-    location.href = t.url;
+    location.href = url;
   });
   const act = (label: string, op: string, apply: () => void) => {
     const b = el("button", { type: "button" }, label);

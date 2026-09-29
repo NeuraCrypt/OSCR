@@ -98,6 +98,34 @@ const seed = (await (await fetch(`${FAKE}/control/seed`)).json()) as { ada: { id
 // Phase 07, after the Mac's forge poll (e2e.sh runs it between the two): the tracing map versioned
 // with the release, and the deposit of its validated map on the MOCK Zenodo sandbox — never a real one.
 const STATE_FILE = process.env.E2E_STATE ?? "";
+// Phase 08, after the Mac's night (e2e.sh: the forge layer, the social layer, the search's index): the
+// static files of a signed-out reader, and the search of the registry's own objects.
+if (process.argv[2] === "after-social") {
+  const anon = new Client();
+  const search = async (qs: string) => (await (await anon.request(`${SITE}/api/search?${qs}`)).json()) as Json;
+  const repos = await search("type=repositories&q=eeg%20analysis");
+  check("search: repositories, the linked one found, with its paper", ((repos.results ?? []) as Json[]).some((r) => r.path === "oscr-fixture/eeg-analysis" && r.url === "/r/oscr-fixture/eeg-analysis/"), repos);
+  check("search: every type's count in the same answer", typeof repos.counts?.repositories === "number" && typeof repos.counts?.people === "number", repos.counts);
+  const issues = await search("type=issues&q=hann%20is:closed");
+  check("search: research issues, the closed mismatch about the Hann window, on its page here", ((issues.results ?? []) as Json[]).some((r) => r.state === "closed" && /^\/research\/\d+$/.test(String(r.url))), issues);
+  const none = await search("type=issues&q=hann%20is:open");
+  check("search: is:open leaves the closed ones out", ((none.results ?? []) as Json[]).length === 0, none);
+  const people = await search("type=people&q=methods");
+  check("search: people, Ada's public profile", ((people.results ?? []) as Json[]).some((r) => r.handle === "ada-fixture" && r.url === "/u/ada-fixture/"), people);
+  check("search: no email address in the answers", !/example\.org"|@example/.test(JSON.stringify([repos, issues, people])), "");
+  const papers = await anon.request(`${SITE}/api/search?q=eeg`);
+  check("search: papers stay the default type", papers.status === 200 || papers.status === 503, papers.status);
+  // The social layer the Mac wrote for signed-out readers (the next build copies it to /social/).
+  const { readFileSync } = await import("node:fs");
+  const shard = String(createHash("sha256").update("person:ada-fixture").digest()[0] % 64).padStart(2, "0");
+  const file = JSON.parse(readFileSync(`${process.env.EXPORT ?? ""}/social/${shard}.json`, "utf8")) as Json;
+  const entry = file["person:ada-fixture"] as Json | undefined;
+  check(`social/${shard}.json: Ada's public profile, the address hidden, no account id`, !!entry && entry.profile?.name === "Ada Fixture" && /\[email hidden\]/.test(String(entry.profile?.bio)) && !/"u_/.test(JSON.stringify(entry)), entry);
+  const repoKey = Object.keys(JSON.parse(readFileSync(`${process.env.EXPORT ?? ""}/social/${String(createHash("sha256").update(`repo:github:${process.env.REPO_ID ?? ""}`).digest()[0] % 64).padStart(2, "0")}.json`, "utf8")) as Json);
+  check("the linked repository's stars and watchers, counted by the Mac (no count row)", repoKey.includes(`repo:github:${process.env.REPO_ID ?? ""}`), repoKey);
+  console.log(failures ? `${failures} check(s) failed` : "every check passed");
+  process.exit(failures ? 1 : 0);
+}
 if (process.argv[2] === "after-mac") {
   const { readFileSync } = await import("node:fs");
   const saved = JSON.parse(readFileSync(STATE_FILE, "utf8")) as { jar: [string, string][]; id: string; tag: string };
@@ -173,7 +201,7 @@ check("create: no token in the answer", !/gh[opsu]_|memtok|token/i.test(JSON.str
 // 3. Link the fixture's repository (Ada administers the organization): public, no App.
 const linked = await ada.act("link", { forge: "github", owner: "oscr-fixture", name: "eeg-analysis" }, { repository: "oscr-fixture/eeg-analysis", papers: ["10.5555/oscr.fixture.1"] }, "/new/link/");
 check("link: done, mode public (no installation)", linked.status === 200 && linked.data.result?.mode === "public", linked.data);
-check("link: at most 5 rows written", linked.written > 0 && linked.written <= 5, linked.written);
+check("link: at most 6 rows written (phase 08: the paper's event)", linked.written > 0 && linked.written <= 6, linked.written);
 const layer = (await (await ada.request(`${SITE}/api/forge/repo?path=oscr-fixture/eeg-analysis`)).json()) as Json;
 check("GET /api/forge/repo: the layer, with its paper", layer.mode === "public" && layer.papers?.length === 1, layer);
 mine = (await (await ada.request(`${SITE}/api/forge/mine`)).json()) as Json;
@@ -251,7 +279,7 @@ for (const page of [
   check("pulls: two branches from the same main", welch.status === 200 && clash.status === 200, [welch.data, clash.data]);
   const open = (head: string, title: string) => ada.act("pull_open", { forge: "github", id }, { base: "main", head, title, body: "Fixes #1." }, "/r/oscr-fixture/eeg-analysis/pulls", { branch: "main" });
   const a = await open("e2e-welch", "Use a Hann window (e2e)");
-  check("pull_open: a pull request opened as Ada, the action row only", a.status === 200 && Number.isInteger(a.data.result?.number) && a.written === 1, [a.status, a.data, a.written]);
+  check("pull_open: a pull request opened as Ada, the action row; phase 08: its event, Ada following the thread (3)", a.status === 200 && Number.isInteger(a.data.result?.number) && a.written === 3, [a.status, a.data, a.written]);
   check("pull_open: its page in the registry", a.data.result?.page === `/r/oscr-fixture/eeg-analysis/pull/${a.data.result?.number}`, a.data.result?.page);
   check("pull_open: no token in the answer", !/gh[opsu]_|memtok|token/i.test(JSON.stringify(a.data)), a.data);
   const b = await open("e2e-clash", "Use a boxcar window (e2e)");
@@ -262,7 +290,7 @@ for (const page of [
   const lineNo = (await rawAt(headA, "analysis.py")).split("\n").findIndex((l) => l.includes('window="hann"')) + 1;
   const suggestion = `Say which paragraph this follows:\n\`\`\`suggestion\n${line.slice(0, -1)}, window="hann")  # Methods\n\`\`\``;
   const review = await ada.act("pull_review", { forge: "github", id }, { number: na, commit: headA, event: "COMMENT", comments: [{ path: "analysis.py", line: lineNo, side: "RIGHT", body: suggestion }] }, `/r/oscr-fixture/eeg-analysis/pull/${na}/files`);
-  check("pull_review: a comment on a line, with a suggestion, the action row only", review.status === 200 && review.data.result?.comments === 1 && review.written === 1, [review.status, review.data, review.written]);
+  check("pull_review: a comment on a line, with a suggestion, the action row; phase 08: its event (2)", review.status === 200 && review.data.result?.comments === 1 && review.written === 2, [review.status, review.data, review.written]);
   const comments = (await (await fetch(`${FAKE}/api/repos/oscr-fixture/eeg-analysis/pulls/${na}/comments`)).json()) as Json[];
   check("pull_review: GitHub holds the comment on its line", comments.length === 1 && comments[0].line === lineNo && /```suggestion/.test(String(comments[0].body)), comments.map((c) => [c.line, c.path]));
   // The page applies it: the head's file with the suggestion's lines, one commit on the branch.
@@ -276,7 +304,7 @@ for (const page of [
   const stale = await ada.act("pull_merge", { forge: "github", id }, { number: na, method: "squash", head: headA }, `/r/oscr-fixture/eeg-analysis/pull/${na}`, { expectedHead: headA });
   check("pull_merge: at a head that moved, refused (409, offer reload), nothing written", stale.status === 409 && stale.data.error?.offer === "reload" && stale.written === 0, [stale.status, stale.data, stale.written]);
   const merged = await ada.act("pull_merge", { forge: "github", id }, { number: na, method: "squash", head: headA2, deleteBranch: true }, `/r/oscr-fixture/eeg-analysis/pull/${na}`, { expectedHead: headA2 });
-  check("pull_merge: squashed by GitHub as Ada, the branch deleted, the action row only", merged.status === 200 && merged.data.result?.sha === (await headOf()) && merged.data.result?.branchDeleted === true && merged.written === 1, [merged.status, merged.data, merged.written]);
+  check("pull_merge: squashed by GitHub as Ada, the branch deleted, the action row; phase 08: its event (2)", merged.status === 200 && merged.data.result?.sha === (await headOf()) && merged.data.result?.branchDeleted === true && merged.written === 2, [merged.status, merged.data, merged.written]);
   check("pull_merge: main has the suggestion", (await rawAt("main", "analysis.py")).includes('window="hann")  # Methods'));
   const headB = await branchHead("e2e-clash");
   const conflict = await ada.act("pull_merge", { forge: "github", id }, { number: nb, method: "merge", head: headB }, `/r/oscr-fixture/eeg-analysis/pull/${nb}`, { expectedHead: headB });
@@ -309,11 +337,11 @@ for (const page of [
   // A GitHub issue, typed (the organization's types), labelled, commented, closed with a reason.
   const opened = await ada.act("issue_open", { forge: "github", id }, { title: "The epoch length is not the paper's (e2e)", body: "The Methods say 2 s epochs; the code cuts 1 s ones.", labels: ["bug"], type: "Bug" }, "/r/oscr-fixture/eeg-analysis/issues");
   const n = Number(opened.data.result?.number);
-  check("issue_open: opened as Ada with its type and label, the action row only", opened.status === 200 && opened.written === 1 && (await fakeIssue(n)).type?.name === "Bug", [opened.status, opened.data, opened.written]);
+  check("issue_open: opened as Ada with its type and label, the action row; phase 08: its event, Ada following the thread (3)", opened.status === 200 && opened.written === 3 && (await fakeIssue(n)).type?.name === "Bug", [opened.status, opened.data, opened.written]);
   const labelled = await ada.act("issue_edit", { forge: "github", id }, { number: n, labels: { add: ["numerical difference"] } }, `/r/oscr-fixture/eeg-analysis/issues/${n}`);
   check("issue_edit: labelled", labelled.status === 200 && (await fakeIssue(n)).labels?.map((l: Json) => l.name).sort().join(",") === "bug,numerical difference", labelled.data);
   const commented = await ada.act("issue_comment", { forge: "github", id }, { number: n, body: "Confirmed with the paper's data." }, `/r/oscr-fixture/eeg-analysis/issues/${n}`);
-  check("issue_comment: a comment, the action row only", commented.status === 200 && commented.written === 1, [commented.status, commented.data]);
+  check("issue_comment: a comment, the action row; phase 08: its event (2)", commented.status === 200 && commented.written === 2, [commented.status, commented.data]);
   const closedIssue = await ada.act("issue_edit", { forge: "github", id }, { number: n, state: "closed", reason: "not_planned" }, `/r/oscr-fixture/eeg-analysis/issues/${n}`);
   const afterClose = await fakeIssue(n);
   check("issue_edit: closed as not planned", closedIssue.status === 200 && afterClose.state === "closed" && afterClose.state_reason === "not_planned", [closedIssue.data, afterClose.state, afterClose.state_reason]);
@@ -321,14 +349,14 @@ for (const page of [
   const mismatch = { paper: "10.5555/oscr.fixture.1", repo: { forge: "github", id, path: "oscr-fixture/eeg-analysis" }, type: "mismatch", title: "band_power: SciPy's default window, the Methods say Hann (e2e)", body: "Contact: someone@example.org", path: "analysis.py", lines: { start: 4, end: 6 }, paragraph: 3 };
   const research = await ada.post("/api/forge/research/open", mismatch);
   const rid = Number(research.data.id);
-  check("research open: a code–paper mismatch, 3 rows (the row, its index, the action row)", research.status === 201 && rid > 0 && ada.written === 3, [research.status, research.data, ada.written]);
+  check("research open: a code–paper mismatch, 3 rows (the row, its index, the action row); phase 08: the paper's event, Ada following the thread (5)", research.status === 201 && rid > 0 && ada.written === 5, [research.status, research.data, ada.written]);
   const read = (await (await ada.request(`${SITE}/api/forge/research?id=${rid}`)).json()) as Json;
   check("research read: live, its tracing-map link, the address hidden", read.issue?.type === "mismatch" && read.issue?.anchor?.paragraph === 3 && !JSON.stringify(read).includes("someone@example.org") && !("author_id" in (read.issue ?? {})), read.issue);
   check("research read: Ada, who linked the repository, triages it", read.can?.triage === true, read.can);
   const rlabel = await ada.post("/api/forge/research/edit", { id: rid, labels: { add: ["numerical difference"] } });
   check("research edit: labelled, 2 rows", rlabel.status === 200 && ada.written === 2, [rlabel.status, rlabel.data, ada.written]);
   const rcomment = await ada.post("/api/forge/research/comment", { id: rid, body: "The window changes the alpha ratio of Figure 2." });
-  check("research comment: 3 rows (the comment, the issue's count, the action row)", rcomment.status === 200 && ada.written === 3, [rcomment.status, rcomment.data, ada.written]);
+  check("research comment: 3 rows (the comment, the issue's count, the action row); phase 08: the paper's event (4)", rcomment.status === 200 && ada.written === 4, [rcomment.status, rcomment.data, ada.written]);
   const rclose = await ada.post("/api/forge/research/edit", { id: rid, state: "closed", resolution: "paper_corrected", ref: "10.5555/oscr.fixture.correction.1" });
   const closedRead = (await (await ada.request(`${SITE}/api/forge/research?id=${rid}`)).json()) as Json;
   check("research edit: closed with a resolution, 2 rows", rclose.status === 200 && closedRead.issue?.state === "closed" && closedRead.issue?.resolution === "paper_corrected" && closedRead.issue?.close_reason === "completed", [rclose.data, closedRead.issue?.state, closedRead.issue?.resolution]);
@@ -344,7 +372,7 @@ for (const page of [
   const pullHead = String(((await (await fetch(`${FAKE}/api/repos/oscr-fixture/eeg-analysis/pulls/${np}`)).json()) as Json).head?.sha ?? "");
   const merge = await ada.act("pull_merge", { forge: "github", id }, { number: np, method: "merge", head: pullHead, closes: [rid2] }, `/r/oscr-fixture/eeg-analysis/pull/${np}`, { expectedHead: pullHead });
   const fixed = (await (await ada.request(`${SITE}/api/forge/research?id=${rid2}`)).json()) as Json;
-  check("pull_merge: the pull request that says “Fixes research#N” closes it, fixed in the code at the merge commit (2 rows)", branched2.status === 200 && merge.status === 200 && merge.data.result?.closed?.[0] === rid2 && merge.written === 2 && fixed.issue?.state === "closed" && fixed.issue?.resolution === "fixed_in_code" && fixed.issue?.resolution_ref === merge.data.result?.sha, [merge.status, merge.data, merge.written, fixed.issue?.state, fixed.issue?.resolution]);
+  check("pull_merge: the pull request that says “Fixes research#N” closes it, fixed in the code at the merge commit (2 rows; phase 08: the merge's event, 3)", branched2.status === 200 && merge.status === 200 && merge.data.result?.closed?.[0] === rid2 && merge.written === 3 && fixed.issue?.state === "closed" && fixed.issue?.resolution === "fixed_in_code" && fixed.issue?.resolution_ref === merge.data.result?.sha, [merge.status, merge.data, merge.written, fixed.issue?.state, fixed.issue?.resolution]);
   // The copy of a research issue on GitHub, by its author (a new one: the first is closed, it may
   // still be copied).
   const copy = await ada.act("research_copy", { forge: "github", id }, { id: rid }, `/research/${rid}`);
@@ -418,7 +446,7 @@ for (const page of [
     "/r/oscr-fixture/eeg-analysis/releases/",
   );
   check("release_create: published as Ada, GitHub's tag at the commit the page showed", made.status === 200 && made.data.result?.tag === "v1.2.0" && made.data.result?.draft === false, made.data);
-  check("release_create: the tie, the map's version, Software Heritage and Zenodo asked: 5 rows", made.written === 5 && JSON.stringify(made.data.result?.jobs) === JSON.stringify(["release", "archive", "deposit"]), [made.written, made.data.result?.jobs]);
+  check("release_create: the tie, the map's version, Software Heritage and Zenodo asked: 5 rows (phase 08: the release's event and the tie's on the paper, 7)", made.written === 7 && JSON.stringify(made.data.result?.jobs) === JSON.stringify(["release", "archive", "deposit"]), [made.written, made.data.result?.jobs]);
   check("release_create: the tie is linked (Ada is a verified author)", made.data.result?.papers?.[0]?.status === "linked", made.data.result?.papers);
   check("release_create: the sentence confirmed", /^Publish the release v1\.2\.0 “The code of the accepted manuscript” at commit [0-9a-f]{7} \(set as the latest; GitHub's generated notes added\); tie it to the accepted manuscript of doi:10\.5555\/oscr\.fixture\.1/.test(String(made.data.sentence)), made.data.sentence);
   const onGitHub = (await (await fetch(`${FAKE}/api/repos/oscr-fixture/eeg-analysis/releases/tags/v1.2.0`)).json()) as Json;
@@ -445,6 +473,50 @@ for (const page of [
     const { writeFileSync } = await import("node:fs");
     writeFileSync(STATE_FILE, JSON.stringify({ jar: [...ada.jar], id, tag: "v1.2.0" }));
   }
+}
+
+// 5c. Phase 08: the social pages are static; Ada stars the repository, follows an author by ORCID iD
+// before they have an account, watches the repository and writes her profile (2 rows each); Bob's
+// comment on GitHub, delivered by the App's webhook, becomes ONE event row (with its delivery row)
+// and an in-site notification in Ada's inbox (she is mentioned), which she marks read (1 row and the
+// action row). No email anywhere. The search is checked after the Mac's night (after-social).
+for (const page of ["/notifications/", "/stars/", "/feed/", "/explore/", "/u/ada-fixture/", "/u/0000-0002-1825-0097/"]) {
+  const res = await anon.request(`${SITE}${page}`);
+  check(`GET ${page}: 200, a static page`, res.status === 200 && /text\/html/.test(res.headers.get("Content-Type") ?? ""), res.status);
+}
+{
+  const star = await ada.post("/api/forge/social/star", { subject: `repo:github:${id}`, label: "oscr-fixture/eeg-analysis", on: true });
+  check("star a repository: 2 rows (the star, the action row)", star.status === 200 && star.data.starred === true && ada.written === 2, [star.status, star.data, ada.written]);
+  const author = await ada.post("/api/forge/social/follow", { target: "orcid:0000-0002-1825-0097", label: "Josiah Carberry", on: true });
+  check("follow an author by ORCID iD, before they have an account: 2 rows", author.status === 200 && ada.written === 2, [author.status, author.data, ada.written]);
+  const person = (await (await ada.request(`${SITE}/api/forge/social/person?orcid=0000-0002-1825-0097`)).json()) as Json;
+  check("the author has no account yet; Ada follows them", person.account === false && person.following?.orcid === "all", person);
+  const watch = await ada.post("/api/forge/social/follow", { target: `repo:github:${id}`, level: "all", on: true });
+  check("watch the repository (all activity): 2 rows", watch.status === 200 && ada.written === 2, [watch.status, watch.data, ada.written]);
+  const profile = await ada.post("/api/forge/social/profile", { name: "Ada Fixture", bio: "EEG methods and their code. Mail ada.fixture@example.org", website: "https://ada.example.org" });
+  check("Ada's profile: 2 rows, the address in her text hidden", profile.status === 200 && ada.written === 2, [profile.status, profile.data]);
+  const bobUser = { login: "bob-fixture", id: Number(seed.bob.id) };
+  const comment = await deliver("issue_comment", {
+    action: "created",
+    issue: { number: 1, title: "The filter's order", user: bobUser },
+    comment: { id: 424242, body: "@ada-fixture the order is 4 here, the paper says 2. bob.fixture@example.org", user: bobUser },
+    repository: { id: Number(id), name: "eeg-analysis", full_name: "oscr-fixture/eeg-analysis", owner: { login: "oscr-fixture", id: repoJson.owner.id }, visibility: "public", default_branch: "main" },
+    sender: bobUser,
+    installation: { id: 777 },
+  });
+  check("webhook: Bob's issue comment on GitHub, ONE event row with its delivery row (2)", comment.status === 200 && comment.written === 2, comment);
+  const inbox = (await (await ada.request(`${SITE}/api/forge/social/inbox`)).json()) as Json;
+  const t = ((inbox.threads ?? []) as Json[]).find((x) => x.key === `repo:github:${id}#issue:1`);
+  check("Ada's inbox: the comment, unread, because she is mentioned, from Bob, on the repository's page here", !!t && t.unread === true && t.reason === "mention" && t.latest?.actor === "bob-fixture" && t.url === "/r/oscr-fixture/eeg-analysis/issues/1", t ?? inbox);
+  check("the inbox holds no email address and no text of the comment", !/example\.org|order is 4/.test(JSON.stringify(inbox)), "");
+  const read = await ada.post("/api/forge/social/notices", { op: "read", threads: [{ key: `repo:github:${id}#issue:1` }] });
+  check("mark it read: 2 rows (its state, the action row)", read.status === 200 && ada.written === 2, [read.status, read.data, ada.written]);
+  const again = (await (await ada.request(`${SITE}/api/forge/social/inbox`)).json()) as Json;
+  check("the notification is read now", ((again.threads ?? []) as Json[]).find((x) => x.key === `repo:github:${id}#issue:1`)?.unread === false, again.threads);
+  const feed = (await (await ada.request(`${SITE}/api/forge/social/feed`)).json()) as Json;
+  check("Ada's feed: the watched repository's comment", ((feed.items ?? []) as Json[]).some((i) => i.kind === "issue_comment" && i.actor === "bob-fixture"), feed.items);
+  const noEmail = await fetch(`${SITE}/api/account/me`, { headers: { Cookie: [...ada.jar].map(([k, v]) => `${k}=${v}`).join("; ") } });
+  check("still no email address on the account", !/@example\.org/.test(await noEmail.text()), "");
 }
 
 // 6. FORGE_OPEN unset: Bob may read, not act.
@@ -477,6 +549,13 @@ const bobReads = await bob.request(`${SITE}/api/forge/research?id=1`);
 check("Bob may read a research issue", bobReads.status === 200, bobReads.status);
 const bobMine = await bob.request(`${SITE}/api/forge/mine`);
 check("Bob may still read his dashboard", bobMine.status === 200, bobMine.status);
+// Phase 08: Bob's star and follow are refused (FORGE_OPEN unset); he reads his own inbox.
+const bobStar = await bob.post("/api/forge/social/star", { subject: `repo:github:${id}`, on: true });
+check("FORGE_OPEN unset: Bob's star is refused (403 forge_closed), nothing written", bobStar.status === 403 && bobStar.data.error?.code === "forge_closed" && bob.written === 0, [bobStar.status, bobStar.data]);
+const bobFollow = await bob.post("/api/forge/social/follow", { target: `github:${seed.ada.id}`, on: true });
+check("FORGE_OPEN unset: Bob's follow is refused (403 forge_closed)", bobFollow.status === 403 && bobFollow.data.error?.code === "forge_closed", [bobFollow.status, bobFollow.data]);
+const bobInbox = await bob.request(`${SITE}/api/forge/social/inbox`);
+check("Bob reads his own inbox, empty: nothing of Ada's", bobInbox.status === 200 && ((await bobInbox.json()) as Json).threads?.length === 0, bobInbox.status);
 await post(`${FAKE}/control`, { login: "ada-fixture" });
 
 console.log(failures ? `${failures} check(s) failed` : "every check passed");

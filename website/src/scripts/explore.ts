@@ -71,7 +71,7 @@ async function main(): Promise<void> {
     ),
     el("h2", { id: "topics" }, "Topics"),
     (data?.topics ?? []).length
-      ? el("ul", { class: "topics" }, ...(data?.topics ?? []).map((t) => el("li", {}, el("a", { href: `/explore/?topic=${t.name}` }, t.name), t.featured ? " · curated" : "", t.stars ? ` · ${t.stars} stars` : "", t.description ? el("p", { class: "line" }, t.description) : "")))
+      ? el("ul", { class: "topics" }, ...(data?.topics ?? []).map((t) => el("li", {}, el("a", { href: `/explore/?topic=${t.name}` }, t.name), t.featured ? " · curated" : "", t.stars ? ` · ${t.stars} ${t.stars === 1 ? "star" : "stars"}` : "", t.description ? el("p", { class: "line" }, t.description) : "")))
       : el("p", { class: "explain" }, "The topics are published with the registry's nightly files."),
     el("h2", { id: "collections" }, "Collections"),
     (data?.collections ?? []).length

@@ -18,6 +18,7 @@ import {
   identiconView,
   parsePersonPath,
   personUrl,
+  sitePath,
   subjectHref,
   subjectWords,
   targetHref,
@@ -122,6 +123,18 @@ async function live(handle: string): Promise<{ person: Person | null; githubId: 
   };
 }
 
+/** The registry's names of repositories and papers (last night's shard: "owner/name", the title). */
+async function namesOf(subjects: string[]): Promise<Map<string, string>> {
+  const out = new Map<string, string>();
+  await Promise.all(
+    [...new Set(subjects)].filter((s) => s.startsWith("repo:") || s.startsWith("paper:")).slice(0, 120).map(async (s) => {
+      const e = await socialEntry(s);
+      if (e && typeof e.name === "string" && e.name) out.set(s, e.name);
+    }),
+  );
+  return out;
+}
+
 async function readme(login: string): Promise<El | null> {
   try {
     const res = await fetch(`${endpoints.raw}/${encodeURIComponent(login)}/${encodeURIComponent(login)}/HEAD/README.md`, { credentials: "omit", referrerPolicy: "no-referrer" });
@@ -209,6 +222,12 @@ async function main(): Promise<void> {
   );
   const follow = el("div", {});
   const blocks: (Node | string)[] = [head, follow, said];
+  const names = await namesOf([...(p?.pinned ?? []), ...(person?.stars ?? []).slice(0, 100), ...(person?.lists ?? []).flatMap((l) => l.items)]);
+  const item = (s: string) => {
+    const href = subjectHref(s, names.get(s));
+    const words = subjectWords(s, names.get(s));
+    return el("li", {}, href ? el("a", { href }, words) : words);
+  };
   if (problem) blocks.push(el("p", { class: "warning" }, problem));
   if (!person) {
     blocks.push(el("p", {}, orcid ? "This author has no account in the registry yet: follow them by their ORCID iD, and their activity reaches your feed once they sign in." : "Nothing is known of this person in the registry yet (as of last night)."));
@@ -219,7 +238,7 @@ async function main(): Promise<void> {
     if (p.bio) facts.push(el("p", { class: "bio" }, p.bio));
     const line = [p.company, p.location, p.timezone].filter(Boolean).join(" · ");
     if (line) facts.push(el("p", {}, line));
-    const links = [p.website, ...(p.links ?? [])].filter((x): x is string => !!x && x.startsWith("https://"));
+    const links = [p.website, ...(p.links ?? [])].filter((x): x is string => typeof x === "string" && /^https:\/\/[^\s@/\\]+\.[^\s@/\\]+(?:\/[^\s@\\]*)?$/.test(x));
     if (links.length) facts.push(el("p", {}, ...links.flatMap((u, i) => [i ? " · " : "", el("a", { href: u, rel: "nofollow ugc" }, u.replace(/^https:\/\//, ""))])));
     blocks.push(...facts);
   }
@@ -233,12 +252,12 @@ async function main(): Promise<void> {
         const l = person?.lists.find((x) => `list:${x.id}` === s);
         return el("li", {}, l ? `The list ${l.name}` : "A list");
       }
-      const href = subjectHref(s);
-      return el("li", {}, href ? el("a", { href }, subjectWords(s)) : subjectWords(s));
+      return item(s);
     })));
   }
   // The profile README.
   const readmeBox = el("section", { class: "readme markdown-body" });
+  readmeBox.hidden = true;
   blocks.push(readmeBox);
   // Milestones, the calendar, the timeline.
   const activity = el("section", { class: "activity" });
@@ -246,16 +265,10 @@ async function main(): Promise<void> {
   // Lists, stars, follows.
   if (person && !person.private) {
     if (person.lists.length) {
-      blocks.push(el("h2", {}, "Lists"), ...person.lists.map((l) => el("section", { class: "star-list" }, el("h3", {}, l.name), l.description ? el("p", {}, l.description) : "", el("ul", {}, ...l.items.map((s) => {
-        const href = subjectHref(s);
-        return el("li", {}, href ? el("a", { href }, subjectWords(s)) : subjectWords(s));
-      })))));
+      blocks.push(el("h2", {}, "Lists"), ...person.lists.map((l) => el("section", { class: "star-list" }, el("h3", {}, l.name), l.description ? el("p", {}, l.description) : "", el("ul", {}, ...l.items.map(item)))));
     }
     if (person.stars.length) {
-      blocks.push(el("h2", {}, "Stars"), el("ul", { class: "stars" }, ...person.stars.slice(0, 100).map((s) => {
-        const href = subjectHref(s);
-        return el("li", {}, href ? el("a", { href }, subjectWords(s)) : subjectWords(s));
-      })));
+      blocks.push(el("h2", {}, "Stars"), el("ul", { class: "stars" }, ...person.stars.slice(0, 100).map(item)));
     }
     if (person.follows.length) {
       blocks.push(el("h2", {}, "Follows"), el("ul", {}, ...person.follows.map((t) => {
@@ -272,7 +285,9 @@ async function main(): Promise<void> {
   if (target && !person?.me) void mountSocial(follow, { target, label: login ?? orcid ?? handle, watch: "person" });
   if (login && p?.readme !== false && !person?.private) {
     void readme(login).then((r) => {
-      if (r) readmeBox.replaceChildren(el("h2", { class: "readme-name" }, `${login}/README.md`), toDom(r));
+      if (!r) return;
+      readmeBox.replaceChildren(el("h2", { class: "readme-name" }, `${login}/README.md`), toDom(r));
+      readmeBox.hidden = false;
     });
   }
   // The publications of the catalogue, by ORCID iD, and the registry's contributions (signed in).
@@ -297,6 +312,10 @@ async function main(): Promise<void> {
   if (milestones.length || papers.length) {
     nodes.push(el("h2", {}, "Milestones"), el("ul", { class: "milestones" }, ...milestones.map((m) => el("li", {}, m.words)), papers.length ? el("li", {}, `${papers.length} ${papers.length === 1 ? "paper" : "papers"} in the catalogue, the latest ${papers[0].date}`) : ""));
   }
+  // Nothing to show for someone the registry knows only by an ORCID iD, with no paper in the catalogue.
+  if (person?.account === false || (!person && !papers.length)) {
+    if (!papers.length) return void activity.replaceChildren(...nodes);
+  }
   nodes.push(
     el("h2", {}, "Contributions"),
     el("p", { class: "summary" }, `${cal.total} contributions in the registry and ${cal.published} papers published in the last year${signedIn() ? "" : " (sign in to see the contributions)"}.`),
@@ -304,7 +323,7 @@ async function main(): Promise<void> {
     el("p", { class: "explain" }, "A darker cell: more contributions that day (issues, pull requests, reviews, releases, research issues made in the registry); a dot: a paper published."),
   );
   if (timeline.length) {
-    nodes.push(el("h2", {}, "Activity"), el("ul", { class: "timeline" }, ...timeline.slice(0, 50).map((x) => el("li", {}, `${new Date(x.at * 1000).toISOString().slice(0, 10)} · ${x.words} `, x.url ? el("a", { href: x.url }, x.title || x.about) : x.title || x.about))));
+    nodes.push(el("h2", {}, "Activity"), el("ul", { class: "timeline" }, ...timeline.slice(0, 50).map((x) => el("li", {}, `${new Date(x.at * 1000).toISOString().slice(0, 10)} · ${x.words} `, sitePath(x.url) ? el("a", { href: sitePath(x.url)! }, x.title || x.about) : x.title || x.about))));
   }
   if (papers.length) {
     nodes.push(el("h2", {}, "Papers"), el("ul", {}, ...papers.slice(0, 50).map((x) => el("li", {}, el("a", { href: `/paper/${x.slug}/` }, x.title), x.date ? ` · ${x.date}` : ""))));

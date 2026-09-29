@@ -953,6 +953,7 @@ details.lists-menu { display: inline-block; }
 details.lists-menu[open] { display: block; border: 1px solid var(--rule); padding: .2em .6em; }
 details.lists-menu p { margin: .2em 0; }
 fieldset.custom-watch { display: block; margin: .3em 0; padding: .2em .6em .4em; border: 1px solid var(--rule); }
+fieldset.custom-watch[hidden] { display: none; }
 fieldset.custom-watch label { margin-right: .8em; white-space: nowrap; }
 ul.notices { list-style: none; margin: 0 0 1em; padding: 0; }
 ul.notices li.notice { padding: .45em 0 .45em .5em; border-bottom: 1px solid var(--rule); overflow-wrap: anywhere; }

@@ -386,6 +386,7 @@ def main(argv: list[str] | None = None) -> int:
     so_where.add_argument("--local", action="store_true", help="the local D1s of `wrangler dev --env local`")
     so_where.add_argument("--remote", action="store_true", help="the Cloudflare databases oscr_forge and oscr_community")
     so.add_argument("--persist-to", default="", help="the local D1's state folder, when not website/.wrangler/state")
+    so.add_argument("--folder", default="data/community", help="search: the state of what was pushed (shared with `oscr forge`)")
     so.add_argument("--export", default="data/public",
                     help="layer: the public export, whose social/ the files go to; search: the export the index is made from")
     so.add_argument("--handle", default="", help="accept, decline: the person who proposed the list (GitHub login or ORCID iD)")
@@ -575,7 +576,7 @@ def main(argv: list[str] | None = None) -> int:
             from . import social
             print(social.command(con, a.action, target="remote" if a.remote else "local" if a.local else None,
                                  out=Path(a.export), settings=cfg, persist_to=Path(a.persist_to) if a.persist_to else None,
-                                 handle=a.handle, list_id=a.list))
+                                 handle=a.handle, list_id=a.list, folder=Path(a.folder)))
         elif a.command == "zenodo":
             _zenodo(con, a)
         elif a.command == "d1":

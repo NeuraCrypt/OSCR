@@ -40,6 +40,8 @@ const MESSAGES: Record<string, string> = {
   unavailable: "The search is unavailable at the moment. Please try again later.",
 };
 
+const ONE: Record<SearchType, string> = { papers: "paper", repositories: "repository", issues: "research issue", people: "person", topics: "topic", commits: "commit", code: "file" };
+
 const pageOf = (t: SearchType, query: string, page = 1): string => {
   const p = new URLSearchParams();
   if (t !== "papers") p.set("type", t);
@@ -74,8 +76,10 @@ function form(): El {
         ? "Words, \"a phrase\", -excluded, is:open or is:closed, type:code-error, type:mismatch or type:reproduction, doi:10.…, in:title; repo:owner/name also searches GitHub's own issues of that repository."
         : type === "repositories"
           ? "Words, \"a phrase\", -excluded, user:<login> or org:<login> (the owner), doi:10.… (a paper the code goes with)."
-          : type === "commits" || type === "code"
+          : type === "commits"
             ? "Words, and repo:owner/name: GitHub's commits are searched one repository at a time."
+            : type === "code"
+              ? "Words, and repo:owner/name to search one repository's code."
             : "Words, \"a phrase\", -excluded.",
     ),
   );
@@ -107,7 +111,7 @@ async function indexed(box: HTMLElement, counts: (c: Partial<Record<SearchType, 
   const notices = Array.isArray(body.notices) ? (body.notices as string[]) : [];
   show(
     box,
-    h("p", { class: "summary", "aria-live": "polite" }, total ? `${countWords(total, capped[type])} ${TYPE_WORDS[type].toLowerCase()} found, as of the index's last push (each night).` : `No ${TYPE_WORDS[type].toLowerCase()} found.`),
+    h("p", { class: "summary", "aria-live": "polite" }, total ? `${countWords(total, capped[type])} ${total === 1 && !capped[type] ? ONE[type] : TYPE_WORDS[type].toLowerCase()} found, as of the index's last push (each night).` : `No ${TYPE_WORDS[type].toLowerCase()} found.`),
     ...notices.map((n) => h("p", { class: "explain" }, n)),
     results.length ? h("ol", { class: "results", start: String((page - 1) * 20 + 1) }, results) : null,
     h("p", null, page > 1 ? h("a", { href: pageOf(type, q, page - 1) }, "Previous page") : null, page > 1 && results.length === 20 ? " · " : "", results.length === 20 ? h("a", { href: pageOf(type, q, page + 1) }, "Next page") : null),

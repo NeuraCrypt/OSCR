@@ -23,7 +23,10 @@
 #    Software Heritage and a Zenodo deposit asked, tags, the drafts, a package confirmed; Bob's release
 #    and file refused;
 # 5. phase 07: the Mac's forge poll, offline, its Zenodo the mock sandbox (never a real Zenodo), then
-#    the checks of its answers: the map versioned with the release, the deposit made on the mock.
+#    the checks of its answers: the map versioned with the release, the deposit made on the mock;
+# 6. phase 08 (in 4: stars, a follow by ORCID iD, a watch, Bob's comment by webhook into Ada's inbox,
+#    marked read, Bob's star refused): the Mac's forge and social layers and the search's index, then
+#    the search of repositories, research issues and people, and the static social shards.
 #
 #   cd website && SITE_PORT=8791 MOCK_PORT=9491 FAKE_PORT=9490 sh tests/forge-service/e2e.sh
 #   (KEEP=1 leaves the three servers running, for screenshots; kill them after.)
@@ -59,6 +62,8 @@ trap cleanup EXIT INT TERM
 (cd "$ROOT" && "$PYTHON" -m oscr --db "$TMP/mac.db" --cache "$TMP/cache" community build --local --folder "$TMP/community" >/dev/null)
 npx wrangler d1 migrations apply oscr_community --local --env local --persist-to "$TMP/state" >/dev/null
 npx wrangler d1 migrations apply oscr_forge --local --env local --persist-to "$TMP/state" >/dev/null
+# Phase 08: the search's database (papers and the GitHub side's forge_fts).
+npx wrangler d1 migrations apply oscr_search --local --env local --persist-to "$TMP/state" >/dev/null
 for f in "$TMP"/community/local-*/*.sql; do
   npx wrangler d1 execute oscr_community --local --env local --persist-to "$TMP/state" --file "$f" --yes >/dev/null
 done
@@ -112,3 +117,17 @@ SITE="$SITE" MOCK="$MOCK" FAKE="$FAKE" WEBHOOK_SECRET="$WEBHOOK_SECRET" MAP_DIGE
   forge poll --local --persist-to "$TMP/state" --folder "$TMP/community" --instance sandbox) >"$TMP/mac-forge.log" 2>&1 \
   || { echo "the Mac's forge poll failed:"; tail -20 "$TMP/mac-forge.log"; exit 1; }
 SITE="$SITE" MOCK="$MOCK" FAKE="$FAKE" E2E_STATE="$TMP/phase07.json" node --experimental-strip-types tests/forge-service/e2e.ts after-mac
+
+# 6. Phase 08: the Mac's night on the same local D1s — the forge layer, the social layer (stars,
+# follows, public profiles, Explore) and the search's index of the GitHub side built from those public
+# files — then the search and the static files checked.
+mkdir -p "$TMP/export"
+OSCR="$PYTHON -m oscr --db $TMP/mac.db --cache $TMP/cache --offline --no-verify --no-metadata --no-swh --no-contents --no-records"
+(cd "$ROOT" && $OSCR forge layer --local --persist-to "$TMP/state" --folder "$TMP/community" --export "$TMP/export") >"$TMP/mac-social.log" 2>&1 \
+  || { echo "the Mac's forge layer failed:"; tail -20 "$TMP/mac-social.log"; exit 1; }
+(cd "$ROOT" && $OSCR social layer --local --persist-to "$TMP/state" --export "$TMP/export") >>"$TMP/mac-social.log" 2>&1 \
+  || { echo "the Mac's social layer failed:"; tail -20 "$TMP/mac-social.log"; exit 1; }
+(cd "$ROOT" && $OSCR social search --local --persist-to "$TMP/state" --folder "$TMP/community" --export "$TMP/export") >>"$TMP/mac-social.log" 2>&1 \
+  || { echo "the Mac's search push failed:"; tail -20 "$TMP/mac-social.log"; exit 1; }
+REPO_ID=$("$PYTHON" -c "import json; print(json.load(open('$TMP/phase07.json'))['id'])")
+SITE="$SITE" MOCK="$MOCK" FAKE="$FAKE" EXPORT="$TMP/export" REPO_ID="$REPO_ID" node --experimental-strip-types tests/forge-service/e2e.ts after-social

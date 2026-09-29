@@ -26,6 +26,13 @@ describe("the query", () => {
     assert.deepEqual(p.unused, ["stars:>5"]);
   });
 
+  it("repo:owner/name narrows repositories and research issues to one repository", () => {
+    const p = parseForgeQuery("hann repo:oscr-fixture/eeg-analysis");
+    assert.deepEqual([p.words, p.repo, p.unused], [["hann"], ["oscr", "fixture", "eeg", "analysis"], []]);
+    assert.match(forgeMatch("issues", p), /\{ids\} : "oscr fixture eeg analysis"/);
+    assert.doesNotMatch(forgeMatch("people", p), /oscr fixture/);
+  });
+
   it("every term is quoted: nothing a reader types is FTS5 syntax", () => {
     const m = forgeMatch("issues", parseForgeQuery('a" OR b NEAR( {kind}:* is:open'));
     assert.equal(m, '{kind} : "zzkissue" AND {title text ids} : "a" AND {title text ids} : "or" AND {title text ids} : "b" AND {title text ids} : "near" AND {title text ids} : "kind" AND {kind} : "zzsopen"');

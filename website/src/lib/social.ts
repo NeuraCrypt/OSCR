@@ -18,6 +18,12 @@ export const socialUrl = (shard: string): string => `/social/${shard}.json`;
 export const authorsUrl = (shard: string): string => `/social/authors/${shard}.json`;
 export const EXPLORE_URL = "/social/explore.json";
 
+/** A path of this site, or null: never another site ("//host", "/\\host" and "javascript:" are not
+ *  paths here). Every address an answer or a static file gives a page goes through it. */
+export function sitePath(u: unknown): string | null {
+  return typeof u === "string" && /^\/(?![/\\])[^\s\\]{0,399}$/.test(u) ? u : null;
+}
+
 const LOGIN = /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})$/;
 const ORCID = /^\d{4}-\d{4}-\d{4}-\d{3}[\dX]$/;
 

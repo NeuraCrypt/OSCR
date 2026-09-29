@@ -69,6 +69,14 @@ describe("events", () => {
     assert.equal(forgeRows(w.forge, "events").length, 1);
   });
 
+  test("an event's address is a path of this site, whatever it was given", async () => {
+    const { eventWrite } = await import("../../worker/forge/service/events.ts");
+    for (const url of ["//evil.example/x", "/\\evil.example", "https://evil.example/"]) {
+      await w.forge.batch([eventWrite(w.forge, { subject: "repo:memory:101", at: T0, nonce: `nonce-${url.length}-${url.charCodeAt(1)}`, kind: "issue_comment", thread: "issue:1", title: "x", url }).stmt]);
+    }
+    assert.ok(forgeRows(w.forge, "events").every((e) => e.url === "/"));
+  });
+
   test("pull requests merged and releases published become events; drafts and other actions do not", () => {
     const repo = { forge: "memory", repo_id: "101", owner_login: "lab", name: "eeg" } as RepoRow;
     const merged = eventOfDelivery({ kind: "pull_request", delivery: "x", installation: INST, action: "closed", number: 5, repo: stub(), head: { ref: "a", sha: "1".repeat(40) }, base: { ref: "main" }, merged: true, sender: bob, title: "Faster" }, repo, T0);
@@ -79,16 +87,34 @@ describe("events", () => {
     assert.equal(labeled, null);
   });
 
-  test("an authorized action's events: only where no webhook comes; the threads the person takes part in", () => {
-    const base = { user: { id: "u_ada", github: "9", login: ADA_LOGIN }, t: T0, nonce: "n0nce-123" };
-    const repo = { forge: "memory", repoId: "5", path: "ada-fixture/eeg" };
-    const open = eventsOfAction({ ...base, kind: "issue_open", parsed: { title: "Bug", body: "cc @bob" }, result: { number: 4, page: "/r/ada-fixture/eeg/issues/4" }, repo, installed: false });
+  test("an authorized action's events and the threads the person takes part in; the same act from its webhook is ONE event", async () => {
+    const base = { user: { id: "u_ada", github: "77", login: ADA_LOGIN }, t: T0, nonce: "n0nce-123" };
+    const repo = { forge: "memory", repoId: "101", path: "lab/eeg" };
+    const open = eventsOfAction({ ...base, kind: "issue_open", parsed: { title: "Bug", body: "cc @bob" }, result: { number: 4, page: "/r/lab/eeg/issues/4" }, repo });
     assert.deepEqual(open.events.map((e) => [e.kind, e.thread, e.mentions]), [["issue_opened", "issue:4", ["bob"]]]);
-    assert.deepEqual(open.threads, ["repo:memory:5#issue:4"]);
-    const installed = eventsOfAction({ ...base, kind: "issue_open", parsed: { title: "Bug" }, result: { number: 4 }, repo, installed: true });
-    assert.deepEqual([installed.events.length, installed.threads.length], [0, 1]);
-    const tied = eventsOfAction({ ...base, kind: "release_create", parsed: { draft: false, paper: { doi: "10.1234/EEG.2026" } }, result: { tag: "v1.0", page: "/r/ada-fixture/eeg/releases/tag/v1.0" }, repo, installed: true });
-    assert.deepEqual(tied.events.map((e) => [e.subject, e.kind]), [[`paper:${PAPER}`, "release_tied"]]);
+    assert.deepEqual(open.threads, ["repo:memory:101#issue:4"]);
+    const tied = eventsOfAction({ ...base, kind: "release_create", parsed: { draft: false, paper: { paperId: PAPER, version: "accepted" } }, result: { tag: "v1.0", page: "/r/lab/eeg/releases/tag/v1.0" }, repo });
+    assert.deepEqual(tied.events.map((e) => [e.subject, e.kind]), [["repo:memory:101", "release_published"], [`paper:${PAPER}`, "release_tied"]]);
+    // A comment made through the registry (its action's event), then GitHub's webhook for it: one row.
+    const { actionEventWrites } = await import("../../worker/forge/service/events.ts");
+    const first = comment(3, [], { sender: bob }) as Extract<ForgeEvent, { kind: "issue_comment" }>;
+    const made = eventsOfAction({ ...base, kind: "issue_comment", parsed: { number: 3, body: "x" }, result: { comment: first.commentId }, repo });
+    assert.equal(made.events[0].ref, `comment:${first.commentId}`);
+    await w.forge.batch(actionEventWrites(w.forge, "u_ada", made, T0).map((x) => x.stmt));
+    w.advance(5);
+    const hook = await deliver(first);
+    assert.equal(hook.status, 200);
+    assert.equal(forgeRows(w.forge, "events").filter((e) => e.thread === "issue:3").length, 1);
+    // And the other way round: GitHub's webhook first, then the action's own event: one row.
+    const second = comment(8, [], { sender: bob }) as Extract<ForgeEvent, { kind: "issue_comment" }>;
+    await deliver(second);
+    const late = eventsOfAction({ ...base, t: T0 + 10, kind: "issue_comment", parsed: { number: 8, body: "y" }, result: { comment: second.commentId }, repo });
+    await w.forge.batch(actionEventWrites(w.forge, "u_ada", late, T0 + 10).map((x) => x.stmt));
+    assert.equal(forgeRows(w.forge, "events").filter((e) => e.thread === "issue:8").length, 1);
+    // Two comments of the same person on the same thread are two events (two objects).
+    await deliver(comment(8, [], { sender: bob }));
+    assert.equal(forgeRows(w.forge, "events").filter((e) => e.thread === "issue:8").length, 2);
+    assert.deepEqual(w.forge.scans, []);
   });
 });
 

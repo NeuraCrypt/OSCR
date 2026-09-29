@@ -244,6 +244,17 @@ describe("the gate and the caps", () => {
     const b = await signIn(w);
     assert.equal((await b.post("/api/forge/social/star", { subject: PAPER, on: true }, { origin: "https://evil.example" })).status, 403);
     assert.equal((await b.post("/api/forge/social/star", { subject: PAPER, on: true }, { csrf: null })).status, 403);
+    // Every social write route, and the notifications': another site, or no CSRF token, is refused.
+    for (const [path, payload] of [
+      ["/api/forge/social/follow", { target: `orcid:${CARBERRY}`, on: true }],
+      ["/api/forge/social/list", { op: "create", name: "x" }],
+      ["/api/forge/social/profile", { name: "x" }],
+      ["/api/forge/social/notices", { op: "all_read" }],
+    ] as const) {
+      assert.equal((await b.post(path, payload, { origin: "https://evil.example" })).status, 403, path);
+      assert.equal((await b.post(path, payload, { csrf: null })).status, 403, path);
+    }
+    assert.equal(forgeRows(w.forge, "follows").length + forgeRows(w.forge, "star_lists").length + forgeRows(w.forge, "profiles").length + forgeRows(w.forge, "notice_marks").length, 0);
     const out = w.browser();
     assert.equal((await out.post("/api/forge/social/star", { subject: PAPER, on: true }, { csrf: null })).status, 401);
     assert.equal((await out.fetch("/api/forge/social/mine")).status, 401);

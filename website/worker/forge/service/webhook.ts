@@ -249,6 +249,7 @@ async function plan(r: ForgeRequest, event: ForgeEvent, seen: Seen): Promise<Pla
       if (!covers(seen.installation, repo, event.repo)) return { writes: [], dropped: "unknown installation" };
       if (event.repo.visibility !== "public" || !ALIVE.includes(repo.state) || !repo.name) return { writes: [], dropped: "not followed" };
       const e = eventOfDelivery(event, repo, t);
+      // Once (its ref): the registry's own authorized action may have written the same act already.
       return e ? { writes: [eventWrite(db, e)] } : { writes: [], dropped: "not an event the inbox shows" };
     }
     default:
