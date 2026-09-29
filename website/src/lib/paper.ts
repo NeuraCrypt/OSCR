@@ -11,6 +11,10 @@ export type Affiliation = { name: string; ror: string };
 export type PageAuthor = { name: string; orcid: string; affiliations: number[] };
 export type Notice = { kind: string; id: string; date: string; source: string; url: string };
 export type Funding = { funder: string; url: string; awards: string[] };
+/** An institution of the paper's authors, by ROR id (from the JATS or OpenAlex). */
+export type PaperInstitution = { ror: string; name: string; country: string };
+/** OpenAlex's primary topic of the paper, with its place in OpenAlex's hierarchy. */
+export type Topic = { id: string; name: string; subfield: string; field: string; domain: string };
 export type Overview = {
   type: string;
   language: string;
@@ -31,8 +35,19 @@ export type Overview = {
   funding: Funding[];
   cited_by: number | null;
   references: number | null;
+  /** Where the counts came from, in words ("Europe PMC", "OpenAlex", "the paper"); "" unknown. */
+  cited_by_source?: string;
+  references_source?: string;
   rrids: { rrid: string; kind: string; name: string }[];
   notices: Notice[];
+  // What OpenAlex adds (absent from an export made before it).
+  institutions?: PaperInstitution[];
+  topic?: Topic | null;
+  openalex_id?: string;
+  /** diamond, gold, hybrid, bronze, green or closed (OpenAlex's, from Unpaywall). */
+  oa_status?: string;
+  oa_url?: string;
+  preprint?: { id: string; url: string } | null;
 };
 export type Features = {
   readme: boolean | null;
@@ -67,7 +82,9 @@ export type Availability = {
 };
 export type DataLink = { repo: string; url: string; dataset: string; repository: string; where: string };
 export type MapFacts = {
-  status: "validated" | "proposed" | "none";
+  /** "withheld": at a removal request (oscr reports accept), with neither digest, nor
+   *  validations, nor DOI, nor matches. */
+  status: "validated" | "proposed" | "none" | "withheld";
   repositories: number;
   files: number;
   pairs: number;

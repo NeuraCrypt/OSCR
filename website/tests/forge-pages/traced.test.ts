@@ -148,7 +148,7 @@ describe("in words", () => {
     const found = await locate(maps(), "analysis.py", SHA, Array.from({ length: 12 }, () => "x"), async () => null);
     const note = tracedNote(found, SHA)!;
     const hrefs = [...walk(note)].filter((e) => e.tag === "a").map((a) => a.attrs.href);
-    assert.deepEqual(hrefs, ["/paper/doi_10.5555_x/", "#L6-L10", "/paper/doi_10.5555_x/code/#pair-1"]);
+    assert.deepEqual(hrefs, ["/paper/doi_10.5555_x/", "#L6-L10", "/paper/doi_10.5555_x/#pair-1"]);
     assert.match(textOf(note), /validated by an author/);
     assert.match(textOf(note), /Paragraph 3 of Methods › Spectral analysis/);
     assert.doesNotMatch(JSON.stringify(note), /github\.com/, "never sends the reader to GitHub");

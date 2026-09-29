@@ -26,7 +26,7 @@ otherwise.*
   Zenodo, OSF and figshare records; Crossref and DataCite; the neuroscience registries (to
   do).
 - **What no longer works, or costs**: Papers with Code has been off since 2025-07-24;
-  OpenAlex charges per use; Hugging Face no longer gives free compute (Docker Spaces are
+  OpenAlex charges per use (lookups by DOI stay free with the owner's key); Hugging Face no longer gives free compute (Docker Spaces are
   reserved for paid plans); Code Ocean refuses robots.
 
 ---
@@ -169,7 +169,7 @@ Figures [verified] unless stated.
 | **PMC Open Access on AWS** | `s3://pmc-oa-opendata`, no account | every paper versioned (`PMC….1/….xml`, `.json`); a daily inventory | **for the massive backfill** (to code) |
 | bioRxiv API | `/pubs` works; **`/details` returns an empty body** | a new DOI prefix, `10.64898` (55% of recent preprints) | JATS through the website, with frequent 429s |
 | Crossref | no key; 5 requests per second (10 in the "polite pool") | references and relations, even for closed papers | used when there is no full text |
-| OpenAlex | **charged per use since 2026** ($0.10 a day without a key) | a "Neuroscience" classification by topic | not used |
+| OpenAlex | **charged per use since 2026**: a free key gives $1 a day; a lookup by DOI costs nothing (measured 2026-09-28) | institutions (ROR), open-access status, topics, citations, references, related works | used since 2026-09-28: one free lookup per paper (`oscr/sources/openalex.py`) |
 | Semantic Scholar | a quota shared without a key | no code links | no |
 | arXiv + Hugging Face Papers | no account | the `githubRepo` of paper pages, **arXiv only** | used for arXiv DOIs |
 

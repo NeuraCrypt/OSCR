@@ -596,7 +596,7 @@ def layer(con: sqlite3.Connection, d1: community.D1 | None, state: sqlite3.Conne
                 a = pages.get(paper_id)
                 if a is None:
                     continue
-                reader = f"/paper/{catalog.slug(paper_id)}/code/" if entry is not None and entry.publishable else None
+                reader = f"/paper/{catalog.slug(paper_id)}/#code" if entry is not None and entry.publishable else None
                 papers.append({"doi": a["doi"] or "", "reader": reader})
             swh = (entry is not None and entry.swh) or repo_id in archived_ids
             items.append({"commit": sha, "found_at": int(found_at), "papers": papers,

@@ -1,7 +1,8 @@
-"""What every test shares: none reads the Mac's keychain (a token the owner stored there would
-change what the harvester does). And the GitHub side's D1 database (night phase 01): `forge_d1`,
-an SQLite database made from migrations/d1-forge/, behind the Mac's D1 interface
-(oscr/community.py SqliteD1), for the tests of oscr/forgejobs.py and oscr/forgelayer.py."""
+"""What every test shares: none reads the Mac's keychain (a token or a key the owner stored there
+would change what the harvester does, and a test must never send it anywhere). And the GitHub
+side's D1 database (night phase 01): `forge_d1`, an SQLite database made from migrations/d1-forge/,
+behind the Mac's D1 interface (oscr/community.py SqliteD1), for the tests of oscr/forgejobs.py and
+oscr/forgelayer.py."""
 import sqlite3
 from pathlib import Path
 
@@ -15,6 +16,12 @@ FORGE_MIGRATIONS = sorted((Path(__file__).resolve().parents[1] / "migrations" / 
 @pytest.fixture(autouse=True)
 def no_keychain_github_token(monkeypatch):
     monkeypatch.setattr(net, "_keychain_github_token", lambda: "")
+
+
+@pytest.fixture(autouse=True)
+def no_keychain_openalex_key(monkeypatch):
+    monkeypatch.setattr(net, "_keychain_openalex_key", lambda: "")
+    monkeypatch.delenv("OPENALEX_API_KEY", raising=False)
 
 
 def forge_database() -> sqlite3.Connection:

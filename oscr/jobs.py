@@ -20,8 +20,9 @@ outcome into the request's own row, which the reader's pages show:
   deposited on Zenodo — the sandbox unless the settings say `OSCR_ZENODO_INSTANCE=zenodo`
   (zenodo.deposit_map) — and its DOI written back;
 - `claim` and `report`: listed for the owner, who decides with `oscr claims` and `oscr reports`.
-  A claim accepted writes the role into D1; a removal accepted withdraws the record from every
-  public output (`article.withdrawn`).
+  A claim accepted writes the role into D1; a removal accepted withdraws from every public output
+  what it names: the whole record (`article.withdrawn`), or only the copies of its scripts, of one
+  repository, of one file, or its tracing map (`withheld`, catalog.withheld).
 
 **State.** `data/community/state.db`, with the facts push's: each job's status, attempts and what
 the owner needs to see (`job`), the last job seen per target (`job_cursor`). The rows written
@@ -506,6 +507,8 @@ def run_validation(runner: Runner, job: dict[str, Any], row: dict[str, Any] | No
     why = _out_of_scope(_paper(con, article_id))
     if why:
         return answer("refused", why)
+    if article_id in catalog.withheld(con).maps:
+        return answer("refused", "This paper's tracing map was withheld at a removal request: there is no map to validate.")
     try:
         card = zenodo.map_of(con, article_id)
     except zenodo.InvenioError as e:
@@ -557,12 +560,25 @@ def run_claim(runner: Runner, job: dict[str, Any], row: dict[str, Any] | None, u
                            "via": evidence.get("via") or evidence.get("reason") or "", "user": _handles(user)})
 
 
+#: What a removal request asks to remove (the page /removal/; D1 migration 0003), in the owner's words.
+SCOPES: dict[str, str] = {"record": "the whole record", "scripts": "the copies of the authors' scripts",
+                          "repository": "the copies of one repository", "file": "the copy of one file",
+                          "map": "the tracing map"}
+#: Who asks (a request made before the page says nothing).
+REQUESTERS: dict[str, str] = {"author": "an author of the paper", "rights_holder": "the holder of the rights",
+                              "named_person": "a person named in the record", "other": "someone else"}
+
+
 def run_report(runner: Runner, job: dict[str, Any], row: dict[str, Any] | None, user: dict[str, Any] | None) -> Outcome:
     if row is None or row["status"] != "open":
         return Outcome("done", message="nothing to do: the request is not open")
     return Outcome("owner", message="a removal request waits for the owner",
                    detail={"report": row["id"], "paper_id": row["target_id"], "reason": row["reason"],
-                           "details": row["details"], "user": _handles(user)})
+                           "details": row["details"], "role": row.get("requester_role") or "",
+                           "author_verified": bool(row.get("author_verified")), "scope": row.get("scope") or "record",
+                           "repo": row.get("scope_repo") or "", "path": row.get("scope_path") or "",
+                           "evidence_url": row.get("evidence_url") or "", "confirmed": bool(row.get("confirmed")),
+                           "user": _handles(user)})
 
 
 HANDLERS: dict[str, Callable[[Runner, dict[str, Any], dict[str, Any] | None, dict[str, Any] | None], Outcome]] = {
@@ -739,9 +755,31 @@ def decide_claim(runner: Runner, claim_id: int, accept: bool, message: str = "")
     return f"claim {claim_id} ({c['kind']} of {target}): {'accepted' if accept else 'refused'}"
 
 
+def withhold(con: sqlite3.Connection, scope: str, article_id: str, *, repo: str = "", path: str = "", request: str = "",
+             reason: str = "", now: float | None = None) -> None:
+    """A removal request accepted for less than the whole record: what it names leaves every public
+    output at the next nightly (the `withheld` table, oscr/migrations/0008; catalog.withheld), the
+    record stays. 'scripts': the copies of the paper's code; 'repository': one repository's; 'file':
+    one file's; 'map': the paper's tracing map."""
+    if scope not in ("scripts", "repository", "file", "map"):
+        raise ValueError(f"not a scope to withhold: {scope!r}")
+    repo, path = (repo, path) if scope == "file" else (repo, "") if scope == "repository" else ("", "")
+    if scope in ("repository", "file") and not repo:
+        raise ValueError(f"a {scope} withheld names its repository")
+    if scope == "file" and not path:
+        raise ValueError("a file withheld names its path")
+    con.execute("INSERT INTO withheld (scope, article_id, repo, path, request, reason, created_at) VALUES (?,?,?,?,?,?,?) "
+                "ON CONFLICT (scope, article_id, repo, path) DO UPDATE SET request = excluded.request, "
+                "reason = excluded.reason", (scope, article_id, repo, path, request, reason, now or time.time()))
+    db.log_event(con, "withheld", article=article_id, scope=scope, repo=repo, path=path, request=request, reason=reason)
+    con.commit()
+
+
 def decide_report(runner: Runner, report_id: int, accept: bool, message: str = "") -> str:
-    """A removal request decided by the owner: accepted, the record leaves every public output
-    at the next nightly (`article.withdrawn`); or rejected."""
+    """A removal request decided by the owner: accepted, what it names leaves every public output at
+    the next nightly — the whole record (`article.withdrawn`), or only the copies of its scripts, of
+    one repository, of one file, or its tracing map (`withhold`); or rejected. The owner's words go
+    to the requester's page."""
     rows = runner.d1.query(f"SELECT * FROM reports WHERE id = {int(report_id)}")
     if not rows:
         raise SystemExit(f"no request {report_id} in the {runner.target} database")
@@ -750,19 +788,33 @@ def decide_report(runner: Runner, report_id: int, accept: bool, message: str = "
         _settled(runner, ("report",), report_id, f"already {r['status']}")
         return f"request {report_id} is already {r['status']}"
     t = _stamp(runner)
+    scope = r.get("scope") or "record"
     if accept:
-        day = time.strftime("%Y-%m-%d", time.gmtime(t))
-        n = runner.con.execute("UPDATE article SET withdrawn = ? WHERE id = ?",
-                               (f"{day}: request {report_id} ({r['reason']})", r["target_id"])).rowcount
-        db.log_event(runner.con, "withdrawn", article=r["target_id"], request=report_id, reason=r["reason"])
-        runner.con.commit()
-        if not n:
+        known = _paper(runner.con, r["target_id"]) is not None
+        if scope == "record":
+            day = time.strftime("%Y-%m-%d", time.gmtime(t))
+            runner.con.execute("UPDATE article SET withdrawn = ? WHERE id = ?",
+                               (f"{day}: request {report_id} ({r['reason']})", r["target_id"]))
+            db.log_event(runner.con, "withdrawn", article=r["target_id"], request=report_id, reason=r["reason"])
+            runner.con.commit()
+        else:
+            withhold(runner.con, scope, r["target_id"], repo=r.get("scope_repo") or "", path=r.get("scope_path") or "",
+                     request=f"{runner.target}:{report_id}", reason=r["reason"], now=runner.now())
+        if not known:
             runner.report(f"  {r['target_id']} is not in this database: nothing to withdraw on the Mac")
     _write(runner, [f"UPDATE reports SET status = {literal('accepted' if accept else 'rejected')}, "
                     f"message = {literal(words(message))}, decided_at = {t} WHERE id = {int(report_id)} AND status = 'open'"])
     _settled(runner, ("report",), report_id, "accepted" if accept else "rejected")
+    what = SCOPES.get(scope, scope) + (f" ({_target(r)})" if scope in ("repository", "file") else "")
     return (f"request {report_id} on {r['target_id']}: "
-            + ("accepted — the record leaves the site at the next nightly" if accept else "rejected"))
+            + (f"accepted — {what} leaves the site at the next nightly" if accept else "rejected"))
+
+
+def _target(d: dict[str, Any]) -> str:
+    """The repository, or the file in its repository, a removal request names."""
+    repo = d.get("scope_repo", d.get("repo")) or ""
+    path = d.get("scope_path", d.get("path")) or ""
+    return f"{repo}: {path}" if path else repo
 
 
 def decide_submission(runner: Runner, submission_id: int, accept: bool, message: str = "") -> str:
@@ -813,8 +865,14 @@ def describe_waiting(items: list[dict[str, Any]]) -> str:
             what = f"claim {d['claim']}: {person} as {'author of ' + d['paper_id'] if d['kind'] == 'author' else 'maintainer of ' + d['repo']}"
             said = [d.get("statement", ""), d.get("link", ""), d.get("via") and f"({d['via']})"]
         elif j["kind"] == "report":
-            what = f"request {d['report']}: remove {d['paper_id']} ({d['reason']}), from {person}"
-            said = [d.get("details", "")]
+            scope = d.get("scope") or "record"
+            target = f" ({_target(d)})" if scope in ("repository", "file") else ""
+            role = f", as {REQUESTERS.get(d['role'], d['role'])}" if d.get("role") else ""
+            verified = " (verified: their ORCID iD is among the paper's authors)" if d.get("author_verified") else ""
+            what = (f"request {d['report']}: remove {SCOPES.get(scope, scope)}{target} of {d['paper_id']} ({d['reason']}), "
+                    f"from {person}{role}{verified}")
+            said = [d.get("details", ""), d.get("evidence_url") and f"evidence: {d['evidence_url']}",
+                    "confirmed: the information is accurate; a moderator reviews it" if d.get("confirmed") else ""]
         else:
             what = f"submission {d['submission']}: {d['doi']} ({d.get('paper_id') or 'not read'}), from {person}"
             said = [", ".join(d.get("code_urls", [])), d.get("note", "")]

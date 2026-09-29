@@ -1,9 +1,14 @@
 ---
 // The page of a paper (decision D2): a paper with its authors' code, or whose code is on
 // request, or which shares its data only. Its sections are those of one page, reached
-// through a bar of in-page links (#overview, #code, …): no JavaScript and no route of their
-// own. What they show beyond catalog.json comes from src/data/papers/ (oscr/paperpage.py);
-// the Code ↔ Paper reader stays at /paper/<slug>/code/.
+// through a bar of in-page links (#code, #overview, …): no route of their own. What they show
+// beyond catalog.json comes from src/data/papers/ (oscr/paperpage.py). Built for the most
+// recent papers only.
+//
+// A paper whose authors' code was read opens on the Code ↔ Paper reader (#code, Reader.astro):
+// the paper and the code side by side, first and at the window's full width; the record
+// follows. /paper/<slug>/code/, the reader's former address, is sent here by the Worker
+// (worker/pages.ts). A paper without code opens on its Overview.
 import Base from "../../../layouts/Base.astro";
 import Code from "../../../components/paper/Code.astro";
 import Cite from "../../../components/paper/Cite.astro";
@@ -11,26 +16,34 @@ import Contribute from "../../../components/paper/Contribute.astro";
 import Data from "../../../components/paper/Data.astro";
 import Later from "../../../components/paper/Later.astro";
 import Overview from "../../../components/paper/Overview.astro";
+import Reader from "../../../components/paper/Reader.astro";
 import Similar from "../../../components/paper/Similar.astro";
 import TracingMap from "../../../components/paper/TracingMap.astro";
 import Versions from "../../../components/paper/Versions.astro";
+import Head from "../../../components/paper/Head.astro";
 import Wrap from "../../../components/paper/Wrap.astro";
 import {
-  alignmentOf, dateInWords, europePmcUrl, plural, readerUrl, shortName, status, withPage, type Article,
+  alignmentOf, europePmcUrl, plural, shortName, staticPages, status, type Article,
 } from "../../../lib/catalog";
 import { datasetOf } from "../../../lib/entities";
-import { licenseLabel, NOTICES, pageOf, PROMINENT } from "../../../lib/paper";
+import { licenseLabel, pageOf, PROMINENT } from "../../../lib/paper";
+import { paperFacts } from "../../../lib/records";
+import { FACTS_ID, removalUrl } from "../../../lib/removal";
 
+// The STATIC_PAPERS most recent papers (lib/shards.ts); the others' pages are rendered on demand
+// by the Worker (worker/pages.ts), from src/pages/records/.
 export function getStaticPaths() {
-  return withPage.map((a) => ({ params: { slug: a.slug }, props: { a } }));
+  return staticPages.map((a) => ({ params: { slug: a.slug }, props: { a } }));
 }
 
 const { a } = Astro.props as { a: Article };
 const p = pageOf(a);
 const s = status(a.status);
 const hasCode = a.code.length > 0;
+// The reader, when at least one file of the authors' code was read (its text here or not).
+const reader = hasCode && a.code.some((r) => r.files_read > 0);
+const multi = a.code.length > 1;
 const pairs = alignmentOf(a)?.pairs ?? [];
-const reader = readerUrl(a);
 const validated = a.card && a.card.validated_by?.length ? a.card : null;
 const licenses = [...new Set(a.code.map((r) => r.license || "no license"))];
 // Retractions, expressions of concern, corrections: said before anything else.
@@ -38,9 +51,11 @@ const notices = (p?.overview.notices ?? []).filter((n) => PROMINENT.has(n.kind))
 /** A dataset in the sidebar: "OpenNeuro ds000117", "DANDI 000001". */
 const data = (a.datasets ?? []).map((id) => ({ id, d: datasetOf(id) })).filter((x) => x.d?.url);
 const dataLabel = (id: string, repository: string) => (repository ? `${repository} ${id.replace(/^[a-z0-9-]+:/i, "")}` : id);
+const repositories = a.code.length === 1 ? "Repository" : "Repositories";
 const SECTIONS = [
-  { id: "overview", label: "Overview" },
-  { id: "code", label: "Code" },
+  ...(reader
+    ? [{ id: "code", label: "Code" }, { id: "overview", label: "Overview" }, { id: "repositories", label: repositories }]
+    : [{ id: "overview", label: "Overview" }, { id: "code", label: "Code" }]),
   { id: "map", label: "Map" },
   { id: "data", label: "Data" },
   { id: "versions", label: "Versions" },
@@ -54,29 +69,26 @@ const SECTIONS = [
 /** The sections that open with sign-in (Phase 7): muted in the bar. Night phase 05: Discussion and
  *  Reproductions hold the paper's research issues. */
 const LATER = new Set(["activity"]);
+const sections = SECTIONS.map((x) => ({ ...x, later: LATER.has(x.id) }));
+/** A repository in the reader: this page, its first file shown. */
+const inReader = (repo: string) => (multi ? `/paper/${a.slug}/?${new URLSearchParams({ repo })}#code` : "#code");
+// What a removal request may name (src/lib/removal.ts: the paper, its repositories, their files),
+// at the very top of <main>: the page /removal/ and the Worker read it there, and stop reading.
+const facts = JSON.stringify(paperFacts(a)).replace(/</g, "\\u003c");
 ---
 <Base
   title={a.title}
   description={hasCode ? `The code published by the authors of “${a.title}”.` : `“${a.title}”: ${s.label}.`}
   breadcrumb={[{ text: "Catalogue", href: "/" }, { text: `doi:${a.doi}` }]}
 >
+  <script is:inline type="application/json" id={FACTS_ID} set:html={facts}></script>
+  {reader && <Head title={a.title} notices={notices} sections={sections} />}
+  {reader && <Reader a={a} />}
   <div class="record">
     <div class="body">
-      <h1><Wrap text={a.title} /></h1>
-      {notices.map((n) => (
-        <p class="warning">
-          <strong>{NOTICES[n.kind]}</strong>{n.date && ` (${dateInWords(n.date)})`}:{" "}
-          {n.url ? <a href={n.url}>the notice{n.id && `, ${n.id}`}</a> : `the notice ${n.id}`.trim()}
-          {n.source && `, from ${n.source}`}.
-        </p>
-      ))}
-      {/* The sections of the page: a ruled bar of in-page links (nav.tabs, science.css). */}
-      <nav class="tabs" aria-label="Sections of this page">
-        <ul>{SECTIONS.map((x) => <li class={LATER.has(x.id) ? "later" : undefined}><a href={`#${x.id}`}>{x.label}</a></li>)}</ul>
-      </nav>
-
+      {!reader && <Head title={a.title} notices={notices} sections={sections} />}
       <Overview a={a} p={p} />
-      <Code a={a} p={p} />
+      <Code a={a} p={p} id={reader ? "repositories" : "code"} reader={reader} />
       <TracingMap a={a} p={p} />
       <Data a={a} p={p} />
       <Versions p={p} />
@@ -89,12 +101,13 @@ const LATER = new Set(["activity"]);
     <aside class="sidebar">
       {/* Night phase 08: Star and Watch the paper by its DOI, the registry's own (social-buttons.ts). */}
       <div data-social data-subject={`paper:doi:${a.doi.toLowerCase()}`} data-target={`paper:doi:${a.doi.toLowerCase()}`} data-label={a.title.slice(0, 300)} data-watch="paper"></div>
-      {hasCode && (
+      {reader && (
         <>
-          <h3><a class="reader-link" href={reader}>Code ↔ Paper</a></h3>
+          <h3>The authors' code</h3>
           <ul>
-            <li>the paper and its authors' code, side by side</li>
+            <li><a class="reader-link" href="#code">Code ↔ Paper</a>, above</li>
             <li>{pairs.length > 0 ? `${plural(pairs.length, "match", "matches")} between paragraphs and code` : "matches not computed yet"}</li>
+            {multi && a.code.map((r) => <li><a href={inReader(r.repo)}><Wrap text={shortName(r)} /></a></li>)}
           </ul>
         </>
       )}
@@ -102,7 +115,7 @@ const LATER = new Set(["activity"]);
       <ul>
         <li><a href={`https://doi.org/${a.doi}`}>The paper, at the publisher</a></li>
         <li><a href={europePmcUrl(a)}>The paper on Europe PMC</a></li>
-        {a.code.map((r) => <li><a href={r.url}><Wrap text={shortName(r)} /></a></li>)}
+        {!reader && a.code.map((r) => <li><a href={r.url}><Wrap text={shortName(r)} /></a></li>)}
         <li><a href="#cite">Cite this paper</a></li>
       </ul>
       {data.length > 0 && (
@@ -114,10 +127,14 @@ const LATER = new Set(["activity"]);
       {hasCode && (
         <>
           <h3>Tracing map</h3>
-          <ul>
-            <li>{validated ? "validated by an author" : "proposed by the machine"}</li>
-            <li>{validated?.doi ? <a href={`https://doi.org/${validated.doi}`}>its DOI</a> : "no DOI before an author validates it"}</li>
-          </ul>
+          {a.map_withheld ? (
+            <ul><li>withheld at a removal request</li></ul>
+          ) : (
+            <ul>
+              <li>{validated ? "validated by an author" : "proposed by the machine"}</li>
+              <li>{validated?.doi ? <a href={`https://doi.org/${validated.doi}`}>its DOI</a> : "no DOI before an author validates it"}</li>
+            </ul>
+          )}
           <h3>Licenses</h3>
           <ul>
             {p && <li>the paper: {licenseLabel(p.overview.license) || "none stated"}</li>}
@@ -133,8 +150,8 @@ const LATER = new Set(["activity"]);
       )}
       <h3>This record</h3>
       <ul>
-        <li><a href="#contribute">Claim it, correct it{hasCode ? ", validate its map" : ""}</a></li>
-        <li><a href="#removal">Request its removal</a></li>
+        <li><a href="#contribute">Claim it, correct it{hasCode && !a.map_withheld ? ", validate its map" : ""}</a></li>
+        <li><a href={removalUrl(a.id)}>Request removal</a></li>
       </ul>
     </aside>
   </div>

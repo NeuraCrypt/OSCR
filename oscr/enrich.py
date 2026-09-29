@@ -2,10 +2,12 @@
 references, notices, datasets, categories — and what its repositories hold.
 
 Everything here is computed from what the Mac already has: the full text cached forever
-(JATS), the Europe PMC `core` result (kept since Phase 1), the stored file lists and
-scripts. Each value records where it came from (`field_provenance`) and each change of a
-record is kept (`version`). Nothing here sends a paper's text anywhere: the public export
-strips abstracts and closed-license statements (catalog.public_db).
+(JATS), the Europe PMC `core` result (kept since Phase 1), the paper's OpenAlex work (kept since
+the owner's key, `sources/openalex.py`), the stored file lists and scripts. The sources are merged
+in that order of authority — JATS, then Europe PMC, then OpenAlex — so OpenAlex only fills what
+the other two left empty. Each value records where it came from (`field_provenance`) and each
+change of a record is kept (`version`). Nothing here sends a paper's text anywhere: the public
+export strips abstracts and closed-license statements (catalog.public_db).
 """
 from __future__ import annotations
 
@@ -20,7 +22,7 @@ from typing import Any
 import httpx
 
 from . import db
-from .net import Unavailable
+from .net import Outage, Unavailable
 
 #: A data link's key → the repository's name, for the `dataset` table.
 _DATA_REPOSITORIES: tuple[tuple[str, str], ...] = (
@@ -120,6 +122,13 @@ def coverage(con: sqlite3.Connection) -> dict[str, Any]:
         "notices": share("SELECT COUNT(DISTINCT article_id) FROM integrity_notice"),
         "datasets": share("SELECT COUNT(DISTINCT article_id) FROM paper_dataset"),
         "classified": share("SELECT COUNT(*) FROM article WHERE classified_at IS NOT NULL"),
+        "openalex": share("SELECT COUNT(*) FROM openalex_record WHERE status = 'found' AND article_id IN "
+                          "(SELECT id FROM article WHERE scanned_at IS NOT NULL)"),
+        "institutions_ror": share("SELECT COUNT(DISTINCT article_id) FROM paper_author WHERE ror NOT IN ('', '[]')"),
+        "topics": share("SELECT COUNT(DISTINCT article_id) FROM paper_topic"),
+        "oa_status": share("SELECT COUNT(*) FROM article WHERE scanned_at IS NOT NULL AND oa_status != ''"),
+        "citations": share("SELECT COUNT(*) FROM article WHERE scanned_at IS NOT NULL AND cited_by_count IS NOT NULL"),
+        "preprints": share("SELECT COUNT(*) FROM article WHERE scanned_at IS NOT NULL AND preprint_id != ''"),
         "off_topic": q("SELECT COUNT(*) FROM article WHERE on_topic = 'no'"),
         "repositories_with_features": q("SELECT COUNT(*) FROM repo_feature"),
         "repositories_with_tools": q("SELECT COUNT(DISTINCT repo) FROM repo_tool"),
@@ -176,13 +185,16 @@ def _write_record(con: sqlite3.Connection, article_id: str, a: sqlite3.Row, rec:
         con.execute(f"DELETE FROM {table} WHERE article_id = ?", (article_id,))
     for au in rec.get("authors", []):
         con.execute("INSERT OR REPLACE INTO paper_author (article_id, position, name, given, family, orcid, "
-                    "corresponding, affiliations, ror) VALUES (?,?,?,?,?,?,?,?,?)",
+                    "corresponding, affiliations, ror, openalex_id) VALUES (?,?,?,?,?,?,?,?,?,?)",
                     (article_id, au.get("position"), au.get("name", ""), au.get("given", ""), au.get("family", ""),
                      au.get("orcid", ""), int(bool(au.get("corresponding"))),
-                     json.dumps(au.get("affiliations", []), ensure_ascii=False), json.dumps(au.get("ror", []))))
+                     json.dumps(au.get("affiliations", []), ensure_ascii=False), json.dumps(au.get("ror", [])),
+                     au.get("openalex_id", "")))
         if au.get("orcid"):
-            con.execute("INSERT INTO author (orcid, name) VALUES (?, ?) ON CONFLICT(orcid) DO UPDATE SET "
-                        "name = COALESCE(NULLIF(excluded.name, ''), author.name)", (au["orcid"], au.get("name", "")))
+            con.execute("INSERT INTO author (orcid, name, openalex_id) VALUES (?, ?, ?) ON CONFLICT(orcid) DO UPDATE "
+                        "SET name = COALESCE(NULLIF(excluded.name, ''), author.name), "
+                        "openalex_id = COALESCE(NULLIF(excluded.openalex_id, ''), author.openalex_id)",
+                        (au["orcid"], au.get("name", ""), au.get("openalex_id", "")))
     for f in rec.get("funding", []):
         name = (f.get("funder") or "").strip()
         fid = f.get("funder_id") or (f"name:{re.sub(r'[^a-z0-9]+', ' ', name.lower()).strip()}" if name else "")
@@ -300,10 +312,11 @@ def record_tools(con: sqlite3.Connection) -> None:
 def enrich_article(con: sqlite3.Connection, article_id: str, *, xml: str | None = None,
                    core: dict[str, Any] | None = None, client: Any = None, now: float | None = None) -> dict[str, Any]:
     """Build a paper's enriched record from the cached full text (`xml`, else fetched from
-    the cache through `client`) and its Europe PMC `core` result (`core`, else the one
-    kept in `epmc_record`); classify it; describe its code repositories."""
+    the cache through `client`), its Europe PMC `core` result (`core`, else the one kept in
+    `epmc_record`) and its OpenAlex work when one is kept (`openalex_record`: never fetched
+    here); classify it; describe its code repositories."""
     from . import biblio
-    from .sources import europepmc
+    from .sources import europepmc, openalex
     now = now or time.time()
     a = con.execute("SELECT * FROM article WHERE id = ?", (article_id,)).fetchone()
     if a is None:
@@ -316,8 +329,12 @@ def enrich_article(con: sqlite3.Connection, article_id: str, *, xml: str | None 
     if core is None:
         row = con.execute("SELECT json FROM epmc_record WHERE article_id = ?", (article_id,)).fetchone()
         core = json.loads(row[0]) if row else None
-    parts = ([biblio.from_jats(xml)] if xml else []) + ([biblio.from_epmc(core)] if core else [])
+    oa = openalex.load(con, article_id)
+    parts = (([biblio.from_jats(xml)] if xml else []) + ([biblio.from_epmc(core)] if core else [])
+             + ([openalex.record(oa)] if oa else []))
     rec = biblio.merge(*parts) if parts else {}
+    if rec and oa:
+        openalex.complete_authors(rec, oa)
     rw = _retraction_notices(a["doi"])
     if rw:
         rec = dict(rec) if rec else {}
@@ -326,8 +343,11 @@ def enrich_article(con: sqlite3.Connection, article_id: str, *, xml: str | None 
         rec.setdefault("provenance", {})["integrity"] = rec.get("provenance", {}).get("integrity") or "retraction-watch"
     if rec:
         _write_record(con, article_id, a, rec, now)
-        db.record_provenance(con, "article", article_id, rec.get("provenance", {}),
-                             ref=a["fulltext_id"] or a["pmcid"] or "", at=now)
+        sources = rec.get("provenance", {})
+        own = {f: s for f, s in sources.items() if openalex.SOURCE not in s.split("+")}
+        db.record_provenance(con, "article", article_id, own, ref=a["fulltext_id"] or a["pmcid"] or "", at=now)
+        db.record_provenance(con, "article", article_id, {f: s for f, s in sources.items() if f not in own},
+                             ref=(oa or {}).get("openalex_id", ""), at=now)
     link_datasets(con, article_id)
     # The authors' contact details, private (oscr/contacts.py): from the same full text and
     # Europe PMC record, into the `contact` table only.
@@ -362,6 +382,98 @@ def fetch_epmc_records(con: sqlite3.Connection, client: Any, *, report: Any = pr
         done += len(found)
         report(f"  … {done}/{len(pmcids)} Europe PMC records")
     return done
+
+
+#: The papers' order for OpenAlex: those with a page first (decision D2), then those in scope,
+#: the most recent first; off-topic papers last (they stay on the Mac, D7).
+_OPENALEX_ORDER = ("CASE WHEN a.on_topic = 'no' OR a.withdrawn != '' THEN 2 WHEN a.status IN ('code_verified', "
+                   "'code_found', 'code_empty', 'code_dead', 'on_request', 'data_only') THEN 0 ELSE 1 END, "
+                   "a.published DESC, a.id")
+
+
+def openalex_pending(con: sqlite3.Connection, *, everything: bool = False, now: float | None = None
+                     ) -> list[tuple[str, bool]]:
+    """The papers the OpenAlex pass takes, in order, each with whether OpenAlex must be asked
+    (False: its record is kept, but the paper was not enriched with it yet — an interrupted
+    pass). Asked: the papers never asked, those OpenAlex did not know RETRY_MISSING_DAYS ago,
+    and with `everything` all the others asked more than 20 hours ago (so an interrupted
+    `--all` resumes where it stopped)."""
+    from .sources import openalex
+    now = now or time.time()
+    retry = now - openalex.RETRY_MISSING_DAYS * 86400
+    again = now - 20 * 3600
+    out = []
+    for r in con.execute(
+            "SELECT a.id, a.enriched_at, o.status, o.fetched_at, o.checked_at FROM article a "
+            "LEFT JOIN openalex_record o ON o.article_id = a.id "
+            f"WHERE a.scanned_at IS NOT NULL AND (a.doi != '' OR a.pmid != '') ORDER BY {_OPENALEX_ORDER}"):
+        if r["status"] is None or (r["status"] == openalex.MISSING and r["checked_at"] < retry):
+            out.append((r["id"], True))
+        elif everything and r["checked_at"] < again:
+            out.append((r["id"], True))
+        elif r["status"] == openalex.FOUND and (r["enriched_at"] is None or r["enriched_at"] < r["fetched_at"]):
+            out.append((r["id"], False))
+    return out
+
+
+def openalex_pass(con: sqlite3.Connection, client: Any, *, everything: bool = False, maximum: int | None = None,
+                  deadline: float | None = None, report: Any = print) -> str:
+    """Look the papers read up in OpenAlex, one free call each (by DOI, else PMID), keep what it
+    says, and enrich each paper found again with it (`enrich_article`, from the cached full text).
+    Resumable: every paper is committed on its own, and the next pass takes up what is left
+    (`openalex_pending`). Stops for the day on a 429 or when the credit is spent (only free
+    calls are made), on a network outage, or at `deadline`."""
+    from .sources import openalex
+    if not openalex.available():
+        return "OpenAlex: no API key (keychain org.oscr.openalex, or OPENALEX_API_KEY): nothing done"
+    budget = openalex.Budget(con)
+    todo = openalex_pending(con, everything=everything)
+    todo = todo[:maximum] if maximum else todo
+    counts = {"found": 0, "missing": 0, "applied": 0, "errors": 0}
+    stopped = ""
+    left = 0
+    t0 = time.time()
+    for i, (article_id, ask) in enumerate(todo, 1):
+        if i > 1 and (i - 1) % 100 == 0:
+            report(f"  … {i - 1}/{len(todo)} papers: {counts['found']} found, {counts['missing']} not in OpenAlex, "
+                   f"{counts['applied']} enriched, {counts['errors']} errors; {budget.summary()} "
+                   f"({time.time() - t0:.0f} s)")
+        if deadline is not None and time.time() >= deadline:
+            stopped, left = "time slice over", len(todo) - i + 1
+            break
+        if ask:
+            try:
+                status = openalex.fetch(con, client, article_id, budget)
+            except openalex.Paused as e:
+                stopped, left = str(e), len(todo) - i + 1
+                break
+            except Outage as e:
+                stopped, left = f"network outage: {e}", len(todo) - i + 1
+                break
+            except Unavailable as e:
+                counts["errors"] += 1
+                db.log_event(con, "openalex_error", article=article_id, error=str(e)[:300])
+                con.commit()
+                continue
+            con.commit()
+            counts[status] += 1
+            if status != openalex.FOUND:
+                continue
+        try:
+            enrich_article(con, article_id, client=client)
+            con.commit()
+            counts["applied"] += 1
+        except Exception as e:  # one paper never stops the pass; its record waits for the next one
+            con.rollback()
+            counts["errors"] += 1
+            db.log_event(con, "enrich_error", article=article_id, error=f"{type(e).__name__}: {e}"[:300])
+            con.commit()
+    con.commit()
+    db.log_event(con, "openalex", **counts, stopped=stopped)
+    con.commit()
+    return (f"OpenAlex: {counts['found']} papers found, {counts['missing']} not in OpenAlex, {counts['applied']} "
+            f"enriched, {counts['errors']} errors, {left} left"
+            f"{' — stopped: ' + stopped if stopped else ''}; {budget.summary()} ({time.time() - t0:.0f} s)")
 
 
 def backfill(con: sqlite3.Connection, client: Any, *, everything: bool = False, epmc: bool = False,

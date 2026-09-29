@@ -12,7 +12,7 @@
 //   node --experimental-strip-types tests/contributions/e2e.ts published
 //
 // The browsers' cookies are kept between the steps in $JARS. Exits 1 on a failure.
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 
 const SITE = process.env.SITE ?? "http://localhost:8788";
 const MOCK = process.env.MOCK ?? "http://127.0.0.1:9480";
@@ -114,9 +114,10 @@ class Client {
 
 /** The map's digest as paper 1's page carries it (the fixture's export, oscr/paperpage.py). */
 function digestOf(paper: string): string {
-  for (const n of Array.from({ length: 128 }, (_, i) => String(i).padStart(2, "0"))) {
-    const path = `${FIXTURE}papers/${n}.json`;
-    if (!existsSync(path)) continue;
+  // Every lot the export wrote (oscr/catalog.py N_LOTS, 256 since 2026-09-29).
+  const folder = `${FIXTURE}papers/`;
+  for (const name of existsSync(folder) ? readdirSync(folder).filter((f) => /^\d+\.json$/.test(f)) : []) {
+    const path = `${folder}${name}`;
     const lot = JSON.parse(readFileSync(path, "utf8")) as Record<string, { map?: { digest?: string } }>;
     if (lot[paper]) return lot[paper].map?.digest ?? "";
   }
@@ -184,11 +185,15 @@ if (step === "ask") {
   r = await ben.post("/api/claims", { paper_id: P2, statement: "First author, see the lab's page." }, c);
   costs.push(["manual author claim (asked again)", c]);
   c = cost();
-  r = await ben.post("/api/reports", { paper_id: P3, reason: "incorrect", details: "The record's links are not this paper's." }, c);
+  const removal = {
+    paper_id: P3, role: "other", scope: "record", reason: "incorrect", details: "The record's links are not this paper's.",
+    evidence_url: "", confirm_accurate: true, confirm_review: true,
+  };
+  r = await ben.post("/api/reports", removal, c);
   costs.push(["removal request (new)", c]);
   check("removal request: open", r.status === 202 && r.data.status === "open", r.data);
   c = cost();
-  r = await ben.post("/api/reports", { paper_id: P3, reason: "incorrect", details: "The record's links are not this paper's (all of them)." }, c);
+  r = await ben.post("/api/reports", { ...removal, details: "The record's links are not this paper's (all of them)." }, c);
   costs.push(["removal request (asked again)", c]);
   check("asked again: updated", r.status === 200 && r.data.updated === true, r.data);
   r = await ben.post("/api/edits", { paper_id: P1, changes: [{ op: "remove", repo: "github.com/oscr-fixture/eeg-analysis" }] });

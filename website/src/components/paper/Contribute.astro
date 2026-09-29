@@ -11,12 +11,14 @@
 // - validate its tracing map, with one's ORCID iD: a verified author, when the paper has code;
 // - add the badge to the code's README: snippets to copy, and GitHub's own editor, where the
 //   author opens the pull request themselves (explicit consent, and no permission to ask);
-// - request the record's removal: anyone signed in.
+// - request the record's removal: anyone signed in, on the page /removal/ (src/pages/removal.astro),
+//   which this section links to and whose request's state it shows.
 //
 // Every form writes text only (DOM text nodes, never HTML); the Worker checks every request again.
 import { SITE_NAME } from "../../config";
 import { shortName, type Article } from "../../lib/catalog";
 import type { PaperPage } from "../../lib/paper";
+import { removalUrl } from "../../lib/removal";
 import Wrap from "./Wrap.astro";
 
 interface Props {
@@ -53,14 +55,8 @@ const links = [
   ...(p?.data ?? []).map((d) => ({ repo: d.repo, url: d.url, role: "data", name: d.repo })),
 ];
 const map = p?.map;
+// A map withheld at a removal request has no digest: nothing to validate.
 const digest = map?.digest ?? "";
-const REASONS = [
-  { value: "author_request", text: "I am an author of this paper, and ask for its removal" },
-  { value: "copyright", text: "It infringes a copyright" },
-  { value: "personal_data", text: "It shows personal data" },
-  { value: "incorrect", text: "It is wrong, and cannot be corrected" },
-  { value: "other", text: "Another reason (say which)" },
-];
 ---
 <section id="contribute" data-paper={a.id} data-doi={a.doi} data-digest={digest} data-back={back}>
   <h2>Contribute</h2>
@@ -193,20 +189,12 @@ const REASONS = [
   </div>
 
   <h3 id="removal">Request its removal</h3>
-  <p id="removal-signed-out">
-    To ask for this record to be removed from {SITE_NAME}, <a href="/account/">sign in</a> (ORCID, GitHub or Google), then
-    come back here: a moderator reads every request. Removal without an account comes later.
+  <p>
+    To ask {SITE_NAME} to remove this record, the copies of its authors' scripts or its tracing map, use
+    <a href={removalUrl(a.id)}>the removal request page</a>: signed in, you say who you are, what to remove and why, then
+    review and confirm the request. A moderator reviews every request.
   </p>
   <p id="removal-state"></p>
-  <form id="removal-form" method="post" action="/api/reports" hidden>
-    <p><label for="removal-reason">Why</label><br />
-      <select id="removal-reason" name="reason">
-        {REASONS.map((r) => <option value={r.value}>{r.text}</option>)}
-      </select></p>
-    <p><label for="removal-details">What a moderator should know</label><br />
-      <textarea id="removal-details" name="details" rows="3" maxlength="2000"></textarea></p>
-    <p><button type="submit">Send the request</button></p>
-  </form>
 </section>
 
 <script>

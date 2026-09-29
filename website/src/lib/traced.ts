@@ -42,7 +42,7 @@ export interface TracedPair {
 
 /** A paper's map of one repository, at its pinned commit. */
 export interface TracedMap {
-  /** The paper's slug: /paper/<slug>/ and its reader /paper/<slug>/code/. */
+  /** The paper's slug: /paper/<slug>/, which opens on its reader. */
   paper: string;
   title: string;
   doi: string;
@@ -269,7 +269,9 @@ export function lineMarks(located: readonly Located[]): Map<number, string> {
 
 // ─── in words ────────────────────────────────────────────────────────────────
 
-export const readerUrl = (map: Pick<TracedMap, "paper">, pair?: number): string => `/paper/${encodeURIComponent(map.paper)}/code/${pair ? `#pair-${pair}` : ""}`;
+/** The Code ↔ Paper reader, first on the paper's page (its former address /paper/<slug>/code/ is linked
+ *  nowhere since 2026-09-28): a pair's anchor, or the reader's section. */
+export const readerUrl = (map: Pick<TracedMap, "paper">, pair?: number): string => `/paper/${encodeURIComponent(map.paper)}/${pair ? `#pair-${pair}` : "#code"}`;
 const range = (r: { start: number; end: number }) => (r.end > r.start ? `lines ${r.start} to ${r.end}` : `line ${r.start}`);
 const lineAnchor = (r: { start: number; end: number }) => (r.end > r.start ? `#L${r.start}-L${r.end}` : `#L${r.start}`);
 const short = (sha: string) => sha.slice(0, 7);

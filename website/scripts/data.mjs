@@ -10,7 +10,7 @@
 //   scripts/NN.json   → public/scripts/NN.json       (fetched by the reader on demand)
 //   entities/*.json   → src/data/entities/*.json     (read at build time: authors, journals,
 //                                                     institutions, tools, datasets, categories)
-//   lookup/NNN.json   → public/lookup/NNN.json       (fetched by the DOI lookup page)
+//   lookup/NN.json    → public/lookup/NN.json        (fetched by the DOI lookup page)
 //   papers/NN.json    → src/data/papers/NN.json      (read at build time: the sections of
 //                                                     each paper's page)
 //   forge/layer/NN.json → public/forge/layer/NN.json (fetched by the repository pages, /r/*:
@@ -118,23 +118,35 @@ for (const [name, empty] of Object.entries(ENTITIES)) {
 }
 if (scrubbed) console.warn(`${scrubbed} strings looked like an email address: the address was removed.`);
 
-// The DOI lookup: one shard per first 3 hex characters of sha1(DOI), fetched by the lookup
-// page. Only the known fields are kept: DOI → status, day read, and the page, if any.
+// The DOI lookup: one shard per first 2 hex characters of sha1(DOI), 256 at most (the same
+// LOOKUP_HEX as src/lib/shards.ts and oscr/entities.py), fetched by the lookup page. Only the
+// known fields are kept: DOI → [status, day read], and the page as a third item, if any. A
+// shard of another length (an export older than 2026-09-28 wrote 3 characters, 4,096 files)
+// is refused: the page would not find it.
 rmSync("public/lookup", { recursive: true, force: true });
 mkdirSync("public/lookup", { recursive: true });
 let shards = 0;
 let looked = 0;
+let largest = 0;
 if (existsSync(`${source}/lookup`)) {
-  for (const name of readdirSync(`${source}/lookup`).filter((n) => /^[0-9a-f]{3}\.json$/.test(n))) {
+  const names = readdirSync(`${source}/lookup`).filter((n) => n.endsWith(".json"));
+  const wrong = names.filter((n) => !/^[0-9a-f]{2}\.json$/.test(n));
+  if (wrong.length) {
+    console.error(`${source}/lookup holds ${wrong.length} shards not named by 2 hex characters (${wrong[0]}): export again.`);
+    process.exit(1);
+  }
+  for (const name of names) {
     const clean = {};
     for (const [doi, e] of Object.entries(JSON.parse(readFileSync(`${source}/lookup/${name}`, "utf8")))) {
-      if (!/^10\.\S+$/.test(doi) || !e || typeof e !== "object") continue;
-      clean[doi] = { status: String(e.status ?? ""), read_on: String(e.read_on ?? "") };
-      if (typeof e.slug === "string" && /^[a-z0-9._-]+$/.test(e.slug)) clean[doi].slug = e.slug;
+      if (!/^10\.\S+$/.test(doi) || !Array.isArray(e)) continue;
+      clean[doi] = [String(e[0] ?? ""), String(e[1] ?? "")];
+      if (typeof e[2] === "string" && /^[a-z0-9._-]+$/.test(e[2])) clean[doi].push(e[2]);
     }
-    writeFileSync(`public/lookup/${name}`, JSON.stringify(clean));
+    const text = JSON.stringify(clean);
+    writeFileSync(`public/lookup/${name}`, text);
     shards += 1;
     looked += Object.keys(clean).length;
+    largest = Math.max(largest, Buffer.byteLength(text));
   }
 }
 
@@ -276,7 +288,7 @@ console.log(
 );
 console.log(
   `entities: ${Object.entries(entities).map(([k, n]) => `${n} ${k}`).join(", ")}; ` +
-    `DOI lookup: ${looked} papers in ${shards} shards; ${detailed} full paper pages; ` +
+    `DOI lookup: ${looked} papers in ${shards} shards (the largest ${Math.ceil(largest / 1024)} KB); ${detailed} full paper pages; ` +
     `forge layer: ${layered} repositories in ${layerShards} shards; research issues: ${researched} in ${researchShards} shards; ` +
     `social layer: ${socialKeys} entries in ${socialShards} shards`,
 );

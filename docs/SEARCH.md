@@ -368,8 +368,9 @@ removes one.
 - **With `main`** (Phase 1 and 2 merged after this branch started): the `data` facet counts the
   keys of the data links as they are; Phase 1's `enrich.dataset_id` (which drops a database's
   root) should be applied in `d1.project` too, so that the facet matches the Datasets pages.
-- **Next**: entity pages rendered on demand from `oscr_catalog` (Phase 4, `STATIC_MAX`); saved
-  searches and their feeds (Phase 7–8); a `/search/help/` page.
+- **Next**: saved searches and their feeds (Phase 7–8); a `/search/help/` page. (Every entity has
+  its page since 2026-09-28, rendered in the browser from the build's shards rather than from
+  `oscr_catalog`: PLATFORM_PLAN.md §6, "The file budget".)
 
 ## 9. The GitHub side's search (night phase 08)
 

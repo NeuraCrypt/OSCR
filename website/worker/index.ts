@@ -1,6 +1,8 @@
 // The Worker's own code. The site is static: its pages are the Worker's assets, served first,
-// free and unlimited. This code runs only for /api/* (wrangler.toml, `run_worker_first`), and
-// each run counts against the free plan's 100,000 requests a day, cached or not.
+// free and unlimited. This code runs for /api/* (wrangler.toml, `run_worker_first`), and for a
+// request that no static file answers (`not_found_handling = "none"`): a paper's page past
+// STATIC_PAPERS, or the 404 page (pages.ts). Each run counts against the free plan's 100,000
+// requests a day, cached or not.
 //
 // The routes, the first that matches wins:
 //   GET /api/search      the search (api.ts, search.ts; the contract: docs/SEARCH.md)
@@ -14,6 +16,8 @@
 //                        docs/FORGE.md). The repository pages themselves are static (/r/*).
 //   /api/v1, /api/v1/*   the public API (night phase 10): bearer tokens, CORS, dated versions
 //                        (forge/service/api.ts; docs/API.md).
+//   anything else under /api/   a JSON 404
+//   anything else        pages.ts: a paper rendered on demand, else the site's 404 page
 //
 // The search's answers are public and cached (Cache-Control: public, api.ts); the accounts', the
 // contributions' and the forge's depend on the reader (a session cookie) or change the registry,
@@ -26,6 +30,7 @@ import { handleContributions } from "./contributions/index.ts";
 import type { Context, Env, Handler } from "./env.ts";
 import { handleApi } from "./forge/service/api.ts";
 import { handleForge } from "./forge/service/index.ts";
+import { handlePage } from "./pages.ts";
 
 type Route = { path: string; handle: Handler } | { prefix: string; handle: Handler };
 
@@ -68,8 +73,10 @@ function route(pathname: string): Handler | undefined {
 
 export default {
   async fetch(request: Request, env: Env, ctx: Context): Promise<Response> {
-    const handle = route(new URL(request.url).pathname);
+    const path = new URL(request.url).pathname;
+    const handle = route(path);
     if (handle) return handle(request, env, ctx);
-    return error(404, "not_found", "No such route.");
+    if (path === "/api" || path.startsWith("/api/")) return error(404, "not_found", "No such route.");
+    return handlePage(request, env.ASSETS);
   },
 };

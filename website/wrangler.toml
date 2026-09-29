@@ -13,11 +13,19 @@ main = "worker/index.ts"
 
 [assets]
 directory = "./dist"
-not_found_handling = "404-page"
+binding = "ASSETS"
 html_handling = "auto-trailing-slash"
-# Only /api/* runs the Worker's code, and counts against the free plan's 100,000 requests a
-# day; every other request is a static asset. When that quota is spent, /api/* answers 429
-# and the pages stay up.
+# /api/* runs the Worker's code first; every other request is a static asset when a file
+# answers it, free. A request that no file answers runs the Worker (`not_found_handling =
+# "none"`), which renders a paper's page past STATIC_PAPERS from its record, or serves 404.html
+# (worker/pages.ts): each counts against the free plan's 100,000 requests a day. When that quota
+# is spent, those answer an error and the static pages stay up.
+#
+# The owner's switch to spend no request at all on pages (docs/PLATFORM_PLAN.md §6): set
+# `not_found_handling = "404-page"`. The assets then serve the nearest 404.html themselves —
+# dist/paper/404.html for a missing /paper/…, whose script renders the paper in the browser —
+# but with the status 404, which search engines do not index.
+not_found_handling = "none"
 run_worker_first = ["/api/*"]
 
 # Workers Caching (`[cache] enabled = true`) stays OFF: with it, every request served from the

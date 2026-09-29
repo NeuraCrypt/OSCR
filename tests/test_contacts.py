@@ -139,3 +139,22 @@ def test_a_huge_repository_shows_only_part_of_its_text_on_the_site(tmp_path, mon
     files = lots[catalog.lot_of("github.com/big/toolbox")]["github.com/big/toolbox"]["files"]
     assert [f["text"] is not None for f in files] == [True, False, False]
     assert "read it at the source" in files[2]["note"]
+
+
+def test_a_lot_of_the_site_stays_under_its_text_budget(tmp_path, monkeypatch):
+    monkeypatch.setattr(catalog, "MAX_SITE_TEXT_PER_LOT", 70)
+    monkeypatch.setattr(catalog, "N_LOTS", 1)          # every repository in the same lot
+    con = _db_with_contacts(tmp_path)
+    for name in ("one", "two"):
+        repo = f"github.com/lab/{name}"
+        con.execute("INSERT INTO repository (repo, url, host, kind, state, license, redistributable) VALUES "
+                    "(?, ?, 'github.com', 'forge', 'alive', 'MIT', 'yes')", (repo, "https://" + repo))
+        con.execute("INSERT INTO link (article_id, repo, url, host, kind, role, confidence, found_by) VALUES "
+                    "('doi:10.1/c', ?, ?, 'github.com', 'forge', 'code', 'high', 'text:availability')",
+                    (repo, "https://" + repo))
+        con.execute("INSERT INTO file (repo, path, version, language, kind, size, lines, text) VALUES "
+                    "(?, 'a.py', 'c', 'Python', 'script', 40, 1, ?)", (repo, "x" * 40))
+    con.commit()
+    files = [f for r in catalog.script_lots(con, public=True)[0].values() for f in r["files"]]
+    assert sum(len(f["text"] or "") for f in files) <= 70
+    assert any(f["text"] is None and "this part of the site" in f["note"] for f in files)

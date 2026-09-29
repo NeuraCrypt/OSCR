@@ -1,7 +1,7 @@
 ---
 // The DOI lookup (decision D2): any paper read can be found here, with or without a page.
 // The page is static; the lookup runs in the reader's browser when the form is submitted
-// (src/scripts/lookup.ts), and fetches one shard, /lookup/NNN.json.
+// (src/scripts/lookup.ts), and fetches one shard, /lookup/NN.json (256 at most).
 import Base from "../layouts/Base.astro";
 import { SITE_NAME } from "../config";
 import { catalog, number } from "../lib/catalog";

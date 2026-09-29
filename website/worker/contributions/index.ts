@@ -10,13 +10,16 @@
 //   POST /api/claims                           {paper_id, statement, link}       "I am an author of this paper"
 //   POST /api/edits                            {paper_id, as, repo, changes, note}   a correction of its links
 //   POST /api/validations                      {paper_id, map_digest}            its tracing map validated
-//   POST /api/reports                          {paper_id, reason, details}       a request to remove the record
+//   POST /api/reports                          {paper_id, role, scope, repo, path, reason, details,
+//                                              evidence_url, confirm_accurate, confirm_review}
+//                                              a removal request (the page /removal/)
 //
 // Every POST needs the session, its CSRF token and the site's own Origin (account/guard.ts, as the
 // accounts'); every answer is JSON, `Cache-Control: no-store`. The contract, the rows each route
 // writes and the free plan's budget: docs/CONTRIBUTIONS.md.
 
-import { MAX_PENDING } from "../account/index.ts";
+import { checkRequest, loadFacts, type PaperFacts } from "../../src/lib/removal.ts";
+import { MAX_PENDING, paperSlug } from "../account/index.ts";
 import { measured, now, readJson, ready, signedIn, staleCookies, type SignedIn } from "../account/guard.ts";
 import { json, problem } from "../account/http.ts";
 import { repoKey } from "../account/repo.ts";
@@ -61,9 +64,13 @@ import {
   type SubmissionRow,
   type ValidationRow,
 } from "./store.ts";
+import { asset, type Assets } from "../pages.ts";
 import { cleanText, cleanUrl } from "./text.ts";
 
-export type ContributionsEnv = AccountEnv & CheckEnv;
+/** The Worker's environment as the contributions read it: the accounts', the development mock of
+ *  the checks, and the site's own files (a removal request names a paper, a repository and a file
+ *  that the site's pages show). */
+export type ContributionsEnv = AccountEnv & CheckEnv & { ASSETS?: Assets };
 
 /** What one account may ask in a day (24 hours): counted from its rows in D1, which the account
  *  page's indexes read, so a limit costs no write. The Worker's share of D1's writes is 10,000 rows
@@ -124,11 +131,11 @@ async function route(request: Request, env: ContributionsEnv, url: URL, path: st
   return problem(404, "not_found", "No such route.");
 }
 
-/** The signed-in account behind a POST, and its JSON body. */
-async function posted(request: Request, env: ContributionsEnv, t: number): Promise<{ s: SignedIn; body: Record<string, unknown> } | Response> {
+/** The signed-in account behind a POST, and its JSON body (at most `max` bytes). */
+async function posted(request: Request, env: ContributionsEnv, t: number, max?: number): Promise<{ s: SignedIn; body: Record<string, unknown> } | Response> {
   const s = await signedIn(request, env, t, { post: true, touch: true });
   if (s instanceof Response) return s;
-  const body = await readJson(request);
+  const body = await readJson(request, max);
   if (!body) return problem(400, "bad_request", "The form could not be read: reload the page, then try again.", s.cookies);
   return { s, body };
 }
@@ -498,37 +505,65 @@ async function validate(request: Request, env: ContributionsEnv, t: number): Pro
 }
 
 // ---------------------------------------------------------------------------------------------
-// Removal requests.
+// Removal requests (the page /removal/).
 
-export const REASONS = ["author_request", "copyright", "personal_data", "incorrect", "other"] as const;
+/** A removal request's body: a justification of 2,000 characters, four bytes each at worst, and a
+ *  file's path. */
+const REPORT_BODY = 16_384;
+
+/** The facts of a paper as the site shows them (src/lib/removal.ts): the top of its static page,
+ *  else its record rendered on demand, through the assets (free: no request counted, no D1 row).
+ *  undefined when the Worker has no assets (a misconfiguration: said as unavailable). */
+async function factsOf(env: ContributionsEnv, request: Request, paper: string, slug: string): Promise<PaperFacts | null | undefined> {
+  const assets = env.ASSETS;
+  if (!assets) return undefined;
+  const url = new URL(request.url);
+  const facts = await loadFacts((path) => asset(assets, url, path), slug, "page-first");
+  return facts && facts.id === paper ? facts : null;
+}
 
 async function report(request: Request, env: ContributionsEnv, t: number): Promise<Response> {
-  const p = await posted(request, env, t);
+  const p = await posted(request, env, t, REPORT_BODY);
   if (p instanceof Response) return p;
   const { s, body } = p;
   const { db, user } = s;
   const paper = paperId(body.paper_id);
   if (!paper) return problem(400, "bad_paper", "This is not a paper of the registry.", s.cookies);
-  const reason = (REASONS as readonly string[]).includes(String(body.reason)) ? String(body.reason) : "";
-  if (!reason) return problem(400, "bad_reason", "Choose why the record should be removed.", s.cookies);
-  const details = cleanText(body.details, 2000);
-  if (reason === "other" && details.length < 10) return problem(400, "no_details", "Say in a few words why the record should be removed.", s.cookies);
+  const facts = await factsOf(env, request, paper, paperSlug(paper));
+  if (facts === undefined) return problem(503, "unavailable", "The registry is unavailable at the moment. Please try again later.", s.cookies);
+  if (facts === null) {
+    return problem(404, "unknown_paper", "The registry has no page for this paper: there is nothing of it to remove.", s.cookies);
+  }
+  const checked = checkRequest(body, facts);
+  if (!checked.ok) return json({ error: { code: checked.code, message: checked.message, field: checked.field } }, checked.status, s.cookies);
+  const r = checked.request;
   const before = await reportOf(db, user.id, paper);
+  if (before && before.status !== "open") {
+    return json({ error: { code: "already_decided", message: "Your request about this record has been decided." }, report: reportJson(before) }, 409, s.cookies);
+  }
+  // An author's request is verified when the account is a verified author of the paper (its ORCID
+  // iD among the paper's authors, Phase 5; or the owner's decision).
+  const authorVerified = r.role === "author" && (await hasRole(db, user.id, "verified_author", "paper", paper));
+  const fields = {
+    reason: r.reason,
+    details: cleanText(r.details, 2000),
+    role: r.role,
+    authorVerified,
+    scope: r.scope,
+    repo: r.repo,
+    path: r.path,
+    evidenceUrl: r.evidence_url,
+  };
   if (before) {
-    if (before.status !== "open") {
-      return json({ error: { code: "already_decided", message: "Your request about this record has been decided." }, report: reportJson(before) }, 409, s.cookies);
-    }
-    if (!(await updateReport(db, { id: before.id, userId: user.id, reason, details, now: t }))) {
+    if (!(await updateReport(db, { id: before.id, userId: user.id, ...fields, now: t }))) {
       return problem(409, "already_decided", "Your request about this record has been decided meanwhile: reload the page.", s.cookies);
     }
-    return json({ status: "open", updated: true, report: reportJson({ ...before, reason, details }) }, 200, s.cookies);
+    const row = (await reportOf(db, user.id, paper)) ?? before;
+    return json({ status: "open", updated: true, report: reportJson(row) }, 200, s.cookies);
   }
   const n = await countSince(db, "reports", user.id, t - DAY);
   if (n >= LIMITS.reports) return tooMany(s, "requests", n);
-  const id = await createReport(db, { userId: user.id, paperId: paper, reason, details, now: t });
-  return json(
-    { status: "open", report: { id, paper_id: paper, url: paperUrl(paper), reason, details, status: "open", message: "", created_at: iso(t), decided_at: null } },
-    202,
-    s.cookies,
-  );
+  await createReport(db, { userId: user.id, paperId: paper, ...fields, now: t });
+  const row = await reportOf(db, user.id, paper);
+  return json({ status: "open", report: row ? reportJson(row) : null }, 202, s.cookies);
 }

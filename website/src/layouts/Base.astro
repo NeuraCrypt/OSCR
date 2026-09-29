@@ -10,8 +10,9 @@ interface Props {
   /** The title of the page, without the platform's name (added here). None on the home page. */
   title?: string;
   description?: string;
-  /** The breadcrumb after the platform's name; the last item has no link. */
-  breadcrumb?: { text: string; href?: string }[];
+  /** The breadcrumb after the platform's name; the last item has no link. `id`: a page whose
+   *  script renders it names its last item (the pages rendered on demand). */
+  breadcrumb?: { text: string; href?: string; id?: string }[];
 }
 const {
   title,
@@ -74,7 +75,7 @@ const sections = [
     </header>
     <nav class="breadcrumb" aria-label="Breadcrumb">
       <a href="/">{SITE_NAME}</a>{breadcrumb.map((b) => (
-        <> › {b.href ? <a href={b.href}>{b.text}</a> : b.text}</>
+        <> › {b.href ? <a href={b.href}>{b.text}</a> : b.id ? <span id={b.id}>{b.text}</span> : b.text}</>
       ))}
     </nav>
     <main>

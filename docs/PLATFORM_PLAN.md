@@ -112,8 +112,10 @@ Every figure below was checked on 2026-09-26 on the official documentation (sour
 
 **Upstream APIs.**
 - **OpenAlex** now needs a free API key (since 2026-02-13). The free credit is $1 a day.
-  DOI lookups are free; list queries cost $0.10 per 1,000 calls. The 610k papers in batches
-  of 100 DOIs take ~6,100 calls, ~$0.61: within the free credit if spread over days.
+  DOI lookups are free; list queries cost $0.10 per 1,000 calls. OSCR makes single lookups
+  only (`/works/doi:…`, measured 2026-09-28: `x-ratelimit-cost-usd: 0`): the 610k papers take
+  610k free calls, ~42 hours at 4 a second, and $0. The key travels in the `Authorization`
+  header, never in a URL.
 - **Crossref** list queries: 1–3 a second, measured on the live headers. Retractions come
   from the Retraction Watch data (a daily `git pull`), not from the API.
 - **GitHub**: 5,000 requests an hour with a token.
@@ -251,7 +253,7 @@ applied with `wrangler d1 migrations apply` on Cloudflare and by `oscr` on the M
 | `comments` | `id`, `discussion_id`✱, `parent_id`, `author_id`, `body_md`, `body_html` (sanitized at write), `created_at`, `edited_at`, `hidden` |
 | `votes` | `user_id`, `target_kind`, `target_id`✱, `value`, `created_at` (unique per user and target) |
 | `reproduction_reports` | `id`, `paper_id`✱, `user_id`, `outcome` (reproduced, partially, failed), `environment` (JSON), `repo_commit`, `datasets` (JSON), `notes_md`, `created_at` |
-| `reports` | `id`, `user_id`, `target_kind` (paper), `target_id`, `reason` (author_request, copyright, personal_data, incorrect, other), `details`, `status`, `message`, `created_at`, `decided_at`; index (user, kind, target), unique. Built (Phase 6) for removal requests; other reports with Phase 7 |
+| `reports` | `id`, `user_id`, `target_kind` (paper), `target_id`, `reason` (copyright, personal_data, not_my_work, retracted, incorrect, other; author_request before 2026-09-29), `details`, `requester_role`, `author_verified`, `scope` (record, scripts, repository, file, map), `scope_repo`, `scope_path`, `evidence_url`, `confirmed`, `status`, `message`, `created_at`, `updated_at`, `decided_at`; index (user, kind, target), unique. Built (Phase 6) for removal requests, made whole by the page /removal/ (migration 3, docs/CONTRIBUTIONS.md); other reports with Phase 7 |
 | `moderation_actions` | `id`, `moderator_id`, `target_kind`, `target_id`, `action`, `reason`, `created_at` |
 | `collections`, `collection_items` | `id`, `owner_id`, `title`, `public`; items `(collection_id, paper_id)` |
 | `subscriptions` | `user_id`✱, `target_kind` (category, journal, author, tool, dataset, search), `target_id`, `created_at` |
@@ -273,8 +275,8 @@ throws away (kept from now on; ~25 batched requests for the papers already read)
 | field | today | source to use (coverage measured) |
 |---|---|---|
 | DOI, PMID, PMCID | ✅ | — |
-| arXiv / bioRxiv id of a linked preprint | 🔴 | OpenAlex locations; Europe PMC `commentCorrectionList` **E** |
-| OpenAlex id | 🔴 | OpenAlex (batched: 50 DOIs per request) |
+| arXiv / bioRxiv id of a linked preprint | ✅ OpenAlex 4% (12% of the papers with a page) | OpenAlex locations (`article.preprint_id`); Europe PMC `commentCorrectionList` **E** |
+| OpenAlex id | ✅ 97% | OpenAlex, one free lookup by DOI (else PMID) per paper (`article.openalex_id`) |
 | title | ✅ | — |
 | abstract | **J** 97% · **E** | JATS `<abstract>`, Europe PMC `abstractText` |
 | article type | **J** 100% · **E** | JATS `article-type` (see §1), Europe PMC `pubTypeList` |
@@ -282,22 +284,22 @@ throws away (kept from now on; ~25 batched requests for the papers already read)
 | journal title | ✅ | — |
 | ISSN | **J** 50% · **E** | Europe PMC `journalInfo.journal` (ISSN, eISSN) |
 | volume, issue, pages | **J** 96% / 72% / 99% · **E** | JATS, Europe PMC `journalInfo`, `pageInfo` |
-| publisher | **J** 83% | JATS `<publisher-name>`; Crossref / OpenAlex for the rest |
+| publisher | **J** 83% · ✅ OpenAlex for the rest | JATS `<publisher-name>`; OpenAlex's host organization for the rest |
 | dates: received, accepted | **J** 42% | JATS `<history>`; Crossref for the rest (partial) |
 | dates: online, print | **J** 49% / 10% · **E** | JATS `<pub-date>`, Europe PMC `firstPublicationDate`, `journalInfo.printPublicationDate` |
 | authors: names | ✅ (strings) | — |
-| authors: order, ORCID, affiliations | **J** (ORCID 25% of authors, affiliations 99%) · **E** | JATS `<contrib>`, `<aff>`; Europe PMC `authorList` (ORCID in `authorId`); OpenAlex for more ORCIDs |
-| institutions (ROR), countries | 🔴 (ROR in the JATS: rare) | OpenAlex authorships |
-| corresponding author (name only) | **J** 46% | JATS `<corresp>` / `corresp="yes"`; OpenAlex `is_corresponding` |
-| open-access status, OA link | **E** / 🔴 | Europe PMC `isOpenAccess`, `fullTextUrlList`; OpenAlex `open_access` (Unpaywall data, so no separate Unpaywall calls) |
+| authors: order, ORCID, affiliations | **J** (ORCID 25% of authors, affiliations 99%) · **E** · ✅ OpenAlex | JATS `<contrib>`, `<aff>`; Europe PMC `authorList` (ORCID in `authorId`); OpenAlex for more ORCIDs — only those the publisher deposited for the authorship (`raw_orcid`), never its author profiles' (they decide who is a verified author); the OpenAlex author id (`paper_author.openalex_id`) |
+| institutions (ROR), countries | ✅ OpenAlex 95% of the papers (was 11%) (ROR in the JATS: rare) | OpenAlex authorships: `institution` (ROR id, name, country, type), each placed on the author's affiliation it is (`paper_author.ror`) |
+| corresponding author (name only) | **J** 46% · ✅ OpenAlex for the rest | JATS `<corresp>` / `corresp="yes"`; OpenAlex `is_corresponding` only when the paper names none |
+| open-access status, OA link | **E** · ✅ OpenAlex 97% | Europe PMC `isOpenAccess`, `fullTextUrlList`; OpenAlex `open_access` (Unpaywall data, so no separate Unpaywall calls): `article.oa_status`, `oa_url` |
 | article license | ✅ (100% of texts) | — |
-| funders, grant numbers | **J** 30% (award ids 22%) · **E** | JATS `<funding-group>`, Europe PMC `grantsList`; Crossref funder ids |
+| funders, grant numbers | **J** 30% (award ids 22%) · **E** · ✅ OpenAlex for the rest | JATS `<funding-group>`, Europe PMC `grantsList`; OpenAlex `funders` (ROR ids) and `awards` when both are silent; Crossref funder ids |
 | keywords | **J** 39% · **E** | JATS `<kwd-group>`, Europe PMC `keywordList` |
 | MeSH terms | **E** | Europe PMC `meshHeadingList` (no PubMed call needed) |
-| OpenAlex topics, journal subjects | 🔴 (JATS subject groups 50%) | OpenAlex |
-| citation count | **E** / 🔴 | Europe PMC `citedByCount`; OpenAlex `cited_by_count` |
-| references (count, cited DOIs) | **J** (87–100% of texts; 50% of references carry a DOI) | JATS `<ref-list>` (both flavours); OpenAlex `referenced_works` for the rest |
-| related works | 🔴 | OpenAlex `related_works` |
+| OpenAlex topics, journal subjects | ✅ OpenAlex 96% (JATS subject groups 50%) | OpenAlex `topics`, the primary one with its subfield, field and domain (`topic`, `paper_topic`) |
+| citation count | **E** · ✅ OpenAlex for the rest | Europe PMC `citedByCount` first; OpenAlex `cited_by_count` when Europe PMC has none (the page names the source) |
+| references (count, cited DOIs) | **J** (87–100% of texts; 50% of references carry a DOI) · ✅ OpenAlex | JATS `<ref-list>` (both flavours); OpenAlex `referenced_works` as OpenAlex ids (`paper_work`), and their count when the paper gives none. OpenAlex gives no DOI for them: a DOI per cited work would take a paid list call |
+| related works | ✅ OpenAlex 3% | OpenAlex `related_works` (`paper_work`) |
 | retractions, corrections, expressions of concern | **E** / 🔴 | Europe PMC `commentCorrectionList`; Crossref updates (Retraction Watch data); the 6 retraction notices and 20 corrections already read |
 | Code / Data availability statements (full text) | **J** (data 67%, code 5% of texts) | parsed today for judging, not stored — publication subject to decision D1 |
 | datasets cited (OpenNeuro, DANDI, NeuroVault, OSF, figshare, Zenodo, GIN) | **J** | today's `data` links, to normalize into `datasets` with their identifiers |
@@ -334,7 +336,7 @@ inputs it used, so a page can explain its score.
 
 **Cost of the enrichment at full scale.** J, E and G fields: no new request (E: the answers
 are kept from now on). OpenAlex:
-~12k batched requests for 610k papers. Crossref: one request per DOI (integrity, funders),
+one free lookup per paper, 610k for the full stock ($0). Crossref: one request per DOI (integrity, funders),
 spread over the backfill. GitHub API: one or two requests per GitHub repository (~50–80k),
 within 5,000/h. Git history: local, no quota.
 
@@ -347,42 +349,122 @@ within 5,000/h. Git history: local, no quota.
 | `/` | search bar, key figures, new today / this week, categories with counts, top journals and tools | static, rebuilt nightly |
 | `/search` | simple and advanced search, facets with counts, sorts, export | static shell + Svelte island + search API |
 | `/browse/`, `/browse/<facet>/<value>/` (built, Phase 2); `/browse/<category>/<year>/` | category tree by facet with counts; a category's papers by day; later by year, paginated like arXiv lists | static (bounded) |
-| `/paper/<id>/` + tabs (`code`, `map`, `data`, `versions`, `discussion`, `reproductions`, `cite`, `activity`, `similar`) | the central page; since Phase 2 also for "on request" and "data only" (D2), linking to its authors, journal, tools, datasets and categories. Since Phase 4 the tabs are sections of the one page (`#overview`, `#code`, …), not routes: no file added | static while under the file budget, then on demand (SSR from `papers.doc`); tabs with live data are islands |
-| `/paper/<id>/read/` | Code ↔ Paper reader | same shell as the paper; texts fetched by the browser |
-| `/authors/`, `/author/<orcid>/`, `/journals/`, `/journal/<id>/`, `/institutions/`, `/institution/<ror>/`, `/tools/`, `/tool/<id>/`, `/datasets/`, `/dataset/<id>/` (built, Phase 2) | entity indexes and pages | static for the top `STATIC_MAX` (2,000) of each type by papers, on demand for the long tail (Phase 3) |
-| `/lookup/` (built, Phase 2) | the DOI lookup: any in-scope paper read, with or without a page (D2) | static page; the browser fetches one of ≤ 4,096 shards `/lookup/NNN.json` (first 3 hex characters of sha1(DOI)) |
+| `/paper/<id>/` + tabs (`code`, `map`, `data`, `versions`, `discussion`, `reproductions`, `cite`, `activity`, `similar`) | the central page; since Phase 2 also for "on request" and "data only" (D2), linking to its authors, journal, tools, datasets and categories. Since Phase 4 the tabs are sections of the one page (`#overview`, `#code`, …), not routes: no file added | static for the `STATIC_PAPERS` (6,000) most recent; the others rendered by the Worker from `/records/paper/NN.json`, a reduced page (below, "The file budget") |
+| `/paper/<id>/code/` | Code ↔ Paper reader | static with its paper's static page; past `STATIC_PAPERS`, the Worker sends it to `/paper/<id>/#code` |
+| `/authors/`, `/author/<orcid>/`, `/journals/`, `/journal/<id>/`, `/institutions/`, `/institution/<ror>/`, `/tools/`, `/tool/<id>/`, `/datasets/`, `/dataset/<id>/` (built, Phase 2) | entity indexes and pages | the indexes static, linking to every entity (the authors: a page a letter); each entity's page one shell per type, rendered in the browser from `/records/<type>/NN.json` (since 2026-09-28; before, a static page each, 2,000 at most a type) |
+| `/lookup/` (built, Phase 2) | the DOI lookup: any in-scope paper read, with or without a page (D2) | static page; the browser fetches one of ≤ 256 shards `/lookup/NN.json` (first 2 hex characters of sha1(DOI); 4,096 of 3 characters until 2026-09-28) |
 | `/observatory/` | reserved for statistics and reports | static placeholder |
 | `/account/…`, `/submit/`, `/admin/…`, `/moderation/…` | accounts, submission, administration | on demand (Functions), never cached |
 | `/about/`, `/governance/`, `/cite/`, `/data-license/`, `/takedown/`, `/privacy/`, `/terms/`, `/help/`, `/api/` | institutional pages | static |
 | `/feeds/…`, `/api/v1/…` | RSS/Atom, public JSON API | static files for entities and feeds; Functions for search |
 
-Every route is written so that switching one entity type from prerendered to on-demand is a
-configuration change (`prerender` per route, same component, data from `papers.doc`).
+How each kind of page is rendered, and why, is in "The file budget" below.
 
 **Built in Phase 2.** `oscr/entities.py` writes `entities/*.json` (authors with an ORCID iD,
-journals, institutions by ROR id, tools, datasets, categories) and `lookup/NNN.json` into the
+journals, institutions by ROR id, tools, datasets, categories) and `lookup/NN.json` into the
 public export; only the papers with a page count, and off-topic papers appear nowhere, the
 lookup included (D7). A category is shown when the owner or a model set it, or the rules did
 with a confidence of at least 0.6 and no ambiguity. Measured on a synthetic export at today's
 scale (2,380 papers read, 471 with a page, 548 authors with an ORCID iD): 3,736 files, of which
-1,949 pages and 1,782 lookup shards. At the full stock the lookup takes 4,096 files and the
-entities at most 2,000 per type: the paper pages must go on demand first (Phase 3).
+1,949 pages and 1,782 lookup shards. At the full stock the lookup took 4,096 files and the
+entities at most 2,000 per type: that is what "The file budget" below replaced.
 
 ### Page counts
 
-| entity | now | full neuro stock | strategy |
+| entity | 2026-09-28 (real data, with OpenAlex) | full neuro stock | rendering (files) |
 |---|---|---|---|
-| papers with code (+ on request, data only) | ~500 | 50–90k | static now; on demand beyond ~12k |
-| authors with ORCID (on those papers) | ~1k | ~100k | top 2k static, rest on demand |
-| journals | ~300 | ~5k | static |
-| institutions | ~800 | 20–30k | top 2k static, rest on demand |
-| tools | ~100 | 300–1,000 | static |
-| datasets | ~150 | 10–30k | top 2k static, rest on demand |
-| categories × lists | ~100 | ~3k | static |
-| institutional, help, API docs | ~15 | ~15 | static |
+| papers with a page (code, on request, data only) | 3,683 (2,152 with a reader) | 50–90k | static for the 6,000 most recent (≤ 12,000 files with their readers); the others by the Worker (256 record shards) |
+| authors with an ORCID iD (on those papers) | 11,801 | ~100k+ | in the browser: 1 shell, 1,024 shards; the list, 27 letter pages |
+| journals | 626 | ~5k | 1 shell, 128 shards |
+| institutions (ROR) | 4,688 (13,961 known to OpenAlex) | 20–30k | 1 shell, 512 shards |
+| tools | 226 | 300–1,000 | 1 shell, 256 shards |
+| datasets | 2,457 | 10–30k | 1 shell, 128 shards |
+| DOIs read (the lookup) | 16,623 | ~610,000 | 256 shards |
+| categories | 46 | the vocabulary, ~60 | static, 200 at most |
+| institutional, help, lists | ~20 | ~20 | static |
 
-Static budget kept under ~15,000 files (margin under the 20,000 limit); everything else on
-demand, with the Workers budget reserved first for accounts and writes.
+### The file budget (decided 2026-09-28)
+
+A Worker serves at most 20,000 static files per version. On 2026-09-28 the live site had 15,962
+files (5,689 of papers and readers, 4,009 lookup shards, 2,000 authors and 2,000 datasets — both
+capped —, 1,217 institutions, 619 journals, 226 tools, 128 lots of scripts), and a build of the
+real catalogue with OpenAlex reached 16,905, past `website/scripts/check.mjs`'s margin of 15,000:
+13,961 institutions were on their way. The number of files now depends on constants, not on the
+catalogue (`website/src/lib/shards.ts`):
+
+| kind | before | now |
+|---|---|---|
+| the DOI lookup | a shard per 3 hex characters of sha1(DOI): 4,096 | 2 characters: 256; ~57 bytes a DOI, 5 KB a shard today, ~135 KB at 610,000 DOIs |
+| an entity (author, journal, institution, tool, dataset) | a static page each, the 2,000 with the most papers a type (the rest without a page) | no file: `public/_redirects` rewrites `/author/<orcid>/` to the type's shell `/author/` (status 200, free, no Worker request); its script fetches `/records/author/NN.json` and renders the entity with `src/lib/render.ts`. Every entity has its page; the lists link to all of them |
+| a paper | a static page and a reader each | a static page and reader for the 6,000 most recent (`STATIC_PAPERS`); the others rendered by the Worker |
+
+**The papers past `STATIC_PAPERS`.** Three ways were weighed:
+
+1. *The Worker from D1 `oscr_catalog`*: a page costs a Worker request and D1 rows read (5 million a
+   day, shared with the search), and the catalogue projection in D1 would have to carry every
+   section's data, pushed within the 100,000 rows written a day.
+2. *The same shell as the entities, in the browser*: no Worker request at all
+   (`not_found_handling = "404-page"`: the assets serve `/paper/404.html` for any missing
+   `/paper/…`), but the page answers with the status 404, which search engines do not index, and
+   needs JavaScript.
+3. **Chosen**: *the Worker from the build's own records*. `not_found_handling = "none"` hands a
+   request no file answers to the Worker (`worker/pages.ts`): it reads the paper's record in
+   `/records/paper/NN.json` and the shell `/paper/404.html` through its `ASSETS` binding (static
+   assets: not billed) and returns the whole page, status 200, the static pages' headers. No D1
+   row; no JavaScript needed to read it. Switch 2 stays one line of `wrangler.toml` away.
+
+The page it renders says what it leaves out (the Code ↔ Paper reader, the tracing map and its
+validation, the versions, the citation formats, the similar papers, the README badge, whose data
+live in the build's lots) and keeps the record, the code, the data, and the Contribute section
+(claim, correction of the links, removal request), run by the static pages' own script.
+
+**Cost of a visit, in Worker requests** (the free plan: 100,000 a day, 10 ms of CPU each):
+
+| visit | requests |
+|---|---|
+| a static page (a paper among the 6,000, a list, the home page, a category), an entity's page, a DOI lookup | 0 (the shell, the shard, the scripts are static files) |
+| a paper past `STATIC_PAPERS` | 1 (2 through its `/code/` address, sent to `#code`) |
+| an address no file answers (a mistyped one, a robot) | 1: the Worker serves `404.html` |
+| a signed-in reader on any paper's page | 1 more, as before (`/api/contributions/paper`) |
+
+Measured on the real catalogue built with only 1,000 papers static (2,683 rendered on demand, 256
+shards, median 21 KB, largest 46 KB): 0.31 ms of CPU for a page from the largest shard (parse
+the shard, render, fill the shell), 1.5 ms from a shard of 240 records, the full stock's size
+(`node --experimental-strip-types scripts/measure-pages.mjs`). The entities' shards, fetched by
+the browser: authors 14.5 KB median (34 KB largest), institutions 15.6 KB (89 KB), tools 20 KB
+(200 KB: NumPy's 200 rows), journals 8.7 KB (134 KB), datasets 14.5 KB (22 KB).
+
+**Files, before → after, the same exports built by the old and the new code**:
+
+| build | before | after |
+|---|---|---|
+| the real catalogue with OpenAlex (`data/dev-copy/oa-public`) | 16,905 | 8,272 (5,836 papers and readers, 2,304 record shards at most — 1,940 written —, 257 lookup) |
+| the real catalogue without OpenAlex (`data/dev-copy/public`) | 16,797 | 8,725 |
+| the fixture (`tests/fixtures/public-catalog`, 4 papers) | 55 | 69 (the shells, the shards and the letter pages are a fixed cost) |
+| the fixture grown with 40,000 authors, 15,000 institutions, 12,000 papers, 150,000 DOIs (`npm run check:growth`, 2 papers static) | — | 2,628 |
+
+**The budget**: 2 × `STATIC_PAPERS` = 12,000 files of papers at most, and `FIXED_FILES_MAX` = 3,000
+for the rest (2,304 record shards, 256 lookup shards, 128 lots of scripts, 200 categories at most,
+the fixed pages and bundles): 15,000, the check's margin. `npm run check` fails past either, and
+prints the files folder by folder; `npm run check:growth` (CI) shows that only the shards change
+when the catalogue grows.
+**Since the GitHub side was merged (night phase 16, DECISIONS.md D16-3)**: `STATIC_PAPERS` 5,700 and
+`FIXED_FILES_MAX` 3,600, the same 15,000; the GitHub side's 321 nightly shards, its pages and
+bundles count in the second.
+
+**Limits.**
+
+- Every miss runs the Worker: robots probing addresses spend requests that were free before. The
+  quota spent, the older papers' pages and the 404s answer an error while the static pages stay up.
+- The entities' pages need JavaScript (their shell says so and links to the static list), and
+  search engines see them only if they run it.
+- The lists are one page each (the institutions' is 530 KB for 4,688 today, some 3 MB at 30,000;
+  the authors' is split by letter, ~100 KB a letter today).
+- A paper crossing the cap loses its reader's address (`/paper/<id>/code/` is sent to `#code`),
+  and the pages' number in "the 6,000 most recent" is the constant, whatever
+  `OSCR_STATIC_PAPERS` a test build uses.
+- The lots of scripts are 128 files whatever the catalogue, but the largest is 22.9 MB, close to
+  the 25 MiB a file may weigh: the lots need splitting or bounding before the stock doubles.
 
 ---
 
@@ -517,7 +599,7 @@ nightly to Hugging Face as JSON and Parquet (deltas only, to fit the uplink).
 | phase | delivers | depends on |
 |---|---|---|
 | 1 — harvester enrichment | the J, E and G fields first (no new request), the article type and the rates on research articles, then OpenAlex, Crossref integrity, GitHub metadata, git history, tool detection, RRIDs, datasets, classification (rules, then local model), provenance, versions; migrations; backfill of the papers already read | decisions D1, D6 |
-| 2 — navigation | categories, journals, institutions, authors, tools, datasets pages; the DOI lookup; pages for "on request" and "data only" (D2). **Built on branch `phase-2`, awaiting review, not deployed**; institutions await ROR ids from OpenAlex | 1 |
+| 2 — navigation | categories, journals, institutions, authors, tools, datasets pages; the DOI lookup; pages for "on request" and "data only" (D2). **Built on branch `phase-2`, awaiting review, not deployed**; institutions get their ROR ids, names and countries from OpenAlex since 2026-09-28 | 1 |
 | 3 — search | D1 projection + FTS5, facets, advanced search, export. **Built on branch `phase-3`, awaiting review, not deployed; the remote D1 databases await approval** (`docs/SEARCH.md`) | 1, D3 |
 | 4 — full paper page | all tabs, Versions with diff. **Built on branch `phase-4`, awaiting review, not deployed**: `oscr/paperpage.py` writes `papers/NN.json`; the tabs are sections of one page (Overview, Code, Map, Data, Versions, Cite, Similar; Discussion, Reproductions and Activity say what they will hold and that they open with sign-in); abstracts under D1's rule; the tab bar's style awaits the owner (markup only until then) | 1–3 |
 | 5 — accounts | ORCID, GitHub, Google, roles, author and maintainer verification. **Built on branch `phase-5`, awaiting review, not deployed**; awaits the owner's applications, secrets and database ([ACCOUNTS.md](ACCOUNTS.md)) | D4 (OAuth apps) |
@@ -565,9 +647,55 @@ Europe PMC records in 37 requests and 55 s, then 3,685 papers enriched in 4 min 
   110 checked RRIDs; 40 of 40 hand-checked detections correct).
 - **Owner's labels**: `data/annotation/sample.csv` (150 papers) awaits the owner. Then
   `oscr labels`, and the model comparison (`tools/compare_models.py`, 01:00–07:00 only).
-- **Not yet**: OpenAlex (awaits the owner's key); GitHub metadata (needs a token); the
-  commit at the paper's publication (needs deeper clones); a model for the ambiguous
-  categories (after the comparison).
+- **Not yet**: GitHub metadata (needs a token); the commit at the paper's publication (needs
+  deeper clones); a model for the ambiguous categories (after the comparison).
+
+#### OpenAlex (2026-09-28, schema 7)
+
+`oscr/sources/openalex.py`; `oscr enrich --openalex [--all]`; new papers during their scan, the
+papers OpenAlex did not know yet in the watch's daily round. Measured on a copy of the database
+(21,100 papers read on 2026-09-28, of which 16,623 in scope and 3,683 with a page; `oscr enrich --openalex`: 20,597 lookups (every paper with a DOI or a PMID) in 3 h 47 min, most of it the enrichment run again on each paper; $0.00 spent, 0 paused):
+
+| field | papers read | in scope | with a page | before |
+|---|---|---|---|---|
+| found in OpenAlex | 97.1% | 96.5% | 99.7% | — |
+| an institution with a ROR id | 95.2% | 94.7% | 98.7% | 10.8% (JATS) |
+| OpenAlex topic (primary: subfield, field, domain) | 96.4% | 95.8% | 99.4% | — |
+| open-access status | 97.1% | 96.5% | 99.7% | — (Europe PMC's yes/no: 98.9%) |
+| citation count | 99.1% | 98.9% | 99.9% | 98.9% (Europe PMC first; OpenAlex fills 38 papers) |
+| a linked preprint | 4.1% | 4.3% | 12.2% | — |
+| referenced works (OpenAlex ids) | 82.9% | 83.5% | 82.3% | — (JATS references: 90.8%) |
+| related works | 2.8% | 3.2% | 8.5% | — |
+| an author with an ORCID iD | 67.0% | 67.2% | 83.4% | 64.2% |
+| a corresponding author | 96.1% | 95.6% | 98.6% | 92.7% |
+| funding | 62.5% | 63.6% | 86.0% | 50.8% |
+
+- **Institutions**: 13,961 by ROR id, in 173 countries (types: education, healthcare, facility,
+  company…); an author's ROR id is placed on the affiliation it is when their texts match, and
+  names the institution on its page. 94.8% of the 156,598 authorships carry an OpenAlex author
+  id. ORCID iDs: +2,501 (to 49,000), only those the publishers deposited. OpenAlex's author
+  profiles carry one for 54,280 more authorships: not taken — they come from its
+  disambiguation, and an ORCID iD on a paper makes its holder a verified author of it (to
+  decide with the owner: shown as "OpenAlex's profile" without the verified-author rights?).
+- **Topics**: 2,456; primary field Medicine 9,001, Neuroscience 4,455, Biochemistry, Genetics
+  and Molecular Biology 2,765, Engineering 798, Psychology 713, Computer Science 613. Open
+  access: gold 15,325, hybrid 3,347, diamond 1,351, green 423, bronze 22, closed 13.
+- **Not found**: 116 papers (100 without a DOI, looked up by PMID; 16 recent DOIs), asked again
+  after a week. 503 papers without DOI or PMID are not asked (OpenAlex has no lookup by PMCID;
+  its filter would be a paid call).
+- **Nothing else moved**: 0 off-topic verdicts and 0 statuses changed. 4 enrichment errors,
+  none from OpenAlex (2 a crash of the tool detection on a shell script, 2 Europe PMC 503s).
+  20,118 new versions: 14,291 only record Phase 6's link keys (not shown on the pages), the
+  others funders (2,463), publishers (2,434) and authors (1,157).
+- **What leaves**: the public export of the copy lists 4,688 institutions (4,607 named by
+  OpenAlex, with their country), and among the 3,683 pages 3,636 show institutions, 3,661 a
+  topic, 3,673 an open-access status, 450 a preprint; no email address. The raw records
+  (`openalex_record`) stay on the Mac. The site built from it: 16,905 files, past the
+  15,000-file margin (the institution pages go from 1,217 to the 2,000 cap; the site was
+  already at ~16,100 without them) — the entity pages on demand become urgent.
+- **Storage**: a kept record averages 4.8 KB (~100 MB today, ~3 GB at the full stock), and
+  `paper_work` ~48 rows a paper.
+
 
 ## 13. The owner's decisions (2026-09-27)
 

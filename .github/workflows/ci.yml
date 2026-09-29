@@ -41,7 +41,7 @@ jobs:
   #   scripts/NN.json     the script lots named by the catalogue's repositories;
   #   alignments/NN.json  optional, the Code ↔ Paper pairs;
   #   entities/*.json     authors, journals, institutions, tools, datasets, categories;
-  #   lookup/NNN.json     the DOI lookup's shards;
+  #   lookup/NN.json      the DOI lookup's shards (2 hex characters, 256 at most);
   #   papers/NN.json      the sections of each paper's page (overview, code, data, map,
   #                       versions, citations, similar papers).
   # Without it, the job says so and skips the build instead of failing.
@@ -91,8 +91,18 @@ jobs:
         run: npm run build
 
       # Every kind of page exists (the fixture exercises them all), every internal link
-      # leads to a file, no page shows an email address; prints the number of files.
+      # leads to a file or a record, no page shows an email address; prints the number of
+      # files folder by folder and holds the build to its file budget (src/lib/shards.ts).
       - name: Check the routes and the links
         if: steps.fixture.outputs.ready == 'true'
         working-directory: website
         run: npm run check -- --every-route
+
+      # The file budget does not grow with the catalogue: the fixture with only its 2 most recent
+      # papers static (the others rendered on demand from their records, worker/pages.ts), then the
+      # same grown with tens of thousands of synthetic entities, papers and DOIs; both builds pass
+      # the check, and only the shards differ, within their fixed numbers (scripts/growth.mjs).
+      - name: Check that the number of files does not grow with the catalogue
+        if: steps.fixture.outputs.ready == 'true'
+        working-directory: website
+        run: npm run check:growth

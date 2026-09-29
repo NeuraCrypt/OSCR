@@ -145,7 +145,7 @@ Mis à jour au fil de la nuit. La mission est dans `docs/NIGHT_RUN.md`, le journ
 
 **Phase 04, à relire (décisions prises, D04-1 à D04-19) :**
 
-35. **À faire au moment de fusionner** : appliquer les deux nouvelles migrations (`npx wrangler d1 migrations apply oscr_forge --remote` et `… oscr_community --remote`, ou relancer `sh tools/setup_cloudflare.sh`) : `0003_pulls.sql` (les dix sortes d'actions) et `0003_roles_by_paper.sql` (un index pour trouver les auteurs vérifiés d'un article).
+35. **À faire au moment de fusionner** : appliquer les deux nouvelles migrations (`npx wrangler d1 migrations apply oscr_forge --remote` et `… oscr_community --remote`, ou relancer `sh tools/setup_cloudflare.sh`) : `0003_pulls.sql` (les dix sortes d'actions) et `0004_roles_by_paper.sql` (un index pour trouver les auteurs vérifiés d'un article).
 36. **Auteurs de l'article suggérés comme relecteurs** (D04-10) : leur identifiant GitHub est montré seulement aux personnes qui gèrent le dépôt (propriétaire, mainteneur, qui l'a lié) ou qui ont écrit un des articles ; jamais hors connexion ni dans un fichier statique. Si tu préfères que chaque auteur l'accepte d'abord, c'est à changer.
 37. **Le garde des cartes de traçage vit dans OSCR** (D04-12) : la vérification que l'App posterait sur GitHub (« tracing-map links touched ») est reportée ; les liens touchés sont montrés dans les pages d'OSCR.
 38. **Un commit sans droit d'écriture sur le dépôt est tenté, et GitHub décide** (D04-6) : c'est le cas d'un mainteneur qui applique une suggestion ou résout un conflit sur la branche d'un fork (« Allow edits by maintainers ») ; un refus de GitHub est dit, avec l'offre de proposer depuis un fork.

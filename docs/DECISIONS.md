@@ -1370,7 +1370,7 @@ or unresolves it. The page offers both, without showing the state.
 **Decision.** `GET /api/forge/repo` answers `reviewers`: the GitHub logins of the linked papers'
 verified authors (the registry's roles, the users' GitHub handle), only to a reader who is the
 repository's owner, maintainer, the person who linked it, or a verified author of one of its papers;
-anyone else gets none. `migrations/d1-community/0003_roles_by_paper.sql` adds `roles_scope` (the
+anyone else gets none. `migrations/d1-community/0004_roles_by_paper.sql` adds `roles_scope` (the
 query 0001 foresaw): read by index, never a scan (10 rows read for the seeded example). GitHub asks
 reviews of collaborators only; an author who is not one reviews in the registry by commenting, said.
 
@@ -2283,3 +2283,68 @@ its id answered); the end-to-end run makes a throwaway RSA key for the App (the 
 JWT), runs a local receiver on `RECEIVER_PORT` for the webhooks and sets `HOOKS_ALLOW_LOCAL=1` for the
 local Worker only. The sign-in mock serves GitHub Actions' keys (`/actions/.well-known/jwks`) for the
 OIDC tests.
+
+## Phase 16: content, abuse and rules (2026-09-29)
+
+Built on `night/phase-10-automation` with `main` merged in first (21 commits: the removal request page,
+the static file budget, the code-first reader, OpenAlex, the nightly fixes). This phase is the lock
+before the GitHub side opens to the public: reports and moderation, maintainers' tools and blocking,
+abuse limits and Turnstile, the rules and privacy pages, copyright and private information, known
+malware, and the switch `FORGE_OPEN`, which it makes ready and never sets. The contracts are
+[MODERATION.md](MODERATION.md) and [POLICIES.md](POLICIES.md). The GitHub side is at its 5,000-row cap
+(D08-18): this phase writes little (about 200 rows a day, §15.4).
+
+### D16-1. `main` merged into the night: its file budget and code-first reader win on structure
+
+**Decision.** `origin/main` (b0fb35a) is merged into `night/phase-16-rules` as its own commit, the
+conflicts resolved by keeping both intents:
+- the per-entity pages stay deleted (`/author/[orcid].astro`); what phase 08 added to an author's page
+  (Follow by ORCID iD, the link to their profile in the registry) moves into the entity renderer
+  (`src/lib/render.ts`, mounted by `src/scripts/entity.ts` with a dynamic import on authors' pages
+  only);
+- the old reader page (`/paper/[slug]/code.astro`) stays deleted; phase 05's "Report a mismatch" on
+  each match moves into the reader's legend (`Reader.astro`); every link to `/paper/<slug>/code/`
+  (the forge layer's `reader`, the code view's traced notes) now points to `/paper/<slug>/#code` or
+  `#pair-N`, since main's check refuses a link to the former address;
+- `_redirects`: main's 10 entity rewrites and the night's 3 shells (`/r/*`, `/research/*`, `/u/*`):
+  13 dynamic rules of the 100 allowed; `_headers`: main's `/removal/` and the paper page's Europe PMC
+  and PubMed Central `connect-src`, and every night route kept;
+- `scripts/check.mjs`: main's budget, records and link rules (`leads`), with the night's shells in
+  `exists`, the night's fixed pages in `FIXED` (phase 10's `/settings/tokens/`, `/settings/hooks/`,
+  `/developers/` added), the night's shard checks (layer, research, social, traced), and the inline
+  script rule over the union of both lists;
+- `env.ts`, `index.ts`: main's `ASSETS` and `handlePage` (pages past `STATIC_PAPERS`, the 404) with the
+  night's forge service and public API;
+- **Migrations**: the Mac's are main's 0007 (OpenAlex) and 0008 (withheld); the night added none. The
+  community database clashed: main's `0003_removal_requests.sql` and the night's
+  `0003_roles_by_paper.sql`; the night's is renumbered **`0004_roles_by_paper.sql`** (an index only,
+  never applied remotely). `oscr_forge`'s migrations are the night's alone.
+
+**Why.** The owner's instruction for element 0; main's structure is in production.
+
+### D16-2. The DOI lookup's shards: main's two characters and arrays, read by the import page too
+
+**Decision.** Main's lookup is 256 shards named by 2 hex characters, each entry `[status, day read,
+page?]`; the night's import page (`src/lib/import-commands.ts`) read 3-character shards of objects. It
+now uses `lib/shards.ts` `lookupShard` (one rule) and reads both entry forms (`lookupFields`); a fourth
+item, the paper's code links, is read when an export adds it (none does yet).
+
+### D16-3. The file budget with the GitHub side: `STATIC_PAPERS` 5,700, `FIXED_FILES_MAX` 3,600
+
+**Decision.** The night's files count in `FIXED_FILES_MAX`: the fixed pages (~35), their script bundles
+(the fixture builds 179 in `_astro/`, main 61), and the nightly shards (forge layer, research issues,
+social layer, social authors, tracing maps: 64 each, and Explore's file: `GITHUB_SIDE_SHARDS`, 321).
+Main had sized `FIXED_FILES_MAX` (3,000) to its own worst case (2,304 record shards, 256 lookup, 128
+lots, 200 categories, ~100 pages and bundles: ~2,990). Measured: main's fixture 107 files besides
+papers, the merge's 377; `npm run check:growth` 2,942 files. On the real catalogue that is ~2,900 today
+and ~3,300 at the full stock, past 3,000. So, **the same 15,000 margin, divided again**:
+`STATIC_PAPERS` 6,000 → **5,700** (the 300 oldest static papers are rendered by the Worker, one request
+a view), `FIXED_FILES_MAX` 3,000 → **3,600** (2 × 5,700 + 3,600 = 15,000). `budget.test.ts` adds the
+GitHub side's shards and 200 pages and bundles to the sum it checks. CLAUDE.md says 5,700.
+
+**Why.** Main's rule is that the site stays under 15,000 files whatever the catalogue's size; with the
+GitHub side, 6,000 static papers would break it as the catalogue fills its record shards. The margin
+and the check are unchanged.
+
+**What would change it.** Fewer bundles (Vite's small chunks merged) or fewer shard families would
+give papers back their 300 static pages: the owner's choice.

@@ -32,7 +32,7 @@ from collections.abc import Iterable
 from pathlib import Path
 from typing import Any
 
-from . import repos
+from . import catalog, repos
 
 FORMAT = "oscr-script-manifest/1"
 #: Parquet layout, measured on 2026-09-26 (docs/SCRIPT_STORAGE.md).
@@ -131,13 +131,20 @@ def audit(con: sqlite3.Connection) -> dict[str, Any]:
 
 
 def _publishable(con: sqlite3.Connection) -> Iterable[tuple[sqlite3.Row, tuple[str, str], list[sqlite3.Row]]]:
+    # The copies withheld at a removal request (catalog.withheld) stay on the Mac: a repository
+    # withheld loses its manifest at the next build, a file its entry. (A published block never
+    # changes: a text already sent stays in its block, with no manifest pointing to it.)
+    held = catalog.withheld(con)
     for r in con.execute("SELECT * FROM repository WHERE redistributable IN ('yes', 'with_conditions') "
                          "ORDER BY repo").fetchall():
+        if r["repo"] in held.repos:
+            continue
         v = verified_license(con, r)
         if not v:
             continue
-        files = con.execute("SELECT path, version, language, lines, truncated, text FROM file WHERE repo = ? "
-                            "AND text IS NOT NULL AND text != '' ORDER BY path", (r["repo"],)).fetchall()
+        files = [f for f in con.execute("SELECT path, version, language, lines, truncated, text FROM file WHERE repo = ? "
+                                        "AND text IS NOT NULL AND text != '' ORDER BY path", (r["repo"],)).fetchall()
+                 if (r["repo"], f["path"]) not in held.files]
         if files:
             yield r, v, files
 

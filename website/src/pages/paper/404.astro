@@ -1,0 +1,33 @@
+---
+// The shell of the pages of the papers past STATIC_PAPERS (lib/shards.ts), which have no file of
+// their own. The build writes it to dist/paper/404.html (astro.config.mjs).
+//
+// - As the site is configured (wrangler.toml, `not_found_handling = "none"`), a request for a
+//   /paper/<slug>/ that no file answers runs the Worker (worker/pages.ts): it reads the paper's
+//   record in /records/paper/NN.json and returns this shell with the rendered record in place of
+//   <main>'s content. It keeps this page's script, which then runs the Contribute section.
+// - Should the owner set `not_found_handling = "404-page"` (no Worker request at all), the assets
+//   serve this file, the nearest 404.html, for any missing /paper/…, with the status 404; the
+//   script then renders the record in the browser (src/scripts/paper-shell.ts).
+import Base from "../../layouts/Base.astro";
+import { SHARDS } from "../../lib/shards";
+---
+<Base
+  title="Paper"
+  description="A paper with its authors' code, code on request or data only."
+  breadcrumb={[{ text: "Catalogue", href: "/" }, { text: "Paper", id: "crumb" }]}
+>
+  <div id="paper" data-shards={SHARDS.paper}>
+    <h1>Paper</h1>
+    <p id="paper-status" role="status" aria-live="polite">Loading the record…</p>
+    <noscript>
+      <p class="warning">
+        This paper's page is built from the registry's data, and this address needs JavaScript to show it.{" "}
+        <a href="/lookup/">The DOI lookup</a> finds any paper the registry has read.
+      </p>
+    </noscript>
+  </div>
+  <script>
+    import "../../scripts/paper-shell";
+  </script>
+</Base>

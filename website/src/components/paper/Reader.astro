@@ -1,0 +1,214 @@
+---
+// The Code ↔ Paper reader, the first section of the page of a paper with code (#code): the
+// paper and its authors' code side by side, the pairs that join a paragraph and lines of code in
+// the same color on both sides, and a button that hides the paper so that the code takes the
+// whole width.
+//
+// LEFT, the paper: its text is NOT in this page; the reader's browser loads it from Europe PMC,
+// else from PubMed Central (src/scripts/reader-paper.ts). RIGHT, the authors' code: the list of its files and one file,
+// the one with the most matches, written here by the build (plain; the browser colors it); the
+// others are fetched on demand from /scripts/NN.json. A file whose license does not allow
+// republishing it has no text here: the reader says why and links to it at the source, which is
+// otherwise reached only through the file's menu.
+import { SITE_NAME } from "../../config";
+import { alignmentOf, europePmcUrl, lot2, lotEntry, plural, shortName, type Article } from "../../lib/catalog";
+import { languageOf, sizeInWords } from "../../lib/code";
+import { decorate, lineClass, pairClass, splitLines } from "../../lib/lines";
+import { initialFile, mapPairs, readerFiles, sourceOf, sourceWhy, whyNotShown, type ReaderData } from "../../lib/reader";
+
+interface Props {
+  a: Article;
+}
+const { a } = Astro.props;
+const alignment = alignmentOf(a);
+const doiUrl = `https://doi.org/${a.doi}`;
+// The full text the pairs were computed on: the reader must number the same paragraphs.
+const textId = alignment?.fulltext_id || a.fulltext_id || a.pmcid || "";
+const epmcUrl = europePmcUrl({ ...a, fulltext_id: textId });
+
+const { repos, files, texts } = readerFiles(
+  a.code.map((r) => ({ repo: r.repo, url: r.url, name: shortName(r), license: r.license, state: r.state, lot: lot2(r.lot), entry: lotEntry(r) })),
+);
+const pairs = mapPairs(alignment?.pairs ?? [], repos, files);
+const initial = initialFile(files);
+const f = initial >= 0 ? files[initial] : undefined;
+const r = f ? repos[f.repo] : undefined;
+const text = initial >= 0 ? (texts.get(initial) ?? null) : null;
+const lines = text !== null ? splitLines(text) : [];
+const spans = pairs.filter((p) => p.file === initial).map((p) => ({ pair: p.pair, start: p.start, end: p.end, whole: p.whole }));
+const { cover, link, color, weak } = decorate(lines, spans);
+const wholes = pairs.filter((p) => p.whole).length;
+const digits = lines.length >= 10_000 ? " digits-5" : lines.length >= 1_000 ? " digits-4" : "";
+const lang = f ? languageOf(f.path, f.language) : undefined;
+const facts = f && r
+  ? [
+      lang!.name,
+      f.lines !== null ? plural(f.lines, "line") : "",
+      f.bytes !== null ? sizeInWords(f.bytes) : "",
+      r.license || "no license",
+      f.pairs.length ? plural(f.pairs.length, "match", "matches") : pairs.length ? "no match with the paper" : "",
+    ].filter(Boolean).join(" · ")
+  : "";
+const parts = f ? f.path.split("/") : [];
+const at = f && r ? sourceOf(r, f) : "";
+
+// Night phase 05: "Report a mismatch" on a match: the registry's research form, prefilled with the
+// paragraph and the lines at the commit the map read (a GitHub repository's form is on its page).
+const reportOf = (p: (typeof pairs)[number]): string => {
+  const repo = repos.find((x) => x.repo === p.repo);
+  const q = new URLSearchParams({ type: "mismatch", doi: a.doi, "field.paragraph": String(p.paragraph), "field.path": p.path, "field.lines": `${p.start}-${p.end}` });
+  if (p.section) q.set("section", p.section);
+  if (repo && /^[0-9a-f]{40}$/.test(repo.commit)) q.set("field.commit", repo.commit);
+  if (p.repo.startsWith("github.com/")) q.set("repo", p.repo.slice("github.com/".length));
+  else if (repo?.url) q.set("code", repo.url);
+  return `/research/new?${q}`;
+};
+
+// What the reader's browser needs: never any text of the paper, only numbers and short terms.
+const data: ReaderData = {
+  fulltextId: textId,
+  doiUrl,
+  epmcUrl,
+  method: alignment?.method ?? "",
+  repos,
+  files,
+  pairs,
+  initial,
+  initialEol: text !== null && text.endsWith("\n"),
+};
+const json = JSON.stringify(data).replace(/</g, "\\u003c");
+---
+<section id="code" class="reader" aria-labelledby="reader-title">
+  <div class="reader-bar">
+    <h2 id="reader-title">Code ↔ Paper</h2>
+    <p class="reader-summary">
+      {pairs.length > 0
+        ? `${plural(pairs.length, "match", "matches")} between paragraphs of the paper and lines of its authors' code, computed by the harvester (${alignment!.method}). Click a colored paragraph or line to see its counterpart.`
+        : a.map_withheld
+          ? "The paper beside its authors' code: their matches are withheld at a removal request, with the paper's tracing map."
+          : "The paper beside its authors' code: matches between them have not been computed for this paper yet."}
+    </p>
+    <div class="reader-tools">
+      {pairs.length > 0 && (
+        <>
+          <button type="button" id="pair-prev" title="The previous match">‹ Previous</button>
+          <button type="button" id="pair-next" title="The next match">Next ›</button>
+        </>
+      )}
+      <button type="button" id="toggle-paper" aria-controls="paper-pane" aria-expanded="true">Hide the paper</button>
+    </div>
+  </div>
+  {pairs.length > 0 && (
+    <details id="legend" class="legend">
+      <summary>
+        The {plural(pairs.length, "match", "matches")}{wholes > 0 && (
+          <span class="muted">
+            {" "}· {wholes === pairs.length ? (wholes === 1 ? "it ties" : "all tie") : `${wholes} of them tie`} a paragraph to a whole
+            file, not to given lines: {wholes === 1 ? "a weak match" : "weak matches"}, whose lines are not tinted
+          </span>
+        )}
+      </summary>
+      <ol>
+        {pairs.map((p) => (
+          <li>
+            <a class={pairClass(p.pair)} href={`#pair-${p.pair}`} data-pair={p.pair}>
+              [{p.pair}] {p.label} ↔ {p.path}, {p.whole ? "the whole file" : `lines ${p.start}–${p.end}`}
+            </a>
+            {p.whole && <span class="muted"> · a weak match</span>}
+            {typeof p.score === "number" && <span class="muted"> · score {p.score.toFixed(2)}</span>}
+            {p.evidence.length > 0 && <span class="muted"> · {p.evidence.join(", ")}</span>}
+            {p.file < 0 && <> · <span class="warning">this file is not among the harvested files</span></>}
+            {" · "}<a class="report-link" href={reportOf(p)}>Report a mismatch</a>
+          </li>
+        ))}
+      </ol>
+    </details>
+  )}
+
+  <div class="compare" id="compare">
+    <section class="pane paper-pane" id="paper-pane" aria-labelledby="paper-title">
+      <header>
+        <h3 id="paper-title">Paper</h3>
+        <p>
+          Loaded from <span id="paper-source">Europe PMC</span> by your browser, not stored by {SITE_NAME}: <a href={doiUrl}>doi.org</a> ·{" "}
+          <a href={epmcUrl}>Europe PMC</a>
+        </p>
+      </header>
+      <div class="pane-body" id="paper" tabindex="0">
+        <p id="paper-status" role="status">The paper is loaded when this pane is shown.</p>
+        <noscript>
+          <p class="warning">
+            The paper is loaded by your browser, with JavaScript: read it at <a href={doiUrl}>doi.org</a> or on{" "}
+            <a href={epmcUrl}>Europe PMC</a>.
+          </p>
+        </noscript>
+      </div>
+    </section>
+
+    <section class="pane code-pane" id="code-pane" aria-labelledby="code-title">
+      <header>
+        <div class="file-head">
+          <h3 id="code-title" class="clip">The authors' code</h3>
+          <button type="button" id="toggle-files" class="files-button" aria-controls="file-tree" aria-expanded="true">Files</button>
+          <nav class="file-path" id="file-path" aria-label="The file shown">
+            {r && <span class="repo">{r.name}</span>}
+            {parts.map((part, k) => <><span class="sep">/</span>{k === parts.length - 1 ? <strong>{part}</strong> : <span>{part}</span>}</>)}
+          </nav>
+        </div>
+        <div class="file-head">
+          <p class="file-facts" id="file-facts">{facts || "No file of the authors' code could be read here."}</p>
+          <div class="file-actions">
+            <button type="button" id="wrap-lines" aria-pressed="false" title="Wrap the long lines">Wrap</button>
+            <button type="button" id="copy-file" title="Copy the whole file">Copy</button>
+            <button type="button" id="link-lines" title="Copy a link to this file, or to the lines selected (click a line number; Shift-click for a range)">Link</button>
+            <button type="button" id="raw-file" title="Download the file as it is kept here">Raw</button>
+            <details class="menu" id="file-menu">
+              <summary title="More">⋯</summary>
+              <ul id="source-links">
+                {at && <li><a href={at}>{at === r!.url ? "The repository at the source" : "This file at the source"}</a></li>}
+                {at && at !== r!.url && <li><a href={r!.url}>The repository at the source ({r!.name})</a></li>}
+                {f && r && <li class="why">{sourceWhy(r.commit, f.text)}</li>}
+              </ul>
+            </details>
+          </div>
+        </div>
+      </header>
+      <div class="code-body">
+        <nav class="files" id="file-tree" aria-label="The files of the authors' code"></nav>
+        <div class="viewer" id="code-view" tabindex="0" aria-label="The code">
+          <p class="file-note" id="file-note" hidden></p>
+          <ol class={`lines${digits}`} id="lines" hidden={lines.length === 0}>
+            {lines.map((line, n0) => {
+              const ks = cover.get(n0 + 1);
+              const k = link.get(n0 + 1);
+              return (
+                <li class={lineClass(color.get(n0 + 1), weak.has(n0 + 1))} data-pairs={ks ? ks.join(" ") : undefined}>{k ? <a href={`#pair-${k}`} data-pair={k} title={`Match ${k}: show the paragraph`}>{line}</a> : line}</li>
+              );
+            })}
+          </ol>
+          <div class="unavailable" id="unavailable" hidden={lines.length > 0}>
+            {files.length === 0 ? (
+              <p class="warning">
+                No file of the authors' code could be read here:{" "}
+                {repos.map((x, i) => <>{i > 0 && "; "}<a href={x.url}>{x.name}</a>{x.note && ` (${x.note})`}</>)}.
+              </p>
+            ) : f && r && !f.text ? (
+              <>
+                <p class="warning">{whyNotShown(f, r)}</p>
+                <p>{at === r.url ? "It can be read in its repository, " : "It can be read at the source: "}<a href={at}>{at === r.url ? r.name : f.path}</a>.</p>
+              </>
+            ) : null}
+          </div>
+          <p class="file-end" id="file-end" hidden={lines.length === 0}>
+            {f && r && <>{parts[parts.length - 1]}{r.commit && ` at commit ${r.commit.slice(0, 7)}`}, {r.license ? `under ${r.license}` : "no license"} · <a href={at}>at the source</a></>}
+          </p>
+        </div>
+      </div>
+      <p class="clip" id="code-status" role="status" aria-live="polite"></p>
+    </section>
+  </div>
+  <script is:inline type="application/json" id="reader-data" set:html={json}></script>
+</section>
+<script>
+  import "../../scripts/reader";
+</script>

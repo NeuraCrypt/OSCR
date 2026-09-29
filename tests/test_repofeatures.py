@@ -225,6 +225,13 @@ def test_matlab_shell_escapes_run_programs():
     assert tools_of(("prep.m", code)) == {"fsl": "call", "freesurfer": "call"}
 
 
+def test_a_matlab_shell_escape_keeps_its_quoted_words():
+    # MATLAB's lexer set these strings aside; the shell reads the line with them back in
+    code = ('x = "unused";\n!datalad save -m "deleted sourcedata, backed up elsewhere"\n'
+            '!echo "Example `!` system command"\n!bash -c "fslmaths in.nii -bin out.nii"\n')
+    assert tools_of(("clean.m", code)) == {"datalad": "call", "fsl": "call"}
+
+
 # ─── Julia ────────────────────────────────────────────────────────────────────
 
 def test_julia_using_and_import():
@@ -263,6 +270,13 @@ def test_a_template_placeholder_is_a_word_and_a_brace_group_holds_commands():
                 'participant""".format(**paths)\nsubprocess.Popen(cmd, shell=True)\n')
     assert tools_of(("run.py", template)) == {}
     assert tools_of(("x.sh", "[ -f a ] || { fslmaths a -bin b; exit 1; }\n")) == {"fsl": "call"}
+
+
+def test_a_placeholder_already_in_a_script_stays_a_word():
+    # the lexer's own mark, \x02k\x03, in the text, beyond the strings it collected
+    code = ('#!/bin/bash\nfslmaths \x027\x03 -bin "mask.nii.gz"\n\x029\x03 --help\n'
+            'bash \x0212\x03\nrecon-all -s \x023\x03 -all\n')
+    assert tools_of(("run.sh", code)) == {"fsl": "call", "freesurfer": "call"}
 
 
 def test_shell_installs_and_modules_are_declarations():

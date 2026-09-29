@@ -20,7 +20,13 @@ const doi = m?.doi || card?.doi || "";
 ---
 <section id="map">
   <h2>Tracing map</h2>
-  {a.code.length === 0 ? (
+  {a.map_withheld || m?.status === "withheld" ? (
+    <p>
+      This paper's tracing map is withheld at a removal request, after a moderator's review: its links between the paper
+      and its code, its matches and its validation are not shown, and it cannot be validated. The paper's record and its
+      code's links stay above.
+    </p>
+  ) : a.code.length === 0 ? (
     <p>
       A tracing map links a paper to the code its authors published: this paper has none
       {a.status === "on_request" ? " (its code is available on request)" : ""}, so it has no map.

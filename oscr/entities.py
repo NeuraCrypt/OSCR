@@ -6,8 +6,13 @@ and categories behind the papers, and the DOI lookup.
 - `entities/authors.json`, `journals.json`, `institutions.json`, `tools.json`,
   `datasets.json`: one entry per entity, the entities with the most papers first;
 - `entities/categories.json`: facet → value → papers;
-- `lookup/NNN.json`: the DOI lookup, one shard per first 3 hex characters of the SHA-1 of
-  the lowercased DOI (4,096 shards at most, only the non-empty ones written).
+- `lookup/NN.json`: the DOI lookup, one shard per first 2 hex characters of the SHA-1 of
+  the lowercased DOI (256 shards at most, only the non-empty ones written). Each entry is
+  `DOI → [status, day read]`, plus the page's name when the paper has one: ~57 bytes an
+  entry, ~61 entries a shard for 15,652 DOIs (2026-09-28), ~2,400 (~135 KB) at the full
+  neuro stock of ~610,000 papers read. The website's file budget, not the lookup's size,
+  set the number: 4,096 shards of 3 hex characters took a quarter of the 20,000 files a
+  Worker may serve (docs/PLATFORM_PLAN.md §6).
 
 It also tells `catalog.json`, for each paper, whether it has a page and, when it has one,
 which authors, journal, tools and datasets its page links to.
@@ -49,8 +54,10 @@ MIN_CONFIDENCE: float = 0.6
 HIDDEN_FACETS: tuple[str, ...] = ("on_topic",)
 #: The facets in the order the site shows them; any other facet comes after, by name.
 FACET_ORDER: tuple[str, ...] = ("modality", "organism", "population", "subfield")
-#: The lookup's shards: the first LOOKUP_HEX hex characters of sha1(DOI), 16**3 = 4,096.
-LOOKUP_HEX: int = 3
+#: The lookup's shards: the first LOOKUP_HEX hex characters of sha1(DOI), 16**2 = 256. The
+#: website's lookup page reads the same number (website/src/lib/shards.ts, LOOKUP_HEX; a test
+#: checks that they agree).
+LOOKUP_HEX: int = 2
 
 ENTITY_FILES: tuple[str, ...] = ("authors", "journals", "institutions", "tools", "datasets", "categories")
 
@@ -183,6 +190,37 @@ def _strings(raw: str | None) -> list[str]:
     return out
 
 
+def _indexed_strings(raw: str | None) -> list[str]:
+    """A JSON list of affiliations, each cleaned of contact details, in place: an element that
+    is left empty stays as "" so that an index into the list (paper_author.ror's `aff`) holds."""
+    return [re.sub(r"\s+", " ", strip_contacts(_text(v, "name", "text", "affiliation", "institution"))).strip()
+            for v in _json_list(raw)]
+
+
+def ror_pairs(ror_raw: str | None, affiliations_raw: str | None) -> tuple[list[str], list[tuple[str, int]]]:
+    """An author's ROR ids, and which of their affiliations (index) each one is.
+
+    `paper_author.ror` holds ROR ids (from the JATS), or {"id", "aff"} objects (from OpenAlex,
+    `aff` the index of the affiliation, or null when none of them is it). Plain ids pair with the
+    affiliations by position when there are as many of both; otherwise they are not paired."""
+    entries = _json_list(ror_raw)
+    places = _indexed_strings(affiliations_raw)
+    ids: list[str] = []
+    pairs: list[tuple[str, int]] = []
+    for v in entries:
+        x = ror(_text(v, "id", "ror"))
+        if not x or x in ids:
+            continue
+        ids.append(x)
+        i = v.get("aff") if isinstance(v, dict) else None
+        if isinstance(i, int) and not isinstance(i, bool) and 0 <= i < len(places) and places[i]:
+            pairs.append((x, i))
+    if not any(isinstance(v, dict) for v in entries):
+        kept = [i for i, place in enumerate(places) if place]
+        pairs = list(zip(ids, kept, strict=True)) if len(ids) == len(kept) else []
+    return ids, pairs
+
+
 def _web(url: str | None) -> str:
     return url if url and re.match(r"https?://", url, re.IGNORECASE) else ""
 
@@ -207,11 +245,15 @@ class _Papers:
         self.when = {i: (r["published"] or "", r["scanned_at"] or 0.0, i) for i, r in self.rows.items()}
 
     def slugs(self, ids: set[str] | list[str]) -> list[str]:
-        """The pages of these papers, the most recent first."""
-        return [self.slug[i] for i in sorted(set(ids), key=lambda i: self.when[i], reverse=True)]
+        """The pages of these papers, the most recent first. A paper the harvester brought into
+        scope after this index was read (it keeps writing during the nightly export) waits for
+        the next export."""
+        known = {i for i in ids if i in self.slug}
+        return [self.slug[i] for i in sorted(known, key=lambda i: self.when[i], reverse=True)]
 
     def counts(self, ids: set[str]) -> dict[str, int]:
-        return {"papers": len(ids), "with_code": len(ids & self.with_code)}
+        known = {i for i in ids if i in self.slug}
+        return {"papers": len(known), "with_code": len(known & self.with_code)}
 
 
 def _by_count(entries: list[dict[str, Any]], name: str, key: str = "id") -> list[dict[str, Any]]:
@@ -222,11 +264,13 @@ def _by_count(entries: list[dict[str, Any]], name: str, key: str = "id") -> list
 def _people(con: sqlite3.Connection, p: _Papers, tools_of: dict[str, list[str]]
             ) -> tuple[dict[str, list[dict[str, str]]], list[dict[str, Any]], list[dict[str, Any]]]:
     """Each paper's authors in order (name, ORCID iD or ""), the authors with an ORCID iD,
-    and the institutions (ROR ids) of the authors' affiliations."""
+    and the institutions (ROR ids) of the authors' affiliations: named as OpenAlex names them
+    (`institution`), else by the affiliation most often written with them."""
     rows: dict[str, list[sqlite3.Row]] = defaultdict(list)
     for r in con.execute(f"SELECT * FROM paper_author WHERE article_id IN ({PAGES_SQL}) ORDER BY article_id, position"):
         rows[r["article_id"]].append(r)
     registered = {r["orcid"]: r["name"] for r in con.execute("SELECT orcid, name FROM author")}
+    known = {r["id"]: r for r in con.execute("SELECT * FROM institution")}
 
     def name_of(r: sqlite3.Row) -> str:
         name = r["name"] or " ".join(x for x in (r["given"], r["family"]) if x)
@@ -252,7 +296,7 @@ def _people(con: sqlite3.Connection, p: _Papers, tools_of: dict[str, list[str]]
             if name or oid:
                 listed[aid].append({"name": name or strip_contacts(registered.get(oid, "")) or oid, "orcid": oid})
             affiliations = _strings(r["affiliations"])
-            rors = [x for x in (ror(_text(v, "id", "ror")) for v in _json_list(r["ror"])) if x]
+            rors, paired = ror_pairs(r["ror"], r["affiliations"])
             if oid:
                 e = people.setdefault(oid, {"papers": set(), "rors": {}, "named": None, "placed": None})
                 e["papers"].add(aid)
@@ -262,9 +306,12 @@ def _people(con: sqlite3.Connection, p: _Papers, tools_of: dict[str, list[str]]
                     e["placed"] = (when, affiliations)
                 for x in rors:
                     e["rors"][x] = max(e["rors"].get(x, when), when)
-            # An institution's name: the affiliation written most often with its ROR id.
-            pairs = (list(zip(rors, affiliations, strict=True)) if len(rors) == len(affiliations)
-                     else [(x, a) for x in rors for a in affiliations])
+            # An institution's name, when OpenAlex does not give it: the affiliation written most
+            # often with its ROR id.
+            places_of = _indexed_strings(r["affiliations"])
+            plain = not any(isinstance(v, dict) for v in _json_list(r["ror"]))
+            pairs = ([(x, places_of[i]) for x, i in paired] if paired
+                     else [(x, a) for x in rors for a in affiliations] if plain else [])
             for x in rors:
                 inst = places.setdefault(x, {"papers": set(), "authors": set(), "names": Counter()})
                 inst["papers"].add(aid)
@@ -288,8 +335,11 @@ def _people(con: sqlite3.Connection, p: _Papers, tools_of: dict[str, list[str]]
     institutions = []
     for x, inst in places.items():
         names = sorted(inst["names"].items(), key=lambda kv: (-kv[1], len(kv[0]), kv[0]))
+        k = known.get(x)
+        name = re.sub(r"\s+", " ", strip_contacts(k["name"] if k is not None else "")).strip()
         institutions.append({
-            "id": x, "name": names[0][0] if names else f"ROR {x}",
+            "id": x, "name": name or (names[0][0] if names else f"ROR {x}"),
+            "country": (k["country"] if k is not None else "") or "", "type": (k["type"] if k is not None else "") or "",
             "papers": p.slugs(inst["papers"]), "authors": sorted(inst["authors"]),
             "counts": p.counts(inst["papers"]),
         })
@@ -462,20 +512,20 @@ def _categories(con: sqlite3.Connection, p: _Papers) -> dict[str, Any]:
     return {"min_confidence": MIN_CONFIDENCE, "facets": facets}
 
 
-def lookup(con: sqlite3.Connection, slugs: dict[str, str]) -> dict[str, dict[str, dict[str, str]]]:
-    """Every in-scope paper read, by DOI, split into shards: DOI → status, the day it was
-    read, and its page when it has one. Off-topic papers are not there (D7)."""
-    shards: dict[str, dict[str, dict[str, str]]] = defaultdict(dict)
+def lookup(con: sqlite3.Connection, slugs: dict[str, str]) -> dict[str, dict[str, list[str]]]:
+    """Every in-scope paper read, by DOI, split into shards: DOI → [status, the day it was
+    read], and its page as a third item when it has one. Off-topic papers are not there (D7)."""
+    shards: dict[str, dict[str, list[str]]] = defaultdict(dict)
     for r in con.execute(f"SELECT id, doi, status, scanned_at FROM article WHERE {catalog.IN_SCOPE} AND doi != '' "
                          f"ORDER BY scanned_at, id"):
         doi = normalize_doi(r["doi"])
         if not doi:
             continue
-        entry = {"status": r["status"], "read_on": _day(r["scanned_at"])}
+        entry = [r["status"], _day(r["scanned_at"])]
         if r["id"] in slugs:
-            entry["slug"] = slugs[r["id"]]
+            entry.append(slugs[r["id"]])
         shard = shards[lookup_shard(doi)]
-        if "slug" in shard.get(doi, {}) and "slug" not in entry:
+        if len(shard.get(doi, [])) > 2 and len(entry) == 2:
             continue    # two records of one DOI: the one with a page answers
         shard[doi] = entry
     return {k: dict(sorted(v.items())) for k, v in sorted(shards.items())}

@@ -60,6 +60,7 @@ import functools
 import json
 import os
 import re
+import shlex
 import tomllib
 import warnings
 from collections import Counter, defaultdict
@@ -1093,7 +1094,9 @@ def _matlab(text: str, idx: _Index, own_functions: frozenset[str] = frozenset())
         if pattern.search(code):
             hits.add(tool if tool in idx.ids else "", "call")
     commands = {m.group(1): strings[int(m.group(2))] for m in _M_COMMAND_VAR.finditer(code)}
-    shell_lines = [m.group(1) for m in _M_BANG.finditer(code)]
+    # a `!` line is the shell's: its strings go back in, quoted, before the shell reads it
+    shell_lines = [_PLACEHOLDER.sub(lambda s: shlex.quote(_shell_word(s.group(0), strings)), m.group(1))
+                   for m in _M_BANG.finditer(code)]
     for m in _M_SYSTEM.finditer(code):
         shell_lines.append(strings[int(m.group(1))] if m.group(1) is not None
                            else commands.get(m.group(2) or "", ""))
@@ -1231,8 +1234,10 @@ def _substitutions(s: str) -> list[str]:
 
 
 def _shell_word(token: str, strings: list[str]) -> str:
+    """A word, or the string its placeholder stands for. A placeholder the lexer did not
+    make (the text already held `\\x02k\\x03`) stays the word."""
     m = _PLACEHOLDER.fullmatch(token)
-    return strings[int(m.group(1))] if m else token
+    return strings[int(m.group(1))] if m and int(m.group(1)) < len(strings) else token
 
 
 def _shell_segment(tokens: list[str], strings: list[str], idx: _Index, hits: _Hits) -> None:

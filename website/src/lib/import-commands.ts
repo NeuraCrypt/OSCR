@@ -18,7 +18,7 @@
 //   SSH, or a token typed when git asks), and the registry never sees it (D00-3).
 // - A Zenodo, figshare or OSF record becomes ONE commit whose message cites the record's DOI: an
 //   archive has no history.
-// - "Import from the paper": the lookup shard of the paper's DOI (/lookup/NNN.json, the SHA-1 rule
+// - "Import from the paper": the lookup shard of the paper's DOI (/lookup/NN.json, the SHA-1 rule
 //   of oscr/entities.py) gives its page and its code links (`code`, the https addresses of the
 //   paper's code, added to each entry by scripts/data.mjs); `prefillFromPaper` turns them into
 //   sources and the paper to link.
@@ -28,6 +28,7 @@
 import { forgeLinks } from "../../worker/forge/github/links.ts";
 import { SEGMENT, isRefName } from "../../worker/forge/paths.ts";
 import { cloneUrl, GITHUB, isOwner, isRepoName, layerShard, layerUrl, type RepoCoords } from "./forge.ts";
+import { lookupShard } from "./shards.ts";
 
 export type { RepoCoords };
 
@@ -568,22 +569,32 @@ export function bulkScript(items: readonly BulkItem[]): string {
 
 // ─── import from the paper: the lookup shard ─────────────────────────────────
 
-/** An entry of /lookup/NNN.json: its status, the day it was read, its page, and (scripts/data.mjs)
- *  the https addresses of its code. */
-export interface LookupEntry {
-  status: string;
-  read_on: string;
-  slug?: string;
-  code?: string[];
-}
+/** An entry of /lookup/NN.json since the file budget of 2026-09-28 (scripts/data.mjs, src/scripts/
+ *  lookup.ts): [status, day read], then its page when it has one, then (when an export adds them) the
+ *  https addresses of its code. The object form of the night branches before the merge is still read. */
+export type LookupEntry =
+  | readonly [string, string]
+  | readonly [string, string, string]
+  | readonly [string, string, string, readonly string[]]
+  | { status: string; read_on: string; slug?: string; code?: string[] };
 
 export type LookupShard = Record<string, LookupEntry>;
 
-/** The lookup shard of a normalized DOI: the first 3 hex characters of its SHA-1 (oscr/entities.py). */
-export async function lookupShardOf(doi: string): Promise<string> {
-  const digest = await crypto.subtle.digest("SHA-1", new TextEncoder().encode(doi));
-  return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("").slice(0, 3);
+/** An entry's fields, whichever its form. */
+export function lookupFields(entry: unknown): { status: string | null; slug: string | null; code: unknown } {
+  if (Array.isArray(entry)) {
+    return { status: typeof entry[0] === "string" ? entry[0] : null, slug: typeof entry[2] === "string" ? entry[2] : null, code: entry[3] };
+  }
+  if (entry && typeof entry === "object") {
+    const e = entry as { status?: unknown; slug?: unknown; code?: unknown };
+    return { status: typeof e.status === "string" ? e.status : null, slug: typeof e.slug === "string" ? e.slug : null, code: e.code };
+  }
+  return { status: null, slug: null, code: undefined };
 }
+
+/** The lookup shard of a normalized DOI: the first LOOKUP_HEX hex characters of its SHA-1
+ *  (oscr/entities.py; lib/shards.ts, the one rule since the file budget of 2026-09-28). */
+export const lookupShardOf = (doi: string): Promise<string> => lookupShard(doi);
 
 export const lookupUrl = (shard: string): string => `/lookup/${shard}.json`;
 
@@ -638,17 +649,18 @@ export function prefillFromPaper(doiText: unknown, shard: LookupShard | null | u
   const doi = normalizeDoi(doiText);
   if (!doi) return null;
   const entry = shard && Object.prototype.hasOwnProperty.call(shard, doi) ? shard[doi] : null;
+  const fields = lookupFields(entry);
   const out: PaperPrefill = {
     doi,
     found: !!entry,
-    slug: entry && typeof entry.slug === "string" && /^[a-z0-9._-]+$/.test(entry.slug) ? entry.slug : null,
-    status: entry && typeof entry.status === "string" ? entry.status : null,
+    slug: fields.slug !== null && /^[a-z0-9._-]+$/.test(fields.slug) ? fields.slug : null,
+    status: fields.status,
     sources: [],
     records: [],
     other: [],
     papers: [doi],
   };
-  for (const url of lookupCode(entry?.code)) {
+  for (const url of lookupCode(fields.code)) {
     const record = parseRecord(url);
     if (record && record.kind !== "other" && record.doi !== doi) {
       if (!out.records.some((r) => r.doi === record.doi)) out.records.push(record);

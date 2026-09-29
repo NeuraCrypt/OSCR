@@ -2,11 +2,12 @@
 // The page is static and says how to sign in; this script asks the Worker only when the browser
 // holds a session (the `__Host-oscr_signed_in` hint cookie: a signed-out reader costs no request),
 // once: GET /api/contributions/paper. Then the forms send their request with the session's CSRF
-// token. Everything is written as text nodes, never as HTML. Like every browser script, it never
+// token. A removal is asked on its own page, /removal/ (src/scripts/removal.ts): this one only says
+// where the reader's request stands. Everything is written as text nodes, never as HTML. Like every browser script, it never
 // names the platform: "the registry".
 
 type Validation = { status: string; doi: string; record_url: string; instance: string; message: string; map_digest: string };
-type Request = { status: string; message: string; reason?: string };
+type Request = { id?: number; status: string; message: string; reason?: string; scope?: string; removal_url?: string };
 type Edit = { status: string; message: string; version: number | null; created_at: string };
 type State = {
   signed_in: boolean;
@@ -157,19 +158,15 @@ function sayValidation(s: State) {
   else write(out, "warning", v.message || "Your validation could not be completed.");
 }
 
+/** The reader's removal request about this record, if any: its state, and its page (/removal/). */
 function sayRemoval(s: State) {
-  show("removal-signed-out", false);
   const out = byId("removal-state");
   const r = s.report;
-  if (!r) {
-    write(out, "");
-    show("removal-form", true);
-    return;
-  }
-  if (r.status === "open") write(out, "warning", "Your request waits for a moderator; you may complete it below.");
-  else if (r.status === "accepted") write(out, "ok", `Your request was accepted${r.message ? `: ${r.message}` : ": the record leaves the site."}`);
-  else write(out, "warning", `Your request was refused${r.message ? `: ${r.message}` : "."}`);
-  show("removal-form", r.status === "open");
+  if (!r) return write(out, "");
+  const link = { href: r.removal_url || `/removal/?paper=${encodeURIComponent(paper)}`, text: `Your removal request${r.id ? ` No. ${r.id}` : ""}` };
+  if (r.status === "open") write(out, "warning", link, " waits for a moderator: you may complete it on its page.");
+  else if (r.status === "accepted") write(out, "ok", link, " was accepted", r.message ? `: ${r.message}` : ".");
+  else write(out, "warning", link, " was refused", r.message ? `: ${r.message}` : ".");
 }
 
 function render(s: State) {
@@ -255,13 +252,6 @@ onSubmit("validate-form", async () => {
   write(out, "ok", "Your validation is on its way: the map receives its DOI once the registry has deposited it. Your account page follows it.");
   const button = byId("validate-block")?.querySelector("button");
   if (button) button.disabled = true;
-});
-
-onSubmit("removal-form", async () => {
-  const out = byId("removal-state");
-  const r = await post("/api/reports", { paper_id: paper, reason: value("removal-reason"), details: value("removal-details") });
-  if (!r.ok) return write(out, "warning", problem(r.data));
-  write(out, "ok", r.data.updated ? "Your request is updated: a moderator reads it." : "Your request is sent: a moderator reads it. Your account page follows it.");
 });
 
 sayArrival();

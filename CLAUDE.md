@@ -129,13 +129,35 @@ What signed-in readers ask of the registry (`website/worker/contributions/`, `os
   is recorded as a test (`proof = 'test'`), never exported.
 - **Badge**: one static image (`/badge.svg`, no file per paper) and snippets; the author opens the
   pull request in GitHub's own editor. No write permission is ever asked of GitHub.
-- **Takedown**: a request from every record (signed in until Turnstile), decided by the owner
-  (`oscr reports`); accepted, the record leaves every public output (`article.withdrawn`).
+- **Takedown**: one page, `/removal/?paper=…`, linked from every record (signed in until Turnstile):
+  who asks, what (the record, the scripts' copies, a repository, a file, the tracing map), why, a
+  justification without an email address, two confirmations, a review before sending. Decided by the
+  owner (`oscr reports`); accepted, it leaves every public output at the next nightly — the record
+  (`article.withdrawn`) or only what it names (`withheld`).
 - Manual author claims and claims GitHub cannot settle: decided by the owner (`oscr claims`) until
   Phase 7's moderation.
 - **Costs**: a request writes 3 D1 rows, an answer 1 (in the facts push's daily budget); per-account
   daily limits are counted from the rows; a signed-out reader's page view asks the Worker nothing
   (the `__Host-oscr_signed_in` hint cookie). No email address in any form: the texts lose theirs.
+
+## The website's file budget (decided 2026-09-28)
+
+A Worker serves at most 20,000 static files per version; the site stays under 15,000 whatever
+the catalogue's size (`website/src/lib/shards.ts`, held by `npm run check`; docs/PLATFORM_PLAN.md §6):
+
+- **No file per entity.** An author, journal, institution, tool or dataset is one shell page per
+  type, served for `/author/<orcid>/` and the like by a rewrite of `public/_redirects` (free, no
+  Worker request), and rendered in the browser from `/records/<type>/NN.json` (a fixed number of
+  shards per type, `SHARDS`: 2,304 files for the five types and the papers). The lists
+  (`/authors/`, …) link to every entity.
+- **Papers**: a static page (and reader) for the `STATIC_PAPERS` (5,700 since the GitHub side's
+  fixed files, D16-3; 6,000 before) most recent; the others
+  are rendered by the Worker from `/records/paper/NN.json` (one Worker request a view, no D1 row),
+  with a reduced page that says what it leaves out and keeps the Contribute section (claim,
+  correction, removal request). Every request no file answers runs the Worker
+  (`not_found_handling = "none"`), which serves the 404 page itself.
+- **The DOI lookup**: 256 shards (`oscr/entities.py` LOOKUP_HEX, `/lookup/NN.json`).
+- A new kind of page adds a fixed number of files, never one per paper or per entity.
 
 ## Git hosting (night phase 01)
 

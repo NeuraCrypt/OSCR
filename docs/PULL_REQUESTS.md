@@ -189,7 +189,7 @@ refused).
 |---|---|
 | the actions | `website/worker/forge/service/act-pulls.ts`, `act-forks.ts`, `act-commit.ts` (`mergeParent`), `migrations/d1-forge/0003_pulls.sql` |
 | GitBackend | `repos.forks`, `repos.syncFork` (`github/repos.ts`, the double, the fake, the contract) |
-| the verified authors | `service/read.ts` (`reviewers`), `migrations/d1-community/0003_roles_by_paper.sql` |
+| the verified authors | `service/read.ts` (`reviewers`), `migrations/d1-community/0004_roles_by_paper.sql` |
 | the pure parts | `src/lib/pulls.ts`, `codeowners.ts`, `pull-view.ts`, `pull-page.ts`, `conflicts.ts` |
 | the pages | `src/scripts/repo-pulls.ts`, `repo-pull.ts`, `repo-pull-files.ts`, `repo-conflicts.ts`, `repo-forks.ts`, `pull-common.ts` |
 | tests | `tests/forge-service/pulls.test.ts`, `forks.test.ts`; `tests/forge-pages/pulls.test.ts`, `codeowners.test.ts`, `pull-view.test.ts`, `pull-page.test.ts`, `conflicts.test.ts`; the contract (`forks`, `syncFork`); the end-to-end run's phase 04 checks |

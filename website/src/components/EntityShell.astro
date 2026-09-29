@@ -1,0 +1,36 @@
+---
+// The one page of each entity type (/author/, /journal/, /institution/, /tool/, /dataset/):
+// public/_redirects serves it for every /author/<orcid>/ and the like, and its script
+// (src/scripts/entity.ts) renders the entity in the browser from its shard,
+// /records/<type>/NN.json. No file per entity: the site's file count does not grow with them.
+// Without JavaScript, the page says so and links to the list, which is static.
+import Base from "../layouts/Base.astro";
+import { ENTITY_WORDS } from "../lib/render";
+import { SHARDS, type EntityType } from "../lib/shards";
+
+interface Props {
+  type: EntityType;
+}
+const { type } = Astro.props;
+const w = ENTITY_WORDS[type];
+const One = w.one.charAt(0).toUpperCase() + w.one.slice(1);
+---
+<Base
+  title={One}
+  description={`The ${w.one}'s papers with their code, code on request or data only.`}
+  breadcrumb={[{ text: "Browse", href: "/browse/" }, { text: w.list, href: w.listUrl }, { text: One, id: "crumb" }]}
+>
+  <div id="entity" data-type={type} data-shards={SHARDS[type]}>
+    <h1>{One}</h1>
+    <p id="entity-status" role="status" aria-live="polite">Loading the record…</p>
+    <noscript>
+      <p class="warning">
+        This page is built in your browser from the registry's data: it needs JavaScript.{" "}
+        <a href={w.listUrl}>The list of the {w.list.toLowerCase()}</a> works without it.
+      </p>
+    </noscript>
+  </div>
+  <script>
+    import "../scripts/entity";
+  </script>
+</Base>

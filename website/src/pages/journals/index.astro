@@ -3,9 +3,9 @@
 // the papers read in it.
 import Base from "../../layouts/Base.astro";
 import { number, plural } from "../../lib/catalog";
-import { journalPages, journals, journalUrl, STATIC_MAX } from "../../lib/entities";
+import { journals, journalUrl } from "../../lib/entities";
 
-const sorted = [...journalPages].sort((x, y) => x.title.localeCompare(y.title));
+const sorted = [...journals].sort((x, y) => x.title.localeCompare(y.title));
 ---
 <Base
   title="Journals"
@@ -26,10 +26,4 @@ const sorted = [...journalPages].sort((x, y) => x.title.localeCompare(y.title));
       </li>
     ))}
   </ul>
-  {journals.length > journalPages.length && (
-    <p class="line">
-      {plural(journals.length - journalPages.length, "other journal")} will have their page when pages are rendered on
-      demand (beyond the first {number(STATIC_MAX.journal)}).
-    </p>
-  )}
 </Base>

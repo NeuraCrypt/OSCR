@@ -1,24 +1,11 @@
 ---
-// The authors with an ORCID iD, by family name. Names without an ORCID iD cannot be
-// merged reliably across papers: they stay names on the pages of their papers.
+// The authors with an ORCID iD, by family name: the letters here, each letter's authors on a page
+// of its own (/authors/<letter>/), so that the list stays light however many they are. Names
+// without an ORCID iD cannot be merged reliably across papers: they stay names on the pages of
+// their papers.
 import Base from "../../layouts/Base.astro";
-import { number, plural } from "../../lib/catalog";
-import { authorPages, authors, authorUrl, STATIC_MAX, type Author } from "../../lib/entities";
-
-const family = (a: Author) => a.family || a.name.split(" ").pop() || a.name;
-const inIndex = (a: Author) => (a.family && a.given ? `${a.family}, ${a.given}` : a.name);
-const letter = (a: Author) => {
-  const first = family(a).normalize("NFD").charAt(0).toUpperCase();
-  return /[A-Z]/.test(first) ? first : "Other";
-};
-const sorted = [...authorPages].sort((x, y) => family(x).localeCompare(family(y)) || x.name.localeCompare(y.name));
-const groups = new Map<string, Author[]>();
-for (const a of sorted) {
-  if (!groups.has(letter(a))) groups.set(letter(a), []);
-  groups.get(letter(a))!.push(a);
-}
-const counted = (a: Author) =>
-  `${plural(a.counts.papers, "paper")}${a.counts.with_code > 0 ? `, ${number(a.counts.with_code)} with code` : ""}`;
+import { plural } from "../../lib/catalog";
+import { authorLetters, authors } from "../../lib/entities";
 ---
 <Base
   title="Authors"
@@ -27,22 +14,16 @@ const counted = (a: Author) =>
 >
   <h1>Authors</h1>
   <p class="summary">
-    {plural(authors.length, "author")} with an ORCID iD, on the papers with a page. An author without an ORCID iD stays a
-    name on the pages of their papers: names alone cannot be merged reliably from one paper to another.
+    {plural(authors.length, "author")} with an ORCID iD, on the papers with a page, by family name. An author without an
+    ORCID iD stays a name on the pages of their papers: names alone cannot be merged reliably from one paper to another.
   </p>
-  {authors.length === 0 && <p>No author with an ORCID iD yet: they come with the enrichment of the papers.</p>}
-  {[...groups.entries()].map(([l, list]) => (
-    <>
-      <h2 id={`letter-${l}`}>{l}</h2>
-      <ul>
-        {list.map((a) => <li><a href={authorUrl(a.orcid)}>{inIndex(a)}</a> — {counted(a)}</li>)}
-      </ul>
-    </>
-  ))}
-  {authors.length > authorPages.length && (
-    <p class="line">
-      {plural(authors.length - authorPages.length, "other author")}, with fewer papers, will have their page when pages
-      are rendered on demand (beyond the first {number(STATIC_MAX.author)}).
-    </p>
+  {authors.length === 0 ? (
+    <p>No author with an ORCID iD yet: they come with the enrichment of the papers.</p>
+  ) : (
+    <ul>
+      {authorLetters.map((g) => (
+        <li id={`letter-${g.letter}`}><a href={`/authors/${g.slug}/`}>{g.letter}</a> — {plural(g.authors.length, "author")}</li>
+      ))}
+    </ul>
   )}
 </Base>

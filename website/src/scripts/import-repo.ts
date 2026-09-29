@@ -7,7 +7,7 @@
 // - /hosting/leave/: the backup commands for one repository, and its layer exported as JSON from the
 //   static shard, saved by the browser.
 // Every command comes from src/lib/import-commands.ts (validated, single-quoted). The pages ask the
-// Worker nothing: the only requests are the static files /lookup/NNN.json and /forge/layer/NN.json.
+// Worker nothing: the only requests are the static files /lookup/NN.json and /forge/layer/NN.json.
 // Everything is written as text nodes, never as HTML. Like every browser script, it never names the
 // platform.
 import { isOwner, isRepoName, layerShard, layerUrl, repoPath, type RepoCoords } from "../lib/forge.ts";

@@ -5,4 +5,7 @@
 --
 -- One more row written per role granted (rare: an ORCID sign-in's verification, the owner's hand);
 -- the reads go by the index, never a scan.
+--
+-- Numbered 0003 on the night branches; 0004 since main's 0003_removal_requests.sql was merged in
+-- (night phase 16, D16-1). It was never applied remotely: the night is not deployed.
 CREATE INDEX roles_scope ON roles(scope_kind, scope_id, role);

@@ -1,0 +1,460 @@
+{
+ "id": "https://openalex.org/W4404144294",
+ "doi": "https://doi.org/10.1101/gr.280394.124",
+ "language": "en",
+ "primary_location": {
+  "id": "doi:10.1101/gr.280394.124",
+  "is_oa": false,
+  "landing_page_url": "https://doi.org/10.1101/gr.280394.124",
+  "pdf_url": null,
+  "source": {
+   "id": "https://openalex.org/S43092948",
+   "display_name": "Genome Research",
+   "issn_l": "1088-9051",
+   "issn": [
+    "1088-9051",
+    "1549-5469"
+   ],
+   "is_oa": false,
+   "host_organization": "https://openalex.org/P4310315909",
+   "host_organization_name": "Cold Spring Harbor Laboratory Press",
+   "type": "journal"
+  },
+  "license": null,
+  "license_id": null,
+  "version": "publishedVersion",
+  "is_accepted": true,
+  "is_published": true,
+  "raw_source_name": "Genome Research",
+  "raw_type": "journal-article"
+ },
+ "type": "preprint",
+ "open_access": {
+  "is_oa": true,
+  "oa_status": "green",
+  "oa_url": "https://doi.org/10.1101/2024.11.06.621353",
+  "any_repository_has_fulltext": true
+ },
+ "authorships": [
+  {
+   "author_position": "first",
+   "author": {
+    "id": "https://openalex.org/A5035708352",
+    "display_name": "Ketrin Gjoni",
+    "orcid": "https://orcid.org/0000-0001-5833-1089",
+    "observed_orcids": [
+     "https://orcid.org/0000-0001-5833-1089"
+    ]
+   },
+   "institutions": [
+    {
+     "id": "https://openalex.org/I1321430492",
+     "display_name": "Gladstone Institutes",
+     "ror": "https://ror.org/038321296",
+     "country_code": "US",
+     "type": "nonprofit",
+     "lineage": [
+      "https://openalex.org/I1321430492"
+     ]
+    },
+    {
+     "id": "https://openalex.org/I180670191",
+     "display_name": "University of California, San Francisco",
+     "ror": "https://ror.org/043mz5j54",
+     "country_code": "US",
+     "type": "education",
+     "lineage": [
+      "https://openalex.org/I180670191"
+     ]
+    }
+   ],
+   "countries": [
+    "US"
+   ],
+   "is_corresponding": false,
+   "raw_author_name": "Ketrin Gjoni",
+   "raw_affiliation_strings": [
+    "Department of Epidemiology & Biostatistics, University of California, San Francisco, CA 94158",
+    "Gladstone Institute of Data Science and Biotechnology, San Francisco, CA 94158"
+   ],
+   "raw_orcid": "https://orcid.org/0000-0001-5833-1089",
+   "affiliations": [
+    {
+     "raw_affiliation_string": "Department of Epidemiology & Biostatistics, University of California, San Francisco, CA 94158",
+     "institution_ids": [
+      "https://openalex.org/I180670191"
+     ]
+    },
+    {
+     "raw_affiliation_string": "Gladstone Institute of Data Science and Biotechnology, San Francisco, CA 94158",
+     "institution_ids": [
+      "https://openalex.org/I1321430492"
+     ]
+    }
+   ]
+  },
+  {
+   "author_position": "middle",
+   "author": {
+    "id": "https://openalex.org/A5008898531",
+    "display_name": "Xingjie Ren",
+    "orcid": "https://orcid.org/0000-0002-2348-4162",
+    "observed_orcids": [
+     "https://orcid.org/0000-0002-2348-4162"
+    ]
+   },
+   "institutions": [
+    {
+     "id": "https://openalex.org/I180670191",
+     "display_name": "University of California, San Francisco",
+     "ror": "https://ror.org/043mz5j54",
+     "country_code": "US",
+     "type": "education",
+     "lineage": [
+      "https://openalex.org/I180670191"
+     ]
+    }
+   ],
+   "countries": [
+    "US"
+   ],
+   "is_corresponding": false,
+   "raw_author_name": "Xingjie Ren",
+   "raw_affiliation_strings": [
+    "Institute for Human Genetics, University of California, San Francisco, San Francisco, CA 94143",
+    "Institute for Human Genetics, University of California, San Francisco, San Francisco, CA, USA"
+   ],
+   "raw_orcid": "https://orcid.org/0000-0002-2348-4162",
+   "affiliations": [
+    {
+     "raw_affiliation_string": "Institute for Human Genetics, University of California, San Francisco, San Francisco, CA 94143",
+     "institution_ids": [
+      "https://openalex.org/I180670191"
+     ]
+    },
+    {
+     "raw_affiliation_string": "Institute for Human Genetics, University of California, San Francisco, San Francisco, CA, USA",
+     "institution_ids": [
+      "https://openalex.org/I180670191"
+     ]
+    }
+   ]
+  },
+  {
+   "author_position": "last",
+   "author": {
+    "id": "https://openalex.org/A5005062415",
+    "display_name": "Katherine S. Pollard",
+    "orcid": "https://orcid.org/0000-0002-9870-6196",
+    "observed_orcids": [
+     "https://orcid.org/0000-0002-9870-6196"
+    ]
+   },
+   "institutions": [
+    {
+     "id": "https://openalex.org/I1321430492",
+     "display_name": "Gladstone Institutes",
+     "ror": "https://ror.org/038321296",
+     "country_code": "US",
+     "type": "nonprofit",
+     "lineage": [
+      "https://openalex.org/I1321430492"
+     ]
+    },
+    {
+     "id": "https://openalex.org/I180670191",
+     "display_name": "University of California, San Francisco",
+     "ror": "https://ror.org/043mz5j54",
+     "country_code": "US",
+     "type": "education",
+     "lineage": [
+      "https://openalex.org/I180670191"
+     ]
+    },
+    {
+     "id": "https://openalex.org/I4210121800",
+     "display_name": "Chan Zuckerberg Initiative (United States)",
+     "ror": "https://ror.org/02qenvm24",
+     "country_code": "US",
+     "type": "company",
+     "lineage": [
+      "https://openalex.org/I4210121800"
+     ]
+    }
+   ],
+   "countries": [
+    "US"
+   ],
+   "is_corresponding": true,
+   "raw_author_name": "Katherine S Pollard",
+   "raw_affiliation_strings": [
+    "Bakar Computational Health Sciences Institute, University of California, San Francisco, CA 94143",
+    "Chan Zuckerberg Biohub, San Francisco, CA 94158",
+    "Department of Epidemiology & Biostatistics, University of California, San Francisco, CA 94158",
+    "Gladstone Institute of Data Science and Biotechnology, San Francisco, CA 94158",
+    "Gladstone Institutes"
+   ],
+   "raw_orcid": "https://orcid.org/0000-0002-9870-6196",
+   "affiliations": [
+    {
+     "raw_affiliation_string": "Bakar Computational Health Sciences Institute, University of California, San Francisco, CA 94143",
+     "institution_ids": [
+      "https://openalex.org/I180670191"
+     ]
+    },
+    {
+     "raw_affiliation_string": "Chan Zuckerberg Biohub, San Francisco, CA 94158",
+     "institution_ids": [
+      "https://openalex.org/I4210121800"
+     ]
+    },
+    {
+     "raw_affiliation_string": "Department of Epidemiology & Biostatistics, University of California, San Francisco, CA 94158",
+     "institution_ids": [
+      "https://openalex.org/I180670191"
+     ]
+    },
+    {
+     "raw_affiliation_string": "Gladstone Institute of Data Science and Biotechnology, San Francisco, CA 94158",
+     "institution_ids": [
+      "https://openalex.org/I1321430492"
+     ]
+    },
+    {
+     "raw_affiliation_string": "Gladstone Institutes",
+     "institution_ids": [
+      "https://openalex.org/I1321430492"
+     ]
+    }
+   ]
+  }
+ ],
+ "cited_by_count": 7,
+ "biblio": {
+  "volume": "36",
+  "issue": "9",
+  "first_page": "1825",
+  "last_page": "1835"
+ },
+ "is_retracted": false,
+ "primary_topic": {
+  "id": "https://openalex.org/T10222",
+  "display_name": "Genomics and Chromatin Dynamics",
+  "score": 0.9983999729156494,
+  "subfield": {
+   "id": "https://openalex.org/subfields/1312",
+   "display_name": "Molecular Biology"
+  },
+  "field": {
+   "id": "https://openalex.org/fields/13",
+   "display_name": "Biochemistry, Genetics and Molecular Biology"
+  },
+  "domain": {
+   "id": "https://openalex.org/domains/1",
+   "display_name": "Life Sciences"
+  }
+ },
+ "topics": [
+  {
+   "id": "https://openalex.org/T10222",
+   "display_name": "Genomics and Chromatin Dynamics",
+   "score": 0.9983999729156494,
+   "subfield": {
+    "id": "https://openalex.org/subfields/1312",
+    "display_name": "Molecular Biology"
+   },
+   "field": {
+    "id": "https://openalex.org/fields/13",
+    "display_name": "Biochemistry, Genetics and Molecular Biology"
+   },
+   "domain": {
+    "id": "https://openalex.org/domains/1",
+    "display_name": "Life Sciences"
+   }
+  },
+  {
+   "id": "https://openalex.org/T10434",
+   "display_name": "Chromosomal and Genetic Variations",
+   "score": 0.9977999925613403,
+   "subfield": {
+    "id": "https://openalex.org/subfields/1110",
+    "display_name": "Plant Science"
+   },
+   "field": {
+    "id": "https://openalex.org/fields/11",
+    "display_name": "Agricultural and Biological Sciences"
+   },
+   "domain": {
+    "id": "https://openalex.org/domains/1",
+    "display_name": "Life Sciences"
+   }
+  }
+ ],
+ "locations": [
+  {
+   "id": "doi:10.1101/gr.280394.124",
+   "is_oa": false,
+   "landing_page_url": "https://doi.org/10.1101/gr.280394.124",
+   "pdf_url": null,
+   "source": {
+    "id": "https://openalex.org/S43092948",
+    "display_name": "Genome Research",
+    "issn_l": "1088-9051",
+    "issn": [
+     "1088-9051",
+     "1549-5469"
+    ],
+    "is_oa": false,
+    "host_organization": "https://openalex.org/P4310315909",
+    "host_organization_name": "Cold Spring Harbor Laboratory Press",
+    "type": "journal"
+   },
+   "license": null,
+   "license_id": null,
+   "version": "publishedVersion",
+   "is_accepted": true,
+   "is_published": true,
+   "raw_source_name": "Genome Research",
+   "raw_type": "journal-article"
+  },
+  {
+   "id": "doi:10.1101/2024.11.06.621353",
+   "is_oa": true,
+   "landing_page_url": "https://doi.org/10.1101/2024.11.06.621353",
+   "pdf_url": null,
+   "source": {
+    "id": "https://openalex.org/S4306402567",
+    "display_name": "bioRxiv (Cold Spring Harbor Laboratory)",
+    "issn_l": null,
+    "issn": null,
+    "is_oa": false,
+    "host_organization": "https://openalex.org/I2750212522",
+    "host_organization_name": "Cold Spring Harbor Laboratory",
+    "type": "repository"
+   },
+   "license": "cc-by",
+   "license_id": "https://openalex.org/licenses/cc-by",
+   "version": "acceptedVersion",
+   "is_accepted": true,
+   "is_published": false,
+   "raw_source_name": "bioRxiv",
+   "raw_type": "posted-content"
+  },
+  {
+   "id": "pmid:39574698",
+   "is_oa": false,
+   "landing_page_url": "https://pubmed.ncbi.nlm.nih.gov/39574698",
+   "pdf_url": null,
+   "source": {
+    "id": "https://openalex.org/S4306525036",
+    "display_name": "PubMed",
+    "issn_l": null,
+    "issn": null,
+    "is_oa": false,
+    "host_organization": "https://openalex.org/I1299303238",
+    "host_organization_name": "National Institutes of Health",
+    "type": "repository"
+   },
+   "license": null,
+   "license_id": null,
+   "version": "publishedVersion",
+   "is_accepted": true,
+   "is_published": true,
+   "raw_source_name": "bioRxiv : the preprint server for biology",
+   "raw_type": "Journal Article"
+  },
+  {
+   "id": "pmh:oai:pubmedcentral.nih.gov:11580890",
+   "is_oa": true,
+   "landing_page_url": "https://www.ncbi.nlm.nih.gov/pmc/articles/11580890",
+   "pdf_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC11580890/pdf/nihpp-2024.11.06.621353v1.pdf",
+   "source": {
+    "id": "https://openalex.org/S2764455111",
+    "display_name": "PubMed Central",
+    "issn_l": null,
+    "issn": null,
+    "is_oa": true,
+    "host_organization": "https://openalex.org/I1299303238",
+    "host_organization_name": "National Institutes of Health",
+    "type": "repository"
+   },
+   "license": "cc-by",
+   "license_id": "https://openalex.org/licenses/cc-by",
+   "version": "submittedVersion",
+   "is_accepted": false,
+   "is_published": false,
+   "raw_source_name": "bioRxiv",
+   "raw_type": "Text"
+  }
+ ],
+ "funders": [
+  {
+   "id": "https://openalex.org/F4320306159",
+   "display_name": "W. M. Keck Foundation",
+   "ror": "https://ror.org/000dswa46"
+  },
+  {
+   "id": "https://openalex.org/F4320306164",
+   "display_name": "Simons Foundation",
+   "ror": "https://ror.org/01cmst727"
+  },
+  {
+   "id": "https://openalex.org/F4320310168",
+   "display_name": "Gladstone Institutes",
+   "ror": "https://ror.org/038321296"
+  },
+  {
+   "id": "https://openalex.org/F4320319761",
+   "display_name": "Additional Ventures",
+   "ror": "https://ror.org/01jmvv781"
+  },
+  {
+   "id": "https://openalex.org/F4320332161",
+   "display_name": "National Institutes of Health",
+   "ror": "https://ror.org/01cwqze88"
+  },
+  {
+   "id": "https://openalex.org/F4320332622",
+   "display_name": "University of California, San Francisco",
+   "ror": "https://ror.org/043mz5j54"
+  },
+  {
+   "id": "https://openalex.org/F4320337349",
+   "display_name": "NIH Office of the Director",
+   "ror": "https://ror.org/00fj8a872"
+  }
+ ],
+ "awards": [
+  {
+   "id": "https://openalex.org/G1087135376",
+   "display_name": null,
+   "funder_award_id": "SFI-AN-AR-Data Analysis-00019589",
+   "funder_id": "https://openalex.org/F4320306164",
+   "funder_display_name": "Simons Foundation"
+  },
+  {
+   "id": "https://openalex.org/G421085325",
+   "display_name": "Deciphering the 3D genome of pediatric brain tumors",
+   "funder_award_id": "1r03od034499-01",
+   "funder_id": "https://openalex.org/F4320332161",
+   "funder_display_name": "National Institutes of Health"
+  },
+  {
+   "id": "https://openalex.org/G4893483045",
+   "display_name": null,
+   "funder_award_id": "R03OD034499",
+   "funder_id": "https://openalex.org/F4320337349",
+   "funder_display_name": "NIH Office of the Director"
+  }
+ ],
+ "referenced_works_count": 50,
+ "referenced_works": [
+  "https://openalex.org/W15569989",
+  "https://openalex.org/W2008627757",
+  "https://openalex.org/W2010921681"
+ ],
+ "related_works": [
+  "https://openalex.org/W3145419749",
+  "https://openalex.org/W3038565614"
+ ]
+}

@@ -8,7 +8,8 @@
     "data": "node scripts/data.mjs",
     "dev": "npm run data && astro dev",
     "build": "npm run data && astro build",
-    "check": "node scripts/check.mjs",
+    "check": "node --experimental-strip-types scripts/check.mjs",
+    "check:growth": "node --experimental-strip-types scripts/growth.mjs",
     "test": "node --experimental-strip-types --test \"tests/**/*.test.ts\"",
     "preview": "astro preview",
     "deploy": "npm run build && wrangler deploy"

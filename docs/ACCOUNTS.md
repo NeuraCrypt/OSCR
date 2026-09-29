@@ -100,8 +100,8 @@ has `Cache-Control: no-store`, `X-Content-Type-Options: nosniff`, `Referrer-Poli
 
 | route | what | answer |
 |---|---|---|
-| `GET /api/auth/{orcid,github,google}/start?return=/path/` | starts a sign-in | 302 to the provider, and the flow cookie |
-| `GET /api/auth/{orcid,github,google}/callback` | the provider's return | 302 to the page, `?signed_in=<p>`, `?linked=<p>`, `?maintainer=verified\|pending\|rejected\|unavailable&repo=…` or `?error=<code>&provider=<p>` |
+| `GET /api/auth/{orcid,github,google}/start?return=/path/` | starts a sign-in; `return`: a path of this site, its query kept (`/removal/?paper=doi%3A…`, 2026-09-29), never another site, an API route, a fragment or a backslash (`http.ts`, `returnPath`) | 302 to the provider, and the flow cookie |
+| `GET /api/auth/{orcid,github,google}/callback` | the provider's return | 302 to the page (after its own query, `&signed_in=<p>`), `?signed_in=<p>`, `?linked=<p>`, `?maintainer=verified\|pending\|rejected\|unavailable&repo=…` or `?error=<code>&provider=<p>` |
 | `GET /api/account/me` | the account | 200 `{signed_in: false, available, providers}` or the account (below) |
 | `POST /api/account/signout` | ends the session | 200 `{signed_in: false}`, the cookie cleared |
 | `POST /api/account/authorship` | the author verification, again | 200 `{granted, revoked, papers}`; 409 `no_orcid` |

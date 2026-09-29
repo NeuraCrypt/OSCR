@@ -242,16 +242,16 @@ def test_the_lookup_holds_every_in_scope_paper_read_in_shards(con, tmp_path):
     export(con, tmp_path)
     found = {}
     for f in (tmp_path / "lookup").glob("*.json"):
-        assert re.fullmatch(r"[0-9a-f]{3}\.json", f.name)
+        assert re.fullmatch(r"[0-9a-f]{2}\.json", f.name)
         shard = json.loads(f.read_text())
         assert shard, "only the non-empty shards are written"
         for doi, entry in shard.items():
-            assert hashlib.sha1(doi.encode()).hexdigest()[:3] == f.stem
+            assert hashlib.sha1(doi.encode()).hexdigest()[:2] == f.stem
             found[doi] = entry
     assert found == {
-        "10.5555/upper.case": {"status": "code_verified", "read_on": "2026-09-21", "slug": catalog.slug(with_page)},
-        "10.5555/test.2": {"status": "none", "read_on": "2026-09-21"},
-        "10.5555/test.3": {"status": "no_fulltext", "read_on": "2026-09-21"},
+        "10.5555/upper.case": ["code_verified", "2026-09-21", catalog.slug(with_page)],
+        "10.5555/test.2": ["none", "2026-09-21"],
+        "10.5555/test.3": ["no_fulltext", "2026-09-21"],
     }
     assert without and no_text and off
     # A paper that leaves the lookup takes its shard with it when the shard empties.
@@ -260,6 +260,16 @@ def test_the_lookup_holds_every_in_scope_paper_read_in_shards(con, tmp_path):
     export(con, tmp_path)
     after = {f.name for f in (tmp_path / "lookup").glob("*.json")}
     assert before - after == {f"{entities.lookup_shard('10.5555/test.2')}.json"}
+
+
+def test_the_lookup_has_256_shards_at_most_whatever_the_number_of_papers():
+    shards = {entities.lookup_shard(f"10.5555/synthetic.{i}") for i in range(20_000)}
+    assert len(shards) == 16 ** entities.LOOKUP_HEX == 256
+    # The website reads the same number, and names the shards the same way (the same test vector
+    # as website/tests/budget.test.ts).
+    ts = (Path(__file__).resolve().parents[1] / "website" / "src" / "lib" / "shards.ts").read_text()
+    assert int(re.search(r"export const LOOKUP_HEX = (\d+);", ts)[1]) == entities.LOOKUP_HEX
+    assert entities.lookup_shard("10.5555/oscr.fixture.5") == "04"
 
 
 def test_journals_count_papers_with_code_out_of_papers_read(con, tmp_path):
@@ -348,3 +358,11 @@ def test_identifiers():
     assert entities.url_slug("issn:1234-567X", taken) == "issn-1234-567x"
     assert entities.url_slug("ISSN 1234 567X", taken).startswith("issn-1234-567x-")    # never twice the same
     assert entities.url_slug("..", taken) not in ("", ".", "..")
+
+
+def test_a_paper_that_entered_the_scope_during_the_export_waits_for_the_next(tmp_path):
+    from oscr import entities
+    p = entities._Papers.__new__(entities._Papers)
+    p.slug, p.when, p.with_code = {"a": "a-slug"}, {"a": ("2026-09-01", 0.0, "a")}, {"a"}
+    assert p.slugs({"a", "late"}) == ["a-slug"]
+    assert p.counts({"a", "late"}) == {"papers": 1, "with_code": 1}

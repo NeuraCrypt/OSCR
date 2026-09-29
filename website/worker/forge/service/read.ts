@@ -291,7 +291,7 @@ function communityFacts(community: D1Database, user: User, repoKey: string, pape
 export const REVIEWERS_MAX = 30;
 
 /** The verified authors of these papers with a GitHub login, by the roles' index (roles_scope,
- *  migrations/d1-community/0003) and the users' key: never a scan. */
+ *  migrations/d1-community/0004) and the users' key: never a scan. */
 function authorsOf(community: D1Database, paperIds: string[]): D1PreparedStatement {
   return community
     .prepare(

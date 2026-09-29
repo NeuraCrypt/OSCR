@@ -1,0 +1,25 @@
+---
+// The head of a paper's page: its title, the notices said before anything else (retraction,
+// expression of concern, correction), and the bar of its sections (nav.tabs, science.css).
+import { dateInWords } from "../../lib/catalog";
+import { NOTICES } from "../../lib/paper";
+import Wrap from "./Wrap.astro";
+
+interface Props {
+  title: string;
+  notices: { kind: string; date: string; url: string; id: string; source: string }[];
+  sections: { id: string; label: string; later?: boolean }[];
+}
+const { title, notices, sections } = Astro.props;
+---
+<h1><Wrap text={title} /></h1>
+{notices.map((n) => (
+  <p class="warning">
+    <strong>{NOTICES[n.kind]}</strong>{n.date && ` (${dateInWords(n.date)})`}:{" "}
+    {n.url ? <a href={n.url}>the notice{n.id && `, ${n.id}`}</a> : `the notice ${n.id}`.trim()}
+    {n.source && `, from ${n.source}`}.
+  </p>
+))}
+<nav class="tabs" aria-label="Sections of this page">
+  <ul>{sections.map((x) => <li class={x.later ? "later" : undefined}><a href={`#${x.id}`}>{x.label}</a></li>)}</ul>
+</nav>

@@ -33,17 +33,21 @@ export function redirect(location: string, cookies: string[] = []): Response {
 }
 
 /** A path of this site to come back to after a sign-in: "/account/" unless the request names
- *  another page of the site. Never another site (an open redirect), never an API route. */
+ *  another page of the site, with its query if it has one ("/removal/?paper=doi%3A10.1234%2Fabc").
+ *  Never another site (an open redirect: no scheme, no "//", no backslash, which a browser reads
+ *  as a slash), never an API route, never a fragment; the query holds URL-safe characters only. */
 export function returnPath(value: string | null): string {
-  if (!value || value.length > 200) return "/account/";
-  if (!/^\/[A-Za-z0-9._~\-/]*$/.test(value) || value.startsWith("//") || value.startsWith("/api/")) return "/account/";
+  if (!value || value.length > 300) return "/account/";
+  if (!/^\/[A-Za-z0-9._~\-/]*(\?[A-Za-z0-9._~\-%=&+:/]*)?$/.test(value) || value.startsWith("//") || value.startsWith("/api/")) return "/account/";
   return value;
 }
 
-/** `path` with these query parameters ("/account/?signed_in=orcid"). */
+/** `path` with these query parameters ("/account/?signed_in=orcid"), after those it has
+ *  ("/removal/?paper=…&signed_in=orcid"). */
 export function withQuery(path: string, params: Record<string, string>): string {
   const q = new URLSearchParams(params).toString();
-  return q ? `${path}?${q}` : path;
+  if (!q) return path;
+  return path.includes("?") ? `${path}${path.endsWith("?") || path.endsWith("&") ? "" : "&"}${q}` : `${path}?${q}`;
 }
 
 export function readCookie(request: Request, name: string): string | null {

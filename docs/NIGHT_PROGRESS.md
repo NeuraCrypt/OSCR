@@ -154,7 +154,7 @@ from "Next step".
   `repo-forks.ts`, the Pull requests tab, a fork's standing with Sync fork); the pull request's page
   (E4: `repo-pull.ts`: the conversation, role labels, the merge box, the sidebar with the reviewers
   suggested from CODEOWNERS and the paper's verified authors, commits, checks; `GET /api/forge/repo`
-  `reviewers`, `migrations/d1-community/0003_roles_by_paper.sql`); Files changed (E5:
+  `reviewers`, `migrations/d1-community/0004_roles_by_paper.sql`); Files changed (E5:
   `repo-pull-files.ts`: phase 02's diffs through hooks, line comments, the pending review, "Viewed",
   suggestions applied alone or as a batch, the tracing-map links per file); conflicts resolved in
   the browser (E6: `repo-conflicts.ts`, `lib/conflicts.ts`: one merge commit with two parents).

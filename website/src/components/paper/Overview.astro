@@ -1,8 +1,11 @@
 ---
 // The Overview section of a paper's page: its bibliographic record (oscr/paperpage.py) and,
 // only under the licenses of decision D1, its abstract. The authors link to their pages and
-// to their ORCID records; an affiliation is the institution's text, never an address.
+// to their ORCID records; an affiliation is the institution's text, never an address. What
+// OpenAlex adds — the institutions by ROR id, the topic, the open-access status, a preprint —
+// says so.
 import { dateInWords, dayInWords, europePmcUrl, plural, status, type Article } from "../../lib/catalog";
+import { countryName } from "../../lib/format";
 import { authorUrl, categoriesOf, institutionUrl, journalUrl, orcidUrl, rridUrl } from "../../lib/entities";
 import { languageLabel, licenseLabel, NOTICES, paragraphs, typeLabel, type PaperPage } from "../../lib/paper";
 import Wrap from "./Wrap.astro";
@@ -23,6 +26,10 @@ const folded = authors.length > SHOWN + 5 ? authors.slice(SHOWN) : [];
 const shown = folded.length ? authors.slice(0, SHOWN) : authors;
 const withOrcid = authors.filter((x) => x.orcid);
 const affiliations = (o?.affiliations ?? []).map((x) => ({ ...x, url: x.ror ? institutionUrl(x.ror) : "" }));
+const institutions = (o?.institutions ?? []).map((x) => ({ ...x, url: institutionUrl(x.ror), country: countryName(x.country) }));
+const topic = o?.topic;
+const oaStatus = o?.oa_status ?? "";
+const openalexUrl = o?.openalex_id ? `https://openalex.org/${o.openalex_id}` : "";
 
 const journal = journalUrl(a.journal_id);
 const where = [
@@ -78,6 +85,12 @@ const pmcid = (a.fulltext_id || a.pmcid || "").toUpperCase();
   ) : (
     <ol>{affiliations.map((x) => <li>{x.url ? <a href={x.url}>{x.name}</a> : x.name}</li>)}</ol>
   ))}
+  {institutions.length > 0 && (
+    <div class="line">
+      <span class="label">Institutions:</span>{" "}
+      {institutions.map((x, i) => <>{i > 0 && "; "}{x.url ? <a href={x.url}>{x.name}</a> : x.name}{x.country && ` (${x.country})`}</>)}
+    </div>
+  )}
 
   <div class="line">
     <span class="label">Journal:</span> {journal ? <a href={journal}>{a.journal || "—"}</a> : a.journal || "—"}{where.length > 0 && `, ${where.join(", ")}`}
@@ -94,7 +107,16 @@ const pmcid = (a.fulltext_id || a.pmcid || "").toUpperCase();
     <span class="label">Identifiers:</span> DOI <a href={doiUrl}>{a.doi}</a>
     {o?.pmid && <> · PMID <a href={`https://pubmed.ncbi.nlm.nih.gov/${o.pmid}/`}>{o.pmid}</a></>}
     {/^PMC\d+$/.test(pmcid) && <> · PMCID <a href={europePmcUrl(a)}>{pmcid}</a></>}
+    {openalexUrl && <> · OpenAlex <a href={openalexUrl}>{o?.openalex_id}</a></>}
   </div>
+  {oaStatus && (
+    <div class="line">
+      <span class="label">Open access:</span> {oaStatus}{o?.oa_url && <>, <a href={o.oa_url}>a free copy</a></>} (OpenAlex)
+    </div>
+  )}
+  {o?.preprint && (
+    <div class="line"><span class="label">Preprint:</span> <a href={o.preprint.url}>{o.preprint.id}</a></div>
+  )}
   <div class="line">
     <span class="label">Status:</span> {s.tone ? <span class={s.tone}>{s.label}</span> : s.label}
   </div>
@@ -113,6 +135,11 @@ const pmcid = (a.fulltext_id || a.pmcid || "").toUpperCase();
     </div>
   )}
   {o && o.subjects.length > 0 && <div class="line"><span class="label">Journal subjects:</span> {o.subjects.join(", ")}</div>}
+  {topic && (
+    <div class="line">
+      <span class="label">Topic:</span> {topic.name}{[topic.subfield, topic.field].filter(Boolean).length > 0 && ` (${[topic.subfield, topic.field].filter(Boolean).join(", ")})`}, according to OpenAlex
+    </div>
+  )}
   {o && o.funding.length > 0 && (
     <div class="line">
       <span class="label">Funding:</span>{" "}
@@ -125,9 +152,11 @@ const pmcid = (a.fulltext_id || a.pmcid || "").toUpperCase();
     <div class="line">
       <span class="label">Citations:</span>{" "}
       {o.cited_by !== null && (o.cited_by > 0 ? `cited by ${plural(o.cited_by, "paper")}` : "not cited yet")}
-      {o.cited_by !== null && " (Europe PMC)"}
+      {o.cited_by !== null && ` (${o.cited_by_source || "Europe PMC"})`}
       {o.cited_by !== null && o.references !== null && "; "}
-      {o.references !== null && `${plural(o.references, "reference")} in the paper`}
+      {o.references !== null && (o.references_source === "OpenAlex"
+        ? `${plural(o.references, "reference")} (OpenAlex)`
+        : `${plural(o.references, "reference")} in the paper`)}
     </div>
   )}
   {o && o.rrids.length > 0 && (

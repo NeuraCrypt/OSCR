@@ -1,5 +1,5 @@
 {
- "generated_at": "2026-09-28T03:45:01Z",
+ "generated_at": "2026-09-28T21:37:01Z",
  "scope": {
   "sources": "local corpus, DataCite",
   "from": "2026-09-21",
@@ -132,7 +132,7 @@
      "url": "https://github.com/oscr-fixture/unlicensed",
      "host": "github.com",
      "level": "found",
-     "lot": 103,
+     "lot": 231,
      "files_read": 1,
      "state": "alive",
      "license": "",
@@ -164,7 +164,7 @@
    "journal_id": "issn:0000-0019",
    "tools": [],
    "datasets": [],
-   "page_lot": 72
+   "page_lot": 200
   },
   {
    "id": "doi:10.5555/oscr.fixture.1",
@@ -186,7 +186,7 @@
      "url": "https://github.com/oscr-fixture/eeg-analysis",
      "host": "github.com",
      "level": "found",
-     "lot": 26,
+     "lot": 154,
      "files_read": 3,
      "state": "alive",
      "license": "MIT",
@@ -213,7 +213,7 @@
     "concept_doi": "10.5555/oscr.fixture.map.0"
    },
    "alignment": {
-    "lot": 3,
+    "lot": 131,
     "pairs": 2,
     "method": "lexical-v1"
    },
@@ -241,7 +241,7 @@
    "datasets": [
     "doi:10.5555/oscr.fixture.data.1"
    ],
-   "page_lot": 3
+   "page_lot": 131
   }
  ],
  "families": [
@@ -277,7 +277,7 @@
    "level": "found",
    "type": "",
    "inventoried": true,
-   "lot": 26,
+   "lot": 154,
    "files_read": 3
   },
   {
@@ -297,7 +297,7 @@
    "level": "found",
    "type": "",
    "inventoried": true,
-   "lot": 103,
+   "lot": 231,
    "files_read": 1
   }
  ],

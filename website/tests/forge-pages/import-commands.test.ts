@@ -11,6 +11,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, test } from "node:test";
 import { layerShard } from "../../src/lib/forge.ts";
+import { LOOKUP_HEX } from "../../src/lib/shards.ts";
 import {
   backupCommands,
   BULK_MAX,
@@ -457,14 +458,15 @@ describe("import from the paper: the fixture's lookup shard", () => {
     for (const [doi, entry] of Object.entries(shard)) {
       const article = catalog.articles.find((a) => a.doi === doi);
       const code = lookupCode(article?.code);
-      out[doi] = code.length ? { ...entry, code } : { ...entry };
+      const row = entry as readonly [string, string, string];
+      out[doi] = code.length ? [row[0], row[1], row[2], code] : entry;
     }
     return out;
   }
 
   test("the shard is the SHA-1 rule of oscr/entities.py", async () => {
     for (const doi of ["10.5555/oscr.fixture.1", "10.5555/oscr.fixture.2"]) {
-      assert.equal(await lookupShardOf(doi), createHash("sha1").update(doi).digest("hex").slice(0, 3));
+      assert.equal(await lookupShardOf(doi), createHash("sha1").update(doi).digest("hex").slice(0, LOOKUP_HEX));
       const { name, shard } = await fixtureShard(doi);
       assert.ok(shard[doi], name);
       assert.equal(lookupUrl(name), `/lookup/${name}.json`);

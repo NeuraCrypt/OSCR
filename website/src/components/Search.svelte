@@ -380,7 +380,7 @@
               {@const s = status(d.status)}
               <dt>
                 <span class="num">[{n}]</span>
-                {#if d.code.length}<a class="reader-link" href={`/paper/${d.slug}/code/`}>Code ↔ Paper</a>{/if}
+                {#if d.code.length}<a class="reader-link" href={`/paper/${d.slug}/#code`}>Code ↔ Paper</a>{/if}
                 <a href={`/paper/${d.slug}/`}>doi:{d.doi}</a>
                 [<a href={`https://doi.org/${d.doi}`}>paper</a>{#if d.code.length}, <a href={`/paper/${d.slug}/#code`}>repository</a>{:else if d.data > 0}, <a href={`/paper/${d.slug}/#data`}>data</a>{/if}]
               </dt>
@@ -393,7 +393,7 @@
                 {#if d.code.length}
                   <div class="line">
                     <span class="label">Authors' code:</span>
-                    {#each d.code as r, i}{i > 0 ? ", " : ""}{#if r.url}<a class="code" href={r.url}>{r.name}</a>{:else}<span class="code">{r.name}</span>{/if} ({r.license || "no license"}){/each}
+                    {#each d.code as r, i}{i > 0 ? ", " : ""}<a class="code" href={`/paper/${d.slug}/#code`}>{r.name}</a> ({r.license || "no license"}){/each}
                   </div>
                 {/if}
                 <div class="line">

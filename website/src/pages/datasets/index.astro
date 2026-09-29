@@ -1,11 +1,12 @@
 ---
 // The datasets cited by the papers with a page, grouped by the repository that holds them.
 import Base from "../../layouts/Base.astro";
-import { number, plural } from "../../lib/catalog";
-import { datasetName, datasetPages, datasets, datasetUrl, STATIC_MAX, type Dataset } from "../../lib/entities";
+import Wrap from "../../components/paper/Wrap.astro";
+import { plural } from "../../lib/catalog";
+import { datasetName, datasets, datasetUrl, type Dataset } from "../../lib/entities";
 
 const groups = new Map<string, Dataset[]>();
-for (const d of datasetPages) {
+for (const d of datasets) {
   const key = d.repository || "Other";
   if (!groups.has(key)) groups.set(key, []);
   groups.get(key)!.push(d);
@@ -28,17 +29,11 @@ const repositories = [...groups.entries()].sort((x, y) => y[1].length - x[1].len
       <ul>
         {list.map((d) => (
           <li>
-            <a href={datasetUrl(d.id)}>{datasetName(d)}</a>{d.title && <> · <span class="code">{d.id}</span></>} — cited by{" "}
+            <a href={datasetUrl(d.id)}><Wrap text={datasetName(d)} /></a>{d.title && <> · <span class="code"><Wrap text={d.id} /></span></>} — cited by{" "}
             {plural(d.counts.papers, "paper")}
           </li>
         ))}
       </ul>
     </>
   ))}
-  {datasets.length > datasetPages.length && (
-    <p class="line">
-      {plural(datasets.length - datasetPages.length, "other dataset")} will have their page when pages are rendered on
-      demand (beyond the first {number(STATIC_MAX.dataset)}).
-    </p>
-  )}
 </Base>

@@ -1,12 +1,16 @@
 // The DOI lookup, in the reader's browser (decision D2: every paper read can be found,
-// with or without a page). Each paper read is in one shard, /lookup/NNN.json, NNN being
-// the first 3 hex characters of the SHA-1 of its lowercased DOI (oscr/entities.py). A
-// lookup runs only when the form is submitted, never as one types (decision D3's spirit).
-// Like every browser script, it never names the platform: "the registry".
+// with or without a page). Each paper read is in one shard, /lookup/NN.json, NN being the
+// first 2 hex characters of the SHA-1 of its lowercased DOI (oscr/entities.py, LOOKUP_HEX):
+// 256 shards, one fetched per lookup. A shard maps a DOI to [status, day read] and, when the
+// paper has a page, its name. A lookup runs only when the form is submitted, never as one
+// types (decision D3's spirit). Like every browser script, it never names the platform:
+// "the registry".
 import { dateInWords } from "../lib/format";
+import { lookupShard } from "../lib/shards";
 import { PAGE_STATUSES, status } from "../lib/status";
 
-type Entry = { status: string; read_on: string; slug?: string };
+/** [status, day read] or [status, day read, page]. */
+type Entry = [string, string] | [string, string, string];
 type Part = string | { href: string; text: string };
 
 /** "https://doi.org/10.1234/ABC" or "doi:10.1234/abc" → "10.1234/abc"; "" when it is not a
@@ -29,8 +33,7 @@ class Unavailable extends Error {}
 /** The shard of a normalized DOI. */
 export async function shardOf(doi: string): Promise<string> {
   if (!globalThis.crypto?.subtle) throw new Unavailable("this browser can only look up over a secure (https) connection");
-  const digest = await crypto.subtle.digest("SHA-1", new TextEncoder().encode(doi));
-  return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("").slice(0, 3);
+  return lookupShard(doi);
 }
 
 const form = document.getElementById("lookup") as HTMLFormElement | null;
@@ -79,17 +82,18 @@ async function lookup(typed: string) {
     return;
   }
   if (n !== asked) return; // a later lookup has started
-  const entry = shard[doi];
-  if (!entry) {
+  const entry = Object.hasOwn(shard, doi) ? shard[doi] : undefined;
+  if (!Array.isArray(entry)) {
     say("", `${doi} is not in the registry, which lists the open-access neuroscience papers it has read.`);
     return;
   }
-  const day = dateInWords(entry.read_on);
-  if (entry.slug) {
-    say("", `${doi} was read on ${day}: `, { href: `/paper/${entry.slug}/`, text: "its page" }, ` (${status(entry.status).label}).`);
-  } else if (PAGE_STATUSES.has(entry.status)) {
-    say("", `${doi} was read on ${day}: ${status(entry.status).label}.`);
-  } else if (entry.status === "no_fulltext") {
+  const [state, readOn, slug] = entry;
+  const day = dateInWords(readOn);
+  if (slug && /^[a-z0-9._-]+$/.test(slug)) {
+    say("", `${doi} was read on ${day}: `, { href: `/paper/${slug}/`, text: "its page" }, ` (${status(state).label}).`);
+  } else if (PAGE_STATUSES.has(state)) {
+    say("", `${doi} was read on ${day}: ${status(state).label}.`);
+  } else if (state === "no_fulltext") {
     say("", `${doi} was read on ${day}, no code found: its full text was not available, only its metadata was read.`);
   } else {
     say("", `${doi} was read on ${day}, no code found.`);

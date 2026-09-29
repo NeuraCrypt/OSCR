@@ -2,8 +2,10 @@
 // A list of papers, the catalogue's way (science.css): one h2.day per day of
 // publication, then a dl.listing, one dt/dd per paper. The home page, the categories and
 // the entity pages all use it. A paper without code (on request, data only) has no
-// Code ↔ Paper reader: its status says what there is, in words.
-import { byDay, plural, readerUrl, recordUrl, shortName, status, type Article } from "../lib/catalog";
+// Code ↔ Paper reader: its status says what there is, in words. The markup is
+// lib/render.ts's `listing`, the same the entity pages get in the browser.
+import { rowOf, type Article } from "../lib/catalog";
+import { listing } from "../lib/render";
 
 interface Props {
   articles: Article[];
@@ -11,77 +13,5 @@ interface Props {
   searchable?: boolean;
 }
 const { articles, searchable = false } = Astro.props;
-const days = byDay(articles);
-let num = 0;
-const readable = (a: Article) => a.code.reduce((n, d) => n + (d.files_read || 0), 0);
-const keys = (a: Article) =>
-  searchable
-    ? {
-        "data-title": a.title.toLowerCase(),
-        "data-doi": a.doi.toLowerCase(),
-        "data-journal": a.journal.toLowerCase(),
-        "data-repo": a.code.map((d) => `${d.repo} ${d.url}`).join(" ").toLowerCase(),
-      }
-    : {};
 ---
-{days.map((d) => (
-  <>
-    <h2 class="day">{d.label} <small>({plural(d.articles.length, "paper")})</small></h2>
-    <dl class="listing">
-      {d.articles.map((a) => {
-        num += 1;
-        const s = status(a.status);
-        if (a.code.length === 0) {
-          const data = a.datasets?.length ?? a.data_links;
-          return (
-            <>
-              <dt {...keys(a)}>
-                <span class="num">[{num}]</span>{" "}
-                <a href={recordUrl(a)}>doi:{a.doi}</a>{" "}
-                [<a href={`https://doi.org/${a.doi}`}>paper</a>{data > 0 && <>, <a href={`${recordUrl(a)}#data`}>data</a></>}]
-              </dt>
-              <dd>
-                <div class="title">{a.title}</div>
-                <div class="line"><span class="label">Journal:</span> {a.journal || "—"}</div>
-                <div class="line">
-                  <span class="label">Status:</span> {s.tone ? <span class={s.tone}>{s.label}</span> : s.label}
-                  {data > 0 && <>, {plural(data, "dataset")} cited</>}
-                </div>
-              </dd>
-            </>
-          );
-        }
-        const n = readable(a);
-        const pairs = a.alignment?.pairs ?? 0;
-        const map = a.card?.doi ? a.card : null;
-        return (
-          <>
-            <dt {...keys(a)}>
-              <span class="num">[{num}]</span>{" "}
-              <a class="reader-link" href={readerUrl(a)}>Code ↔ Paper</a>{" "}
-              <a href={recordUrl(a)}>doi:{a.doi}</a>{" "}
-              [<a href={`https://doi.org/${a.doi}`}>paper</a>, <a href={`${recordUrl(a)}#code`}>repository</a>]
-            </dt>
-            <dd>
-              <div class="title">{a.title}</div>
-              <div class="line"><span class="label">Journal:</span> {a.journal || "—"}</div>
-              <div class="line">
-                <span class="label">Authors' code:</span>{" "}
-                {a.code.map((r, i) => (
-                  <>{i > 0 && ", "}<a class="code" href={r.url}>{shortName(r)}</a> ({r.license || "no license"})</>
-                ))}
-              </div>
-              <div class="line">
-                <span class="label">Status:</span>{" "}
-                {s.tone ? <span class={s.tone}>{s.label}</span> : s.label}
-                {n > 0 && <>, {plural(n, "file")} readable</>}
-                {pairs > 0 && <>, {plural(pairs, "match", "matches")}</>}
-                {map && <>, map validated by an author (<a href={`https://doi.org/${map.doi}`}>DOI</a>)</>}
-              </div>
-            </dd>
-          </>
-        );
-      })}
-    </dl>
-  </>
-))}
+<Fragment set:html={listing(articles.map(rowOf), { searchable })} />

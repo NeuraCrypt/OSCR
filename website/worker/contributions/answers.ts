@@ -1,6 +1,7 @@
 // What the contributions' routes answer: the rows of D1 as the pages read them (times in ISO 8601,
 // JSON columns parsed, each paper with its page), and the shape of a paper's id.
 
+import { removalUrl } from "../../src/lib/removal.ts";
 import { paperSlug } from "../account/index.ts";
 import type { AuthorClaimRow, EditRow, ReportRow, SubmissionRow, ValidationRow } from "./store.ts";
 
@@ -83,16 +84,26 @@ export function validationJson(r: ValidationRow) {
   };
 }
 
+/** A removal request: `url` is the paper's page, `removal_url` the request's own (/removal/). */
 export function reportJson(r: ReportRow) {
   return {
     id: r.id,
     paper_id: r.target_id,
     url: paperUrl(r.target_id),
+    removal_url: removalUrl(r.target_id),
+    role: r.requester_role ?? "",
+    author_verified: r.author_verified === 1,
+    scope: r.scope ?? "record",
+    repo: r.scope_repo ?? "",
+    path: r.scope_path ?? "",
     reason: r.reason,
     details: r.details,
+    evidence_url: r.evidence_url ?? "",
+    confirmed: r.confirmed === 1,
     status: r.status,
     message: r.message,
     created_at: iso(r.created_at),
+    updated_at: iso(r.updated_at),
     decided_at: iso(r.decided_at),
   };
 }

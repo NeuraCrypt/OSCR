@@ -10,9 +10,11 @@ outage must not download anything again. The cache lives in `data/cache/`,
 never published: we host neither the PDF nor the full text of an article, only
 what we extracted from it.
 
-**What it does not send.** No contact address by default. Crossref and OpenAlex
-serve requests that carry one better (the "polite pool"); it is up to the user
-to give it, through the `OSCR_CONTACT` variable.
+**What it does not send.** No contact address by default. Crossref serves requests
+that carry one better (the "polite pool"); it is up to the user to give it, through the
+`OSCR_CONTACT` variable. OpenAlex no longer has a polite pool: it wants the owner's API
+key (`openalex_key`), sent as a header, never in a URL — the cache, the logs and the
+error messages only ever see URLs.
 """
 from __future__ import annotations
 
@@ -47,6 +49,8 @@ INTERVALS: dict[str, float] = {
     "api.figshare.com": 0.5,
     "huggingface.co": 0.5,
     "archive.softwareheritage.org": 1.0,
+    # OpenAlex allows 100 requests a second with a key; a few a second is plenty.
+    "api.openalex.org": 0.25,
 }
 DEFAULT_INTERVAL: float = 1.0
 
@@ -96,8 +100,30 @@ def github_token() -> str:
 
 @functools.lru_cache(maxsize=1)
 def _keychain_github_token() -> str:
+    return _keychain(GITHUB_KEYCHAIN)
+
+
+#: The macOS keychain service holding the OpenAlex API key (the owner's, free: $1 a day).
+OPENALEX_KEYCHAIN = "org.oscr.openalex"
+OPENALEX_HOST = "api.openalex.org"
+
+
+def openalex_key() -> str:
+    """The OpenAlex API key: OPENALEX_API_KEY when set, else the macOS keychain
+    (`org.oscr.openalex`). Sent only as an `Authorization` header to api.openalex.org: never
+    in a URL (the cache is keyed by URL, and the logs print URLs), never written anywhere."""
+    return os.environ.get("OPENALEX_API_KEY", "").strip() or _keychain_openalex_key()
+
+
+@functools.lru_cache(maxsize=1)
+def _keychain_openalex_key() -> str:
+    return _keychain(OPENALEX_KEYCHAIN)
+
+
+def _keychain(service: str) -> str:
+    """A secret of the login keychain, or "" (not a Mac, no such item, keychain locked)."""
     try:
-        r = subprocess.run(["security", "find-generic-password", "-s", GITHUB_KEYCHAIN, "-w"],
+        r = subprocess.run(["security", "find-generic-password", "-s", service, "-w"],
                            capture_output=True, text=True, timeout=10)
     except (OSError, subprocess.TimeoutExpired):
         return ""
@@ -187,6 +213,9 @@ class Client:
         if token:
             return {"Authorization": f"Bearer {token}",
                     "Accept": "application/vnd.github+json"}
+        key = openalex_key() if host == OPENALEX_HOST else ""
+        if key:
+            return {"Authorization": f"Bearer {key}"}
         return {}
 
     def get(self, url: str, *, params: dict[str, Any] | None = None,

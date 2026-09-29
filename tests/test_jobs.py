@@ -466,7 +466,8 @@ def test_a_removal_accepted_withdraws_the_record_from_every_public_output(w, tmp
     rid = w.request("reports", "report", {"user_id": "u_ada", "target_kind": "paper", "target_id": P1,
                                            "reason": "author_request", "details": "Please remove it.", "created_at": T})
     assert w.poll().owner == 1
-    assert "remove doi:10.5555/oscr.fixture.1 (author_request)" in jobs.describe_waiting(jobs.waiting(w.state, "local", ("report",)))
+    assert "remove the whole record of doi:10.5555/oscr.fixture.1 (author_request), from Ada Fixture" in jobs.describe_waiting(
+        jobs.waiting(w.state, "local", ("report",)))
     jobs.decide_report(w.runner, rid, True, "Removed.")
     assert w.row("reports", rid)["status"] == "accepted"
     assert w.mac.execute("SELECT withdrawn FROM article WHERE id = ?", (P1,)).fetchone()[0].endswith(

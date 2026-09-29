@@ -349,7 +349,7 @@ def test_a_pinned_commit_no_longer_at_the_source_keeps_its_papers_copies_and_arc
     # Licensed (MIT): the script copies' reader. Not archived: no Software Heritage link.
     assert entries["oscr-fixture/eeg-analysis"]["unreachable"] == [
         {"commit": COMMIT, "found_at": int(T), "papers": [{"doi": "10.5555/oscr.fixture.1",
-                                                           "reader": "/paper/doi_10.5555_oscr.fixture.1/code/"}],
+                                                           "reader": "/paper/doi_10.5555_oscr.fixture.1/#code"}],
          "swh": None}]
     # No license: its copies never leave the Mac, so no reader link.
     assert entries["oscr-fixture/unlicensed"]["unreachable"][0]["papers"] == [

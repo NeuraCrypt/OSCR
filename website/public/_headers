@@ -1,17 +1,25 @@
 # Headers of the static pages (Workers static assets, developers.cloudflare.com/workers/static-assets/headers/).
 # The pages whose scripts ask the Worker for a signed-in reader hold a session's CSRF token: no other
 # site may frame them, and they run this site's own files only (no inline script or style: Astro
-# writes every script as a file, astro.config.mjs). The account page (Phase 5); /submit/ and a
-# paper's page (Phase 6) — `:slug` is one segment, so the Code ↔ Paper reader (/paper/<slug>/code/),
-# which reads Europe PMC and Hugging Face, keeps its own rules. The GitHub side (night phase 01):
-# the pages that start an authorized action (/new/, /new/link/, /new/import/, /repositories/), the
-# callback page of GitHub's authorization (/forge/authorized/: no Referer at all, so the code in
-# its address never leaves), and the repository pages (/r/*), which also read GitHub's anonymous API
-# and raw files in the reader's browser, on the reader's own quota (D00-5). Phase 02: the repository's
-# own images are read as bytes and shown from object URLs (img-src blob:); no image loads from
-# another host (D02-6), and nothing a repository holds runs (script-src 'self' only). Phase 05: the
-# research issues' shell (/research/*) asks this site only (the Worker, the nightly shards).
+# writes every script as a file, astro.config.mjs). The account page (Phase 5); /submit/, /removal/ and a
+# paper's page (Phase 6), which holds the Code ↔ Paper reader since 2026-09-28: its browser reads the
+# paper's text from Europe PMC (www.ebi.ac.uk, connect-src), else PubMed Central's copy (NCBI's
+# E-utilities, eutils.ncbi.nlm.nih.gov), and nothing else outside the site.
+# worker/pages.ts gives the pages it renders the same headers (a test checks that they agree).
+# The GitHub side (night phase 01): the pages that start an authorized action (/new/, /new/link/,
+# /new/import/, /repositories/), the callback page of GitHub's authorization (/forge/authorized/: no
+# Referer at all, so the code in its address never leaves), and the repository pages (/r/*), which
+# also read GitHub's anonymous API and raw files in the reader's browser, on the reader's own quota
+# (D00-5). Phase 02: the repository's own images are read as bytes and shown from object URLs
+# (img-src blob:); no image loads from another host (D02-6), and nothing a repository holds runs
+# (script-src 'self' only). Phase 05: the research issues' shell (/research/*) asks this site only
+# (the Worker, the nightly shards).
 /account/
+  X-Frame-Options: DENY
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'; object-src 'none'
+  Referrer-Policy: same-origin
+
+/removal/
   X-Frame-Options: DENY
   Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'; object-src 'none'
   Referrer-Policy: same-origin
@@ -23,7 +31,7 @@
 
 /paper/:slug/
   X-Frame-Options: DENY
-  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'; object-src 'none'
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self' https://www.ebi.ac.uk https://eutils.ncbi.nlm.nih.gov; form-action 'self'; frame-ancestors 'none'; base-uri 'none'; object-src 'none'
   Referrer-Policy: same-origin
 
 /new/
