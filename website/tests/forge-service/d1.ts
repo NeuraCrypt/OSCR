@@ -163,3 +163,6 @@ export function forgeText(db: FakeForgeD1): string {
   const tables = db.sqlite.prepare("SELECT name FROM sqlite_master WHERE type = 'table'").all() as { name: string }[];
   return tables.flatMap((t) => forgeRows(db, t.name).flatMap((r) => Object.values(r).filter((v) => typeof v === "string"))).join("\n");
 }
+
+/** Phase 08's tables, empty: what a write of the earlier phases leaves them (forgeCounts' comparisons). */
+export const SOCIAL_EMPTY = { events: 0, follows: 0, notice_marks: 0, notice_state: 0, profiles: 0, star_list_items: 0, star_lists: 0, stars: 0 } as const;

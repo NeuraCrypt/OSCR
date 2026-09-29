@@ -13,6 +13,11 @@
 //   POST /api/forge/research/comment  signed in   a comment; its edit, deletion or hiding         research.ts
 //   POST /api/forge/research/edit     signed in   title, text, close with a resolution, reopen,   research.ts
 //                                                 labels, lock, pin
+//   GET  /api/forge/social            signed in   phase 08: the reader's star, lists, follow of   social.ts
+//                                                 ≤ 20 subjects (the buttons)
+//   GET  /api/forge/social/mine       signed in   the reader's stars, lists, follows, profile     social.ts
+//   GET  /api/forge/social/person     signed in   a person's public profile                       social.ts
+//   POST /api/forge/social/star|follow|list|profile   signed in   the social writes (2 rows each) social.ts
 //
 // What every route gets here, in order: its path (another is 404), its method (405), the FORGE
 // binding (503 not_configured without it), and for the signed-in routes the accounts (COMMUNITY and
@@ -35,6 +40,7 @@ import { forgeBackend } from "./backend.ts";
 import { failure, problem, wrongMethod } from "./http.ts";
 import { handleMine, handleRepo } from "./read.ts";
 import { handleResearchComment, handleResearchEdit, handleResearchOpen, handleResearchRead } from "./research.ts";
+import { handleSocialFollow, handleSocialList, handleSocialMine, handleSocialPerson, handleSocialProfile, handleSocialStar, handleSocialState } from "./social.ts";
 import { handleStart } from "./start.ts";
 import type { Context, D1Database, ForgeDeps, ForgeRequest, ForgeServiceEnv, RouteHandler } from "./types.ts";
 import { handleWebhook } from "./webhook.ts";
@@ -60,6 +66,13 @@ export const FORGE_ROUTES: Readonly<Record<string, Route>> = {
   "/api/forge/research/open": { method: "POST", signedIn: true, handle: (r) => handleResearchOpen(r) },
   "/api/forge/research/comment": { method: "POST", signedIn: true, handle: (r) => handleResearchComment(r) },
   "/api/forge/research/edit": { method: "POST", signedIn: true, handle: (r) => handleResearchEdit(r) },
+  "/api/forge/social": { method: "GET", signedIn: true, handle: (r) => handleSocialState(r) },
+  "/api/forge/social/mine": { method: "GET", signedIn: true, handle: (r) => handleSocialMine(r) },
+  "/api/forge/social/person": { method: "GET", signedIn: true, handle: (r) => handleSocialPerson(r) },
+  "/api/forge/social/star": { method: "POST", signedIn: true, handle: (r) => handleSocialStar(r) },
+  "/api/forge/social/follow": { method: "POST", signedIn: true, handle: (r) => handleSocialFollow(r) },
+  "/api/forge/social/list": { method: "POST", signedIn: true, handle: (r) => handleSocialList(r) },
+  "/api/forge/social/profile": { method: "POST", signedIn: true, handle: (r) => handleSocialProfile(r) },
 };
 
 const PREFIX = "/api/forge/";

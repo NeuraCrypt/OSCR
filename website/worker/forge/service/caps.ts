@@ -27,7 +27,7 @@ export const FORGE_ROWS_PER_DAY = 5_000;
 /** What one account may do in 24 hours: authorized actions of every kind (and the registry's own
  *  writes of research issues, phase 05), repositories created (create, generate), repositories
  *  linked (link), research issues opened (research_open). */
-export const PER_ACCOUNT_DAY = { actions: 100, creations: 10, links: 20, research: 20 } as const;
+export const PER_ACCOUNT_DAY = { actions: 100, creations: 10, links: 20, research: 20, social: 300, notices: 500 } as const;
 export type Cap = keyof typeof PER_ACCOUNT_DAY;
 /** OSCR's grace period before a repository asked for deletion may be deleted (D00-10). */
 export const GRACE_SECONDS = 30 * 86_400;
@@ -46,12 +46,19 @@ export const utcDay = (t: number): number => Math.floor(t / DAY_SECONDS);
 /** Seconds until the next 00:00 UTC, when the day's caps start again (Retry-After). */
 export const untilNextDay = (t: number): number => Math.max(60, (utcDay(t) + 1) * DAY_SECONDS - Math.floor(t));
 
-/** The cap each kind counts toward besides `actions`. */
+/** The cap each kind counts toward besides `actions` (phase 08's social kinds count toward their own
+ *  cap only, never toward the 100 authorized actions: a person who stars and reads does not lose the
+ *  right to act). */
 export const CAP_OF: Readonly<Partial<Record<RowKind, Exclude<Cap, "actions">>>> = {
   create: "creations",
   generate: "creations",
   link: "links",
   research_open: "research",
+  star: "social",
+  star_list: "social",
+  follow: "social",
+  profile: "social",
+  notice: "notices",
 };
 
 /** The kinds each cap counts. */
@@ -59,7 +66,12 @@ export const KINDS_OF: Readonly<Record<Exclude<Cap, "actions">, readonly RowKind
   creations: ["create", "generate"],
   links: ["link"],
   research: ["research_open"],
+  social: ["star", "star_list", "follow", "profile"],
+  notices: ["notice"],
 };
+
+/** Phase 08: the caps that stand alone (their kinds are not counted in `actions`). */
+export const OWN_CAPS: ReadonlySet<Cap> = new Set<Cap>(["social", "notices"]);
 
 /** A cap in words, for the answers ("10 repositories created"). */
 export const CAP_WORDS: Readonly<Record<Cap, (n: number) => string>> = {
@@ -67,4 +79,6 @@ export const CAP_WORDS: Readonly<Record<Cap, (n: number) => string>> = {
   creations: (n) => `${n} ${n === 1 ? "repository" : "repositories"} created`,
   links: (n) => `${n} ${n === 1 ? "repository" : "repositories"} linked`,
   research: (n) => `${n} research ${n === 1 ? "issue" : "issues"} opened`,
+  social: (n) => `${n} stars, follows, lists and profile changes`,
+  notices: (n) => `${n} changes to your notifications`,
 };

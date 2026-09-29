@@ -15,7 +15,7 @@
 //   action, at act, just before anything is written (D01-12); a webhook writes at most 2 rows and
 //   is not asked, its rows count in the total the next action sees.
 
-import { CAP_OF, CAP_WORDS, FORGE_ROWS_PER_DAY, KINDS_OF, PER_ACCOUNT_DAY, untilNextDay, utcDay, type Cap } from "./caps.ts";
+import { CAP_OF, CAP_WORDS, FORGE_ROWS_PER_DAY, KINDS_OF, OWN_CAPS, PER_ACCOUNT_DAY, untilNextDay, utcDay, type Cap } from "./caps.ts";
 import { ForgeProblem, type D1Database, type ForgeServiceEnv, type RowKind } from "./types.ts";
 
 export const CLOSED_MESSAGE = "The GitHub side opens to the public with its content rules; until then, only the owner of the registry can act here.";
@@ -55,14 +55,18 @@ export async function dailyCaps(db: D1Database, userId: string, kind: RowKind, t
   ).results;
   const by = new Map(rows.map((r) => [r.kind, Number(r.n)]));
   const count = (kinds: readonly string[]) => kinds.reduce((n, k) => n + (by.get(k) ?? 0), 0);
+  const standalone = new Set([...OWN_CAPS].flatMap((c) => KINDS_OF[c as Exclude<Cap, "actions">]));
   const used: Record<Cap, number> = {
-    actions: [...by.values()].reduce((a, b) => a + b, 0),
+    actions: [...by].reduce((a, [k, n]) => a + (standalone.has(k as RowKind) ? 0 : n), 0),
     creations: count(KINDS_OF.creations),
     links: count(KINDS_OF.links),
     research: count(KINDS_OF.research),
+    social: count(KINDS_OF.social),
+    notices: count(KINDS_OF.notices),
   };
-  const caps: Cap[] = ["actions"];
   const specific = CAP_OF[kind];
+  // Phase 08: a social write counts toward its own cap only.
+  const caps: Cap[] = specific && OWN_CAPS.has(specific) ? [] : ["actions"];
   if (specific) caps.push(specific);
   let exceeded: DailyCaps["exceeded"] = null;
   for (const cap of caps) {

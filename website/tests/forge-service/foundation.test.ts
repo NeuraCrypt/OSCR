@@ -195,7 +195,7 @@ describe("the gate", () => {
     await seed.action(db, { userId: "u_ben", kind: "create", t });
     db.reset();
     let caps = await dailyCaps(db, "u_ada", "create", t);
-    assert.deepEqual(caps.used, { actions: 28, creations: 9, links: 19, research: 0 });
+    assert.deepEqual(caps.used, { actions: 28, creations: 9, links: 19, research: 0, social: 0, notices: 0 });
     assert.equal(caps.exceeded, null);
     assert.deepEqual(caps.limits, PER_ACCOUNT_DAY);
     await seed.action(db, { userId: "u_ada", kind: "create", t: t + 1 });
@@ -206,7 +206,7 @@ describe("the gate", () => {
     assert.deepEqual((await dailyCaps(db, "u_ada", "link", t + 3)).exceeded, { cap: "links", limit: 20, used: 20 });
     // Another kind is still allowed; Ben has his own count.
     assert.equal((await dailyCaps(db, "u_ada", "edit", t + 3)).exceeded, null);
-    assert.deepEqual((await dailyCaps(db, "u_ben", "create", t + 3)).used, { actions: 1, creations: 1, links: 0, research: 0 });
+    assert.deepEqual((await dailyCaps(db, "u_ben", "create", t + 3)).used, { actions: 1, creations: 1, links: 0, research: 0, social: 0, notices: 0 });
     // The next day, the window has moved on.
     assert.equal((await dailyCaps(db, "u_ada", "create", t + 86_400)).exceeded, null);
     assert.equal(db.totals.written, 0);
@@ -252,9 +252,9 @@ describe("the gate", () => {
     assert.equal(ACTION_PAYLOAD_BYTES, 1_048_576);
     assert.equal(WEBHOOK_BYTES, WEBHOOK_MAX_BYTES);
     assert.equal(FORGE_ROWS_PER_DAY, 5_000);
-    assert.deepEqual(PER_ACCOUNT_DAY, { actions: 100, creations: 10, links: 20, research: 20 });
+    assert.deepEqual(PER_ACCOUNT_DAY, { actions: 100, creations: 10, links: 20, research: 20, social: 300, notices: 500 });
     assert.equal(GRACE_SECONDS, 30 * 86_400);
-    assert.deepEqual(CAP_OF, { create: "creations", generate: "creations", link: "links", research_open: "research" });
+    assert.deepEqual(CAP_OF, { create: "creations", generate: "creations", link: "links", research_open: "research", star: "social", star_list: "social", follow: "social", profile: "social", notice: "notices" });
     assert.equal(utcDay(T0), 20_724);
     assert.equal(untilNextDay(T0), 43_200);
   });
@@ -451,7 +451,7 @@ describe("the rows (store.ts)", () => {
     assert.match(nonce, /^[A-Za-z0-9_-]{16}$/);
     assert.equal(await write(store.actionRow(db, { userId: "u_ada", t: T0, nonce, kind: "create", forge: "github", repoId: "1", githubUser: "4242001", outcome: "done", rows: 6 })), 1);
     const [row] = forgeRows(db, "actions");
-    assert.deepEqual(row, { day: utcDay(T0), user_id: "u_ada", at: T0, nonce, kind: "create", forge: "github", repo_id: "1", github_user: "4242001", outcome: "done", rows: 6 });
+    assert.deepEqual(row, { day: utcDay(T0), user_id: "u_ada", at: T0, nonce, kind: "create", forge: "github", repo_id: "1", github_user: "4242001", outcome: "done", rows: 6, subject: "" });
     await assert.rejects(write(store.actionRow(db, { userId: "u_ada", t: T0, nonce: store.newNonce(), kind: "delete" as never, outcome: "done", rows: 1 })), /CHECK/);
     await assert.rejects(write(store.actionRow(db, { userId: "u_ada", t: T0, nonce: store.newNonce(), kind: "edit", githubUser: "ada-fixture", outcome: "done", rows: 1 })), /CHECK/);
     assert.equal(await write(store.deliveryRow(db, { delivery: "72d3162e-cc78-11e3-81ab-4c9367dc0958", t: T0, event: "push", rows: 2 })), 1);

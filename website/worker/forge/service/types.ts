@@ -118,9 +118,19 @@ export type ActionKind = (typeof ACTION_KINDS)[number];
 export const RESEARCH_KINDS = ["research_open", "research_comment", "research_edit"] as const;
 export type ResearchKind = (typeof RESEARCH_KINDS)[number];
 
+/** The registry's own social writes (phase 08, social.ts and inbox.ts: migrations/d1-forge/0008_social.sql):
+ *  a star, a star list or its entries, a follow or a watch level, a notification's state, a profile.
+ *  Not authorized actions (nothing is written on GitHub: OSCR never stars or follows there), but logged
+ *  in `actions` like the research writes, so that the per-account caps and the day's rows count them;
+ *  they have their own cap (caps.ts `social`, `notices`), out of the 100 authorized actions. */
+export const SOCIAL_KINDS = ["star", "star_list", "follow", "notice", "profile"] as const;
+export type SocialKind = (typeof SOCIAL_KINDS)[number];
+
 /** Every kind an action row may have. */
-export const ROW_KINDS = [...ACTION_KINDS, ...RESEARCH_KINDS] as const;
-export type RowKind = ActionKind | ResearchKind;
+export const ROW_KINDS = [...ACTION_KINDS, ...RESEARCH_KINDS, ...SOCIAL_KINDS] as const;
+export type RowKind = ActionKind | ResearchKind | SocialKind;
+
+export const isSocialKind = (value: unknown): value is SocialKind => typeof value === "string" && (SOCIAL_KINDS as readonly string[]).includes(value);
 
 export function isActionKind(value: unknown): value is ActionKind {
   return typeof value === "string" && (ACTION_KINDS as readonly string[]).includes(value);
@@ -317,6 +327,8 @@ export interface ActionRow {
   github_user: string;
   outcome: Outcome;
   rows: number;
+  /** Phase 08: what the write was about (a starred subject, a followed target, an event's subject). */
+  subject: string;
 }
 
 export interface DeliveryRow {

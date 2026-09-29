@@ -15,7 +15,7 @@ import { CLOSED_MESSAGE } from "../../worker/forge/service/gate.ts";
 import { paperId, readPapers } from "../../worker/forge/service/papers.ts";
 import { isProblem } from "../../worker/forge/service/types.ts";
 import { authorize, signIn } from "./authorize.ts";
-import { forgeCounts, forgeRows } from "./d1.ts";
+import { forgeCounts, forgeRows, SOCIAL_EMPTY } from "./d1.ts";
 import { ADA_LOGIN, forgeWorld, seed, T0, type ForgeWorld } from "./world.ts";
 
 let w: ForgeWorld;
@@ -63,7 +63,7 @@ describe("create", () => {
     ]);
     assert.match(run.actBody?.sentence, /^Create the public repository eeg-study in your GitHub account, with a README, a Python \.gitignore and the MIT License, attached to 2 papers$/);
     // repos 2 + papers 2 + job 1 + action 1: 6 rows with two papers; with one paper, 5.
-    assert.deepEqual(forgeCounts(w.forge), { actions: 1, deliveries: 0, installations: 0, jobs: 1, release_papers: 0, repo_packages: 0, repo_papers: 2, repos: 1, research_comments: 0, research_issues: 0, traced_paths: 0 });
+    assert.deepEqual(forgeCounts(w.forge), { actions: 1, deliveries: 0, installations: 0, jobs: 1, release_papers: 0, repo_packages: 0, repo_papers: 2, repos: 1, research_comments: 0, research_issues: 0, traced_paths: 0, ...SOCIAL_EMPTY });
     assert.equal(w.forge.totals.written, 6);
     const [action] = forgeRows(w.forge, "actions");
     assert.equal(action.rows, 6);

@@ -11,7 +11,7 @@ import { ACTIONS, registry } from "../../worker/forge/service/actions.ts";
 import { first, repoByPath } from "../../worker/forge/service/store.ts";
 import type { RepoRow } from "../../worker/forge/service/types.ts";
 import { authorize, signIn } from "./authorize.ts";
-import { forgeCounts, forgeRows } from "./d1.ts";
+import { forgeCounts, forgeRows, SOCIAL_EMPTY } from "./d1.ts";
 import { ADA_LOGIN, forgeWorld, seed, type ForgeWorld } from "./world.ts";
 
 let w: ForgeWorld;
@@ -67,7 +67,7 @@ describe("settings", () => {
     assert.deepEqual([repoOf(id)?.features.wiki, repoOf(id)?.features.deleteBranchOnMerge], [false, true]);
     assert.equal(features.actBody?.sentence, "Turn on deleting a branch once merged, and turn off the wiki");
     assert.equal(w.forge.totals.written, 3);
-    assert.deepEqual(forgeCounts(w.forge), { actions: 3, deliveries: 0, installations: 0, jobs: 0, release_papers: 0, repo_packages: 0, repo_papers: 0, repos: 1, research_comments: 0, research_issues: 0, traced_paths: 0 });
+    assert.deepEqual(forgeCounts(w.forge), { actions: 3, deliveries: 0, installations: 0, jobs: 0, release_papers: 0, repo_packages: 0, repo_papers: 0, repos: 1, research_comments: 0, research_issues: 0, traced_paths: 0, ...SOCIAL_EMPTY });
     // Refused before GitHub: a script as a website, an upper-case topic list too long.
     assert.equal((await authorize(w, b, on(id, "edit", { homepage: "javascript:alert(1)" }))).act?.status, 400);
     assert.equal((await authorize(w, b, on(id, "topics", { topics: Array.from({ length: 21 }, (_, i) => `t${i}`) }))).act?.status, 400);

@@ -401,15 +401,15 @@ export function recentJobsOf(db: D1Database, forge: string, repoId: string, kind
  *  `rows` is every row the action wrote, this one included. */
 export function actionRow(
   db: D1Database,
-  a: { userId: string; t: number; nonce: string; kind: RowKind; forge?: string; repoId?: string; githubUser?: string; outcome: Outcome; rows: number },
+  a: { userId: string; t: number; nonce: string; kind: RowKind; forge?: string; repoId?: string; githubUser?: string; outcome: Outcome; rows: number; subject?: string },
 ): Write {
   return {
     rows: 1,
     stmt: db
       .prepare(
-        "INSERT INTO actions (day, user_id, at, nonce, kind, forge, repo_id, github_user, outcome, rows) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        "INSERT INTO actions (day, user_id, at, nonce, kind, forge, repo_id, github_user, outcome, rows, subject) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
       )
-      .bind(utcDay(a.t), a.userId, Math.floor(a.t), a.nonce, a.kind, a.forge ?? "", a.repoId ?? "", a.githubUser ?? "", a.outcome, a.rows),
+      .bind(utcDay(a.t), a.userId, Math.floor(a.t), a.nonce, a.kind, a.forge ?? "", a.repoId ?? "", a.githubUser ?? "", a.outcome, a.rows, (a.subject ?? "").slice(0, 342)),
   };
 }
 

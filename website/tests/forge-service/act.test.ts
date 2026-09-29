@@ -20,7 +20,7 @@ import { callbackUrl, FORGE_COOKIE, openForgeFlow } from "../../worker/forge/ser
 import { CLOSED_MESSAGE } from "../../worker/forge/service/gate.ts";
 import type { ActionContext } from "../../worker/forge/service/types.ts";
 import { act, actions, authorize, fakeAction, githubId, signIn, start, watchAuth } from "./authorize.ts";
-import { forgeCounts, forgeRows, forgeText } from "./d1.ts";
+import { forgeCounts, forgeRows, forgeText, SOCIAL_EMPTY } from "./d1.ts";
 import { ADA_LOGIN, forgeWorld, seed, T0, type ForgeBrowser, type ForgeWorld } from "./world.ts";
 
 const CREATE: StartInput = { kind: "create", repo: null, payload: { name: "eeg-study" }, back: "/repositories/" };
@@ -189,7 +189,7 @@ describe("act", () => {
     assert.deepEqual(ctx.parsed, { name: "eeg-study" });
     assert.equal(ctx.repo, null);
     // Exactly the action row and the spec's rows, in one batch, billed as D1 bills them.
-    assert.deepEqual(forgeCounts(w.forge), { actions: 1, deliveries: 0, installations: 0, jobs: 0, release_papers: 0, repo_packages: 0, repo_papers: 0, repos: 1, research_comments: 0, research_issues: 0, traced_paths: 0 });
+    assert.deepEqual(forgeCounts(w.forge), { actions: 1, deliveries: 0, installations: 0, jobs: 0, release_papers: 0, repo_packages: 0, repo_papers: 0, repos: 1, research_comments: 0, research_issues: 0, traced_paths: 0, ...SOCIAL_EMPTY });
     const [row] = forgeRows(w.forge, "actions");
     assert.equal(row.kind, "create");
     assert.equal(row.user_id, userOf(w.ada.user.id));
