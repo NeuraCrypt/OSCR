@@ -41,6 +41,10 @@ export type ForgeServiceEnv = AccountEnv &
      *  that a deployment never wipes it): the only account that may write while FORGE_OPEN is not
      *  "true". Unset: nobody may. */
     FORGE_OWNER_GITHUB_ID?: string;
+    /** Phase 10 (bearer.ts): Cloudflare's rate-limiting binding for the public API, when the owner binds
+     *  it (not in wrangler.toml: its price on the free plan is the owner's to confirm). Without it, the
+     *  isolate's own count limits each token. */
+    API_LIMITER?: { limit(options: { key: string }): Promise<{ success: boolean }> };
   };
 
 /** What the tests (and only they) inject. The Worker passes nothing: service/backend.ts builds
@@ -126,9 +130,16 @@ export type ResearchKind = (typeof RESEARCH_KINDS)[number];
 export const SOCIAL_KINDS = ["star", "star_list", "follow", "notice", "profile"] as const;
 export type SocialKind = (typeof SOCIAL_KINDS)[number];
 
+/** Phase 10's writes (migrations/d1-forge/0009_automation.sql): a personal token made or revoked
+ *  (tokens.ts), an outgoing webhook made, changed or deleted (hooks.ts), a commit status posted by an
+ *  outside service (statuses.ts). Not authorized actions (nothing is written on GitHub), logged in
+ *  `actions` like the social writes, with caps of their own (caps.ts `automation`, `statuses`). */
+export const AUTOMATION_KINDS = ["token", "hook", "status"] as const;
+export type AutomationKind = (typeof AUTOMATION_KINDS)[number];
+
 /** Every kind an action row may have. */
-export const ROW_KINDS = [...ACTION_KINDS, ...RESEARCH_KINDS, ...SOCIAL_KINDS] as const;
-export type RowKind = ActionKind | ResearchKind | SocialKind;
+export const ROW_KINDS = [...ACTION_KINDS, ...RESEARCH_KINDS, ...SOCIAL_KINDS, ...AUTOMATION_KINDS] as const;
+export type RowKind = ActionKind | ResearchKind | SocialKind | AutomationKind;
 
 export const isSocialKind = (value: unknown): value is SocialKind => typeof value === "string" && (SOCIAL_KINDS as readonly string[]).includes(value);
 

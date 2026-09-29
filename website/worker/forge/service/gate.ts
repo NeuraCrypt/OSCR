@@ -63,6 +63,8 @@ export async function dailyCaps(db: D1Database, userId: string, kind: RowKind, t
     research: count(KINDS_OF.research),
     social: count(KINDS_OF.social),
     notices: count(KINDS_OF.notices),
+    automation: count(KINDS_OF.automation),
+    statuses: count(KINDS_OF.statuses),
   };
   const specific = CAP_OF[kind];
   // Phase 08: a social write counts toward its own cap only.
@@ -88,16 +90,19 @@ export function overCap(exceeded: NonNullable<DailyCaps["exceeded"]>): ForgeProb
   );
 }
 
-/** The rows the forge service wrote today (UTC), every account and every webhook together. */
+/** The rows the forge service wrote today (UTC), every account and every webhook together; phase 10
+ *  adds the outgoing webhooks' deliveries (1 row each, hook_deliveries: one key range, like the
+ *  others). */
 export async function globalRowsToday(db: D1Database, t: number): Promise<number> {
   const day = utcDay(t);
   const row = (
     await db
       .prepare(
         "SELECT (SELECT coalesce(sum(rows), 0) FROM (SELECT rows FROM actions WHERE day = ? LIMIT ?)) + " +
-          "(SELECT coalesce(sum(rows), 0) FROM (SELECT rows FROM deliveries WHERE day = ? LIMIT ?)) AS n",
+          "(SELECT coalesce(sum(rows), 0) FROM (SELECT rows FROM deliveries WHERE day = ? LIMIT ?)) + " +
+          "(SELECT count(*) FROM (SELECT 1 FROM hook_deliveries WHERE day = ? LIMIT ?)) AS n",
       )
-      .bind(day, FORGE_ROWS_PER_DAY, day, FORGE_ROWS_PER_DAY)
+      .bind(day, FORGE_ROWS_PER_DAY, day, FORGE_ROWS_PER_DAY, day, FORGE_ROWS_PER_DAY)
       .all<{ n: number }>()
   ).results[0];
   return Number(row?.n ?? 0);

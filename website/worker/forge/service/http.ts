@@ -16,11 +16,12 @@ import { ForgeProblem } from "./types.ts";
 export { json };
 
 /** A token-shaped text, a credential header, a code or state in a query: replaced by "[…]".
- *  GitHub's token prefixes (ghp_, gho_, ghu_, ghs_, ghr_, github_pat_), a bearer header, a JWT, the
- *  test double's tokens (memtok_), and any run of 32 or more base64url or hex characters. */
+ *  GitHub's token prefixes (ghp_, gho_, ghu_, ghs_, ghr_, github_pat_), the registry's own personal
+ *  tokens (oscr_pat_, phase 10), a bearer header, a JWT, the test double's tokens (memtok_), and any
+ *  run of 32 or more base64url or hex characters. */
 export function redact(text: string): string {
   return String(text)
-    .replace(/\b(?:gh[pousr]_|github_pat_|memtok_)[A-Za-z0-9_]+/g, "[…]")
+    .replace(/\b(?:gh[pousr]_|github_pat_|memtok_|oscr_pat_)[A-Za-z0-9_-]+/g, "[…]")
     .replace(/\b(Bearer|token|Basic)\s+[^\s,;]+/gi, "$1 […]")
     .replace(/\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]*/g, "[…]")
     .replace(/([?&](?:code|state|access_token|refresh_token|client_secret)=)[^&\s]+/gi, "$1[…]")

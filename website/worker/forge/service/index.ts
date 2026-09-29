@@ -22,6 +22,8 @@
 //   POST /api/forge/social/notices    signed in   read, done, saved, unsubscribed, all read       inbox.ts
 //   GET  /api/forge/social/feed       signed in   the activity feed of what the reader follows    inbox.ts
 //   GET  /api/forge/social/activity   signed in   a person's calendar, timeline and milestones    inbox.ts
+//   GET  /api/forge/tokens            signed in   phase 10: the reader's personal tokens           tokens.ts
+//   POST /api/forge/tokens/write      signed in   make one (answered once) or revoke one           tokens.ts
 //
 // What every route gets here, in order: its path (another is 404), its method (405), the FORGE
 // binding (503 not_configured without it), and for the signed-in routes the accounts (COMMUNITY and
@@ -47,6 +49,7 @@ import { handleResearchComment, handleResearchEdit, handleResearchOpen, handleRe
 import { handleActivity, handleFeed, handleInbox, handleNotices } from "./inbox.ts";
 import { handleSocialFollow, handleSocialList, handleSocialMine, handleSocialPerson, handleSocialProfile, handleSocialStar, handleSocialState } from "./social.ts";
 import { handleStart } from "./start.ts";
+import { handleTokens, handleTokenWrite } from "./tokens.ts";
 import type { Context, D1Database, ForgeDeps, ForgeRequest, ForgeServiceEnv, RouteHandler } from "./types.ts";
 import { handleWebhook } from "./webhook.ts";
 
@@ -82,6 +85,9 @@ export const FORGE_ROUTES: Readonly<Record<string, Route>> = {
   "/api/forge/social/notices": { method: "POST", signedIn: true, handle: (r) => handleNotices(r) },
   "/api/forge/social/feed": { method: "GET", signedIn: true, handle: (r) => handleFeed(r) },
   "/api/forge/social/activity": { method: "GET", signedIn: true, handle: (r) => handleActivity(r) },
+  // Phase 10: the registry's personal tokens, for its public API (tokens.ts; the API: api.ts).
+  "/api/forge/tokens": { method: "GET", signedIn: true, handle: (r) => handleTokens(r) },
+  "/api/forge/tokens/write": { method: "POST", signedIn: true, handle: (r) => handleTokenWrite(r) },
 };
 
 const PREFIX = "/api/forge/";

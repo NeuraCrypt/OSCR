@@ -27,7 +27,7 @@ export const FORGE_ROWS_PER_DAY = 5_000;
 /** What one account may do in 24 hours: authorized actions of every kind (and the registry's own
  *  writes of research issues, phase 05), repositories created (create, generate), repositories
  *  linked (link), research issues opened (research_open). */
-export const PER_ACCOUNT_DAY = { actions: 100, creations: 10, links: 20, research: 20, social: 300, notices: 500 } as const;
+export const PER_ACCOUNT_DAY = { actions: 100, creations: 10, links: 20, research: 20, social: 300, notices: 500, automation: 50, statuses: 300 } as const;
 export type Cap = keyof typeof PER_ACCOUNT_DAY;
 /** OSCR's grace period before a repository asked for deletion may be deleted (D00-10). */
 export const GRACE_SECONDS = 30 * 86_400;
@@ -59,6 +59,9 @@ export const CAP_OF: Readonly<Partial<Record<RowKind, Exclude<Cap, "actions">>>>
   follow: "social",
   profile: "social",
   notice: "notices",
+  token: "automation",
+  hook: "automation",
+  status: "statuses",
 };
 
 /** The kinds each cap counts. */
@@ -68,10 +71,13 @@ export const KINDS_OF: Readonly<Record<Exclude<Cap, "actions">, readonly RowKind
   research: ["research_open"],
   social: ["star", "star_list", "follow", "profile"],
   notices: ["notice"],
+  automation: ["token", "hook"],
+  statuses: ["status"],
 };
 
-/** Phase 08: the caps that stand alone (their kinds are not counted in `actions`). */
-export const OWN_CAPS: ReadonlySet<Cap> = new Set<Cap>(["social", "notices"]);
+/** Phase 08: the caps that stand alone (their kinds are not counted in `actions`); phase 10 adds its
+ *  own (tokens and hooks changed; statuses posted by an outside service). */
+export const OWN_CAPS: ReadonlySet<Cap> = new Set<Cap>(["social", "notices", "automation", "statuses"]);
 
 /** A cap in words, for the answers ("10 repositories created"). */
 export const CAP_WORDS: Readonly<Record<Cap, (n: number) => string>> = {
@@ -81,4 +87,6 @@ export const CAP_WORDS: Readonly<Record<Cap, (n: number) => string>> = {
   research: (n) => `${n} research ${n === 1 ? "issue" : "issues"} opened`,
   social: (n) => `${n} stars, follows, lists and profile changes`,
   notices: (n) => `${n} changes to your notifications`,
+  automation: (n) => `${n} changes to your tokens and webhooks`,
+  statuses: (n) => `${n} commit statuses posted`,
 };

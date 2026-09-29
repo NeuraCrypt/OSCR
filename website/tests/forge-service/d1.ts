@@ -164,5 +164,9 @@ export function forgeText(db: FakeForgeD1): string {
   return tables.flatMap((t) => forgeRows(db, t.name).flatMap((r) => Object.values(r).filter((v) => typeof v === "string"))).join("\n");
 }
 
-/** Phase 08's tables, empty: what a write of the earlier phases leaves them (forgeCounts' comparisons). */
-export const SOCIAL_EMPTY = { events: 0, follows: 0, notice_marks: 0, notice_state: 0, profiles: 0, star_list_items: 0, star_lists: 0, stars: 0 } as const;
+/** Phase 08's tables and phase 10's, empty: what a write of the earlier phases leaves them (forgeCounts'
+ *  comparisons). */
+export const SOCIAL_EMPTY = {
+  events: 0, follows: 0, notice_marks: 0, notice_state: 0, profiles: 0, star_list_items: 0, star_lists: 0, stars: 0,
+  api_tokens: 0, hook_deliveries: 0, hooks: 0, statuses: 0,
+} as const;
