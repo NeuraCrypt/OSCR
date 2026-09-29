@@ -15,6 +15,7 @@ from oscr import catalog, db, jobs, scriptstore
 ROOT = Path(__file__).resolve().parents[1]
 SHA = "a" * 40
 DIGEST = "b" * 64
+MIT = "MIT License\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\n"
 
 
 def repo(**kw) -> dict:
@@ -113,6 +114,7 @@ def _world(tmp_path: Path) -> sqlite3.Connection:
              ("github.com/lab/code", "old.py", "y = 2\n", "", 6),
              ("github.com/lab/code", "fig.mlx", None, "d" * 64, 99),
              ("github.com/lab/open", "ok.py", "z = 3\n", "e" * 64, 6),
+             ("github.com/lab/open", "LICENSE", MIT, "", len(MIT)),
              ("osf:abcde", "an.R", "a <- 1\n", "f" * 64, 7)]
     for r, path, text, digest, size in files:
         con.execute("INSERT INTO file (repo, path, version, language, kind, size, lines, digest, text, note) "
@@ -143,8 +145,9 @@ def test_a_held_back_repository_publishes_facts_never_its_text(tmp_path):
     assert "me@lab.org" not in json.dumps(lots) and "print('hi')" not in json.dumps(lots)
     # A copied repository is as before: its text, no source.
     copied = _entry(lots, "github.com/lab/open")
-    assert copied["published"] is True and "source" not in copied and copied["files"][0]["text"] == "z = 3\n"
-    assert "sha256" not in copied["files"][0]
+    assert copied["published"] is True and "source" not in copied
+    assert {f["path"]: f["text"] for f in copied["files"]}["ok.py"] == "z = 3\n"
+    assert not any("sha256" in f for f in copied["files"])
     # OSF: facts, and the reason the browser cannot fetch it.
     osf = _entry(lots, "osf:abcde")
     assert osf["source"] == {"via": "", "why": "osf"}
@@ -175,21 +178,41 @@ def test_the_private_export_is_unchanged(tmp_path):
     assert next(f for f in entry["files"] if f["path"] == "run.py")["text"].startswith("print")
 
 
-def test_the_copy_filter_is_unchanged(tmp_path):
+def test_the_copy_filter_is_the_audited_one(tmp_path):
     """The licence audit's rule (CLAUDE.md, "Script copies"): showing from the source copies
-    nothing, so what leaves the Mac as a copy is exactly what it was. The Hugging Face blocks hold
-    the licensed repository only, the public database no text of the others."""
+    nothing, so what leaves the Mac as a copy is what the audited filter lets out
+    (scriptstore.verified_license), unchanged. The Hugging Face blocks hold the licensed repository
+    only, the public database no text of the others."""
     con = _world(tmp_path)
-    with open(tmp_path / "LICENSE", "w") as f:
-        f.write("MIT License\n\nPermission is hereby granted, free of charge, to any person obtaining a copy")
-    con.execute("INSERT INTO file (repo, path, version, language, kind, size, lines, digest, text) VALUES "
-                "('github.com/lab/open', 'LICENSE', ?, 'License', 'doc', 80, 3, '', ?)",
-                (SHA, (tmp_path / "LICENSE").read_text()))
-    con.commit()
     assert [r["repo"] for r, _, _ in scriptstore._publishable(con)] == ["github.com/lab/open"]
     catalog.public_db(con, tmp_path / "public.db")
     pub = sqlite3.connect(tmp_path / "public.db")
     assert pub.execute("SELECT repo, path FROM file WHERE text IS NOT NULL ORDER BY path").fetchall() == [
         ("github.com/lab/open", "LICENSE"), ("github.com/lab/open", "ok.py")]
+
+
+def test_a_license_its_repository_does_not_confirm_is_not_copied_anywhere(tmp_path):
+    """A license known from a README's sentence (recorded 'MIT', no license file): neither the site's
+    lots, nor the public database, nor the Hugging Face dataset copy its text — the same rule for the
+    three since 2026-09-29. The reader shows its files from their source."""
+    con = _world(tmp_path)
+    con.execute("UPDATE repository SET license = 'MIT', redistributable = 'yes' WHERE repo = 'github.com/lab/code'")
+    con.commit()
+    entry = _entry(catalog.script_lots(con, public=True), "github.com/lab/code")
+    assert entry["published"] is False and entry["source"]["via"] == "github"
+    files = {f["path"]: f for f in entry["files"]}
+    assert files["run.py"]["text"] is None and files["run.py"]["note"] == catalog.NOTE_UNVERIFIED
+    assert files["run.py"]["sha256"] == DIGEST
+    assert "github.com/lab/code" not in {r["repo"] for r, _, _ in scriptstore._publishable(con)}
+    catalog.public_db(con, tmp_path / "public.db")
+    pub = sqlite3.connect(tmp_path / "public.db")
+    assert pub.execute("SELECT COUNT(*) FROM file WHERE repo = 'github.com/lab/code' AND text IS NOT NULL").fetchone()[0] == 0
+    assert pub.execute("SELECT note FROM file WHERE path = 'run.py'").fetchone()[0] == catalog.NOTE_UNVERIFIED
+    # Its license file arrives: copied everywhere, and no longer fetched from the source.
+    con.execute("INSERT INTO file (repo, path, version, language, kind, size, lines, digest, text) VALUES "
+                "('github.com/lab/code', 'LICENSE', ?, 'License', 'doc', 80, 3, '', ?)", (SHA, MIT))
+    con.commit()
+    entry = _entry(catalog.script_lots(con, public=True), "github.com/lab/code")
+    assert entry["published"] is True and "source" not in entry
     # The facts are there: digest, size, lines, the pinned version.
     assert pub.execute("SELECT digest, size, lines, version FROM file WHERE path = 'run.py'").fetchone() == (DIGEST, 30, 1, SHA)

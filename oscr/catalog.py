@@ -55,12 +55,26 @@ MAX_SITE_TEXT_PER_REPO: int = 8_000_000
 MAX_SITE_TEXT_PER_LOT: int = 16_000_000
 
 #: The licenses under which a script's text is republished. Without a license, code is
-#: "all rights reserved": it is shown at the source, not here.
+#: "all rights reserved": it is shown at the source, not here. A license of these kinds is not
+#: enough: it must be VERIFIED, by the repository's own license file or, for an archive without one,
+#: by its record (scriptstore.verified_license, the licence audit's rule: CLAUDE.md, "Script
+#: copies"); `copyable` applies both.
 PUBLISHABLE: frozenset[str] = frozenset({"yes", "with_conditions"})
+
+
+def copyable(con: sqlite3.Connection, d: sqlite3.Row) -> bool:
+    """Whether a repository's text may leave the Mac: its license allows redistribution AND is
+    verified — the same rule for the site's lots, the public database and the Hugging Face dataset.
+    (Until 2026-09-29 the site's lots and the public database took the recorded license alone, a
+    README's sentence included.)"""
+    from .scriptstore import verified_license
+    return d["redistributable"] in PUBLISHABLE and verified_license(con, d) is not None
 
 NOTE_LICENSE = "This repository's license does not allow republishing its text: read it at the source."
 NOTE_NO_LICENSE = "This repository has no license: its authors keep all rights. Read it at the source."
 NOTE_WITHHELD = "Withheld from this site at a removal request: read it at the source."
+NOTE_UNVERIFIED = ("This repository's license is not confirmed by its own license file: its text is not copied here. "
+                   "Read it at the source.")
 
 #: "Shown from the source" (decided 2026-09-29, docs/SCRIPT_STORAGE.md): a file whose license does
 #: not allow copying it is never copied, but a reader's browser may fetch it ITSELF from where its
@@ -497,8 +511,9 @@ def script_lots(con: sqlite3.Connection, public: bool) -> dict[int, dict[str, An
         d = repos.get(repo)
         if d is None:
             continue
-        published = (not public) or (d["redistributable"] in PUBLISHABLE and repo not in held.repos)
-        withdrawn_note = NOTE_WITHHELD if repo in held.repos else NOTE_NO_LICENSE if not d["license"] else NOTE_LICENSE
+        published = (not public) or (repo not in held.repos and copyable(con, d))
+        withdrawn_note = (NOTE_WITHHELD if repo in held.repos else NOTE_NO_LICENSE if not d["license"] else
+                          NOTE_UNVERIFIED if d["redistributable"] in PUBLISHABLE else NOTE_LICENSE)
         # Shown from the source: a repository held back for its license only (not one withheld).
         source = source_of(d) if not published and repo not in held.repos else None
         try:
@@ -758,10 +773,16 @@ def public_db(con: sqlite3.Connection, path: Path) -> None:
     # and the pages say "a correction by a verified author", never who.
     target.execute("DROP TABLE IF EXISTS link_edit")
     target.execute("UPDATE field_provenance SET source_ref = '' WHERE source IN ('author', 'maintainer', 'submitter')")
+    # The licence audit's rule (`copyable`): a license that allows redistribution, verified by the
+    # repository's own license file or its record.
     target.execute(
         "UPDATE file SET text = NULL, note = ? WHERE repo IN "
         "(SELECT repo FROM repository WHERE redistributable NOT IN ('yes', 'with_conditions'))",
         (NOTE_LICENSE,))
+    unverified = [r["repo"] for r in con.execute("SELECT * FROM repository WHERE redistributable IN ('yes', 'with_conditions')")
+                  if not copyable(con, r)]
+    target.executemany("UPDATE file SET text = NULL, note = ? WHERE repo = ? AND text IS NOT NULL",
+                       [(NOTE_UNVERIFIED, r) for r in unverified])
     # The authors' contact details are private: they go to the private dataset only
     # (oscr/contacts.py), never into a public output. Email addresses in the scripts' text
     # are hidden, as on the site.

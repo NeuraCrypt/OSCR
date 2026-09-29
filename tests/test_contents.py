@@ -52,9 +52,12 @@ def con(tmp_path):
         c.execute("INSERT INTO repository (repo, url, host, kind, state, license, redistributable, commit_id) "
                   "VALUES (?, ?, 'github.com', 'forge', 'alive', ?, ?, 'abc123')",
                   (repo, f"https://{repo}", license_, redistributable))
+        # The open repository's license is confirmed by its own license file (scriptstore.verified_license).
+        licensed = [contents.read("LICENSE", b"MIT License\n\nPermission is hereby granted, free of charge.\n")] \
+            if redistributable == "yes" else []
         db.save_contents(c, repo, "abc123", [
             contents.read("analysis.py", b"print('secret of ' + __name__)\n"),
-            contents.read("../../escape.py", b"x = 1\n")])
+            contents.read("../../escape.py", b"x = 1\n"), *licensed])
     # Both repositories are the code of a paper in scope: only those reach the export (D7).
     db.save_article(c, {"id": "doi:10.1/p", "doi": "10.1/p", "title": "P", "published": "2026-09-01"})
     db.mark_scanned(c, "doi:10.1/p", has_fulltext=True, has_statement=True, code_on_request=False,

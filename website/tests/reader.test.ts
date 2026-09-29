@@ -536,7 +536,7 @@ describe("a file the reader does not show", () => {
   const f = (why: "" | "license" | "binary" | "missing", note = "", path = "a.m") => ({ why, note, path });
   it("says why, in a sentence, and never twice that the source has it", () => {
     assert.match(whyNotShown(f("license"), { license: "" }), /no license, so its authors keep all their rights/);
-    assert.match(whyNotShown(f("license"), { license: "GPL-3.0-only" }), /\(GPL-3\.0-only\) does not allow republishing it\.$/);
+    assert.match(whyNotShown(f("license"), { license: "GPL-3.0-only" }), /\(GPL-3\.0-only\) is not one the registry has verified to allow republishing it\.$/);
     assert.match(whyNotShown(f("binary", "", "x.mlx"), { license: "MIT" }), /live script is a binary file/);
     assert.match(
       whyNotShown(f("missing", "too large a repository to show every file here: read it at the source"), { license: "MIT" }),

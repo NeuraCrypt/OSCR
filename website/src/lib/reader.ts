@@ -282,14 +282,14 @@ export function whyNotShown(
   if (f.why === "withheld") return "This file is not shown here: it was withheld at a removal request.";
   if (f.why === "license" && f.sha256 && r.source?.via) {
     return r.license
-      ? `The registry keeps no copy of this file: the license of its repository (${r.license}) does not allow it. Your browser shows it from its source, with JavaScript.`
+      ? `The registry keeps no copy of this file: the license of its repository (${r.license}) is not one it has verified to allow it. Your browser shows it from its source, with JavaScript.`
       : "The registry keeps no copy of this file: its repository has no license, so its authors keep all their rights to it. Your browser shows it from its source, with JavaScript.";
   }
   if (f.why === "license") {
     // Why the browser does not show it from its source either (an OSF project, PMC's files…).
     const also = r.source && !r.source.via ? ` Your browser cannot show it from its source either: ${cannotWords(r.source.why ?? "")}.` : "";
     return r.license
-      ? `This file is not shown here: the license of its repository (${r.license}) does not allow republishing it.${also}`
+      ? `This file is not shown here: the license of its repository (${r.license}) is not one the registry has verified to allow republishing it.${also}`
       : `This file is not shown here: its repository has no license, so its authors keep all their rights to it.${also}`;
   }
   if (f.why === "binary") {
