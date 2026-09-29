@@ -562,6 +562,24 @@ p.cite-apa { overflow-wrap: anywhere; }
 pre.cite-bibtex { font-size: .8em; white-space: pre-wrap; overflow-wrap: anywhere; margin: .3em 0; }
 p.cite-message { color: var(--muted); font-size: .92em; }
 
+/* The file finder (key t) and the search of a repository (night phase 02, E7): the matched letters
+   and words marked, the chosen file underlined in the list, the lines numbered as links */
+form.finder, form.repo-search { margin: .6em 0 .4em; }
+form.finder input[type="search"], form.repo-search input[type="search"] { width: min(32em, 100%); }
+form.finder small { color: var(--muted); }
+p.finder-count { color: var(--muted); font-size: .9em; margin: .3em 0; }
+ol.finder-results { list-style: none; margin: 0; padding: 0; font-family: var(--font-code); font-size: .9em; }
+ol.finder-results li { padding: .15em .5em; border-bottom: 1px solid #eee; overflow-wrap: anywhere; }
+ol.finder-results li.selected { background: var(--bg-sidebar); box-shadow: inset 3px 0 0 var(--masthead); }
+ol.finder-results mark, ol.search-results mark { padding: 0; }
+ol.search-results { list-style: none; margin: .5em 0; padding: 0; }
+ol.search-results > li { margin: 0 0 .9em; border: 1px solid var(--rule); }
+p.search-file { margin: 0; padding: .3em .6em; background: var(--bg-sidebar); border-bottom: 1px solid var(--rule); font-family: var(--font-code); font-size: .9em; overflow-wrap: anywhere; }
+ol.search-lines { list-style: none; margin: 0; padding: .3em .6em; font-size: .85em; }
+ol.search-lines li { white-space: pre-wrap; overflow-wrap: anywhere; }
+ol.search-lines code { background: none; }
+a.search-line-num { display: inline-block; min-width: 3em; text-align: right; color: var(--muted); font-family: var(--font-code); }
+
 footer {
   max-width: var(--width); margin: 0 auto; padding: 1em;
   border-top: 1px solid var(--rule); font-size: .85em; color: var(--muted);

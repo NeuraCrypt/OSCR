@@ -275,6 +275,7 @@ export async function mountTree(slot: HTMLElement, env: CodeEnv, segments: reado
   const submodules = await submodulesOf(env, opened);
   const actions: Child[] = [
     h("a", { href: repoPath(env.repo, "find", refSegments(opened.ref.ref)) }, "Go to file"),
+    h("a", { href: `${repoPath(env.repo, "search")}?${new URLSearchParams({ ref: opened.ref.ref })}` }, "Search"),
     h("a", { href: repoPath(env.repo, "commits", refSegments(opened.ref.ref, dir)) }, "History"),
   ];
   const main: (El | null)[] = [
