@@ -40,17 +40,17 @@ export const HELP: InfoLink[] = [
   { href: "/help/claim/", text: "Claiming authorship", summary: "When your ORCID iD is on the paper, and when it is not." },
   { href: "/help/validate/", text: "Validating a map and its DOI", summary: "What a validation checks, the deposit on Zenodo, and what the DOI covers." },
   { href: "/help/badge/", text: "The badge", summary: "One image for every paper, its snippets, and how to add it to your README." },
-  { href: "/help/removal/", text: "Requesting a removal", summary: "What can be removed, who may ask, how a request is reviewed, and when a decision takes effect." },
+  { href: "/help/removal/", text: "Requesting a removal", summary: "What can be removed, who may ask, how the rules decide a request, and when a decision takes effect." },
   { href: "/help/data/", text: "Accessing the data", summary: "The datasets on Hugging Face, their licences, and what stays private." },
   { href: "/help/faq/", text: "Frequently asked questions", summary: "Short answers to the questions readers and authors ask most." },
 ];
 
 export const POLICIES: InfoLink[] = [
   { href: "/policies/licences/", text: "Licences and availability statements", summary: "What the registry shows of a paper's abstract and statements, and under which licences." },
-  { href: "/policies/code/", text: "The authors' code", summary: "Why a script is shown from the registry's copy or read at its source." },
+  { href: "/policies/code/", text: "The authors' code", summary: "Which scripts the registry copies, which it shows from their source without a copy, and how each file is checked." },
   { href: "/policies/full-text/", text: "The paper's full text", summary: "Never stored, never served: the reader's browser fetches it from Europe PMC or PubMed Central." },
   { href: "/policies/removal/", text: "Removal and takedown", summary: "Who may ask, what can be removed, how requests are decided, and what a removal does." },
-  { href: "/policies/moderation/", text: "Moderation", summary: "How claims, submissions, corrections and requests are reviewed and decided." },
+  { href: "/policies/moderation/", text: "Moderation", summary: "The published rules that decide removal requests, submissions and claims, what waits for the operator, and how to appeal." },
   { href: "/policies/doi/", text: "DOIs for tracing maps", summary: "Zenodo DOIs for maps validated by an author only: what the DOI covers, its relations, its creators." },
   { href: "/privacy/", text: "Privacy", summary: "Every personal datum the registry holds, why, where, for how long, and your rights." },
   { href: "/policies/terms/", text: "Terms of use", summary: "Using the site, the data and the maps; accounts; what the registry promises and what it does not." },

@@ -1,8 +1,9 @@
 ---
-// Help: submitting a paper (docs/CONTRIBUTIONS.md, "Submit"; src/pages/submit.astro;
-// website/worker/contributions/; oscr/jobs.py).
+// Help: submitting a paper (docs/CONTRIBUTIONS.md, "Submit" and "Moderation"; src/pages/submit.astro;
+// website/worker/contributions/; oscr/jobs.py; the automatic moderator's rules: oscr/moderation.py).
 import Info from "../../components/Info.astro";
 import { SITE_NAME } from "../../config";
+import { REVIEW_DAYS } from "../../lib/moderation";
 
 const toc = [
   { id: "when", text: "When to submit" },
@@ -38,14 +39,19 @@ const toc = [
   <ol class="steps">
     <li><a href="/account/">Sign in</a> — with ORCID if you are an author: you are then recognized at once.</li>
     <li>On <a href="/submit/">the submission page</a>, give the paper's DOI and one to five links to its authors' code,
-      one a line, and, if you wish, a note for the moderators (without an email address: any address is removed).</li>
+      one a line, and, if you wish, a note for the operator (without an email address: any address is removed).</li>
     <li>The site checks the DOI and the links at once and records your submission, or tells you in words what is wrong.</li>
     <li>{SITE_NAME}'s harvester reads the paper as it reads every paper, verifies each link at its source — its commit,
       its licence, its scripts — and matches the code with the paper's paragraphs.</li>
     <li>A <strong>draft</strong> of the record comes back to your account page. Review it; correct the links if need be
       (the harvester reads them again); then publish.</li>
-    <li>When your ORCID iD is among the paper's authors, the record is published at once. Otherwise the operator looks at
-      it first. Either way, the next nightly publication brings it to the site.</li>
+    <li>When your ORCID iD is among the paper's authors, the record is published at once. Otherwise the registry's rules
+      publish it when each code link is proven the paper's by what you cannot write: the paper itself cites it (its
+      text, or the metadata its publisher deposited at Crossref), or its owner is proven one of the paper's authors (an
+      author's public ORCID record links to that GitHub account, or a verified author of the paper owns it). A README
+      citing the paper, or a display name, proves nothing. If nothing proves a link, the submission waits for the
+      operator, {REVIEW_DAYS} days at most, and you are told why (<a href="/policies/moderation/#submissions">how
+      submissions are decided</a>). Published, the next nightly publication brings it to the site.</li>
   </ol>
 
   <h2 id="checks">The checks made at once</h2>
@@ -64,7 +70,9 @@ const toc = [
     The draft is the record exactly as it would be published: the paper's metadata, each repository with its state,
     licence and commit, and the number of matches. You may correct its links up to ten times. Published, your links
     become corrections of the record — a new version, which the Versions section records as a correction, without your
-    name. A draft's matches need the paper's full text from Europe PMC; without it, they come after publication.
+    name. A draft's matches need the paper's full text from Europe PMC; without it, they come after publication. A
+    draft not published within {REVIEW_DAYS} days is closed; correcting it from your account page (its links are kept)
+    makes it a draft again.
   </p>
 
   <h2 id="refused">Why a submission may be refused</h2>
@@ -73,8 +81,10 @@ const toc = [
     <li>a link points to a place the registry does not know;</li>
     <li>you already submitted this DOI (one submission per account and paper);</li>
     <li>the paper is not neuroscience: it stays out of {SITE_NAME}, whatever its code (<a href="/taxonomy/#scope">the scope</a>);</li>
-    <li>the operator, reading a submission by someone who is not among the authors, finds it wrong — and says why, in
-      words you read on your account page.</li>
+    <li>you are not among the paper's authors, nothing proves its links to be the paper's, and the operator refuses it —
+      or no one reviews it within {REVIEW_DAYS} days, and it is closed with how to ask again; either way, you read why on
+      your account page;</li>
+    <li>the operator, reviewing what the rules published, finds it wrong: its links then leave the record.</li>
   </ul>
 
   <h2 id="limits">Limits</h2>

@@ -1,9 +1,11 @@
 ---
-// Policy: removal and takedown (the page /removal/; docs/CONTRIBUTIONS.md, "Request a removal";
-// oscr/jobs.py `oscr reports`; oscr/migrations/0008_withheld.sql).
+// Policy: removal and takedown (the page /removal/; docs/CONTRIBUTIONS.md, "Request a removal" and
+// "Moderation"; oscr/moderation.py, the rules that decide; oscr/jobs.py `oscr reports`;
+// oscr/migrations/0008_withheld.sql).
 import Info from "../../components/Info.astro";
 import PageLink from "../../components/PageLink.astro";
 import { SITE_NAME } from "../../config";
+import { REVIEW_DAYS } from "../../lib/moderation";
 
 const toc = [
   { id: "scope", text: "What may be removed" },
@@ -18,7 +20,7 @@ const toc = [
 ---
 <Info
   title="Removal and takedown"
-  description={`${SITE_NAME}'s removal policy: what can be removed, who may ask, how a person decides each request, and what a removal does.`}
+  description={`${SITE_NAME}'s removal policy: what can be removed, who may ask, how published rules decide each request, and what a removal does.`}
   group="policies"
   path="/policies/removal/"
   parents={[{ text: "Policies", href: "/policies/" }]}
@@ -26,15 +28,16 @@ const toc = [
 >
   <p class="lead" slot="lead">
     {SITE_NAME} publishes records of papers and copies of code that their licences allow. Anyone may still ask for a
-    record, or part of it, to be removed: every request is read and decided by a person, and the answer comes back in
-    words.
+    record, or part of it, to be removed: published rules decide every request, in the safe direction, and the answer
+    comes back in words. There is no human moderator on duty at the moment: what the rules cannot decide waits for the
+    operator, {REVIEW_DAYS} days at most.
   </p>
 
   <h2 id="scope">What may be removed</h2>
   <ul>
     <li>a paper's whole record;</li>
-    <li>the copies of its authors' scripts, all of them, one repository's, or one file's (the files stay listed with
-      their links to the source);</li>
+    <li>the copies of its authors' scripts, all of them, one repository's, or one file's — or, for code {SITE_NAME} does
+      not copy, their display from their source (the files stay listed with their links to the source);</li>
     <li>its tracing map, with its matches, validations and DOI on the site.</li>
   </ul>
   <p>
@@ -47,7 +50,7 @@ const toc = [
   <p>
     Anyone signed in: an author of the paper (marked verified when their ORCID iD is on the paper), the holder of the
     rights, a person named in the record, or someone else. Signing in is required until the site has its own bot
-    check; it asks for no email address, and it lets the answer reach you.
+    check; it asks for no email address, it lets the answer reach you, and it tells the rules who asks.
   </p>
 
   <h2 id="how">How to ask</h2>
@@ -60,11 +63,22 @@ const toc = [
 
   <h2 id="decisions">How requests are decided</h2>
   <p>
-    The operator reads each request, with the record it names, the requester's role and the evidence given, and accepts
-    or rejects it, with a few words the requester reads on the request's page and on their account page. Until
-    moderation is part of the site, this is done by hand, one request at a time, and nothing is removed without that
-    decision. How requests and claims are reviewed is the subject of the{" "}
-    <PageLink href="/policies/moderation/">moderation policy</PageLink>.
+    {SITE_NAME}'s machine applies published rules to each request within minutes; the{" "}
+    <PageLink href="/policies/moderation/">moderation policy</PageLink> gives them in full. In short:
+  </p>
+  <ul>
+    <li>from a verified author of the paper: applied at once, whatever it names;</li>
+    <li>for the copies of code its requester maintains as the repository's owner or a public member of its organization
+      on GitHub, or as a maintainer the operator made (not as a contributor): applied at once;</li>
+    <li>for copies of the authors' code, for copyright or personal data, from anyone: hidden at once, within daily
+      limits, pending the operator's review;</li>
+    <li>anything else — a whole record, a tracing map, another reason: nothing is removed; the request waits for the
+      operator, {REVIEW_DAYS} days at most, to be read with the record it names, the requester's role and the evidence
+      given. Unreviewed, it is closed without removal, with how to ask again.</li>
+  </ul>
+  <p>
+    Every decision comes with a few words the requester reads on the request's page and on their account page. The rule
+    that made it is recorded, so that the operator can check it.
   </p>
 
   <h2 id="effect">What an accepted request does</h2>
@@ -75,8 +89,9 @@ const toc = [
   <ul>
     <li>A whole record: the paper leaves as an off-topic paper does, everywhere; the operator's computer keeps it, marked
       withdrawn, with when and why, so that the harvester does not bring it back.</li>
-    <li>Copies: their text leaves the site's files, the public database and the scripts' dataset (its manifests); the files
-      stay listed, with their links, and the reader says "withheld at a removal request".</li>
+    <li>Copies: their text leaves the site's files, the public database and the scripts' dataset (its manifests), and the
+      files {SITE_NAME} does not copy are no longer fetched from their source; the files stay listed, with their links,
+      and the reader says "withheld at a removal request".</li>
     <li>A map: its section says it is withheld, with neither digest (nothing left to validate), matches, validations nor
       DOI, on the site, in the open data and in the search.</li>
   </ul>
@@ -91,14 +106,16 @@ const toc = [
 
   <h2 id="rejected">A rejected request</h2>
   <p>
-    Nothing changes; the requester reads the reason. One request per account and record: a decided request is not asked
-    again through the form. A new fact can be brought to the operator through a correction, or, when you are an author,
-    a claim.
+    Nothing changes; the requester reads the reason. One request per account and record: a refused or closed request can
+    be asked again through the form only in a way the rules decide at once — as a verified author of the paper, as a
+    maintainer of the code it names, or for the copies only, for copyright or personal data. The operator may also
+    override the rules and accept it. A new fact can be brought to the operator through a correction, or, when you are
+    an author, a claim.
   </p>
 
   <h2 id="back">Coming back</h2>
   <p>
-    A record withdrawn or a copy withheld comes back only by the operator's hand, for instance at the request of the
-    person who asked for its removal.
+    A record withdrawn or a copy withheld comes back only by the operator's hand: when the operator reverses what the
+    rules did (copies hidden without reason, for instance), or at the request of the person who asked for its removal.
   </p>
 </Info>

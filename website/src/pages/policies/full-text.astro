@@ -2,6 +2,7 @@
 // Policy: the paper's full text and PDF are never redistributed (CLAUDE.md, "Already in force";
 // oscr/catalog.py public_db; the reader's browser fetches the paper: public/_headers).
 import Info from "../../components/Info.astro";
+import PageLink from "../../components/PageLink.astro";
 import { SITE_NAME } from "../../config";
 
 const toc = [
@@ -36,7 +37,7 @@ const toc = [
   <h2 id="reader">How the reader shows a paper</h2>
   <p>
     When you open a paper's reader, your browser asks Europe PMC for the paper's open-access XML, and, if Europe PMC fails,
-    NCBI for PubMed Central's copy. The text goes from their servers to your screen; it does not pass through
+    NCBI for PubMed Central's copy. The text goes from their servers to your screen; it does not pass through{" "}
     {SITE_NAME}, which never sees it. The page's security policy names the services the browser may contact; for the
     paper's text, those two. If they are down, the reader shows links to the paper, not a copy.
   </p>
@@ -64,6 +65,7 @@ const toc = [
     <li>The site's build keeps only the known fields of a match, and drops any evidence term long enough to be a
       sentence.</li>
     <li>The pages' Content-Security-Policy lets a paper's page connect only to the services it names — Europe PMC and
-      NCBI for the paper's text — and every other page to the site alone.</li>
+      NCBI for the paper's text, and the hosts of the authors' code for a file shown from its source
+      (<PageLink href="/policies/code/">the code policy</PageLink>) — and every other page to the site alone.</li>
   </ul>
 </Info>

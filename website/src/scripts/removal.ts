@@ -334,7 +334,7 @@ function syncScope() {
     write(note, "summary", "The registry holds no code of this paper, so no copy of a script and no tracing map: only its whole record can be removed.");
     show("removal-scope-note", true);
   } else if (noCopies && ["scripts", "repository", "file"].includes(scope)) {
-    write(note, "summary", "The registry keeps no copy of this paper's code (its license does not allow it): its files are only listed, with links to their source.");
+    write(note, "summary", "The registry keeps no copy of this paper's code (its license does not allow it): the reader shows its files from their source, when their host allows it, and removing them stops that display.");
     show("removal-scope-note", true);
   } else show("removal-scope-note", false);
 }

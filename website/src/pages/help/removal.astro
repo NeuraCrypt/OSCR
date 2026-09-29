@@ -1,9 +1,11 @@
 ---
 // Help: requesting a removal (the page /removal/, src/pages/removal.astro, src/lib/removal.ts;
-// docs/CONTRIBUTIONS.md, "Request a removal"; oscr/jobs.py `oscr reports`).
+// docs/CONTRIBUTIONS.md, "Request a removal"; the automatic moderator's rules: oscr/moderation.py,
+// src/lib/moderation.ts, /policies/moderation/).
 import Info from "../../components/Info.astro";
 import PageLink from "../../components/PageLink.astro";
 import { SITE_NAME } from "../../config";
+import { CAMPAIGN, CAMPAIGN_DAYS, HIDE_PER_ACCOUNT, HIDE_PER_DAY, POLL_MINUTES, REVIEW_DAYS } from "../../lib/moderation";
 
 const toc = [
   { id: "where", text: "Where to ask" },
@@ -26,7 +28,8 @@ const toc = [
 >
   <p class="lead" slot="lead">
     Anyone signed in may ask {SITE_NAME} to remove something from a paper's record: the whole record, or only part of
-    it. Every request is read by a person before anything is removed, and its answer comes back in words.
+    it. Published rules decide every request, and its answer comes back in words; what they cannot decide waits for the
+    operator. There is no human moderator on duty at the moment.
   </p>
 
   <h2 id="where">Where to ask</h2>
@@ -40,7 +43,8 @@ const toc = [
   <h2 id="who">Who you are</h2>
   <p>
     One of: an author of the paper (marked <em>verified</em> when your account's ORCID iD is among its authors), the
-    holder of the rights, a person named in the record, or someone else. Anyone may ask; who asks weighs in the decision.
+    holder of the rights, a person named in the record, or someone else. Anyone may ask; who asks decides what the rules
+    do (<a href="#decision">below</a>).
   </p>
 
   <h2 id="what">What can be removed</h2>
@@ -48,7 +52,8 @@ const toc = [
     <dt>The whole record</dt>
     <dd>The paper's page, its entry in the lists, the lookup, the search and the open data.</dd>
     <dt>Only the copies of the authors' scripts</dt>
-    <dd>Their text leaves the site and the open dataset; the files stay listed, with their links to the source.</dd>
+    <dd>Their text leaves the site and the open dataset, and the files {SITE_NAME} does not copy are no longer shown from
+      their source; the files stay listed, with their links to the source.</dd>
     <dt>One repository's copies</dt>
     <dd>The same, for one of the paper's repositories, chosen in a list.</dd>
     <dt>One file</dt>
@@ -69,22 +74,39 @@ const toc = [
     <li>A <strong>justification</strong> of 30 to 2,000 characters, in your words. It may not hold an email address: the
       request is answered in the site, never by email.</li>
     <li>An optional <strong>evidence link</strong> (https only): a licence, a notice, a statement.</li>
-    <li>Two <strong>confirmations</strong>: that the information is accurate, and that you understand a moderator reviews
-      every request and what can follow.</li>
+    <li>Two <strong>confirmations</strong>: that the information is accurate; and that you understand how requests are
+      decided and what can follow — the rules may apply the request at once, hide copies at once pending review, or leave
+      it to the operator, who may accept it, in whole or in part, refuse it, or reverse what the rules did.</li>
   </ul>
 
   <h2 id="review">Review, then send</h2>
   <p>
     The page checks the request with the site's own rules, then shows a summary of everything; nothing is sent before
-    "Confirm and send". The receipt gives the request's number and its status (open). Coming back to the page shows the
-    request: while it is open you may complete it (it keeps its number); once decided, it shows the decision and the
-    operator's words. Your account page lists your requests.
+    "Confirm and send". The receipt gives the request's number, its status (open) and what the rules will do with it.
+    Coming back to the page shows the request: while it is open you may complete it (it keeps its number); once decided,
+    it shows the decision and its words — the rules' or the operator's. Your account page lists your requests.
   </p>
 
   <h2 id="decision">The decision, and when it takes effect</h2>
   <p>
-    The operator reads each request and accepts or rejects it, with words the requester reads
-    (<a href="/policies/removal/">the removal policy</a>; <PageLink href="/policies/moderation/">moderation</PageLink>).
+    {SITE_NAME}'s machine reads each request within about {POLL_MINUTES} minutes and applies its published rules
+    (<PageLink href="/policies/moderation/">how requests are decided</PageLink>;{" "}
+    <a href="/policies/removal/">the removal policy</a>):
+  </p>
+  <ul>
+    <li>from a <strong>verified author</strong> of the paper (your ORCID iD among its authors, or your claim verified):
+      applied at once, whatever it names;</li>
+    <li>for the copies of a repository you maintain as its <strong>owner</strong> or a public member of its
+      organization, on GitHub (or as a maintainer the operator made): applied at once — a contributor's request follows
+      the rules for anyone;</li>
+    <li>for copies of the authors' code, for <strong>copyright or personal data</strong>, from anyone: hidden at once,
+      pending the review of the operator, who may restore them — at most {HIDE_PER_ACCOUNT} such requests an account and{" "}
+      {HIDE_PER_DAY} in all a day; a justification sent with {CAMPAIGN} requests or more in {CAMPAIGN_DAYS} days, or a
+      request the operator already refused, waits instead;</li>
+    <li>anything else — a whole record, a tracing map, another reason: nothing is removed; the request waits for the
+      operator, {REVIEW_DAYS} days at most, and is then closed without removal, with how to ask again.</li>
+  </ul>
+  <p>
     Accepted, what the request names leaves every public output at the <strong>next nightly publication</strong> (at
     04:17, the operator's local time): the site, the DOI lookup, the search, the community's facts and the open data.
     The operator's computer keeps the record, marked withdrawn or withheld, so that the harvester does not bring it back.
@@ -97,8 +119,9 @@ const toc = [
 
   <h2 id="limits">Limits</h2>
   <ul>
-    <li>One request per account and record; decided, it is not asked again (write a new justification while it is open
-      instead).</li>
+    <li>One request per account and record, which you may complete while it is open. Accepted, it is not asked again;
+      refused or closed, it can be asked again only in a way the rules decide at once — as a verified author, as a
+      maintainer of the code it names, or for the copies only, for copyright or personal data.</li>
     <li>A request names at most one repository or one file; for more, choose the paper's scripts or the whole record, or
       say it in the justification.</li>
     <li>At most 10 requests a day per account. Signing in is required until the site has a bot check of its own.</li>

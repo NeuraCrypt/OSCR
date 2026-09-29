@@ -483,8 +483,9 @@ function contribute(p: PaperRecord): string {
   return (
     `<section id="contribute" data-paper="${esc(p.id)}" data-doi="${esc(p.doi)}" data-digest="" data-back="${esc(back)}">` +
     `<h2>Contribute</h2>` +
-    `<p class="summary">The authors of this paper and the maintainers of its code can claim it and correct its record; ` +
-    `anyone signed in can ask for its removal. Every request goes to the registry's own machine, which answers it; your ` +
+    `<p class="summary">The authors of this paper can claim it and correct its record, and the maintainers of its code ` +
+    `(its owner, or a public member of its organization) correct what it says of their repository; anyone signed in can ` +
+    `ask for its removal. Every request goes to the registry's own machine, which answers it; your ` +
     `account page follows them.</p>` +
     `<p id="contribute-status" role="status" aria-live="polite"></p>` +
     `<div id="contribute-signed-out"><p>${a("Sign in with ORCID", `/api/auth/orcid/start?return=${back}`)} to claim this paper ` +

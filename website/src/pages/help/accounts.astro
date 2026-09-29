@@ -1,8 +1,9 @@
 ---
 // Help: signing in, the account page, roles, sessions and notifications (docs/ACCOUNTS.md,
-// website/worker/account/, src/pages/account.astro).
+// website/worker/account/, src/pages/account.astro; who the moderator's rules trust: oscr/moderation.py).
 import Info from "../../components/Info.astro";
 import { SITE_NAME } from "../../config";
+import { REVIEW_DAYS } from "../../lib/moderation";
 
 const toc = [
   { id: "why", text: "Why sign in" },
@@ -26,7 +27,7 @@ const toc = [
 >
   <p class="lead" slot="lead">
     Reading needs no account. Signing in is for contributing: submitting a paper, claiming it, correcting its links,
-    validating its map, adding the badge, asking for a removal. You sign in with an identity you already have, and
+    validating its map, adding the badge, asking for a removal. You sign in with an identity you already have, and{" "}
     {SITE_NAME} never asks for your email address.
   </p>
 
@@ -81,13 +82,17 @@ const toc = [
     <dt>Verified author</dt>
     <dd>Of a given paper: automatically, when your account's ORCID iD is among the paper's authors in its published
       metadata — checked at each sign-in, and again with "Check my papers again" on your account page. Otherwise, by a{" "}
-      <a href="/help/claim/">claim</a> the operator accepts. A verified author may correct the paper's links and validate
-      its map.</dd>
+      <a href="/help/claim/">claim</a>, verified by the registry's rules when Crossref's automatic update has put the
+      paper in your ORCID record, or accepted by the operator. A verified author may correct the paper's links, validate
+      its map, and have their removal requests applied at once.</dd>
     <dt>Maintainer</dt>
     <dd>Of a given repository: on GitHub, checked at once with your GitHub identity — you own it, are a public member of
-      the organization that owns it, are among its contributors, or authored a commit in it. Elsewhere (GitLab,
-      Codeberg…), your claim waits for the operator. A maintainer may correct the links of the papers whose code it is,
-      for their own repository.</dd>
+      the organization that owns it, are among its contributors, or authored a commit in it. Otherwise, and elsewhere
+      (GitLab, Codeberg…), your claim waits for the operator, {REVIEW_DAYS} days at most, then is closed with how to be
+      checked again. Only a maintainer who owns the repository or is a public member of its organization (or one the
+      operator made) may correct the links of the papers whose code it is, for that repository, and have a removal of its
+      copies applied at once: a contributor or a commit's author may not
+      (<a href="/policies/moderation/#claims">why</a>).</dd>
   </dl>
 
   <h2 id="page">Your account page</h2>
@@ -100,9 +105,8 @@ const toc = [
   <h2 id="notifications">Notifications</h2>
   <p>
     Notifications stay in the site, by decision: {SITE_NAME} sends no email. Today, the answers to your requests appear
-    on your account page and on the pages concerned (a removal request's page shows its decision and the operator's
-    words). Notifications of their own — new activity on your papers — will come with the site's moderation, still in
-    the site only.
+    on your account page and on the pages concerned (a removal request's page shows its decision and its words).
+    Notifications of their own — new activity on your papers — will come later, still in the site only.
   </p>
 
   <h2 id="sessions">Sessions and signing out</h2>
@@ -116,9 +120,10 @@ const toc = [
   <h2 id="limits">What is not possible yet</h2>
   <ul>
     <li>Deleting your account or unlinking an identity from the site itself; signing out of every browser at once. Until
-      then, ask through a <a href="/help/removal/">removal request</a> naming your account, and the operator does it
-      (<a href="/privacy/#rights">your rights</a>).</li>
-    <li>Maintainer checks outside GitHub are decided by hand; archives (Zenodo, OSF) have no owner in their address, so
-      no maintainer claim.</li>
+      then, ask the operator through a <a href="/help/removal/">removal request</a> naming your account, filled in as{" "}
+      <a href="/privacy/#rights">your rights</a> say, so that the rules remove nothing else.</li>
+    <li>Maintainer checks outside GitHub cannot be made automatically: such a claim waits for the operator,{" "}
+      {REVIEW_DAYS} days at most, then is closed. Archives (Zenodo, OSF) have no owner in their address, so no maintainer
+      claim.</li>
   </ul>
 </Info>

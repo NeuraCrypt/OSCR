@@ -1,13 +1,16 @@
 ---
 // Privacy (2026-09-29, required for the public launch): every personal datum the registry holds,
 // read from the code — the accounts and requests (migrations/d1-community/), the cookies
-// (website/worker/account/), the reader's browser requests (the paper pages' policy, public/_headers),
-// the authors' contact details (oscr/contacts.py, CLAUDE.md), the services involved. The operator's
+// (website/worker/account/), the reader's browser requests (the paper pages' policy, public/_headers;
+// a file shown from its source: src/lib/source.ts), the automatic moderator's log and lookups
+// (oscr/moderation.py, oscr/jobs.py: data/community/state.db), the authors' contact details
+// (oscr/contacts.py, CLAUDE.md), the services involved. The operator's
 // identity comes from OPERATOR_NAME and OPERATOR_ADDRESS (src/config.ts): until they are set, the page
 // says so, and `npm run check` prints a launch warning. The text awaits the owner's review.
 import Info from "../components/Info.astro";
 import PageLink from "../components/PageLink.astro";
 import { OPERATOR_ADDRESS, OPERATOR_NAME, SITE_NAME, SOURCE_URL } from "../config";
+import { REVIEW_DAYS } from "../lib/moderation";
 
 const operatorKnown = OPERATOR_NAME !== "" && OPERATOR_ADDRESS !== "";
 const UPDATED = "29 September 2026";
@@ -55,7 +58,8 @@ const toc = [
       email addresses included — to cite the authors of the code and to reach an author about their own work. They are
       never shown, never published, never used for mass email, and can be erased on request
       (<a href="#contacts">below</a>).</li>
-    <li>When you open a paper's Code ↔ Paper reader, your browser fetches the paper from Europe PMC or NCBI directly.</li>
+    <li>When you open a paper's Code ↔ Paper reader, your browser fetches the paper from Europe PMC or NCBI directly, and
+      a file of code that {SITE_NAME} does not copy from where its authors published it.</li>
   </ul>
 
   <h2 id="controller">Who is responsible</h2>
@@ -98,10 +102,16 @@ const toc = [
       (<code>eutils.ncbi.nlm.nih.gov</code>), when the paper pane is shown. Those services receive your IP address and
       the paper's identifier, as when you read the paper on their sites. Hiding the paper pane before it loads avoids
       the request.</li>
-    <li><strong>A script's copy from the open dataset</strong>: if a page reads a script from {SITE_NAME}'s dataset on
-      Hugging Face, your browser fetches it from <code>huggingface.co</code> directly; the{" "}
-      <PageLink href="/policies/code/">code policy</PageLink> says which pages do.</li>
-    <li><strong>Signing in</strong> takes you to ORCID, GitHub or Google, which then know that you signed in to
+    <li><strong>A file of the authors' code shown from its source</strong>: {SITE_NAME}'s copies come from the site
+      itself, but a file whose licence allows no copy is fetched by your browser from its host, at the verified commit —
+      GitHub (<code>raw.githubusercontent.com</code>), GitLab.com (<code>gitlab.com</code>), Bitbucket
+      (<code>bitbucket.org</code>), Codeberg (<code>codeberg.org</code>), Hugging Face (<code>huggingface.co</code>),
+      Zenodo (<code>zenodo.org</code>), or Software Heritage (<code>archive.softwareheritage.org</code>) for the other
+      forges. The host receives your IP address and the file's address (its repository, commit and path, or its
+      fingerprint), as when you open the file there; no cookie and no page address are sent with the request. Only the
+      file the reader shows is fetched: the one a paper's page opens on, or one you choose (the{" "}
+      <PageLink href="/policies/code/">code policy</PageLink>).</li>
+    <li><strong>Signing in</strong> takes you to ORCID, GitHub or Google, which then know that you signed in to{" "}
       {SITE_NAME}.</li>
     <li><strong>Links</strong> you follow (doi.org, a publisher, a forge, Zenodo) lead to those sites; the site tells them
       nothing of where you came from (its referrer policy sends no address to other sites).</li>
@@ -134,7 +144,8 @@ const toc = [
     identifier for you (your ORCID iD; GitHub's account number; Google's opaque identifier). For each session: the
     SHA-256 of its cookie's identifier, when it began, expires and was last seen (to the hour), and a short
     description of the browser such as "Firefox on macOS" — never the full user agent, never an IP address. Your roles
-    (verified author of a paper, maintainer of a repository), who granted them (the system or the operator) and when.
+    (verified author of a paper, maintainer of a repository), who granted them (the automatic checks, the moderator's
+    rules or the operator) and when.
   </p>
   <p>
     Never stored: an email address, a password, a provider's access token (used during the sign-in, or once for a
@@ -151,10 +162,11 @@ const toc = [
   <p>Each request is a row linked to your account, in the same database, with a row that tells the operator's computer to look at it:</p>
   <dl class="terms">
     <dt>A submission</dt>
-    <dd>the DOI, one to five code links, your note, the site's checks, its status, the draft the harvester made, and the operator's words.</dd>
+    <dd>the DOI, one to five code links, your note, the site's checks, its status, the draft the harvester made, and the
+      words of its decision.</dd>
     <dt>An author claim or a maintainer claim</dt>
     <dd>the paper or repository, your statement and optional link, or the evidence of the GitHub check (your GitHub login
-      and number, and how the check succeeded), its status and the operator's words.</dd>
+      and number, and how the check succeeded), its status and the words of its decision.</dd>
     <dt>A correction</dt>
     <dd>the paper, your role, the changes, your note, its status and the version it made.</dd>
     <dt>A validation</dt>
@@ -162,12 +174,30 @@ const toc = [
       record it received.</dd>
     <dt>A removal request</dt>
     <dd>the paper, who you are (author, rights holder, named person, other), whether you are a verified author, what to
-      remove, why, your justification, your evidence link, your confirmations, its status and the operator's words.</dd>
+      remove, why, your justification, your evidence link, your confirmations, its status and the words of its decision
+      (the rules' or the operator's).</dd>
   </dl>
   <p>
-    Every free text loses any email address before it is stored, and the database refuses an at sign. The operator's
-    computer keeps its own copy of what it needs to answer (the job's state), and, for an applied correction, who made it
-    (your ORCID iD or GitHub login) in the record's history — which the pages never show: they say "a verified author".
+    Every free text loses any email address before it is stored, and the database refuses an at sign. Requests are
+    decided by published rules, applied on the operator's computer (<a href="/policies/moderation/">how requests are
+    decided</a>). That computer keeps, in its state file (<code>data/community/state.db</code>):
+  </p>
+  <ul>
+    <li><strong>Each request's state</strong>: its status and attempts, and, for a request that waits for the operator,
+      what the operator needs to decide — its texts (note, statement, justification, evidence link) and your account's
+      name, ORCID iD and GitHub login.</li>
+    <li><strong>The moderator's log</strong>: every decision on a removal request, a submission or a claim, by the rules
+      or by the operator — when, the request's number, your account's identifier, the paper (or the repository), the
+      rule that decided and what it decided, with what the rule weighed: for a removal request, what it names, why, who
+      you said you are, whether you are a verified author, the repositories you maintain, and a fingerprint of your
+      justification (so that the same words sent again are recognized), never its text; for a submission, what proved
+      each link or did not; for a claim, what verified it. While a request waits, the file also notes since when and until when.</li>
+  </ul>
+  <p>
+    To decide a claim, the rules read the works of your public ORCID record, by your iD; to decide a submission, the web
+    links of the public ORCID records of the paper's authors. And for an applied correction, the operator's computer
+    keeps who made it (your ORCID iD or GitHub login) in the record's history — which the pages never show: they say "a
+    verified author".
   </p>
 
   <h2 id="authors">Authors in the published records</h2>
@@ -209,7 +239,8 @@ const toc = [
   <p>
     The harvester's database, on the operator's own computer, holds everything above that comes from papers — their
     public metadata, their authors, the contact details — along with the full texts it read (never published), the
-    history of every record with who corrected it, and the state of the requests it answered. Backups stay on that
+    history of every record with who corrected it, and the state of the requests it answered with the moderator's log
+    (<a href="#requests">above</a>). Backups stay on that
     computer's disks. Nothing listens on the network there: requests reach it only as rows the computer reads from the
     site's database.
   </p>
@@ -220,11 +251,13 @@ const toc = [
       <thead><tr><th>Service</th><th>Role</th><th>Personal data it receives</th><th>Based in</th></tr></thead>
       <tbody>
         <tr><td><a href="https://www.cloudflare.com/privacypolicy/">Cloudflare</a></td><td>hosts the site, runs its code, holds the D1 databases (search, accounts, requests)</td><td>visitors' requests; accounts, sessions, requests; the published records</td><td>United States; the databases in Western Europe</td></tr>
-        <tr><td><a href="https://huggingface.co/privacy">Hugging Face</a></td><td>holds the open scripts' dataset, the private catalogue and the private contact details</td><td>the contact details (private); authors' files and names in the public data; visitors' requests for a script, where a page reads one</td><td>United States</td></tr>
-        <tr><td><a href="https://info.orcid.org/privacy-policy/">ORCID</a></td><td>sign-in</td><td>that you sign in; ORCID gives back your iD and public name</td><td>United States</td></tr>
-        <tr><td><a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement">GitHub</a></td><td>sign-in; maintainer checks; hosts the source code and its issues</td><td>that you sign in; for a maintainer check, the repository and your login</td><td>United States</td></tr>
+        <tr><td><a href="https://huggingface.co/privacy">Hugging Face</a></td><td>holds the open scripts' dataset, the private catalogue and the private contact details; hosts code the reader may show from its source</td><td>the contact details (private); authors' files and names in the public data; your IP address, when your browser fetches a file of code it hosts</td><td>United States</td></tr>
+        <tr><td><a href="https://info.orcid.org/privacy-policy/">ORCID</a></td><td>sign-in; the moderator's checks of claims and submissions</td><td>that you sign in; ORCID gives back your iD and public name. The operator's computer reads public ORCID records by iD: the works in a claimant's, the web links in those of a paper's authors</td><td>United States</td></tr>
+        <tr><td><a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement">GitHub</a></td><td>sign-in; maintainer checks; hosts the source code and its issues; the reader's source of a file hosted there</td><td>that you sign in; for a maintainer check, the repository and your login; your IP address, when your browser fetches a file from it</td><td>United States</td></tr>
         <tr><td><a href="https://policies.google.com/privacy">Google</a></td><td>sign-in</td><td>that you sign in; Google gives back an opaque identifier</td><td>United States</td></tr>
-        <tr><td><a href="https://about.zenodo.org/privacy-policy/">Zenodo</a> (CERN)</td><td>DOIs of validated maps</td><td>the validating author's name and ORCID iD, public</td><td>Switzerland</td></tr>
+        <tr><td><a href="https://about.zenodo.org/privacy-policy/">Zenodo</a> (CERN)</td><td>DOIs of validated maps; the reader's source of a file of a record</td><td>the validating author's name and ORCID iD, public; your IP address, when your browser fetches a file from it</td><td>Switzerland</td></tr>
+        <tr><td><a href="https://about.gitlab.com/">GitLab</a>, <a href="https://bitbucket.org/">Bitbucket</a>, <a href="https://codeberg.org/">Codeberg</a></td><td>host authors' code; the reader's source of a file hosted there</td><td>your IP address, when your browser fetches a file from one of them</td><td>GitLab: United States; Bitbucket (Atlassian): Australia and the United States; Codeberg: Germany</td></tr>
+        <tr><td><a href="https://www.softwareheritage.org/">Software Heritage</a> (Inria)</td><td>archive of public code; the reader's source of a file from another forge, by its fingerprint</td><td>your IP address, when your browser fetches a file from it</td><td>France</td></tr>
         <tr><td><a href="https://europepmc.org/">Europe PMC</a> (EMBL-EBI)</td><td>source of the papers; the reader's paper text</td><td>your IP address, when your browser fetches a paper</td><td>United Kingdom</td></tr>
         <tr><td><a href="https://www.nlm.nih.gov/web_policies.html">NCBI</a> (US National Library of Medicine)</td><td>second source of the reader's paper text</td><td>your IP address, when your browser fetches a paper from it</td><td>United States</td></tr>
         <tr><td><a href="https://openalex.org/">OpenAlex</a></td><td>enriches the records (institutions, topics)</td><td>none from visitors: it is asked about papers, by DOI</td><td>United States</td></tr>
@@ -234,7 +267,8 @@ const toc = [
   <p>
     The harvester also reads, about papers and code, Crossref, DataCite, doi.org, the Retraction Watch data, Software
     Heritage and the forges and archives the papers cite; the site asks doi.org and the cited forges whether a submitted
-    DOI and links exist. They receive identifiers of papers and repositories, not data about visitors.
+    DOI and links exist. They receive identifiers of papers and repositories, not data about visitors — except the
+    hosts your browser fetches a file from, above.
   </p>
 
   <h2 id="retention">How long</h2>
@@ -246,7 +280,8 @@ const toc = [
         <tr><td>The sign-in flow cookie</td><td>10 minutes</td></tr>
         <tr><td>The reader's display choices</td><td>in your browser, until you clear its storage</td></tr>
         <tr><td>Your account, identities and roles</td><td>while the account exists; deleted on request (deletion from the site itself is not built yet)</td></tr>
-        <tr><td>Your requests and their answers</td><td>as long as your account, as the record of what was decided; the operator's side as long as the record they concern</td></tr>
+        <tr><td>Your requests and their answers</td><td>as long as your account, as the record of what was decided</td></tr>
+        <tr><td>The requests' state and the moderator's log, on the operator's computer</td><td>with no set end: nothing deletes them automatically; they are the record of how each request was decided</td></tr>
         <tr><td>Published records of papers and authors</td><td>as long as the paper is in the catalogue; a removal takes them out at the next nightly publication</td></tr>
         <tr><td>Authors' contact details</td><td>as long as the paper is in the registry's database; erased on request</td></tr>
         <tr><td>A validated map's record on Zenodo</td><td>permanently, as a DOI requires</td></tr>
@@ -289,6 +324,13 @@ const toc = [
       the deletion of your account, an objection. No email address is needed: the answer comes back on the request's page
       and on your account page.</li>
   </ol>
+  <p class="warning">
+    Mind what the request names: the rules act on that, not on the justification
+    (<a href="/policies/moderation/">how requests are decided</a>). Signed in as a verified author of the paper, your
+    request is applied at once, whatever it names; copies of the authors' code named for personal data are hidden at
+    once, whoever asks, within daily limits. A request that names the whole record or the tracing map, from anyone else, removes nothing by
+    itself: it waits for the operator, {REVIEW_DAYS} days at most. The operator can reverse what the rules did.
+  </p>
   <p>
     For a matter that concerns your account alone, use the same form from any paper's page and say so in the
     justification: a dedicated form will replace this path. The operator answers within one month, as the GDPR requires,
@@ -300,8 +342,8 @@ const toc = [
   <p>
     The site's databases are held by Cloudflare in Western Europe, and its pages are delivered from Cloudflare's servers
     nearest to you. The harvester's database is on the operator's computer. Several services named above are based
-    outside the European Economic Area — in the United States, the United Kingdom and Switzerland — and receive the data
-    listed in their row when you use them or when the operator publishes; each describes, in its policy linked above (or
+    outside the European Economic Area — in the United States, the United Kingdom, Switzerland and Australia — and
+    receive the data listed in their row when you use them or when the operator publishes; each describes, in its policy linked above (or
     on its site), how it protects the personal data it receives from the European Union.
   </p>
 
@@ -319,7 +361,7 @@ const toc = [
   <h2 id="changes">Changes to this page</h2>
   <p>
     This page changes when the registry does. Its history is public in the project's source
-    (<a href={`${SOURCE_URL}/commits/main/website/src/pages/privacy.astro`}>the page's history</a>). Last updated:
+    (<a href={`${SOURCE_URL}/commits/main/website/src/pages/privacy.astro`}>the page's history</a>). Last updated:{" "}
     {UPDATED}.
   </p>
 </Info>

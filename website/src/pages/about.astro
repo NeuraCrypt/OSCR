@@ -9,6 +9,7 @@ import { OPERATOR_NAME, SITE_FULL_NAME, SITE_NAME, SITE_TAGLINE, SOURCE_URL } fr
 import { catalog, generatedInWords, number, plural, withCode, withPage } from "../lib/catalog";
 import { authors, datasets, institutions, journals, tools } from "../lib/entities";
 import { dateInWords } from "../lib/format";
+import { REVIEW_DAYS } from "../lib/moderation";
 
 const f = catalog.figures;
 const days = withPage.map((a) => a.published).filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d)).sort();
@@ -166,7 +167,8 @@ const toc = [
         else its record's licence). Licences name each other in passing — the GPL mentions the Affero GPL — so the
         licence whose text comes first wins. A licence mentioned only in a README sentence is recorded, but it is not
         enough for the open dataset's copies. A repository without a licence is "all rights reserved": its files are
-        listed and linked at the source, never copied.
+        never copied; the reader's browser fetches each one from its source, at the verified commit, and shows it only
+        when its fingerprint is the one {SITE_NAME} computed.
       </p>
     </li>
     <li>
@@ -178,9 +180,9 @@ const toc = [
         blocks in the public Hugging Face dataset <a href="https://huggingface.co/datasets/OpenScientificCodeRegistry/Database">OpenScientificCodeRegistry/Database</a>,
         with one manifest per repository (its commit, its licence, and where each file lies). A published block never
         changes. The blocks are cut so that a browser can read a single script with HTTP range requests — about 78 KB
-        for one script shown. The site's pages hide any email address written in the code. Which copy a page shows, and
-        when it sends you to the source instead, is the <PageLink href="/policies/code/">code policy</PageLink>'s
-        subject.
+        for one script shown. The site's pages hide any email address written in the code. Which files are copied,
+        which are shown from their source without a copy, and when the reader sends you to the source instead, is the{" "}
+        <PageLink href="/policies/code/">code policy</PageLink>'s subject.
       </p>
     </li>
     <li>
@@ -238,9 +240,11 @@ const toc = [
     <dt>Licences respected.</dt>
     <dd>
       A script's text is copied only when its licence allows it and the repository's own licence file confirms it.
-      Everything else is listed and linked at the source, at the verified commit. Abstracts and availability
-      statements are shown in full only under the licences that allow it (<a href="/policies/licences/">the
-      licence policy</a>).
+      Everything else is never copied: the reader's browser fetches it from where its authors published it, at the
+      verified commit, checks its SHA-256 fingerprint and hides its email addresses before showing it, or links to it
+      there when its host does not let another site read it (<PageLink href="/policies/code/">the code
+      policy</PageLink>). Abstracts and availability statements are shown in full only under the licences that allow it
+      (<a href="/policies/licences/">the licence policy</a>).
     </dd>
     <dt>The paper's full text is never redistributed.</dt>
     <dd>
@@ -251,8 +255,8 @@ const toc = [
     <dt>GitHub only as a last resort.</dt>
     <dd>
       The code is read here, beside the paper: a paper's page opens on the reader, and the listing's code links lead
-      to it. The forge is the source of truth and is always linked, but last — for what {SITE_NAME} may not copy, and
-      to check the original. Nothing depends on one forge: GitLab, Codeberg, Zenodo, OSF and the others are read the
+      to it. The forge is the source of truth and is always linked, but last — for what the reader cannot show, and to
+      check the original. Nothing depends on one forge: GitLab, Codeberg, Zenodo, OSF and the others are read the
       same way. And the registry asks GitHub for no permission: sign-in with GitHub requests no scope, and the badge is
       added by the author in GitHub's own editor.
     </dd>
@@ -299,9 +303,10 @@ const toc = [
   <h2 id="who">Who runs it</h2>
   <p>
     {SITE_NAME} is run by one independent operator{OPERATOR_NAME ? `, ${OPERATOR_NAME}` : ""}, who develops it, runs
-    its harvester and decides what a machine cannot. No institution, company, publisher or funder is behind it,
-    and it is affiliated with none of the services it reads or publishes to (Europe PMC, Crossref, DataCite, OpenAlex,
-    Zenodo, Hugging Face, Cloudflare, ORCID, GitHub, Google). Its source code is public under the Apache-2.0 licence:{" "}
+    its harvester, and reviews, when available, what the published rules of its{" "}
+    <PageLink href="/policies/moderation/">moderation</PageLink> cannot decide. No institution, company, publisher or
+    funder is behind it, and it is affiliated with none of the services it reads or publishes to (Europe PMC, Crossref,
+    DataCite, OpenAlex, Zenodo, Hugging Face, Cloudflare, ORCID, GitHub, Google). Its source code is public under the Apache-2.0 licence:{" "}
     <a href={SOURCE_URL}>{SOURCE_URL.replace(/^https:\/\//, "")}</a>. The operator's name and address are given on the{" "}
     <a href="/privacy/#controller">privacy page</a>.
   </p>
@@ -327,7 +332,7 @@ const toc = [
   <dl class="terms">
     <dt>Public</dt>
     <dd>
-      <a href="https://huggingface.co/datasets/OpenScientificCodeRegistry/Database">OpenScientificCodeRegistry/Database</a>
+      <a href="https://huggingface.co/datasets/OpenScientificCodeRegistry/Database">OpenScientificCodeRegistry/Database</a>{" "}
       on Hugging Face: the authors' scripts under verified licences, each file under its repository's licence, as Parquet
       blocks with one manifest per repository. The <a href={SOURCE_URL}>source code</a>, Apache-2.0. The tracing maps
       deposited on Zenodo, CC0-1.0. And the site itself: every record it shows is a public JSON file
@@ -373,8 +378,12 @@ const toc = [
     <li><strong>Test services.</strong> While the platform is built, sign-in with ORCID may use ORCID's sandbox and map
       deposits go to Zenodo's sandbox, whose DOIs are not real; such validations are recorded as tests and never
       published.</li>
-    <li><strong>Not built yet:</strong> deleting one's account from the site, discussions, reproduction reports, moderation
-      in the site (the operator decides requests meanwhile), and notifications beyond the account page.</li>
+    <li><strong>Moderation.</strong> There is no human moderator on duty: published rules decide removal requests,
+      submissions and claims, on the operator's computer. What they cannot decide waits for the operator,{" "}
+      {REVIEW_DAYS} days at most, and is then closed (<PageLink href="/policies/moderation/">how requests are
+      decided</PageLink>).</li>
+    <li><strong>Not built yet:</strong> deleting one's account from the site, discussions, reproduction reports, and
+      notifications beyond the account page.</li>
     <li><strong>Address.</strong> The site lives at its free <code>workers.dev</code> address until a domain of its own,
       before the public launch.</li>
   </ul>
@@ -398,7 +407,9 @@ const toc = [
       OpenAlex enrichment; a fixed budget of files whatever the catalogue's size; each paper's page opens on the
       Code ↔ Paper reader, with PubMed Central as a second source of the paper's text.</dd>
     <dt>29 September 2026</dt>
-    <dd>The removal request page; these information pages, the logo, and the preparation of the public launch.</dd>
+    <dd>The removal request page; the automatic moderator and its published rules; the scripts whose licence allows no
+      copy shown from their source by the reader's browser; these information pages, the logo, and the preparation of
+      the public launch.</dd>
   </dl>
 
   <h2 id="contact">Feedback and contact</h2>
@@ -408,7 +419,7 @@ const toc = [
       <a href="/help/correct/">Contribute section</a>, signed in;</li>
     <li>to ask for something to be removed, the <a href="/help/removal/">removal request</a>;</li>
     <li>to add a paper, <a href="/submit/">submit it</a>;</li>
-    <li>about the software, an idea or a bug, an issue on the <a href={`${SOURCE_URL}/issues`}>project's GitHub</a>
+    <li>about the software, an idea or a bug, an issue on the <a href={`${SOURCE_URL}/issues`}>project's GitHub</a>{" "}
       (public); a security problem, privately through <a href={`${SOURCE_URL}/security/advisories/new`}>GitHub's
       security advisories</a>.</li>
   </ul>

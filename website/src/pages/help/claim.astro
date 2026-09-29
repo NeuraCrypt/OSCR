@@ -1,9 +1,10 @@
 ---
 // Help: claiming authorship (docs/ACCOUNTS.md, "Author verification"; docs/CONTRIBUTIONS.md,
-// "Claim").
+// "Claim" and "Moderation"; the automatic moderator's rules: oscr/moderation.py, /policies/moderation/).
 import Info from "../../components/Info.astro";
 import PageLink from "../../components/PageLink.astro";
 import { SITE_NAME } from "../../config";
+import { REVIEW_DAYS } from "../../lib/moderation";
 
 const toc = [
   { id: "automatic", text: "When your ORCID iD is on the paper" },
@@ -14,15 +15,15 @@ const toc = [
 ---
 <Info
   title="Claiming authorship"
-  description={`How an author of a paper becomes its verified author on ${SITE_NAME}: automatically with ORCID, or by a claim the operator reviews.`}
+  description={`How an author of a paper becomes its verified author on ${SITE_NAME}: automatically with ORCID, or by a claim that published rules verify.`}
   group="help"
   path="/help/claim/"
   parents={[{ text: "Help", href: "/help/" }]}
   toc={toc}
 >
   <p class="lead" slot="lead">
-    Being a paper's <strong>verified author</strong> on {SITE_NAME} lets you correct its links and validate its tracing
-    map. Most authors become one without asking anything.
+    Being a paper's <strong>verified author</strong> on {SITE_NAME} lets you correct its links, validate its tracing
+    map, and have your removal requests applied at once. Most authors become one without asking anything.
   </p>
 
   <h2 id="automatic">When your ORCID iD is on the paper</h2>
@@ -39,21 +40,32 @@ const toc = [
     If you are an author but the paper's metadata does not carry your iD — many papers list only some of them — open the
     paper's page, signed in, and use "Claim this paper" in its Contribute section: say why you are one of its authors
     (1,000 characters at most, no email address) and, if you can, give a page that shows it (your lab's page, your ORCID
-    record listing the paper). The claim waits for the operator; your account page shows it.
+    record listing the paper). Your account page shows the claim and its answer.
   </p>
 
   <h2 id="decided">How a claim is decided</h2>
   <p>
-    The operator reads each claim and accepts it — you then become a verified author of the paper, a role the automatic
-    check never takes back — or refuses it, with a few words you read on your account page. Until moderation is part of
-    the site, claims are decided by hand, one by one; how they are reviewed is the{" "}
-    <PageLink href="/policies/moderation/">moderation policy</PageLink>'s subject. At most 20 claims may wait at once for an account, and 10 author claims may be
-    sent a day.
+    By published rules (<PageLink href="/policies/moderation/">the moderation policy</PageLink>), which {SITE_NAME}'s
+    machine applies within minutes. A claim is <strong>verified</strong> when the paper lists your ORCID iD among its
+    authors, or when Crossref's automatic update has put the paper in your ORCID record — which it does once the paper's
+    publisher deposited your iD with it. A waiting claim is checked again every day. You then become a verified author of
+    the paper, a role the automatic check never takes back. Link your ORCID identity to your account: the rules look for
+    the paper in that iD's record.
   </p>
+  <ul>
+    <li>A work you added to your ORCID record yourself, or through a search tool, proves nothing: anyone can add any
+      paper. Nor does a statement or a web page, which the operator alone reads.</li>
+    <li>Otherwise the claim waits for the operator, who may accept it. There is no human moderator on duty at the moment:
+      a claim not verified within {REVIEW_DAYS} days is closed, with how to claim again; claimed again, it is checked
+      again. What the operator decided stays decided.</li>
+    <li>The operator may also take back a role the rules granted by mistake.</li>
+  </ul>
+  <p>At most 20 claims may wait at once for an account, and 10 author claims may be sent a day.</p>
 
   <h2 id="maintainer">Maintainers of the code</h2>
   <p>
     Maintaining a paper's code is a different role, proven with the forge rather than the paper: see{" "}
-    <a href="/help/accounts/#roles">roles</a>. A maintainer may correct what the record says of their repository.
+    <a href="/help/accounts/#roles">roles</a>. A maintainer who owns the repository, or is a public member of its
+    organization, may correct what the record says of it; a contributor may not.
   </p>
 </Info>

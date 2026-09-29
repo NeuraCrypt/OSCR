@@ -30,13 +30,14 @@ const toc = [
   <h2 id="only">Only for maps an author validated</h2>
   <p>
     A DOI is assigned <strong>only</strong> to a tracing map validated by an author of the paper, signed in with the ORCID
-    iD the paper lists (or whom the operator verified as an author). A map the harvester proposed never receives one, nor
-    does any record the machine generated: no DOI for a paper's page, a repository, a script or a match.
+    iD the paper lists (or whose claim of authorship was verified: <a href="/policies/moderation/#claims">how</a>). A map
+    the harvester proposed never receives one, nor does any record the machine generated: no DOI for a paper's page, a
+    repository, a script or a match.
   </p>
 
   <h2 id="covers">What the DOI covers</h2>
   <p>
-    The map: its links and metadata, in one file, <code>tracing-map.json</code>
+    The map: its links and metadata, in one file, <code>tracing-map.json</code>{" "}
     (<a href="/help/maps/#holds">what it holds</a>). Not the authors' code, which is never deposited again: it stays in
     its repository, which the map references at the validated commit. Not the paper, which has its own DOI.
   </p>

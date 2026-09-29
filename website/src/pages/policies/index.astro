@@ -5,6 +5,7 @@
 import Info from "../../components/Info.astro";
 import { SITE_NAME } from "../../config";
 import { pageExists, POLICIES } from "../../lib/info";
+import { REVIEW_DAYS } from "../../lib/moderation";
 ---
 <Info
   title="Policies"
@@ -31,10 +32,12 @@ import { pageExists, POLICIES } from "../../lib/info";
   <ul>
     <li><strong>The source prevails.</strong> The registry records and links; the paper and the repository are the
       reference.</li>
-    <li><strong>Licences first.</strong> Nothing is copied or shown beyond what its licence allows.</li>
+    <li><strong>Licences first.</strong> Nothing is copied or reproduced beyond what its licence allows: code whose
+      licence allows no copy is shown from its source by the reader's browser, never from a copy.</li>
     <li><strong>No email address</strong> is asked for, shown or needed to use any part of the registry.</li>
-    <li><strong>A person decides</strong> what a machine cannot: claims it cannot settle, submissions by non-authors, and
-      every removal.</li>
+    <li><strong>Published rules decide</strong> what people ask, in the safe direction: hiding is automatic when in
+      doubt, publishing needs a verified identity or checks that pass. The operator reviews what the rules cannot
+      decide, can reverse what they did, and nothing waits more than {REVIEW_DAYS} days.</li>
     <li><strong>Zero cost</strong>, for readers and for the registry: no fee, no advertising, no tracking.</li>
   </ul>
 </Info>

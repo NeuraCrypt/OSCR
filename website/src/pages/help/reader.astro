@@ -1,9 +1,12 @@
 ---
 // Help: the Code ↔ Paper reader (src/components/paper/Reader.astro, src/scripts/reader*.ts;
-// docs/ARCHITECTURE.md, "The Code ↔ Paper reader").
+// docs/ARCHITECTURE.md, "The Code ↔ Paper reader"; a file shown from its source: src/lib/source.ts).
 import Info from "../../components/Info.astro";
 import PageLink from "../../components/PageLink.astro";
 import { SITE_NAME } from "../../config";
+import { SOURCE_MAX_BYTES } from "../../lib/source";
+
+const limit = `${SOURCE_MAX_BYTES / 1_000_000} MB`;
 
 const toc = [
   { id: "panes", text: "Two panes" },
@@ -98,12 +101,14 @@ const toc = [
   <h2 id="files">The files, and the tools of a file</h2>
   <ul>
     <li><strong>Files</strong> opens or closes the list of the code's files: the matched files first, then the
-      repository's folders, with a filter. A file without a copy here is in italics.</li>
+      repository's folders, with a filter. A file that cannot be shown here — neither copied nor shown from its source —
+      is in italics.</li>
     <li><strong>Wrap</strong> wraps long lines instead of scrolling sideways.</li>
     <li><strong>Copy</strong> copies the whole file; line numbers are never part of what you copy.</li>
     <li><strong>Link</strong> copies a link to the file, or to the lines you selected: click a line number, and
       Shift-click another for a range.</li>
-    <li><strong>Raw</strong> downloads the file as {SITE_NAME} keeps it.</li>
+    <li><strong>Raw</strong> downloads the file as it is shown: {SITE_NAME}'s copy, or what your browser fetched from its
+      source.</li>
     <li><strong>⋯</strong> links to the file and to its repository at the source, at the verified commit, and says why.</li>
   </ul>
   <p>
@@ -113,11 +118,21 @@ const toc = [
 
   <h2 id="source">A copy, or the source</h2>
   <p>
-    A file's text is shown from {SITE_NAME}'s copy only when its repository's licence allows it. Otherwise the reader
-    lists the file, says why its text is not here, and links to it — and to the exact lines of each match — at the
-    source, at the verified commit. The rules, and where each copy is read from, are in the{" "}
-    <PageLink href="/policies/code/">code policy</PageLink>. A file may also be withheld at a removal request; the reader
-    says so.
+    A file's text is shown from {SITE_NAME}'s copy only when its repository's licence allows it. Otherwise{" "}
+    {SITE_NAME} keeps no copy, and <strong>your browser</strong> fetches the file from where its authors published it, at the
+    verified commit or record — GitHub, GitLab.com, Bitbucket, Codeberg, Hugging Face or Zenodo, or Software Heritage for
+    the other forges and for a file inside a Zenodo archive. It checks that the file's SHA-256 fingerprint is the one{" "}
+    {SITE_NAME} computed, hides its email addresses, and only then shows it and draws its matches, under a notice that
+    says where it comes from and that no copy is kept. Without JavaScript, it is not fetched.
+  </p>
+  <p>
+    A file whose fingerprint differs, that does not answer, is larger than {limit} or is not text, is not shown: the
+    reader says why in words and links to it — and to the exact lines of each match — at the source. So do the files of
+    hosts that do not let another site's page read them (OSF, PubMed Central's supplementary files). These requests go
+    from your browser to the host directly: it sees your address, as when you open the file there
+    (<a href="/privacy/#browser">the privacy page</a>). The rules are in the{" "}
+    <PageLink href="/policies/code/">code policy</PageLink>. A file may also be withheld at a removal request: the reader
+    says so, and fetches nothing.
   </p>
 
   <h2 id="phone">On a phone</h2>

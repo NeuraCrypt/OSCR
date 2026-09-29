@@ -6,6 +6,9 @@ import PageLink from "../../components/PageLink.astro";
 import { SITE_NAME } from "../../config";
 import { number } from "../../lib/format";
 import { STATIC_PAPERS } from "../../lib/shards";
+import { SOURCE_MAX_BYTES } from "../../lib/source";
+
+const limit = `${SOURCE_MAX_BYTES / 1_000_000} MB`;
 
 const toc = [
   { id: "readers", text: "For readers" },
@@ -35,7 +38,7 @@ const toc = [
 
     <dt>Why is a paper missing?</dt>
     <dd>Either it is not open access in Europe PMC, or the harvest has not reached its month yet, or it is not
-      neuroscience, or it has no code and no data link (then it has no page, but the <a href="/lookup/">DOI lookup</a>
+      neuroscience, or it has no code and no data link (then it has no page, but the <a href="/lookup/">DOI lookup</a>{" "}
       knows it). You can <a href="/submit/">submit it</a>.</dd>
 
     <dt>The paper has code, but {SITE_NAME} says "no code". Why?</dt>
@@ -48,10 +51,17 @@ const toc = [
       the page gives. Not that the code runs, nor that it reproduces the paper: that is for readers — and, one day, for
       reproduction reports.</dd>
 
-    <dt>Why do I see "Read it at the source" instead of the code?</dt>
+    <dt>Why is a file "shown from its source"?</dt>
     <dd>Because its repository's licence does not allow {SITE_NAME} to republish it (or it has no licence, which means all
-      rights reserved). The reader then links to the file, at the exact commit and lines
+      rights reserved). {SITE_NAME} keeps no copy: your browser fetches the file from where its authors published it, at
+      the verified commit, and shows it only when its fingerprint is the one {SITE_NAME} verified
       (<PageLink href="/policies/code/">the code policy</PageLink>).</dd>
+
+    <dt>Why do I see "It can be read at the source" instead of the code?</dt>
+    <dd>Because the file cannot be shown here, and the reader says why — for instance: its host does not let another
+      site's page read it (OSF, PubMed Central's supplementary files), the file your browser received was not the one
+      verified, it is larger than {limit} or not text, it was withheld at a removal request, or JavaScript is off. It
+      links to the file at the exact commit, and to the lines of each match.</dd>
 
     <dt>Where does the paper's text in the reader come from?</dt>
     <dd>From Europe PMC, fetched by your own browser when you open the reader; if Europe PMC fails, from PubMed Central's
@@ -93,9 +103,12 @@ const toc = [
     <dd>No. The DOI is on the map (links and metadata), never on your code. Copies of scripts are kept only when your
       licence allows redistribution, each with its licence, and the source always prevails.</dd>
 
-    <dt>Can I stop {SITE_NAME} from copying my scripts?</dt>
-    <dd>Ask for the removal of the copies (all of a paper's, one repository's, or one file's): the text leaves the site and
-      the open dataset at the next nightly publication, while the files stay listed with links to your repository.</dd>
+    <dt>Can I stop {SITE_NAME} from copying or showing my scripts?</dt>
+    <dd>Ask for the removal of the copies (all of a paper's, one repository's, or one file's): at the next nightly
+      publication the text leaves the site and the open dataset, and a file {SITE_NAME} does not copy is no longer shown
+      from its source, while the files stay listed with links to your repository. Signed in with the ORCID iD the paper
+      lists, or as the repository's owner (or a public member of its organization) on GitHub, your request is applied
+      without waiting (<PageLink href="/policies/moderation/">how requests are decided</PageLink>).</dd>
 
     <dt>Will you email me?</dt>
     <dd>No. {SITE_NAME} sends no email and has no mailing list; answers come back in the site. It does not mass-email
@@ -129,8 +142,8 @@ const toc = [
 
     <dt>Does the site track me?</dt>
     <dd>No analytics, no advertising, no third-party tracker. Cookies only when you sign in; your browser remembers the
-      reader's display choices locally. The reader's browser contacts Europe PMC or NCBI to fetch a paper
-      (<a href="/privacy/">the privacy page</a>).</dd>
+      reader's display choices locally. The reader's browser contacts Europe PMC or NCBI to fetch a paper, and the host of
+      a file shown from its source to fetch that file (<a href="/privacy/#browser">the privacy page</a>).</dd>
 
     <dt>Does {SITE_NAME} hold my email address anyway?</dt>
     <dd>If you are an author, perhaps: when a paper publishes its authors' contact details, the operator keeps them
