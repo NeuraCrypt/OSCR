@@ -191,6 +191,11 @@ masked for email addresses before it is stored.
 
 ## What it costs (PLATFORM_PLAN §15.4: ~350 requests, ~550 rows written, ~20,000 read a day)
 
+Phase 08 adds the events of the in-site inbox ([SOCIAL.md](SOCIAL.md)): a research issue opened writes
+5 rows (its event and the author's follow of the thread), a comment 4 (5 for a first comment on the
+thread), a close or reopen 3; a GitHub issue opened through the registry 3 (its event, the thread
+followed), a comment 2.
+
 | step | Worker | D1 | GitHub (the reader's anonymous quota, 60 an hour) |
 |---|---|---|---|
 | the list | 0 signed out; 1 signed in (the research issues) | ≤ ~1,000 read (10 papers × 100) | the list (1), labels (1), milestones (1, when needed); the search (1 of 10 a minute) |

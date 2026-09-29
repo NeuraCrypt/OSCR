@@ -207,6 +207,10 @@ every kind (the owner only until phase 16), the file route included. Migrations
 
 ## What it costs (PLATFORM_PLAN §15.4: ~150 requests, ~100 rows written, ~2,000 read a day)
 
+Phase 08 adds the events of the in-site inbox ([SOCIAL.md](SOCIAL.md)): a release published writes its
+event (1 row), a release tied to a paper's version its event under the paper (1 row): `release_create`
+tied and published is 7 rows.
+
 | step | Worker | D1 | GitHub (the reader's anonymous quota, 60 an hour) |
 |---|---|---|---|
 | the list | 0 signed out; 1 signed in (the shell's layer) | the layer's reads | the releases (1), the latest (1) |

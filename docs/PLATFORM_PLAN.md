@@ -770,6 +770,9 @@ by what researchers use daily, then by cost.
 | 16 | 15 Ease of use | shortcuts, palette, themes, phones. The accessibility baseline is in every phase already (`NIGHT_RUN.md` §4) |
 
 **Execution order:** 01 → 02 → 03 → 04 → 05 → 07 → 16 → 08 → 10 → 14 → 11 → 09 → 06 → 12 → 13 → 15.
+**Changed by the owner on 2026-09-29:** after 07 come 08 and then 10; phase 16 runs later. What 08 and
+10 add stays behind `FORGE_OPEN` (the owner only) until 16, which will cover their objects
+(DECISIONS.md D08-17).
 - **01 comes first**: every other phase reads or writes repositories through its forge service
   and `GitBackend` (built in phase 00).
 - **The rest follows the value order, with one change**: 03 runs before 04, because 04's

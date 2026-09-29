@@ -39,7 +39,9 @@ from "Next step".
 | 04 Forks and pull requests | night/phase-04-pull-requests | **done** 2026-09-29, pushed (7 commits: E1 to E6, the close) |
 | 05 Issues | night/phase-05-issues | **done** 2026-09-29, pushed (8 commits: E1 to E6, the close in two parts) |
 | 07 Releases, packages and environments | night/phase-07-releases | **done** 2026-09-29, pushed (10 commits: E1 to E6, E4's fixes after the browser, the close in three parts) |
-| 16 Content, abuse and rules | night/phase-16-content-rules | next: branch created from night/phase-07-releases |
+| 08 Social, discovery, notifications and search | night/phase-08-social | **done** 2026-09-29, pushed (7 commits: E1 to E5, the close in two parts) |
+| 10 Automation and integrations | night/phase-10-automation | next: branch created from night/phase-08-social |
+| 16 Content, abuse and rules | night/phase-16-content-rules | later (the owner's order change): its branch, created from night/phase-07-releases, holds nothing yet; phase 16 will be rebuilt on the last phase before it |
 
 ## Phase 00: what it produced
 
@@ -244,14 +246,49 @@ from "Next step".
   22; build 46 pages, 235 files (no file per release); `check --every-route` ok; strict `tsc` clean
   (worker and tests; page scripts); the end-to-end run: every check passed (131).
 
+## Phase 08: what it produced
+
+- **The order changed** (the owner, 2026-09-29): after 07 come 08 and then 10; phase 16 (content,
+  abuse and rules) runs later. What 08 adds stays behind `FORGE_OPEN` (writes answer only to the owner),
+  and D08-17 lists what phase 16 must cover of it.
+- The social core (E1): `migrations/d1-forge/0008_social.sql` (stars, star lists and their entries,
+  follows and watch levels, events, notification states and marks, profiles; `actions` rebuilt with the
+  social kinds and a `subject`), `social-core.ts` and `social.ts` (GET `/api/forge/social`, `/mine`,
+  `/person`; POST `star`, `follow`, `list`, `profile`: 2 rows each), the caps `social` (300) and
+  `notices` (500) apart from the 100 authorized actions.
+- Events and the inbox (E2): `events.ts` (one row per event keyed by its subject; from the research
+  routes, the authorized actions and the App's webhooks — GitHub's codec reads `issues` and
+  `issue_comment` —; one event per act whichever way it lands, by GitHub's object), `inbox.ts` (the
+  inbox computed on read, states per thread, the feed, a person's activity and milestones).
+- The Mac (E3): `oscr/social.py`, `oscr social layer|search|collections|accept|decline`, `oscr nightly`:
+  64 social shards (counts, stargazers, public profiles), `social/explore.json` (trending, curated
+  topics, collections); the build copies and checks them.
+- One search (E4): `forge_fts` in `oscr_search` (`migrations/d1/search/0002_forge.sql`), `GET
+  /api/search?type=repositories|issues|people|topics` (`worker/forge-search.ts`), the push from the
+  public static files; the search page's types, the masthead's type, GitHub's issues and commits of one
+  repository in the reader's browser, code at the source, a DOI to its paper.
+- The pages (E5): `/notifications/`, `/stars/`, `/u/<login or ORCID iD>/` (ONE shell), `/feed/`,
+  `/explore/`, `/social/authors/NN.json`; Star, Watch and Follow on the repository shell, a paper's page
+  and an author's page; `src/lib/social.ts` (filters, BibTeX and RIS, the calendar, the identicon).
+- The close: the end-to-end run's phase 08 checks (161 in all, every one passed: a star, an author
+  followed by ORCID iD, a watch, Bob's comment by webhook into Ada's inbox, marked read, Bob refused,
+  then the Mac's night and the search); the security review (`sitePath`, Origin and CSRF on every
+  route, tested); docs `docs/SOCIAL.md`, `FORGE.md`, `ARCHITECTURE.md`, `SEARCH.md`, `ISSUES.md` and
+  `RELEASES.md` (the rows phase 08 adds), decisions D08-1 to D08-18; screenshots
+  `docs/night-screenshots/phase-08/` (42: desktop and phone).
+- Tests at the close: pytest 489 passed; ruff clean; `npm test` 1,225 passed under Node 26 and Node 22;
+  build 51 pages, 318 files with the fixture (7 pages and 64 author shards added; the nightly `social/`
+  files add 65 with a real export); `check --every-route` ok; strict `tsc` clean (worker and tests;
+  page scripts); the end-to-end run: every check passed (161).
+
 ## Next step
 
-Phase 16, content, abuse and rules, on branch `night/phase-16-content-rules` (created from
-`night/phase-07-releases`): follow `docs/PLATFORM_PLAN.md` §15.6 "Phase 16" (the execution order of
-§15.5: 01 → 02 → 03 → 04 → 05 → 07 → 16 → 08 …). It is the gate: without it, nothing written in OSCR
-opens to the public (`FORGE_OPEN` stays unset until it is merged and the owner says so). What it covers
-of the phases before it: the research issues' texts and comments (phase 05), the releases' notes and
-files (phase 07: files are GitHub's, the registry passes them through `POST /api/forge/asset`, up to
-25 MiB; phase 16's known-malware checks and moderation apply to what the registry shows), the
-per-account limits of every write route. The owner's actions are in `docs/NIGHT_REPORT.md` §2; until
-the App exists, everything runs against the fake GitHub and the in-memory double.
+Phase 10, automation and integrations, on branch `night/phase-10-automation` (created from
+`night/phase-08-social`): follow `docs/PLATFORM_PLAN.md` §15.6 "Phase 10" (the order, changed by the
+owner on 2026-09-29: 01 → 02 → 03 → 04 → 05 → 07 → 08 → 10, then phase 16 later). OSCR's checks that
+run no code on every pull request, the researcher's CI results, the public API over OSCR's layer (the
+objects of 01–08: repositories and their papers, pull requests' research layer, issues, releases'
+paper versions, notifications, stars, search), webhooks and paper webhooks, integrations. `FORGE_OPEN`
+stays unset: phase 16 will cover what 08 and 10 add (D08-17). The owner's actions are in
+`docs/NIGHT_REPORT.md` §2; until the App exists, everything runs against the fake GitHub and the
+in-memory double.

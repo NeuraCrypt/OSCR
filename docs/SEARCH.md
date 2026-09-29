@@ -370,3 +370,14 @@ removes one.
   root) should be applied in `d1.project` too, so that the facet matches the Datasets pages.
 - **Next**: entity pages rendered on demand from `oscr_catalog` (Phase 4, `STATIC_MAX`); saved
   searches and their feeds (Phase 7–8); a `/search/help/` page.
+
+## 9. The GitHub side's search (night phase 08)
+
+`oscr_search` gains `forge_fts` (`migrations/d1/search/0002_forge.sql`): the repositories the registry
+knows, its research issues, the people whose profile is public and the topics, pushed by the Mac from
+the night's public static files (`oscr social search`, and `oscr nightly` with `OSCR_D1_PUSH=remote`).
+`GET /api/search?type=repositories|issues|people|topics` reads it (`website/worker/forge-search.ts`);
+without `type`, or with `type=papers`, this page's search is unchanged. The details, the query's
+qualifiers and GitHub's issues and commits searched in the reader's browser: [SOCIAL.md](SOCIAL.md)
+"Search". The remote database needs the migration applied (`npx wrangler d1 migrations apply
+oscr_search --remote`, or `sh tools/setup_cloudflare.sh`).

@@ -9,7 +9,9 @@ action kinds, the pull request pages, conflicts resolved in the browser) in
 registry's own research issues and their routes, the issue pages, the `/research/` shell) in
 [ISSUES.md](ISSUES.md), phase 07's releases, packages and environments (ten action kinds, the file
 route, the tie of a release to a paper's version, the Mac's `release` and `deposit` jobs, the release
-pages) in [RELEASES.md](RELEASES.md). This
+pages) in [RELEASES.md](RELEASES.md), phase 08's social layer (stars, lists, follows and watch levels,
+profiles, the events and the in-site inbox, the feed, Explore, the search of the registry's objects) in
+[SOCIAL.md](SOCIAL.md). This
 page is the contract the parts of phase 01 build on: the routes, the authorized actions and their
 payloads, the rows each writes, the caps, the switch `FORGE_OPEN`, the pages, the static layer,
 the Mac's jobs and the budget. The decisions behind it: [DECISIONS.md](DECISIONS.md) D00-1 to
@@ -57,6 +59,16 @@ the accounts set up (`COMMUNITY` and `SESSION_KEY`, else 503 `not_configured`).
 | `POST /api/forge/research/open` | signed in; Origin and CSRF; `FORGE_OPEN` | a new research issue (`{paper, repo \| code, type, title, …}`) → `{id, page}` (201) | 3 rows: the row, its index entry, the action row | phase 05 |
 | `POST /api/forge/research/comment` | signed in; Origin and CSRF; `FORGE_OPEN` | a comment, its edit, its deletion or hiding | 3 rows for a comment, 2 otherwise | phase 05 |
 | `POST /api/forge/research/edit` | signed in; Origin and CSRF; `FORGE_OPEN` | title, text, close with a reason and a research resolution, reopen, labels, lock, pin | 2 rows | phase 05 |
+| `GET /api/forge/social`, `…/social/mine`, `…/social/person`, `…/social/inbox`, `…/social/feed`, `…/social/activity` | signed in | phase 08: the buttons' state, the reader's own stars, lists, follows and profile, a person's public profile, the in-site notifications (computed on read), the feed, a person's activity ([SOCIAL.md](SOCIAL.md)) | reads by the person's key, 0 written | phase 08 |
+| `POST /api/forge/social/star`, `…/follow`, `…/list`, `…/profile`, `…/notices` | signed in; Origin and CSRF; `FORGE_OPEN` | phase 08: a star, a follow or watch level, a star list, the profile, notifications' states | 2 rows each (a notices change: 1 per thread + 1) | phase 08 |
+
+Phase 08 adds rows to earlier routes: a research issue opened also writes its event and the author's
+follow of the thread (5 rows), a comment its event (4, or 5 for a first comment on the thread), a close
+or reopen its event (3); every authorized action on a repository the registry knows writes its events
+(an issue or pull request opened, commented, reviewed, closed, merged; a release published; code linked
+to a paper; a release tied to one: 1 row each, and 1 for a thread newly followed); a webhook's
+`issues`, `issue_comment`, `pull_request` and `release` deliveries write one event with their delivery
+row (2). An action and GitHub's webhook for the same act make one event (SOCIAL.md, D08-6).
 
 `start`'s body (`src/lib/forge.ts` `apiStart` builds it):
 - `kind`: an action kind (below);
@@ -201,6 +213,7 @@ repositories only.
 | `research_comments` | (issue_id, n) | phase 05: a research issue's comments in order; a deleted one keeps its row, empty; a hidden one its reason | the Worker |
 | `release_papers` | (forge, repo_id, tag, paper_id) | phase 07: a release tied to a version of a paper: the release's id, the repository's path, the version and its label, the commit the tag named, the digest of the map the person saw (the Mac answers the version's), `linked` or `proposed`, who (never answered) | the Worker; the Mac answers the digest |
 | `repo_packages` | (forge, repo_id, registry, name) | phase 07: a package the manifests declare, confirmed or declined by a person who may push: the version and the manifest they said | the Worker |
+| `stars`, `star_lists`, `star_list_items`, `follows`, `events`, `notice_state`, `notice_marks`, `profiles` | the person's key; an event (subject, at, nonce) | phase 08 (`0008_social.sql`, no index): the social layer ([SOCIAL.md](SOCIAL.md)); `actions` rebuilt with the social kinds and a `subject` | the Worker; the Mac reads them each night, and decides collections |
 
 - A repository made private on GitHub leaves OSCR: state `hidden`, its owner and name blanked
   (D00-14); nothing finds it by path.
@@ -223,7 +236,7 @@ repositories only.
 | `COMMIT_FILES` | 100 | files in one web commit (phase 03) |
 | `PR_FILES_CHECKED` | 300 | files OSCR's pull-request check reads (phase 04) |
 | `FORGE_ROWS_PER_DAY` | 5,000 | the forge service's D1 writes in a UTC day, inside the Worker's 10,000, until the owner confirms C3 |
-| per account, 24 hours | 100 authorized actions (the research writes included), 10 repositories created, 20 linked, 20 research issues opened | abuse, and the rows |
+| per account, 24 hours | 100 authorized actions (the research writes included), 10 repositories created, 20 linked, 20 research issues opened; phase 08: 300 social writes and 500 notification changes, counted apart from the 100 | abuse, and the rows |
 | `GRACE_SECONDS` | 30 days | a deletion's grace period (D00-10) |
 | `FLOW_SECONDS` | 10 minutes | the flow cookie |
 
@@ -408,7 +421,14 @@ Mac's `oscr forge poll --local --instance sandbox`, offline, its Zenodo the mock
 (`OSCR_ZENODO_SANDBOX_URL`), and the checks of its answers (the map versioned with the release, the
 deposit made on the mock: a new version of the map's record, the tag as its version, the code not
 deposited). The fake also starts with releases (`seedReleases`). The fake starts with a CODEOWNERS file, an issue, and Bob's pull request from
-his fork, reviewed with a suggestion (`tests/forge/fake-github-seed.ts` `seedPulls`). A test browser that shows the
+his fork, reviewed with a suggestion (`tests/forge/fake-github-seed.ts` `seedPulls`). Phase 08's checks:
+the social pages are static; Ada stars the repository, follows an author by ORCID iD before an account,
+watches the repository and writes her profile (2 rows each); Bob's comment on GitHub, delivered by the
+App's webhook, is one event row with its delivery row and a notification in Ada's inbox (she is
+mentioned), which she marks read (2 rows); Bob's star and follow are refused; then the Mac's night on
+the local databases (`oscr forge layer`, `oscr social layer`, `oscr social search`, `oscr_search`
+migrated) and the search of repositories, research issues and people, and the static social shards
+(`e2e.ts after-social`). 161 checks in all. A test browser that shows the
 `/r/` pages against the fake needs the Content-Security-Policy bypassed for them (it allows
 GitHub's own hosts, not the fake's): the screenshots in `docs/night-screenshots/phase-01/` were
 taken so, in headless Chrome only.

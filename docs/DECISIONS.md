@@ -1876,3 +1876,197 @@ a release with her notes and GitHub's, tied to the accepted manuscript with its 
 Heritage and Zenodo; checks tags, drafts and a package; refuses Bob's release and file; then runs the
 Mac's forge poll offline against the mock sandbox and checks the map versioned and the deposit made.
 The screenshots' browser blocks every outside address.
+
+## Phase 08: social, discovery, notifications and search (2026-09-29)
+
+Built on `night/phase-07-releases`, before phase 16 (the owner's order change of 2026-09-29): every
+write stays behind `FORGE_OPEN`, and D08-17 lists what phase 16 must cover. The contract is
+[SOCIAL.md](SOCIAL.md).
+
+### D08-1. The social layer is the registry's own, in `oscr_forge`; no new database
+
+**Decision.** Stars, star lists, follows and watch levels, profiles, events and notification states are
+rows of D1 `oscr_forge` (`migrations/d1-forge/0008_social.sql`: eight tables, no index), written by
+the person, signed in, one write at a time. OSCR never stars, follows or watches anything on GitHub.
+
+**Options compared.** A new D1 database (5 of 10 at most, one more migration path and binding, and the
+forge's caps would not see its rows); KV (not used, §15.4); GitHub's own stars and watches through the
+person's token (the token is never kept, D00-4, and GitHub's AUP §4 forbids automated starring).
+
+**Why.** The forge service's gate, caps and day's count apply as they are; zero cost; one write path.
+
+### D08-2. Subjects by durable ids; authors by ORCID iD, verified; a label is the person's own
+
+**Decision.** A repository is `repo:<forge>:<numeric id>` (a rename keeps its stars), a paper
+`paper:doi:10.…` (lower case, as `oscr_community` names papers), a topic GitHub's topic name. A follow
+names a person by their GitHub numeric id, a catalogue author by ORCID iD (its ISO 7064 check digit
+verified) before they have an account, an organization by `owner:<forge>:<login>`, a journal, tool,
+dataset or category by its catalogue id, a thread by `thread:<subject>#<thread>`. The label a page
+sent is shown on the person's own Stars page only; the public pages name subjects from the registry's
+own data.
+
+**Why.** A follow by ORCID iD is found again when the author signs in (their identity's key); a label
+is someone's text and never becomes the public name of a paper or a repository.
+
+### D08-3. Social writes are logged like actions, with caps of their own
+
+**Decision.** Each write batch carries its action row (kinds `star`, `star_list`, `follow`, `notice`,
+`profile`; `actions` gains `subject`, what the write was about). Per account and 24 hours: 300 social
+writes and 500 notification changes, counted apart from the 100 authorized actions (a person who stars
+and reads keeps the right to act); totals of 3,000 stars, 2,000 follows, 32 lists of 300 entries. The
+day's 5,000 rows count them.
+
+**Why.** "Counted from the rows, with no counter row" (D01-11), and the global cap sees every row.
+
+### D08-4. No count row: counts, stargazers and public profiles are the Mac's nightly shards
+
+**Decision.** The Worker never counts stars, watchers or followers. The Mac reads the tables each night
+and writes `social/NN.json` (64 shards); a signed-in reader's buttons show last night's counts and
+their own live state.
+
+**Options compared.** A counter row per subject (a write per star on a hot row, and a count that
+drifts); an index per table for `count(*)` (a row more per write, and reads that grow with the
+counts).
+
+**Why.** 2 rows a star instead of 3–4; signed-out pages ask the Worker nothing.
+
+### D08-5. One event row per event, keyed by its subject; the inbox is fanned out on read
+
+**Decision.** `events (subject, at, nonce)`, WITHOUT ROWID, no index: a repository's or a paper's
+events are its key's prefix. The inbox reads the subjects its reader follows. A person's activity reads
+their action rows (their key), and each action's event by its subject, time and nonce (the action's
+own).
+
+**Why.** The plan's decision (§15.6): one row per recipient would multiply the writes by the watchers;
+no index keeps an event at 1 row.
+
+### D08-6. The same act seen twice is one event
+
+**Decision.** An authorized action and GitHub's webhook for the same act both name GitHub's object
+(`ref`: `comment:<id>`, `issue:<n>:opened`, `pull:<n>:merged`, `release:<tag>`…); each insert is
+conditional on no event of the same subject naming it by the same GitHub account within a day, so
+whichever lands first is the only one. Actions write their events on every repository the registry
+knows, alive; the research routes write theirs under the paper.
+
+**Options compared.** Writing actions' events only where the App is not installed (a repository linked
+before the installation still receives webhooks: duplicates); a window by (thread, kind, actor) (two
+comments of one person on one thread became one).
+
+### D08-7. GitHub's issues and comments reach the inbox as their title and the logins they name
+
+**Decision.** The codec maps `issues` (opened, closed, reopened) and `issue_comment` (created), and
+`pull_request` and `release` gain their title, author and mentions; the webhook writes one event, with
+its delivery row (D01-24's 2), for a public repository the registry follows, covered by the
+installation. The text itself is never kept; an email address is no mention.
+
+### D08-8. The inbox's scope and reasons
+
+**Decision.** At most 60 subjects (watched repositories at their level, watched papers, organizations'
+repositories — 30 each —, followed threads), the most recently followed first; 30 events each, 3 months
+back. The reader's own acts are no notification; a repository that left the registry drops its events;
+a paper's events never name a repository. Reasons: mentioned, the thread's author (by account or by
+GitHub id), took part (a thread followed on taking part), a watched repository (at its level, or its
+custom types), a watched paper, an organization. A mention reaches a reader within what they watch.
+
+**Why.** Bounded reads (≤ 1,800 rows an inbox at worst) within the plan's 200,000 a day; a mention
+outside what one watches would need a row per mention (deferred).
+
+### D08-9. A notification's state is per thread, and newer activity brings it back
+
+**Decision.** `notice_state (user, thread)`: read and done hold until newer activity; saved stays past
+the 3 months with the words it showed; "mark all as read" is one row (`notice_marks.read_before`), an
+explicit unread overrides it. Unsubscribe is a `thread:` follow at `ignore`.
+
+### D08-10. Filters and views in the browser: one request a view
+
+**Decision.** The inbox answers every thread (≤ 300); Inbox, Unread, Saved, Done, Read and GitHub's
+filters (`repo:`, `org:`, `author:`, `is:`, `reason:`, words) apply in the page (`src/lib/social.ts`);
+custom filters (15) are saved in the settings row.
+
+### D08-11. The feed reads the followed people's own action logs
+
+**Decision.** 14 days of each followed person's public acts (not their notification states, profile
+edits, lists or followed threads; nothing from a private profile), with their events; authors followed
+by ORCID iD are found by their identity once they sign in; the followed subjects' events; the new
+catalogue papers of followed authors from `/social/authors/NN.json`. "See less like this" hides a kind
+of event (the settings).
+
+### D08-12. People are named by their public handles; ONE shell for every profile
+
+**Decision.** A person's page is `/u/<GitHub login or ORCID iD>/`, one static shell
+(`public/_redirects`); the Worker finds a person by their GitHub numeric id (the page asks GitHub for a
+login's id, on the reader's quota) or their ORCID iD, never by an account's id, which is never answered.
+The picture is an identicon of table cells in one of eight hues by class (no image, no style
+attribute); the profile README is the `<login>/<login>` repository's, read raw in the browser and
+rendered by the registry's own renderer. A private profile keeps its activity, stars, lists and follows
+to its owner. No email address is asked for; a name loses its at signs; links are https without a user
+part.
+
+**Why.** The file budget (no file per person); the account's id is the registry's secret; GitHub's
+"private profile" semantics.
+
+### D08-13. Milestones in words; the calendar counts what was made in the registry
+
+**Decision.** Milestones are sentences from what the registry knows (papers with code in the registry
+through `verified_author` roles, the first map deposited, code linked, Software Heritage asked, a
+research issue opened), never badges. The calendar counts authorized actions and research writes (not
+stars, follows, notifications or profile edits) over a year read in four key ranges of the person's
+own actions (D1 binds 100 values a statement), and marks the person's publications from the catalogue.
+
+### D08-14. Explore is last night's file; topics curated in the code; collections decided by the owner
+
+**Decision.** `/social/explore.json`: the repositories and papers most starred in 7 days, the people
+most followed (public profiles only), the curated topics (`oscr/social.py FEATURED_TOPICS`, with
+aliases) then the starred ones, and the collections: public star lists their owner proposed and the
+registry's owner accepted (`oscr social collections|accept|decline`, 1 row).
+
+### D08-15. The static files: 64 social shards, 64 author shards, one Explore file
+
+**Decision.** `social/NN.json` (keys `repo:`, `paper:`, `topic:`, `person:`, `owner:`; NN the first
+byte of the key's SHA-256 mod 64, both sides checked on `tests/fixtures/social-shards.json`),
+`social/explore.json`, and `/social/authors/NN.json` built with the site from the catalogue. The build
+keeps only well-formed keys in their shard and scrubs addresses; the check refuses an address.
+
+**Why.** The file budget: 129 files whatever the number of people.
+
+### D08-16. One search: the registry's objects in `forge_fts`; GitHub's in the browser; code at the source
+
+**Decision.** `GET /api/search?type=repositories|issues|people|topics` reads ONE FTS5 table,
+`forge_fts` in `oscr_search`, pushed incrementally by the Mac from the night's public static files only
+(nothing reaches the index that the site does not show); papers stay the default type. GitHub's issues
+and commits are searched in the reader's browser for one repository (`repo:owner/name`), shown with
+links into the registry's pages; GitHub's code search needs a GitHub sign-in, so the page carries the
+query there and says why. A DOI typed alone goes to its paper.
+
+**Options compared.** Searching D1 `oscr_forge` by LIKE (scans); GitHub's search for every repository
+the registry knows (five operators a query); the inventory's `oscr_code` (a fifth D1 database and the
+push of 1.6–3.0 GB: the owner's decision, deferred).
+
+### D08-17. What phase 16 must cover of this phase
+
+Phase 16 runs after 08. It must bring to these objects:
+- **moderation**: profiles (name, bio, status, pronouns, links), star lists' names and descriptions,
+  collections (already the owner's decision), and the events' titles shown in inboxes and feeds; a
+  hidden account's stars, follows, lists, profile and events hidden retroactively (the shards, Explore,
+  the search, other people's inboxes and feeds);
+- **blocking**: a blocked person's events out of the blocker's inbox and feed, no follow of the
+  blocker, no mention reaching them;
+- **reports**: report a profile or a list (Phase 6's `reports`);
+- **limits**: the social caps (300 writes, 500 notification changes a day; 3,000 stars; 2,000 follows)
+  reviewed with Turnstile on bursts; the mention cap (10 an event); the retention job for events past
+  3 months;
+- **privacy statement**: the social data held (stars, follows, profiles, notification states,
+  events), its retention, a private profile's effect, and what the nightly shards publish;
+- **FORGE_OPEN**: this phase's writes open with the rest, not before.
+
+### D08-18. What it costs, measured: above the plan's 1,200 rows a day
+
+**Decision.** Measured rows: 2 a star, follow, list change, profile or notification state; an event 1
+(2 from a webhook with its delivery row); a research issue 5 (was 3), a comment 4–5 (was 3), a close 3
+(was 2); an authorized action + 1 per event (+ 1 for a thread newly followed). At the plan's volumes
+that is ~2,700 rows a day, not 1,200: with the earlier phases the GitHub side reaches its 5,000-row cap,
+which answers `quota` instead of overspending; C3 (20,000 from the search push's budget) lifts it.
+Reads: ≤ 1,800 an inbox, bounded feeds and calendars; 5 statements a search.
+
+**Why.** Events feed the inbox that phases 04 and 05 wanted; the per-thread follow is what makes
+"participating" possible without a row per recipient.

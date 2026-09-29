@@ -738,3 +738,35 @@ version of a paper, the tracing map versioned with it, and the Mac's work for it
 - **Files added to the site**: none (the same shell; the layer's shards grow a few fields).
 - **The screenshots**: `docs/night-screenshots/phase-07/` (desktop 1280×860, phone 390×844, against
   the fake GitHub and `wrangler dev`, every outside address blocked, signed out and signed in).
+
+### Social, discovery, notifications and search (phase 08): the registry's own
+
+Built on the night of 2026-09-29, before phase 16 (the owner's order change); the details are
+[SOCIAL.md](SOCIAL.md), the decisions D08-1 to D08-18 in [DECISIONS.md](DECISIONS.md). Stars, lists,
+follows, watch levels, profiles and the inbox are the registry's own rows (OSCR never stars or follows
+on GitHub); notifications stay in the site, never an email (D5).
+
+- **The rows** (D08-1 to D08-4): eight tables in `oscr_forge` (`migrations/d1-forge/0008_social.sql`,
+  no index), written through `social.ts` and `inbox.ts` (2 rows a write with the action row; the social
+  caps apart from the 100 authorized actions); no count row: the Mac publishes counts, stargazers and
+  public profiles each night (`oscr/social.py`, `social/NN.json`).
+- **Events and the inbox** (D08-5 to D08-10): one event row per event, keyed by its subject (a
+  repository or a paper), from the research routes, the authorized actions and the App's webhooks
+  (`events.ts`; GitHub's codec reads `issues` and `issue_comment`), one event per act whichever way it
+  lands (`ref`); the inbox computed on read from the reader's follows, grouped by thread, with states
+  per thread; a repository that left the registry leaves every inbox.
+- **The pages** (D08-11 to D08-14): `/notifications/`, `/stars/`, `/feed/`, `/explore/`, ONE shell for
+  every person `/u/<GitHub login or ORCID iD>/`; Star, Watch and Follow on a repository's page, a
+  paper's page and an author's page (`social-buttons.ts`); pure parts in `src/lib/social.ts`.
+- **Search** (D08-16): `forge_fts` in `oscr_search` (`migrations/d1/search/0002_forge.sql`),
+  `GET /api/search?type=repositories|issues|people|topics` (`worker/forge-search.ts`), built by the Mac
+  from the public static files; GitHub's issues and commits of one repository in the reader's browser;
+  code at the source; papers stay the default.
+- **Safety**: `FORGE_OPEN` on every write; Origin and CSRF on every POST; no token; no email address
+  (texts masked, links https without a user part, events without text); account ids never answered;
+  private profiles and lists stay their owner's; every address a page follows is a path of this site
+  (`sitePath`).
+- **Files added to the site**: 7 pages, 64 author shards built with the site, and the nightly
+  `social/` files (65): none per person, star or follow.
+- **The screenshots**: `docs/night-screenshots/phase-08/` (21 desktop 1280×860, 21 phone 390×844,
+  against the fake GitHub and `wrangler dev`, every outside address blocked, signed out and signed in).
