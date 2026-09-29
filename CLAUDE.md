@@ -43,7 +43,8 @@
 - **Address**: the free `workers.dev` address while building; a domain before the public
   launch.
 - **Hosting**: Cloudflare Workers (the site as static assets, the dynamic routes as the
-  Worker's code), not Pages. Site: https://oscr.yannbellec-b.workers.dev
+  Worker's code), not Pages. Site: https://openscicode.org (the custom domain since 2026-09-29;
+  https://oscr.yannbellec-b.workers.dev still answers)
 - **OpenAlex**: the owner creates the key; it goes in the keychain.
 
 ## DOIs and Zenodo

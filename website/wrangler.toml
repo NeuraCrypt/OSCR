@@ -4,6 +4,9 @@
 name = "oscr"
 compatibility_date = "2026-09-01"
 workers_dev = true
+# The public address (bought 2026-09-29 at Cloudflare Registrar): a custom domain, kept by every deploy.
+# www.openscicode.org is redirected to it by a Redirect Rule of the zone (dashboard).
+routes = [{ pattern = "openscicode.org", custom_domain = true }]
 # The Worker's own code: /api/search (Phase 3, docs/SEARCH.md).
 main = "worker/index.ts"
 

@@ -90,5 +90,5 @@ for name in ORCID_CLIENT_ID ORCID_CLIENT_SECRET GITHUB_CLIENT_ID GITHUB_CLIENT_S
   value=""
 done
 
-printf '\nDone. Try https://oscr.yannbellec-b.workers.dev/account/ and https://oscr.yannbellec-b.workers.dev/search/\n'
+printf '\nDone. Try https://openscicode.org/account/ and https://openscicode.org/search/\n'
 printf 'Then tell Claude: it records the databases bound in website/wrangler.toml.\n'

@@ -25,7 +25,7 @@ const paperShell = {
 };
 
 export default defineConfig({
-  site: process.env.SITE_URL ?? "https://oscr.yannbellec-b.workers.dev",
+  site: process.env.SITE_URL ?? "https://openscicode.org",
   output: "static",
   trailingSlash: "always",
   integrations: [svelte(), paperShell],
