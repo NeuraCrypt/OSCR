@@ -46,18 +46,25 @@ export const GITHUB = "https://github.com";
  *  opens the creation form, as GitHub's), fork (the fork form), forks (the fork list).
  *  Phase 05 (issues, D05-*) adds GitHub's own shapes: issues (the list, ?q= the filter; issues/<n>
  *  an issue; issues/new, issues/new/choose the forms), labels, milestones, milestone/<n>. The
- *  registry's research issues have their own shell, /research/<n> (src/lib/issues.ts). */
+ *  registry's research issues have their own shell, /research/<n> (src/lib/issues.ts).
+ *  Phase 07 (releases, D07-*) adds GitHub's own shapes: releases (the list, ?q= the filter),
+ *  releases/tag/<tag…> (a release), releases/new (the form; GitHub's ?tag=&target=&title=&body=
+ *  &prerelease=1 prefill it), releases/edit/<tag…>, releases/latest, releases/latest/download/<file>,
+ *  releases/download/<tag…>/<file> (the file is GitHub's: the page links it), and the registry's
+ *  releases/changelog; tags (the list). src/lib/releases.ts reads them. */
 export type RepoView =
   | "home" | "settings" | "branches" | "tree" | "blob" | "commits" | "commit" | "compare" | "find" | "search" | "docs"
   | "edit" | "new" | "upload" | "delete"
   | "pulls" | "pull" | "fork" | "forks"
-  | "issues" | "labels" | "milestones" | "milestone";
+  | "issues" | "labels" | "milestones" | "milestone"
+  | "releases" | "tags";
 export const REPO_VIEWS: readonly RepoView[] = ["home", "settings", "branches"];
 /** The views that carry segments after their name (a ref, a path, a commit, a comparison). */
 export const CODE_VIEWS: readonly RepoView[] = [
   "tree", "blob", "commits", "commit", "compare", "find", "search", "docs", "edit", "new", "upload", "delete",
   "pulls", "pull", "fork", "forks",
   "issues", "labels", "milestones", "milestone",
+  "releases", "tags",
 ];
 /** The editing views (phase 03): they act on a branch, and their changes are commits. */
 export const EDIT_VIEWS: readonly RepoView[] = ["edit", "new", "upload", "delete"];
@@ -65,6 +72,8 @@ export const EDIT_VIEWS: readonly RepoView[] = ["edit", "new", "upload", "delete
 export const PULL_VIEWS: readonly RepoView[] = ["pulls", "pull", "fork", "forks"];
 /** The issue views (phase 05). */
 export const ISSUE_VIEWS: readonly RepoView[] = ["issues", "labels", "milestones", "milestone"];
+/** The release views (phase 07). */
+export const RELEASE_VIEWS: readonly RepoView[] = ["releases", "tags"];
 
 export interface RepoCoords {
   owner: string;
@@ -112,6 +121,8 @@ const SEGMENTS: Partial<Record<RepoView, [number, number]>> = {
   labels: [0, 0],
   milestones: [0, 0],
   milestone: [1, 1],
+  releases: [0, 66],
+  tags: [0, 0],
 };
 
 /** The repository and the view a path of the shell names, or null: /r/<owner>/<name>/ (the final
@@ -149,7 +160,7 @@ export function repoPath(repo: RepoCoords, view: RepoView = "home", rest: readon
   const segs = rest.flatMap((s) => s.split("/")).filter((s) => s !== "");
   if (!segs.every(isPathSegment)) throw new TypeError("not a path");
   const tail = segs.map(encodeURIComponent).join("/");
-  if (view === "blob" || view === "edit" || view === "delete" || view === "pull" || view === "milestone" || (view === "issues" && tail)) return `${base}${view}/${tail}`;
+  if (view === "blob" || view === "edit" || view === "delete" || view === "pull" || view === "milestone" || ((view === "issues" || view === "releases") && tail)) return `${base}${view}/${tail}`;
   return tail ? `${base}${view}/${tail}/` : `${base}${view}/`;
 }
 
