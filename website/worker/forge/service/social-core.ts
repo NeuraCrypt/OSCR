@@ -74,7 +74,7 @@ const GITHUB = /^github:([0-9]{1,20})$/;
 const ORCID = /^orcid:([0-9]{4}-[0-9]{4}-[0-9]{4}-[0-9]{3}[0-9X])$/;
 const OWNER = /^owner:(github|memory):([a-z0-9](?:[a-z0-9-]{0,38}))$/;
 const ENTITY = /^(journal|tool|dataset|category):([A-Za-z0-9][A-Za-z0-9._:/-]{0,149})$/;
-const THREAD = /^(issue|pull|research|release):([A-Za-z0-9][A-Za-z0-9._/+-]{0,99})$/;
+const THREAD = /^(issue|pull|research|release|code):([A-Za-z0-9][A-Za-z0-9._/+-]{0,99})$/;
 
 /** Whether an ORCID iD's check digit is right (ISO 7064 11,2, as ORCID computes it). */
 export function orcidChecks(id: string): boolean {

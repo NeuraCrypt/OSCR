@@ -775,8 +775,12 @@ export type ForgeEvent =
   | { kind: "push"; delivery: string; installation: string | null; repo: RepoStub; ref: string; before: ObjectId; after: ObjectId; created: boolean; deleted: boolean; forced: boolean; pushedAt: number; commits: { sha: ObjectId; added: string[]; removed: string[]; modified: string[] }[]; pusher: Actor }
   | { kind: "repository"; delivery: string; installation: string | null; action: "created" | "deleted" | "archived" | "unarchived" | "renamed" | "transferred" | "publicized" | "privatized" | "edited"; repo: RepoStub; previous: { owner: string | null; name: string | null } | null; sender: Actor }
   | { kind: "ref"; delivery: string; installation: string | null; action: "created" | "deleted"; refType: "branch" | "tag"; ref: string; repo: RepoStub; sender: Actor }
-  | { kind: "pull_request"; delivery: string; installation: string | null; action: string; number: number; repo: RepoStub; head: { ref: string; sha: ObjectId }; base: { ref: string }; merged: boolean; sender: Actor }
-  | { kind: "release"; delivery: string; installation: string | null; action: string; repo: RepoStub; releaseId: string; tagName: string; sender: Actor }
+  | { kind: "pull_request"; delivery: string; installation: string | null; action: string; number: number; repo: RepoStub; head: { ref: string; sha: ObjectId }; base: { ref: string }; merged: boolean; sender: Actor; /** Phase 08: the in-site notifications' words. */ title?: string; author?: Actor; mentions?: string[] }
+  | { kind: "release"; delivery: string; installation: string | null; action: string; repo: RepoStub; releaseId: string; tagName: string; sender: Actor; /** Phase 08. */ name?: string; draft?: boolean; prerelease?: boolean }
+  // Phase 08: GitHub's issues and their comments, for the in-site notifications (no text is kept: the
+  // title, the people the text names, never the text itself).
+  | { kind: "issues"; delivery: string; installation: string | null; action: string; number: number; title: string; author: Actor; mentions: string[]; repo: RepoStub; sender: Actor }
+  | { kind: "issue_comment"; delivery: string; installation: string | null; action: string; number: number; title: string; isPull: boolean; commentId: string; author: Actor; mentions: string[]; repo: RepoStub; sender: Actor }
   | { kind: "other"; delivery: string; event: string };
 
 export type ForgeEventKind = ForgeEvent["kind"];

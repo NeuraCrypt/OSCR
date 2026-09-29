@@ -36,6 +36,7 @@ import { closed, dailyCaps, globalCap, mayWrite, overCap } from "./gate.ts";
 import { failure, json, problem, problemAnswer, redact } from "./http.ts";
 import { requireIdentity } from "./identity.ts";
 import { loadRepo, unknownRepo } from "./start.ts";
+import { actionEventWrites, eventsOfAction } from "./events.ts";
 import { actionRow, newNonce, rowsOf, statements } from "./store.ts";
 import { ForgeProblem, isProblem, type ActionContext, type ActionTarget, type AnyActionSpec, type ForgeRequest, type RepoRow } from "./types.ts";
 
@@ -45,7 +46,7 @@ export const ACT_BODY_BYTES = 2 * ACTION_PAYLOAD_BYTES + 4096;
 /** The rows the global cap reserves for one action before it is performed: the most an action of
  *  phase 01 writes with one paper (docs/FORGE.md, "Action kinds": create or link, 6). The cap is
  *  asked before GitHub is, so that an action the registry could not record is never done. */
-export const ACT_ROWS_RESERVED = 6;
+export const ACT_ROWS_RESERVED = 12;
 
 const encoder = new TextEncoder();
 
@@ -244,9 +245,22 @@ async function asThePerson(r: ForgeRequest, a: Acting): Promise<Response> {
     );
   }
 
-  // 8. One batch: the action row and the spec's rows.
+  // 8. One batch: the action row and the spec's rows. Phase 08: the action's events (events.ts: a
+  // repository's only when the App is not installed on it, its webhook bringing them otherwise; a
+  // paper's always) and the threads the person now takes part in.
   const named = out.repo ?? (a.repo ? { forge: a.repo.forge, repoId: a.repo.repo_id } : null);
-  const writes = out.writes ?? [];
+  const path = a.repo && a.repo.name ? `${a.repo.owner_login}/${a.repo.name}` : "";
+  const social = eventsOfAction({
+    kind: a.flow.act.kind,
+    parsed: a.parsed,
+    result: out.result,
+    repo: named && path ? { forge: named.forge, repoId: named.repoId, path } : null,
+    installed: !!a.repo?.installation_id,
+    user: { id: user.id, github: github.id, login: github.login },
+    t: r.t,
+    nonce: ctx.nonce,
+  });
+  const writes = [...(out.writes ?? []), ...actionEventWrites(r.db, user.id, social, r.t)];
   const action = actionRow(r.db, {
     userId: user.id,
     t: r.t,
@@ -257,6 +271,7 @@ async function asThePerson(r: ForgeRequest, a: Acting): Promise<Response> {
     githubUser: github.id,
     outcome: out.outcome ?? "done",
     rows: 1 + rowsOf(writes),
+    subject: social.events[0]?.subject ?? "",
   });
   try {
     await r.db.batch([action.stmt, ...statements(writes)]);

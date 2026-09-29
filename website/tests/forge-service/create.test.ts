@@ -40,7 +40,7 @@ const text = async (owner: string, name: string, rev: string, path: string) =>
   new TextDecoder().decode((await adaSession().git.readFile(ref(owner, name), rev, path)).bytes);
 
 describe("create", () => {
-  test("a repository with a README, a .gitignore and a licence, attached to a paper Ada authored: at most 6 rows", async () => {
+  test("a repository with a README, a .gitignore and a licence, attached to a paper Ada authored: 6 rows, and an event on each paper (phase 08)", async () => {
     const b = await signIn(w);
     role(userOf(w.ada.user.id), "verified_author", "paper", `doi:${P1}`);
     w.forge.reset();
@@ -62,11 +62,16 @@ describe("create", () => {
       { doi: P2, status: "proposed" },
     ]);
     assert.match(run.actBody?.sentence, /^Create the public repository eeg-study in your GitHub account, with a README, a Python \.gitignore and the MIT License, attached to 2 papers$/);
-    // repos 2 + papers 2 + job 1 + action 1: 6 rows with two papers; with one paper, 5.
-    assert.deepEqual(forgeCounts(w.forge), { actions: 1, deliveries: 0, installations: 0, jobs: 1, release_papers: 0, repo_packages: 0, repo_papers: 2, repos: 1, research_comments: 0, research_issues: 0, traced_paths: 0, ...SOCIAL_EMPTY });
-    assert.equal(w.forge.totals.written, 6);
+    // repos 2 + papers 2 + job 1 + action 1: 6 rows with two papers; with one paper, 5. Phase 08: an
+    // event on each paper ("code linked", its watchers' inbox): 8 and 6.
+    assert.deepEqual(forgeCounts(w.forge), { actions: 1, deliveries: 0, installations: 0, jobs: 1, release_papers: 0, repo_packages: 0, repo_papers: 2, repos: 1, research_comments: 0, research_issues: 0, traced_paths: 0, ...SOCIAL_EMPTY, events: 2 });
+    assert.equal(w.forge.totals.written, 8);
     const [action] = forgeRows(w.forge, "actions");
-    assert.equal(action.rows, 6);
+    assert.equal(action.rows, 8);
+    assert.deepEqual(forgeRows(w.forge, "events").map((e) => [e.subject, e.kind, e.url]), [
+      [`paper:doi:${P1}`, "code_linked", "/r/ada-fixture/eeg-study/"],
+      [`paper:doi:${P2}`, "code_linked", "/r/ada-fixture/eeg-study/"],
+    ]);
     const [row] = forgeRows(w.forge, "repos");
     assert.deepEqual([row.mode, row.owner_login, row.name, row.default_branch, row.template, row.linked_by], ["created", "ada-fixture", "eeg-study", "main", 0, userOf(w.ada.user.id)]);
     const [job] = forgeRows(w.forge, "jobs");

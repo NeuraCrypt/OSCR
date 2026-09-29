@@ -302,7 +302,7 @@ export class MemoryWebhookCodec implements WebhookCodec {
       throw new GitBackendError("invalid", "the delivery is not JSON");
     }
     const e = event as { kind?: unknown; delivery?: unknown };
-    const kinds = ["ping", "installation", "installation_repositories", "push", "repository", "ref", "pull_request", "release", "other"];
+    const kinds = ["ping", "installation", "installation_repositories", "push", "repository", "ref", "pull_request", "release", "issues", "issue_comment", "other"];
     if (!e || typeof e.kind !== "string" || !kinds.includes(e.kind) || typeof e.delivery !== "string") throw new GitBackendError("invalid", "a malformed delivery");
     if (headers.get("X-Memory-Event") !== e.kind || headers.get("X-Memory-Delivery") !== e.delivery) throw new GitBackendError("invalid", "the headers do not match the delivery");
     return event as T.ForgeEvent;

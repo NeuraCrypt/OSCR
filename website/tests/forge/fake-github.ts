@@ -1222,6 +1222,24 @@ export class FakeGitHub {
         };
       case "release":
         return { event: "release", payload: { action: e.action, release: { id: Number(e.releaseId), tag_name: e.tagName }, repository: repository(e.repo), sender: sender(e.sender), ...installation(e.installation) } };
+      // Phase 08: issues and their comments (the text holds the mentions; the codec keeps only them).
+      case "issues":
+        return {
+          event: "issues",
+          payload: { action: e.action, issue: { number: e.number, title: e.title, body: e.mentions.map((m) => `@${m}`).join(" "), user: sender(e.author) }, repository: repository(e.repo), sender: sender(e.sender), ...installation(e.installation) },
+        };
+      case "issue_comment":
+        return {
+          event: "issue_comment",
+          payload: {
+            action: e.action,
+            issue: { number: e.number, title: e.title, user: sender(e.author), ...(e.isPull ? { pull_request: { url: "" } } : {}) },
+            comment: { id: Number(e.commentId), body: e.mentions.map((m) => `@${m}`).join(" "), user: sender(e.sender) },
+            repository: repository(e.repo),
+            sender: sender(e.sender),
+            ...installation(e.installation),
+          },
+        };
       default:
         return { event: e.event, payload: {} };
     }

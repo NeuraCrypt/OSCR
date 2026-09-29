@@ -174,10 +174,36 @@ describe("GitHub's webhook deliveries", () => {
       base: { ref: "main" },
       merged: true,
       sender: { name: "ada", login: "ada", id: "101" },
+      // Phase 08: the in-site notifications' words (the title, the author, the logins the text names).
+      title: "",
+      author: { name: "bo", login: "bo", id: "303" },
+      mentions: [],
     });
     const release = parse("release", { action: "published", release: { id: 60001, tag_name: "v1.0.0", author: ghUser() }, repository: repository(), sender });
     assert.deepEqual(release.kind === "release" && [release.action, release.releaseId, release.tagName], ["published", "60001", "v1.0.0"]);
     assert.deepEqual(parse("star", { action: "created", repository: repository(), sender }), { kind: "other", delivery: "72d3162e-cc78-11e3-81ab-4c9367dc0958", event: "star" });
+  });
+
+  it("phase 08: reads issues and issue comments as their title and the logins their text names, never the text", () => {
+    const opened = parse("issues", { action: "opened", issue: { number: 3, title: "Filter order", body: "cc @Bo, mail ada@example.org", user: ghUser("bo", 303) }, repository: repository(), sender, installation: { id: 777 } });
+    assert.ok(opened.kind === "issues");
+    if (opened.kind === "issues") {
+      assert.deepEqual([opened.action, opened.number, opened.title, opened.author.id, opened.mentions], ["opened", 3, "Filter order", "303", ["bo"]]);
+      assert.ok(!JSON.stringify(opened).includes("example.org"));
+    }
+    const comment = parse("issue_comment", {
+      action: "created",
+      issue: { number: 7, title: "Sensitivity", user: ghUser("bo", 303), pull_request: { url: "x" } },
+      comment: { id: 9001, body: "LGTM @ada `@notme`", user: ghUser() },
+      repository: repository(),
+      sender,
+      installation: { id: 777 },
+    });
+    assert.ok(comment.kind === "issue_comment");
+    if (comment.kind === "issue_comment") {
+      assert.deepEqual([comment.number, comment.isPull, comment.commentId, comment.mentions], [7, true, "9001", ["ada"]]);
+      assert.ok(!JSON.stringify(comment).includes("LGTM"));
+    }
   });
 
   it("refuses what is not a well-formed delivery", () => {

@@ -37,6 +37,9 @@ import {
   type OpenParsed,
   type ResearchEvent,
 } from "./research-core.ts";
+import { eventWrite, researchOpenedWrites, type EventKind, type NewEvent } from "./events.ts";
+import { mentionsIn } from "../github/webhooks.ts";
+import { autoFollowWrite } from "./social-core.ts";
 import { actionRow, all, first, newNonce, repoByKey, rowsOf, statements } from "./store.ts";
 import { ForgeProblem, type D1Database, type ForgeRequest, type RepoRow, type ResearchKind, type Write } from "./types.ts";
 
@@ -120,20 +123,43 @@ async function mayResearch(r: ForgeRequest, s: SignedIn, kind: ResearchKind, row
   return (await globalCap(r.db, r.t, Math.min(rows, FORGE_ROWS_PER_DAY))) ?? { github: github ?? "" };
 }
 
-/** The writes and their action row, in ONE batch; the batch's results. */
-async function commit(r: ForgeRequest, s: SignedIn, kind: ResearchKind, github: string, writes: Write[], repo: { forge: string; repoId: string } | null) {
+/** The writes and their action row, in ONE batch; the batch's results. Phase 08: the action row
+ *  names the paper (its `subject`) and shares its nonce with the event the write made, so that a
+ *  person's activity finds the event from the action. */
+async function commit(r: ForgeRequest, s: SignedIn, kind: ResearchKind, github: string, writes: Write[], repo: { forge: string; repoId: string } | null, nonce = newNonce(), subject = "") {
   const action = actionRow(r.db, {
     userId: s.user.id,
     t: r.t,
-    nonce: newNonce(),
+    nonce,
     kind,
     forge: repo?.forge ?? "",
     repoId: repo?.repoId ?? "",
     githubUser: github,
     outcome: "done",
     rows: 1 + rowsOf(writes),
+    subject,
   });
   return r.db.batch([...statements(writes), action.stmt]);
+}
+
+/** Phase 08: the event of a research write, under its paper's subject, with the actor's words. */
+function researchEvent(s: SignedIn, github: string, issue: { id: number; paper_id: string; title: string; author_id: string; repo_path: string }, kind: EventKind, nonce: string, t: number, mentions: string[] = []): NewEvent {
+  return {
+    subject: `paper:${issue.paper_id}`,
+    at: t,
+    nonce,
+    kind,
+    thread: `research:${issue.id}`,
+    title: issue.title,
+    url: `/research/${issue.id}`,
+    repoPath: issue.repo_path,
+    paperId: issue.paper_id,
+    actorUser: s.user.id,
+    actorGithub: github,
+    actorName: personOf(s.user).author,
+    threadAuthor: `user:${issue.author_id}`,
+    mentions,
+  };
 }
 
 /** Whether the registry knows this repository as this paper's code: linked in oscr_forge
@@ -206,12 +232,26 @@ export async function handleResearchOpen(r: ForgeRequest): Promise<Response> {
     }
     parsed.repo.path = known.path;
   }
-  const gate = await mayResearch(r, s, "research_open", 3);
+  const gate = await mayResearch(r, s, "research_open", 5);
   if (gate instanceof ForgeProblem) return say(gate);
   const roles = await rolesOf(s.db, s.user.id);
   const who = personOf(s.user);
   const role = roleOn(roles, { paper_id: parsed.paper, forge: parsed.repo?.forge ?? "", repo_path: parsed.repo?.path ?? "" });
-  const results = await commit(r, s, "research_open", gate.github, [insertIssue(r.db, parsed, who, role, r.t)], parsed.repo ? { forge: parsed.repo.forge, repoId: parsed.repo.id } : null);
+  // Phase 08: the event (the paper's watchers' inbox) and the author's follow of the thread, in the
+  // same batch: 5 rows.
+  const nonce = newNonce();
+  const subject = `paper:${parsed.paper}`;
+  const event = researchEvent(s, gate.github, { id: 0, paper_id: parsed.paper, title: parsed.title, author_id: s.user.id, repo_path: parsed.repo?.path ?? "" }, "research_opened", nonce, r.t, mentionsIn(parsed.body));
+  const results = await commit(
+    r,
+    s,
+    "research_open",
+    gate.github,
+    [insertIssue(r.db, parsed, who, role, r.t), ...researchOpenedWrites(r.db, s.user.id, event)],
+    parsed.repo ? { forge: parsed.repo.forge, repoId: parsed.repo.id } : null,
+    nonce,
+    subject,
+  );
   const id = Number(results[0]?.meta?.last_row_id ?? 0);
   return json({ id, page: `/research/${id}`, sentence: `Open the research issue “${parsed.title}” (${TYPE_WORDS[parsed.type].toLowerCase()})` }, 201, s.cookies);
 }
@@ -230,10 +270,12 @@ export async function handleResearchComment(r: ForgeRequest): Promise<Response> 
   const triage = await triages(r.db, s.user, roles, issue);
   const who = personOf(s.user);
   let writes: Write[];
+  let created = false;
   if (p.n === null) {
     if (issue.locked && !triage) return say(new ForgeProblem(403, "locked", "The conversation is locked: only the paper's verified authors and the code's maintainers comment now."));
     if (issue.comments >= RESEARCH_COMMENTS) return say(new ForgeProblem(409, "full", `The issue holds ${RESEARCH_COMMENTS.toLocaleString("en-GB")} comments, the most one may: open another and link this one.`));
     writes = insertComment(r.db, p.id, p.body ?? "", who, roleOn(roles, issue), r.t);
+    created = true;
   } else {
     const c = await first<CommentRow>(r.db.prepare("SELECT * FROM research_comments WHERE issue_id = ? AND n = ?").bind(p.id, p.n));
     if (!c || c.deleted) return say(new ForgeProblem(404, "not_found", "This comment is not there (deleted, or never written)."));
@@ -249,9 +291,16 @@ export async function handleResearchComment(r: ForgeRequest): Promise<Response> 
       writes = [updateComment(r.db, p.id, p.n, { body: p.body ?? "", edited_at: Math.floor(r.t) })];
     }
   }
+  // Phase 08: a new comment is an event of the paper, and its author now follows the thread.
+  const nonce = newNonce();
+  const github = await linkedGithub(s.db, s.user.id);
+  if (created) {
+    writes.push(eventWrite(r.db, researchEvent(s, github ?? "", issue, "research_comment", nonce, r.t, mentionsIn(p.body ?? ""))));
+    writes.push(autoFollowWrite(r.db, s.user.id, `paper:${issue.paper_id}#research:${issue.id}`, r.t));
+  }
   const gate = await mayResearch(r, s, "research_comment", 1 + rowsOf(writes));
   if (gate instanceof ForgeProblem) return say(gate);
-  await commit(r, s, "research_comment", gate.github, writes, issue.repo_id ? { forge: issue.forge, repoId: issue.repo_id } : null);
+  await commit(r, s, "research_comment", gate.github, writes, issue.repo_id ? { forge: issue.forge, repoId: issue.repo_id } : null, nonce, created ? `paper:${issue.paper_id}` : "");
   return json({ id: p.id, page: `/research/${p.id}` }, 200, s.cookies);
 }
 
@@ -319,8 +368,12 @@ export async function handleResearchEdit(r: ForgeRequest): Promise<Response> {
   }
   if (!Object.keys(set).length) return json({ id: p.id, page: `/research/${p.id}`, unchanged: true }, 200, s.cookies);
   const writes = [updateIssue(r.db, p.id, set, events, r.t)];
-  const gate = await mayResearch(r, s, "research_edit", 2);
+  // Phase 08: closing and reopening are events of the paper (labels, locks and pins are not).
+  const nonce = newNonce();
+  const stateKind: EventKind | null = set.state === "closed" ? "research_closed" : set.state === "open" ? "research_reopened" : null;
+  if (stateKind) writes.push(eventWrite(r.db, researchEvent(s, (await linkedGithub(s.db, s.user.id)) ?? "", { ...issue, title: String(set.title ?? issue.title) }, stateKind, nonce, r.t)));
+  const gate = await mayResearch(r, s, "research_edit", 1 + rowsOf(writes));
   if (gate instanceof ForgeProblem) return say(gate);
-  await commit(r, s, "research_edit", gate.github, writes, issue.repo_id ? { forge: issue.forge, repoId: issue.repo_id } : null);
+  await commit(r, s, "research_edit", gate.github, writes, issue.repo_id ? { forge: issue.forge, repoId: issue.repo_id } : null, nonce, stateKind ? `paper:${issue.paper_id}` : "");
   return json({ id: p.id, page: `/research/${p.id}` }, 200, s.cookies);
 }

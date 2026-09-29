@@ -77,7 +77,7 @@ async function open(b: ForgeBrowser, payload: Record<string, unknown>): Promise<
 }
 
 describe("opening a research issue", () => {
-  test("a mismatch on a linked repository: 3 rows, the address masked, the author named by GitHub login", async () => {
+  test("a mismatch on a linked repository: 3 rows (5 with phase 08's event and the author's follow of the thread), the address masked, the author named by GitHub login", async () => {
     const b = await signIn(w);
     const repoId = await linkedRepo();
     w.forge.reset();
@@ -86,7 +86,11 @@ describe("opening a research issue", () => {
     const made = await body(res);
     assert.equal(made.id, 1);
     assert.equal(made.page, "/research/1");
-    assert.equal(w.forge.totals.written, 3);
+    // The issue, its index entry, the action row; phase 08: the paper's event and the thread followed.
+    assert.equal(w.forge.totals.written, 5);
+    const [event] = forgeRows(w.forge, "events");
+    assert.deepEqual([event.subject, event.kind, event.thread, event.url, event.actor_name], [`paper:${PAPER}`, "research_opened", "research:1", "/research/1", ADA_LOGIN]);
+    assert.deepEqual(forgeRows(w.forge, "follows").map((f) => [f.target, f.auto]), [[`thread:paper:${PAPER}#research:1`, 1]]);
     const [row] = forgeRows(w.forge, "research_issues");
     assert.equal(row.paper_id, PAPER);
     assert.equal(row.repo_path, "ada-fixture/eeg");
@@ -97,7 +101,9 @@ describe("opening a research issue", () => {
     assert.ok(!JSON.stringify(forgeRows(w.forge, "research_issues")).includes("ada@example.org"));
     const [action] = forgeRows(w.forge, "actions");
     assert.equal(action.kind, "research_open");
-    assert.equal(action.rows, 3);
+    assert.equal(action.rows, 5);
+    assert.equal(action.subject, `paper:${PAPER}`);
+    assert.equal(action.nonce, event.nonce);
     assert.equal(action.repo_id, repoId);
     assert.deepEqual(w.forge.scans, []);
   });
@@ -205,14 +211,14 @@ describe("reading, commenting, changing", () => {
     assert.deepEqual(w.forge.scans, []);
   });
 
-  test("comments: 3 rows each, numbered; an edit by its author; a deletion; a locked issue takes its triagers' only", async () => {
+  test("comments: 3 rows each (4 with phase 08's event; the author already follows the thread), numbered; an edit by its author; a deletion; a locked issue takes its triagers' only", async () => {
     const b = await signIn(w);
     const repoId = await linkedRepo();
     await open(b, mismatch(repoId));
     w.forge.reset();
     const c = await b.post("/api/forge/research/comment", { id: 1, body: "The same on the fork." });
     assert.equal(c.status, 200, JSON.stringify(await body(c)));
-    assert.equal(w.forge.totals.written, 3);
+    assert.equal(w.forge.totals.written, 4);
     await b.post("/api/forge/research/comment", { id: 1, body: "And with numpy 2." });
     const got = await body(await b.fetch("/api/forge/research?id=1"));
     assert.deepEqual(got.comments.map((x: Json) => [x.n, x.body]), [[1, "The same on the fork."], [2, "And with numpy 2."]]);
@@ -238,7 +244,7 @@ describe("reading, commenting, changing", () => {
     assert.equal((await ada2.post("/api/forge/research/comment", { id: 1, body: "Fixed in v1.2." })).status, 200);
   });
 
-  test("close with a resolution the type allows; reopen; labels and pins for triagers only; 2 rows a change", async () => {
+  test("close with a resolution the type allows; reopen; labels and pins for triagers only; 2 rows a change (3 when it closes or reopens: phase 08's event)", async () => {
     const b = await signIn(w);
     const repoId = await linkedRepo();
     await open(b, mismatch(repoId));
@@ -247,7 +253,7 @@ describe("reading, commenting, changing", () => {
     assert.equal(wrong.status, 400);
     const closed = await b.post("/api/forge/research/edit", { id: 1, state: "closed", resolution: "paper_corrected", ref: "10.1234/eeg.2026.erratum" });
     assert.equal(closed.status, 200, JSON.stringify(await body(closed)));
-    assert.equal(w.forge.totals.written, 2);
+    assert.equal(w.forge.totals.written, 3);
     let got = (await body(await b.fetch("/api/forge/research?id=1"))).issue;
     assert.equal(got.state, "closed");
     assert.equal(got.close_reason, "completed");

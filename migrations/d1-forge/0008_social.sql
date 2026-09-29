@@ -94,7 +94,7 @@ CREATE TABLE follows (
 CREATE TABLE events (
     subject        TEXT NOT NULL CHECK (length(subject) BETWEEN 6 AND 220 AND (substr(subject, 1, 5) = 'repo:' OR substr(subject, 1, 13) = 'paper:doi:10.')),
     at             INTEGER NOT NULL,
-    nonce          TEXT NOT NULL CHECK (length(nonce) BETWEEN 8 AND 100),
+    nonce          TEXT NOT NULL CHECK (length(nonce) BETWEEN 8 AND 120),     -- the action's nonce, or "delivery:<GitHub's delivery id>"
     kind           TEXT NOT NULL CHECK (kind IN (
                        'issue_opened', 'issue_closed', 'issue_reopened', 'issue_comment', 'pull_opened',
                        'pull_closed', 'pull_merged', 'pull_reopened', 'pull_review', 'pull_comment',

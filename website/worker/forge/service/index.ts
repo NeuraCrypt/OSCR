@@ -18,6 +18,10 @@
 //   GET  /api/forge/social/mine       signed in   the reader's stars, lists, follows, profile     social.ts
 //   GET  /api/forge/social/person     signed in   a person's public profile                       social.ts
 //   POST /api/forge/social/star|follow|list|profile   signed in   the social writes (2 rows each) social.ts
+//   GET  /api/forge/social/inbox      signed in   the in-site notifications, computed on read     inbox.ts
+//   POST /api/forge/social/notices    signed in   read, done, saved, unsubscribed, all read       inbox.ts
+//   GET  /api/forge/social/feed       signed in   the activity feed of what the reader follows    inbox.ts
+//   GET  /api/forge/social/activity   signed in   a person's calendar, timeline and milestones    inbox.ts
 //
 // What every route gets here, in order: its path (another is 404), its method (405), the FORGE
 // binding (503 not_configured without it), and for the signed-in routes the accounts (COMMUNITY and
@@ -40,6 +44,7 @@ import { forgeBackend } from "./backend.ts";
 import { failure, problem, wrongMethod } from "./http.ts";
 import { handleMine, handleRepo } from "./read.ts";
 import { handleResearchComment, handleResearchEdit, handleResearchOpen, handleResearchRead } from "./research.ts";
+import { handleActivity, handleFeed, handleInbox, handleNotices } from "./inbox.ts";
 import { handleSocialFollow, handleSocialList, handleSocialMine, handleSocialPerson, handleSocialProfile, handleSocialStar, handleSocialState } from "./social.ts";
 import { handleStart } from "./start.ts";
 import type { Context, D1Database, ForgeDeps, ForgeRequest, ForgeServiceEnv, RouteHandler } from "./types.ts";
@@ -73,6 +78,10 @@ export const FORGE_ROUTES: Readonly<Record<string, Route>> = {
   "/api/forge/social/follow": { method: "POST", signedIn: true, handle: (r) => handleSocialFollow(r) },
   "/api/forge/social/list": { method: "POST", signedIn: true, handle: (r) => handleSocialList(r) },
   "/api/forge/social/profile": { method: "POST", signedIn: true, handle: (r) => handleSocialProfile(r) },
+  "/api/forge/social/inbox": { method: "GET", signedIn: true, handle: (r) => handleInbox(r) },
+  "/api/forge/social/notices": { method: "POST", signedIn: true, handle: (r) => handleNotices(r) },
+  "/api/forge/social/feed": { method: "GET", signedIn: true, handle: (r) => handleFeed(r) },
+  "/api/forge/social/activity": { method: "GET", signedIn: true, handle: (r) => handleActivity(r) },
 };
 
 const PREFIX = "/api/forge/";

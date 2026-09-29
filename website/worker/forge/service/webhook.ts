@@ -29,12 +29,16 @@
 // to the default branch (the head; a `push` job when tracing maps point to the repository);
 // repository (renamed and transferred: the path follows; archived, unarchived; deleted: `gone`;
 // privatized: `hidden`, its name blanked, D00-14; edited: the default branch; publicized, created:
-// nothing until a person links it); ping, ref, release, pull_request and the rest: acknowledged,
-// nothing stored in phase 01. Refs under refs/pull/ are never mirrored by the registry.
+// nothing until a person links it); phase 08: issues (opened, closed, reopened), issue_comment
+// (created), pull_request (opened, reopened, closed or merged) and release (published) become ONE
+// event row (events.ts `eventOfDelivery`: the title, the actor, the logins named; never the text),
+// written with the delivery's row, for the in-site notifications; ping, ref and the rest:
+// acknowledged, nothing stored. Refs under refs/pull/ are never mirrored by the registry.
 
 import { GitBackendError } from "../errors.ts";
 import type { ForgeEvent, RepoStub } from "../types.ts";
 import { WEBHOOK_BYTES } from "./caps.ts";
+import { eventOfDelivery, eventWrite } from "./events.ts";
 import { json, problem } from "./http.ts";
 import { all, deleteInstallation, deliveryRow, deliverySeen, installationById, repoByKey, rowsOf, statements, tracedCount, updateRepo, upsertInstallation } from "./store.ts";
 import type { D1Database, D1PreparedStatement, ForgeRequest, InstallationRow, RepoRow, RepoState, Write } from "./types.ts";
@@ -234,6 +238,19 @@ async function plan(r: ForgeRequest, event: ForgeEvent, seen: Seen): Promise<Pla
           return { writes: [], dropped: "nothing to follow" };
       }
     }
+    case "issues":
+    case "issue_comment":
+    case "pull_request":
+    case "release": {
+      // Phase 08: one event row for the in-site notifications, on a public repository the registry
+      // follows, covered by the installation that sent it.
+      const repo = seen.repo;
+      if (!repo) return { writes: [], dropped: "unknown repository" };
+      if (!covers(seen.installation, repo, event.repo)) return { writes: [], dropped: "unknown installation" };
+      if (event.repo.visibility !== "public" || !ALIVE.includes(repo.state) || !repo.name) return { writes: [], dropped: "not followed" };
+      const e = eventOfDelivery(event, repo, t);
+      return e ? { writes: [eventWrite(db, e)] } : { writes: [], dropped: "not an event the inbox shows" };
+    }
     default:
       return { writes: [], dropped: "acknowledged" };
   }
@@ -247,6 +264,10 @@ function subjects(event: ForgeEvent): { installation: string | null; repo: strin
       return { installation: event.installation.id, repo: null };
     case "push":
     case "repository":
+    case "issues":
+    case "issue_comment":
+    case "pull_request":
+    case "release":
       return { installation: event.installation, repo: event.repo.key.id };
     default:
       return { installation: null, repo: null };
@@ -269,7 +290,7 @@ export async function handleWebhook(r: ForgeRequest): Promise<Response> {
     if (err instanceof GitBackendError) return problem(400, "bad_delivery", "This delivery could not be read.");
     throw err;
   }
-  if (event.kind === "ping" || event.kind === "other" || event.kind === "ref" || event.kind === "release" || event.kind === "pull_request") {
+  if (event.kind === "ping" || event.kind === "other" || event.kind === "ref") {
     return acknowledged({ stored: 0 });
   }
   const who = subjects(event);

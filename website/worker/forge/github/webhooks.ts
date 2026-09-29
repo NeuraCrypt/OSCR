@@ -9,8 +9,9 @@
 //   3,300 commits into its event 3.1 to 3.4 ms.
 // - The signature is checked in constant time, by crypto.subtle.verify (hmac.ts).
 // - Events mapped: ping, installation, installation_repositories, push, repository, create and
-//   delete (both become `ref`), pull_request, release. Everything else becomes `other`; an action
-//   outside the ones listed in types.ts too.
+//   delete (both become `ref`), pull_request, release; phase 08: issues and issue_comment (their
+//   title and the logins their text names, "@login", never the text). Everything else becomes
+//   `other`; an action outside the ones listed in types.ts too.
 // - No email address is copied: not `pusher.email`, not `commits[].author.email`, not the
 //   sender's. The pusher is its name, with the sender's account when they are the same person.
 // - Private repositories (in installation_repositories, or any event whose repository is not
@@ -32,6 +33,23 @@ const REPOSITORY_ACTIONS = new Set(["created", "deleted", "archived", "unarchive
 function installationId(p: map.J): string | null {
   return p.installation ? map.id(map.obj(p.installation, "installation")) : null;
 }
+
+/** The GitHub logins a text names ("@login"), lower case, at most 10, never inside code; an email
+ *  address is no mention. */
+export function mentionsIn(text: unknown): string[] {
+  if (typeof text !== "string" || !text.includes("@")) return [];
+  const plain = text.replace(/```[\s\S]*?```/g, " ").replace(/`[^`\n]*`/g, " ");
+  const out: string[] = [];
+  for (const m of plain.matchAll(/(^|[^A-Za-z0-9_.+%\/-])@([A-Za-z0-9](?:[A-Za-z0-9-]{0,38}))(?![A-Za-z0-9_.-]*\.[A-Za-z]{2,})(?![A-Za-z0-9_@-])/g)) {
+    const login = m[2].toLowerCase();
+    if (login.endsWith("-") || login.includes("--") || out.includes(login)) continue;
+    out.push(login);
+    if (out.length === 10) break;
+  }
+  return out;
+}
+
+const cutTitle = (v: unknown): string => (typeof v === "string" ? [...v.replace(/[\u0000-\u001f\u007f]/g, " ")].slice(0, 200).join("") : "");
 
 function event(name: string, delivery: string, p: map.J): T.ForgeEvent {
   const other: T.ForgeEvent = { kind: "other", delivery, event: name };
@@ -131,6 +149,42 @@ function event(name: string, delivery: string, p: map.J): T.ForgeEvent {
         base: { ref: map.str(base, "ref") },
         merged: pr.merged === true,
         sender: map.user(p.sender),
+        title: cutTitle(pr.title),
+        author: map.user(pr.user),
+        mentions: mentionsIn(pr.body),
+      };
+    }
+    case "issues": {
+      const issue = map.obj(p.issue, "issue");
+      return {
+        kind: "issues",
+        delivery,
+        installation: installationId(p),
+        action,
+        number: map.num(issue, "number"),
+        title: cutTitle(issue.title),
+        author: map.user(issue.user),
+        mentions: mentionsIn(issue.body),
+        repo: map.stub(p.repository),
+        sender: map.user(p.sender),
+      };
+    }
+    case "issue_comment": {
+      const issue = map.obj(p.issue, "issue");
+      const comment = map.obj(p.comment, "comment");
+      return {
+        kind: "issue_comment",
+        delivery,
+        installation: installationId(p),
+        action,
+        number: map.num(issue, "number"),
+        title: cutTitle(issue.title),
+        isPull: !!issue.pull_request,
+        commentId: map.id(comment),
+        author: map.user(issue.user),
+        mentions: mentionsIn(comment.body),
+        repo: map.stub(p.repository),
+        sender: map.user(p.sender),
       };
     }
     case "release": {
@@ -144,6 +198,9 @@ function event(name: string, delivery: string, p: map.J): T.ForgeEvent {
         releaseId: map.id(rel),
         tagName: map.str(rel, "tag_name"),
         sender: map.user(p.sender),
+        name: cutTitle(rel.name),
+        draft: rel.draft === true,
+        prerelease: rel.prerelease === true,
       };
     }
     default:

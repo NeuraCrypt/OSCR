@@ -57,19 +57,19 @@ describe("link", () => {
     // The others of the installation the person may link next, not linked yet.
     assert.deepEqual(result.others.map((o: { name: string }) => o.name).sort(), ["eeg-three", "eeg-two"]);
     assert.equal(first.actBody?.sentence, "Link your public repository ada-fixture/eeg to the registry, attached to one paper");
-    // repos 2 + paper 1 + installation 1 (new) + job 1 + action 1.
-    assert.equal(w.forge.totals.written, 6);
+    // repos 2 + paper 1 + installation 1 (new) + job 1 + action 1; phase 08: the paper's event.
+    assert.equal(w.forge.totals.written, 7);
     const [row] = forgeRows(w.forge, "repos");
     assert.deepEqual([row.mode, row.installation_id, row.owner_login, row.name], ["installed", installation, "ada-fixture", "eeg"]);
     assert.deepEqual(forgeRows(w.forge, "installations").map((i) => i.id), [installation]);
     assert.deepEqual(forgeRows(w.forge, "jobs").map((j) => j.kind), ["link"]);
-    // The installation known: 5 rows.
+    // The installation known: 5 rows (6 with the paper's event).
     w.forge.reset();
     const second = await authorize(w, b, link(ADA_LOGIN, "eeg-two", [P2]));
     assert.equal(second.act?.status, 200, JSON.stringify(second.actBody));
     assert.equal(second.actBody?.result.papers[0].status, "proposed");
     assert.deepEqual(second.actBody?.result.others.map((o: { name: string }) => o.name), ["eeg-three"]);
-    assert.equal(w.forge.totals.written, 5);
+    assert.equal(w.forge.totals.written, 6);
     assert.deepEqual(w.forge.scans, []);
   });
 
@@ -165,7 +165,8 @@ describe("papers", () => {
     assert.deepEqual(run.actBody?.result.removed, [P2]);
     assert.equal(run.actBody?.sentence, `Attach one paper to and detach one paper from ${ADA_LOGIN}/eeg`);
     assert.deepEqual(forgeRows(w.forge, "repo_papers").map((p) => [p.paper_id, p.status]), [[`doi:${P1}`, "linked"]]);
-    assert.equal(w.forge.totals.written, 3);
+    // 1 row a paper and the action row; phase 08: the added paper's event.
+    assert.equal(w.forge.totals.written, 4);
     // No write on GitHub: the action is the permission check.
     assert.equal(forgeCounts(w.forge).jobs, 1);
   });
