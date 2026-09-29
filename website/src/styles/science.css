@@ -867,6 +867,8 @@ ul.task-list li { margin: .15em 0; overflow-wrap: anywhere; }
 ul.sub-issues { margin: .1em 0 .4em; padding-left: 1.2em; font-size: .9em; }
 ul.sub-issues li { margin: .1em 0; overflow-wrap: anywhere; }
 #issue-actions p { margin: .35em 0; font-size: .9em; }
+/* The current tab of a repository's bar (Code, Issues, Pull requests…), in words and weight */
+nav.tabs a[aria-current="page"] { font-weight: bold; color: var(--text); }
 #issue-actions input[type="text"], #issue-actions select { font: inherit; border-radius: 0; max-width: 100%; }
 #issue-actions input[type="text"] { padding: .1em .3em; border: 1px solid #777; }
 

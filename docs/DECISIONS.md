@@ -1458,3 +1458,233 @@ reachable after its branch is deleted (GitHub's `refs/pull/<n>/head`) and lets a
 base commit to a fork's pull request branch that allows it.
 
 **Why.** The pages and the end-to-end run need GitHub's semantics where the contract depends on them.
+
+## Phase 05: issues (2026-09-29)
+
+Taken while building issues in the registry ([ISSUES.md](ISSUES.md)), under the owner's directive of
+2026-09-29 (GitHub is OSCR's competitor: issues are read, written, triaged and closed in OSCR) and
+D00-4, D00-6 (every write the person's own, one authorization each; ordinary issues are GitHub's
+objects, the scientific issue types OSCR's own).
+
+### D05-1. Eleven action kinds for GitHub's issues, each one act as the person; no ordinary issue in D1
+
+**Decision.** `issue_open`, `issue_edit` (edit, close with a reason, reopen, labels and assignees
+added or removed, milestone, type; bulk on up to 25), `issue_comment` (a comment, its edit, its
+deletion), `issue_react`, `issue_lock`, `issue_pin`, `issue_transfer`, `issue_relation` (sub-issues,
+"blocked by"), `issue_branch`, `issue_labels`, `issue_milestone` (`act-issues.ts`), in the registry of
+phase 01; `migrations/d1-forge/0004_issues.sql` rebuilds `actions` with the kinds. Each writes the
+action row only (1 row), none needs the repository to be one the registry follows: GitHub decides
+who may, and what GitHub dropped (labels, assignees, a milestone or a type for someone who does not
+triage) is said. No title, body, comment or label reaches D1 or a log.
+
+**Why.** D00-6: one source of truth; the row budget of §15.4; one write path to secure and cap.
+
+### D05-2. Research issues are the registry's own objects: three types, a paper and its code, one numbering
+
+**Decision.** `research_issues` and `research_comments` in `oscr_forge`
+(`migrations/d1-forge/0005_research.sql`): a code error, a code–paper mismatch (its tracing-map link:
+the paragraph, the file and lines at a commit — required), a reproduction failure (its report). Each
+belongs to a paper (a DOI) and to its code: a GitHub repository the registry knows as that paper's
+code (`repo_papers`, or the Mac's `paper_repo` fact), or code hosted elsewhere at a place the
+registry recognizes (`contributions/links.ts`). One numbering for the registry, written
+`research#12` (the rowid): no counter row, no per-repository number to race for, and a form GitHub
+does not read as its own reference. A repository without a paper has ordinary issues only.
+
+**Options compared.** Research issues as GitHub issues with a label (GitHub's closing keywords would
+work, but the objects, their rules and their text would be GitHub's, and a paper whose code is not
+on GitHub could have none); per-repository numbers (a read and a race at every creation, and no
+number for code elsewhere).
+
+**Why.** D00-6; the plan's research layer; a research issue outlives a repository's move.
+
+### D05-3. GitHub's issue addresses in the /r/ shell; research issues in one shell of their own
+
+**Decision.** `issues/?q=`, `issues/<n>`, `issues/new[/choose]`, `labels`, `milestones`,
+`milestone/<n>` after `/r/<owner>/<name>/` (a pull request's number goes to its page); the research
+issues at `/research/<n>`, `/research/new`, `/research/?paper=`, served by ONE static file through
+`public/_redirects` (`/research/* /research/ 200`), with a Content-Security-Policy that connects to
+this site only. The callback's links accept `/research/<n>` and nothing else under it.
+
+**Why.** D02-1 (GitHub's addresses translate one to one); a research issue about code elsewhere has
+no repository page; the file budget (one file, whatever the number of issues).
+
+### D05-4. The list reads GitHub's list endpoint and filters in the browser; its search only for what only it knows
+
+**Decision.** GitHub's list endpoint (100 issues, 1 request) with the state, the labels (AND), one
+milestone, assignee and creator, and the sort; the rest of GitHub's issue qualifiers, and the
+registry's research ones (`is:research`, `type:mismatch|reproduction|code-error`, `doi:`, `paper:`,
+`map-link:`, `path:`, `resolution:`, `outcome:`), filtered in the browser over both kinds; GitHub's
+search (10 a minute) only for `commenter:`, `involves:`, `mentions:`, `linked:`, `in:`, its query
+stripped of the registry's own qualifiers. Pinned open issues first. Bulk actions on up to 25 in
+ONE authorization (15 when labels or assignees change: each issue is read first, two requests each,
+within the Worker's 50 subrequests).
+
+**Why.** D00-5 (the reader's quota for what the page shows); the research issues are found where the
+code is.
+
+### D05-5. Templates and issue forms read as GitHub reads them; the research forms offered first
+
+**Decision.** The default branch's `.github/ISSUE_TEMPLATE/` (forms and Markdown templates, by file
+name), the legacy single template, `config.yml` (blank issues, contact links: https only, named by
+their host) — read raw (not counted), parsed with the viewer's YAML reader (`issue-forms.ts`), with
+GitHub's validation said for a form it would refuse; the answers written as GitHub writes them. On a
+repository attached to a paper, the chooser lists the registry's three research forms first; they
+open research issues, not GitHub issues.
+
+**Why.** The repository's own forms come first for the software; the research forms are why a
+researcher reports here (§15.5, rank 4).
+
+### D05-6. GitHub's issue types kept; the research types are the registry's
+
+**Decision.** GitBackend gains `Issue.type`, `NewIssue.type`, `IssuePatch.type` (the adapter, the
+double, the fake, the contract): GitHub's issue types belong to organizations ("Task", "Bug",
+"Feature"), and a personal repository's refusal is said. The research types are never GitHub types:
+they are research issues (D05-2), filtered with `type:` beside GitHub's.
+
+**Why.** Most research repositories are personal: the research types cannot depend on an
+organization's settings.
+
+### D05-7. Prefill by address: GitHub's parameters and the registry's
+
+**Decision.** `title`, `body`, `labels`, `assignees`, `milestone`, `template`, `type` (GitHub's), and
+`doi`, `repo`, `commit`, `path`, `lines`, `paragraph`, `section`, `parent`, and a form's fields by id
+(GitHub's) or by `field.<name>=` for the research fields (the registry's: GitHub cannot prefill
+fields) — each checked; a prefilled text is masked for email addresses. The code view's line menu, the
+Code ↔ Paper reader and the paper's page build these addresses.
+
+**Why.** The reader who sees a mismatch in the reader or the code files it in one click, with the
+paragraph, the lines and the commit already said.
+
+### D05-8. An issue's page: every write one authorization, reactions and ticks included
+
+**Decision.** Comments, reactions, the task ticks (one edit of the text), edits, closing with a
+reason, labels, assignees, milestone, type, relationships, lock, pin, transfer and a branch are each
+one authorized action: 4 Worker requests and 1 row. GitHub's REST does not say whether an issue is
+pinned, nor who reacted: the page offers pin and unpin, and "take mine back".
+
+**Why.** D00-4 (no stored token); the cost of consent is a round trip to GitHub per act.
+
+**What would change it.** The owner accepting session-held user tokens (D00-4's alternative).
+
+### D05-9. Similar issues are lexical, in the browser
+
+**Decision.** While a title and a text are written, the page compares their words (no stop words, a
+plural's "s" dropped) with the repository's recent issues (1 request) and the research ones: shared
+words over all words, the same file or paragraph weighing more; the five closest above a threshold.
+No model per query; the Mac's nightly "similar issues" with its local model (the 01:00–07:00 GPU
+window) are left for phase 08.
+
+**Why.** Zero cost; CLAUDE.md's model rule (rules first, the model at night only).
+
+### D05-10. Suggestions set by rule, never applied without the person
+
+**Decision.** A research type or a label the text suggests (a comparison of the paper and the code,
+a result that did not come out, a traceback, the data, versions and packages, numbers that differ)
+is shown marked "set by rule" with its reason in words; the person adds or declines each. Nothing is
+applied on its own, whatever the confidence.
+
+**Why.** The plan's automated-decision transparency (plan decision 1, PLATFORM_PLAN §15.7, gives it
+to this phase); CLAUDE.md's "rules first".
+
+### D05-11. The reproduction report is carried by the reproduction-failure issue
+
+**Decision.** The platform plan's `reproduction_reports` table (§4) was never built. A reproduction
+failure carries its report in its own row (`report`, JSON: the outcome, the environment, the data,
+the command, what the paper reports, what came out, the figure), the texts masked: one row, no
+second table. Successful reproductions (the Reproductions section's other half) wait for phase 06's
+per-paper spaces.
+
+**Why.** The budget (§15.4: a research issue is 3 rows); no report without its conversation.
+
+### D05-12. Who triages a research issue
+
+**Decision.** Anyone signed in opens and comments; the author edits, closes and reopens; the paper's
+verified authors, the code's maintainers (the registry's roles), the person who manages the
+repository in the registry (who linked or created it, or its owner by GitHub login: one read by the
+repository's key) and the moderators also label, lock, pin (three per paper, "known issues") and hide
+comments. A locked conversation takes its triagers' comments only.
+
+**Why.** D04-10's "people who manage the code", and the paper's authors, whose paper it is about.
+
+### D05-13. A merge in the registry closes the research issues its text names
+
+**Decision.** The pull request's page says which research issues its title and description name with
+a closing keyword ("Fixes research#12"); the merge sends their numbers (`pull_merge` `closes`, 5 at
+most), and the Worker reads the pull request as the person and closes each one its text names, about
+this repository, when the merge goes into the default branch (GitHub's own rule): "fixed in the
+code", at the merge commit, 1 row each. A merge made on GitHub itself closes none (the webhook path is
+deferred): the research issue's page keeps "Close: fixed in the code".
+
+**Why.** "A pull request that closes one says so"; nobody closes a research issue the pull request
+does not name.
+
+### D05-14. A research issue is copied to GitHub by its author only, once
+
+**Decision.** `research_copy`: one authorized action by the research issue's author, on its
+repository (the page declares it, the Worker checks it is that one): an ordinary issue with the type's
+label, its text followed by the paper's DOI, the lines' permalink and "research#12"; the research
+issue names the copy (2 rows). A second copy is refused.
+
+**Why.** D00-6 ("an OSCR issue can be copied to GitHub as an ordinary issue with a label, one at a
+time, when its author asks"); the registry never posts on GitHub on its own.
+
+### D05-15. A text holding an email address is not edited in the registry
+
+**Decision.** Quotes, "Reference in a new issue" and "Duplicate this issue" carry the text masked; the
+edit of a title, a description or a comment that holds an address is not offered: the sentence says
+why, and links it at the source. Research texts are masked before they are stored, so they are always
+editable.
+
+**Why.** D04-16: no address shown, and a masked copy written back would lose it.
+
+### D05-16. The registry's writes of research issues are logged in `actions`, and cost 3, 3 or 2 rows
+
+**Decision.** `research_open`, `research_comment`, `research_edit` (types.ts `RESEARCH_KINDS`, after
+`ACTION_KINDS` in the migration's CHECK) write an action row like every authorized action, so that
+the per-account caps (100 writes, 20 research issues a day) and the day's 5,000 rows count them. A
+new issue writes its row, its index entry (`research_paper`, the only index: a paper's issues, a
+repository's through its papers) and the action row; a comment its row (keyed by the issue: no
+index), the issue's count and the action row; a change the issue and the action row, its events kept
+in the row (the last 100, as GitHub caps an edit history). No job row: the Mac reads the tables at
+night.
+
+**Options compared.** A job per write (the plan's sketch: one more row per write, for a Mac that can
+read the tables by key anyway); a second index by repository (one more row per issue).
+
+**Why.** §15.4's budget; the caps counted from the rows, with no counter row (D01-11).
+
+### D05-17. Signed-out readers read research issues from nightly static shards
+
+**Decision.** `oscr/forgelayer.py` adds each repository's research issues' summaries to its layer
+entry (`research`, the newest 200) and writes 64 shards `/forge/research/NN.json`, NN = the number
+mod 64, each issue whole (its text, report, events, comments), in the shapes of the Worker's answers,
+never who wrote them by account; an issue about a repository left out of the layer, or about a paper
+the Mac holds off-topic or withdrawn, is left out; everything scrubbed. `scripts/data.mjs` copies them
+and `npm run check` checks them. Before its migration, `oscr_forge` simply has none.
+
+**Why.** Plan decision 4 (PLATFORM_PLAN §15.7: OSCR-native objects as nightly static shards for
+signed-out readers, live for signed-in ones); 0 Worker requests signed out (§15.4); a fixed number of
+files.
+
+### D05-18. Labels are words with a colour mark from a fixed palette
+
+**Decision.** A label is its name after a small square of its colour: GitHub's hex colour mapped to
+the nearest of 16 named colours, painted by `science.css` through `data-color`, never a `style`
+attribute, never a pill. A new label's colour is chosen from the palette; GitHub's ten default labels
+and three for research code (data, environment, numerical difference) are added in one
+authorization.
+
+**Why.** CLAUDE.md (science.css only; no pills; a status in words).
+
+### D05-19. The test world: issues on the fake GitHub; the end-to-end run's issue checks
+
+**Decision.** The fake GitHub starts with labels, a milestone and issues (Bob's Figure 2 issue,
+typed, pinned, with a task list, a reaction, a comment and a sub-issue; one closed as completed, one
+as not planned: `fake-github-seed.ts` `seedIssues`). The end-to-end run opens a typed GitHub issue,
+labels it, comments, closes it as not planned; opens a research issue, labels it, comments, closes it
+with a resolution; closes a second one through a pull request's merge; copies one to GitHub; and
+checks another account refused (`FORGE_OPEN`). The screenshots' browser blocks every outside address
+(Europe PMC, Hugging Face, doi.org, GitHub).
+
+**Why.** The pages and the run need GitHub's semantics where the contract depends on them; nothing
+leaves the machine.

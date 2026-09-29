@@ -5,7 +5,9 @@ Phase 02's code views (the registry's own viewer, history, Markdown, tracing map
 search) are described in [CODE_NAVIGATION.md](CODE_NAVIGATION.md), phase 03's editor and web commits
 (the action `commit`) in [WEB_EDITING.md](WEB_EDITING.md), phase 04's forks and pull requests (ten
 action kinds, the pull request pages, conflicts resolved in the browser) in
-[PULL_REQUESTS.md](PULL_REQUESTS.md). This
+[PULL_REQUESTS.md](PULL_REQUESTS.md), phase 05's issues (eleven action kinds on GitHub's issues, the
+registry's own research issues and their routes, the issue pages, the `/research/` shell) in
+[ISSUES.md](ISSUES.md). This
 page is the contract the parts of phase 01 build on: the routes, the authorized actions and their
 payloads, the rows each writes, the caps, the switch `FORGE_OPEN`, the pages, the static layer,
 the Mac's jobs and the budget. The decisions behind it: [DECISIONS.md](DECISIONS.md) D00-1 to
@@ -48,6 +50,10 @@ the accounts set up (`COMMUNITY` and `SESSION_KEY`, else 503 `not_configured`).
 | `POST /api/forge/webhook` | GitHub (HMAC-SHA-256, `GITHUB_APP_WEBHOOK_SECRET`); not gated by `FORGE_OPEN` | the delivery (≤ 1 MiB, else 413 before hashing) → `{ok, stored}` | ≤ 2 rows: a one-row change with its delivery row, a two-row change without it (D01-24) | E3 |
 | `GET /api/forge/repo?id=<forge>:<id>` or `?path=<owner>/<name>` | signed in | OSCR's layer for one repository; phase 04: `reviewers`, the linked papers' verified authors by GitHub login, to the people who manage the repository or authored a paper (D04-10) | ~10 read, 0 written | E6 |
 | `GET /api/forge/mine` | signed in | "Your repositories", paged by name, `?mode=`, `?template=` | the account's repositories | E6 |
+| `GET /api/forge/research` | signed in | phase 05: one research issue (`?id=`: the issue, its comments, what the reader may do), or the research issues of 1–10 papers (`?paper=`, `&repo=<forge>:<id>`) | ≤ ~1,000 read, 0 written | phase 05 |
+| `POST /api/forge/research/open` | signed in; Origin and CSRF; `FORGE_OPEN` | a new research issue (`{paper, repo \| code, type, title, …}`) → `{id, page}` (201) | 3 rows: the row, its index entry, the action row | phase 05 |
+| `POST /api/forge/research/comment` | signed in; Origin and CSRF; `FORGE_OPEN` | a comment, its edit, its deletion or hiding | 3 rows for a comment, 2 otherwise | phase 05 |
+| `POST /api/forge/research/edit` | signed in; Origin and CSRF; `FORGE_OPEN` | title, text, close with a reason and a research resolution, reopen, labels, lock, pin | 2 rows | phase 05 |
 
 `start`'s body (`src/lib/forge.ts` `apiStart` builds it):
 - `kind`: an action kind (below);
@@ -143,6 +149,18 @@ The rules every spec keeps:
 | `pull_merge` (phase 04) | act-pulls.ts | the base repository; start's `expectedHead` = `head` | `{number, method: merge \| squash \| rebase, head, title?, message?, deleteBranch?}` (a head that moved: 409 offer reload; GitHub's refusal: 409 offer conflicts) | action 1 | – |
 | `pull_update` (phase 04) | act-pulls.ts | the base repository | `{number, head}` | action 1 | – |
 | `pull_revert` (phase 04) | act-pulls.ts | the base repository | `{number}` (a merged one; GitHub opens the revert) | action 1 | – |
+| `issue_open` (phase 05) | act-issues.ts | the repository | `{title, body?, labels?, assignees?, milestone?, type?, parent?}` | action 1 | – |
+| `issue_edit` (phase 05) | act-issues.ts | the repository | `{number \| numbers (≤ 25; ≤ 15 with labels or assignees), title?, body?, state?, reason?: completed \| not_planned \| duplicate, duplicateOf?, labels?: {add, remove}, assignees?: {add, remove}, milestone?, type?}` | action 1 | – |
+| `issue_comment` (phase 05) | act-issues.ts | the repository | `{number, body}` \| `{number, comment, body}` \| `{number, comment, delete: true}` | action 1 | – |
+| `issue_react` (phase 05) | act-issues.ts | the repository | `{number, comment?, reaction, remove?}` | action 1 | – |
+| `issue_lock`, `issue_pin` (phase 05) | act-issues.ts | the repository | `{number, locked, reason?}`, `{number, pinned}` | action 1 | – |
+| `issue_transfer` (phase 05) | act-issues.ts | the repository | `{number, to}` (a repository of the same account) | action 1 | – |
+| `issue_relation` (phase 05) | act-issues.ts | the repository | `{number, sub?: {add \| remove}, blockedBy?: {add \| remove}}` | action 1 | – |
+| `issue_branch` (phase 05) | act-issues.ts | the repository | `{number, name ("<n>-…"), from}` | action 1 | – |
+| `issue_labels`, `issue_milestone` (phase 05) | act-issues.ts | the repository | `{create?, update?, delete?}` (≤ 25); `{title, …}` \| `{number, …}` \| `{number, delete}` | action 1 | – |
+| `research_copy` (phase 05) | act-research.ts | the research issue's repository | `{id}` (its author, once) | research issue 1 + action 1 | – |
+| `pull_merge` + `closes` (phase 05) | act-pulls.ts | the base repository | `…, closes?: research numbers (≤ 5)`: those the pull request's text says it fixes, about this repository, into the default branch | 1 per research issue + action 1 | – |
+| `research_open`, `research_comment`, `research_edit` (phase 05) | research.ts | — | not authorized actions: the registry's own routes above, logged in `actions` so that the caps count them | 3, 3 or 2 with the action row | research issues opened: 20 |
 
 A paper is a DOI (`10.…`), stored as `doi:10.…` in lower case, as `oscr_community`'s paper ids.
 Its status is `linked` when the person is a verified author of the paper or a maintainer of the
@@ -151,10 +169,12 @@ authorized actions an account may make in 24 hours.
 
 ## The rows of `oscr_forge`
 
-`migrations/d1-forge/0001_forge.sql` (and `0002_commit.sql`, phase 03, and `0003_pulls.sql`, phase
-04: `actions` rebuilt with the kinds `commit`, then `fork` … `pull_revert`): WITHOUT ROWID where the key is text, one index in the whole
-database (`repos_path`), Unix seconds, no email, token or Git object column, public repositories
-only.
+`migrations/d1-forge/0001_forge.sql` (and `0002_commit.sql`, phase 03, `0003_pulls.sql`, phase
+04, `0004_issues.sql` and `0005_research.sql`, phase 05: `actions` rebuilt with the kinds `commit`,
+then `fork` … `pull_revert`, then `issue_open` … `issue_milestone`, then `research_copy` and the
+research writes): WITHOUT ROWID where the key is text, two indexes in the whole database (`repos_path`,
+and phase 05's `research_paper`), Unix seconds, no email, token or Git object column, public
+repositories only.
 
 | table | key | what | written by |
 |---|---|---|---|
@@ -165,6 +185,8 @@ only.
 | `actions` | (day, user_id, at, nonce) | one row per authorized action: kind, repository, the GitHub account's numeric id, outcome, rows written | the Worker |
 | `deliveries` | (day, delivery) | one row per webhook delivery handled: event, rows written | the Worker |
 | `jobs` | id (the rowid) | the Mac's work: `link`, `push`, `archive`, `delete_due` (`not_before`), `reconcile`; the Mac's answer in the row (`done_at`, `outcome`, `message`) | the Worker; the Mac answers |
+| `research_issues` | id (the rowid: `research#<id>`); index `research_paper` (paper_id, id) | phase 05: a research issue — the paper, the repository (by id and path) or the code's address elsewhere, the type, title and text (masked), the tracing-map link (commit, path, lines, paragraph, section), the reproduction report (JSON), labels, state, GitHub's close reason and the research resolution, lock, pin, the GitHub copy's number, the author as named (and their user id, never answered), the comments' count, the last 100 events | the Worker |
+| `research_comments` | (issue_id, n) | phase 05: a research issue's comments in order; a deleted one keeps its row, empty; a hidden one its reason | the Worker |
 
 - A repository made private on GitHub leaves OSCR: state `hidden`, its owner and name blanked
   (D00-14); nothing finds it by path.
@@ -187,7 +209,7 @@ only.
 | `COMMIT_FILES` | 100 | files in one web commit (phase 03) |
 | `PR_FILES_CHECKED` | 300 | files OSCR's pull-request check reads (phase 04) |
 | `FORGE_ROWS_PER_DAY` | 5,000 | the forge service's D1 writes in a UTC day, inside the Worker's 10,000, until the owner confirms C3 |
-| per account, 24 hours | 100 authorized actions, 10 repositories created, 20 linked | abuse, and the rows |
+| per account, 24 hours | 100 authorized actions (the research writes included), 10 repositories created, 20 linked, 20 research issues opened | abuse, and the rows |
 | `GRACE_SECONDS` | 30 days | a deletion's grace period (D00-10) |
 | `FLOW_SECONDS` | 10 minutes | the flow cookie |
 
@@ -253,6 +275,7 @@ Static pages (the Worker's assets), `science.css` only, the platform's name from
 | `/repositories/` | "Your repositories" (signed out: a sentence, no Worker request) | E6 |
 | `/forge/authorized/` | the callback of one authorized action (`Referrer-Policy: no-referrer`) | E1 |
 | `/r/<owner>/<name>/edit/…`, `new/…`, `upload/…`, `delete/…` | phase 03's editing views (the same shell; [WEB_EDITING.md](WEB_EDITING.md)) | phase 03 |
+| `/research/<n>`, `/research/new`, `/research/?paper=` | phase 05: the research issues, ONE shell (`/research/* /research/ 200`), its CSP this site only ([ISSUES.md](ISSUES.md)) | phase 05 |
 | `/r/<owner>/<name>/`, `…/settings/`, `…/branches/` | the repository pages: ONE shell, `/r/index.html`, serves them all (`public/_redirects`: `/r/* /r/ 200`); it reads GitHub's anonymous API and raw files on the reader's quota (its CSP allows `api.github.com` and `raw.githubusercontent.com`) | E7, E8 |
 | `/hosting/`, `/hosting/limits/`, `/hosting/large-files/`, `/hosting/git/`, `/hosting/history/`, `/hosting/tokens/` | the guides | E11 |
 | `/hosting/import/`, `/hosting/leave/` | importing, and the exit path | E12 |
@@ -283,6 +306,9 @@ Static pages (the Worker's assets), `science.css` only, the platform's name from
 - Hidden, waiting-for-deletion, deleted and private repositories are left out, and the build drops
   them again, with every entry not in its own shard. No email address (the build scrubs, the check
   refuses).
+- Phase 05: an entry's `research` lists its research issues' summaries (the newest 200), and 64 more
+  shards, `/forge/research/NN.json` (NN = the issue's number mod 64), hold each research issue whole
+  (`{"<n>": {"issue", "comments"}}`), as of last night, for signed-out readers.
 
 ## The Mac's jobs
 
@@ -349,7 +375,12 @@ templates), and `…/forks` and `…/merge-upstream` (phase 04). Phase 04's chec
 pages are the shell; a pull request opened, a line comment with a suggestion, the suggestion
 applied as a commit on its branch, a merge at a head that moved refused, the merge (squash, the
 branch deleted), a second pull request refused on its conflict, another account's fork and comment
-refused (`FORGE_OPEN`). The fake starts with a CODEOWNERS file, an issue, and Bob's pull request from
+refused (`FORGE_OPEN`). Phase 05's checks: the issue pages and the research shell are static; a
+typed GitHub issue opened, labelled, commented and closed as not planned; a research issue opened,
+labelled, commented and closed with a resolution (3, 2, 3 and 2 rows); a second one closed by the
+merge of a pull request that says "Fixes research#N"; a copy on GitHub; another account's issue and
+research issue refused. The fake also starts with labels, a milestone and issues
+(`seedIssues`). The fake starts with a CODEOWNERS file, an issue, and Bob's pull request from
 his fork, reviewed with a suggestion (`tests/forge/fake-github-seed.ts` `seedPulls`). A test browser that shows the
 `/r/` pages against the fake needs the Content-Security-Policy bypassed for them (it allows
 GitHub's own hosts, not the fake's): the screenshots in `docs/night-screenshots/phase-01/` were

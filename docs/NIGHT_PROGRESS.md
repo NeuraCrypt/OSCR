@@ -37,7 +37,8 @@ from "Next step".
 | 02 Code navigation | night/phase-02-code-navigation | **done** 2026-09-29, pushed (9 commits: E1 to E7, the security review, the close) |
 | 03 Web editing | night/phase-03-web-editing | **done** 2026-09-29, pushed (6 commits: E1 to E5, the close) |
 | 04 Forks and pull requests | night/phase-04-pull-requests | **done** 2026-09-29, pushed (7 commits: E1 to E6, the close) |
-| 05 Issues | night/phase-05-issues | next: branch created from night/phase-04-pull-requests |
+| 05 Issues | night/phase-05-issues | **done** 2026-09-29, pushed (8 commits: E1 to E6, the close in two parts) |
+| 07 Releases, packages and environments | night/phase-07-releases | next: branch created from night/phase-05-issues |
 
 ## Phase 00: what it produced
 
@@ -164,14 +165,51 @@ from "Next step".
   Node 22; build 45 pages, 227 files (no new file); `check --every-route` ok; strict `tsc` clean
   (worker and tests; page scripts); the end-to-end run: every check passed (77).
 
+## Phase 05: what it produced
+
+- GitHub's issues as eleven authorized actions (E1, `act-issues.ts`): open (labels, assignees, a
+  milestone, an organization's type, a parent), edit (and close as completed, not planned or a
+  duplicate, reopen, labels and assignees added or removed, milestone, type; bulk on up to 25),
+  comment (and edit, delete), react, lock, pin, transfer, sub-issues and "blocked by", a branch for
+  the issue, labels, milestones; `migrations/d1-forge/0004_issues.sql`; GitBackend's issue type
+  (adapter, double, fake, contract). 1 D1 row each.
+- Research issues, the registry's own (E2): a code error, a code–paper mismatch (its tracing-map
+  link), a reproduction failure (its report), per paper and its code, `research#N`
+  (`migrations/d1-forge/0005_research.sql`, `research-core.ts`, `research.ts`: GET, and POST open,
+  comment, edit: 3, 3, 2 rows, `FORGE_OPEN`, 20 a day per account); copied to GitHub by their author
+  (`research_copy`); closed "fixed in the code" by a merge whose pull request says "Fixes
+  research#N" (`pull_merge` `closes`).
+- The pure library (E3): `src/lib/issues.ts` (addresses; GitHub's issue qualifiers and the research
+  ones with AND, OR, negation; the list's plan; words; task lists; the label palette and the default
+  labels; similar issues, lexical; suggestions set by rule with their reason; saved replies; "#" and
+  "@" completion; prefill), `issue-forms.ts` (templates, issue forms, config.yml, answers as GitHub
+  writes them, the three research forms).
+- The pages (E4, E5, E6): the list with both kinds, bulk actions, the chooser, the new-issue form
+  (templates, forms, research forms, similar issues, suggestions), labels, milestones
+  (`repo-issues.ts`); an issue's page (`repo-issue.ts`: the timeline in words, reactions, task
+  ticks, saved replies, the "+1" nudge, every triage action); the research issues' shell
+  (`/research/*`, `research.ts`); the paper's Discussion and Reproductions (`paper-research.ts`); the
+  reader's "Report a mismatch" and the code view's line menu (`issue-links.ts`); the pull request's
+  "closes research#N"; the Issues tab; `science.css` (labels as words with a colour mark from 16,
+  the current tab in bold).
+- The Mac (E6): `oscr/forgelayer.py` adds the research issues to the layer shards and writes 64
+  research shards for signed-out readers.
+- The close: the end-to-end run's phase 05 checks (102 in all, every one passed); the security
+  review's fixes (a text holding an address never edited or quoted in clear, D05-15; the repository's
+  managers triage its research issues, D05-12); docs `docs/ISSUES.md`, `FORGE.md`, `ARCHITECTURE.md`
+  ("Issues (phase 05)"), decisions D05-1 to D05-19; screenshots `docs/night-screenshots/phase-05/`
+  (40: desktop and phone).
+- Tests at the close: pytest 474 passed; ruff clean; `npm test` 1,112 passed under Node 26 and Node
+  22; build 46 pages, 233 files (one new page: `/research/`); `check --every-route` ok; strict `tsc`
+  clean (worker and tests; page scripts); the end-to-end run: every check passed (102).
+
 ## Next step
 
-Phase 05, issues, on branch `night/phase-05-issues` (created from `night/phase-04-pull-requests`):
-follow `docs/PLATFORM_PLAN.md` §15.6 "Phase 05". Phase 04's hooks for it: `pull-page.ts`
-`timelineOf` and `commentHead` (a conversation's timeline and role labels), `pulls.ts` `issueRefs`
-and `closingRefs` (references and closing keywords), the list's query language (`parsePullQuery`,
-`planQuery`, `matchPull`: GitHub's qualifiers, to extend for issues), `pull-common.ts`
-(`whoIsHere`, `confirmAction`, the masking `el`), the sidebar's "Development" section, and the
-labels ("Alters reported results" is shown when set; setting labels is phase 05's). The owner's
-actions are in `docs/NIGHT_REPORT.md` §2; until the App exists, everything runs against the fake
-GitHub and the in-memory double.
+Phase 07, releases, packages and environments, on branch `night/phase-07-releases` (created from
+`night/phase-05-issues`): follow `docs/PLATFORM_PLAN.md` §15.6 "Phase 07" (the execution order of
+§15.5: 01 → 02 → 03 → 04 → 05 → 07 → 16 …). Phase 05's hooks for it: an issue's Development section
+(`src/lib/issue-page.ts` `sidebarFacts`: "the first release containing a fix" is phase 07's), the
+milestones (a version of the paper), the research resolutions ("fixed in the code" at a commit a
+release may carry), GitBackend's `ReleaseOps` (built in phase 00, untouched so far), and the action
+registry's pattern (`act-issues.ts`). The owner's actions are in `docs/NIGHT_REPORT.md` §2; until the
+App exists, everything runs against the fake GitHub and the in-memory double.

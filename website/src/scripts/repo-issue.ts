@@ -14,6 +14,7 @@
 // Comments are someone's text: rendered by the registry's own Markdown renderer into view trees,
 // "#12" and "research#3" linked, email addresses masked, never HTML, never run.
 
+import { maskEmails } from "../../worker/forge/mask.ts";
 import { issueBranchName, LOCK_REASONS } from "../../worker/forge/service/act-issues.ts";
 import type * as T from "../../worker/forge/types.ts";
 import { closedInWords, eventLine, issueHeader, issueTimeline, mentionsOf, participants, reactionsLine, sidebarFacts } from "../lib/issue-page.ts";
@@ -197,10 +198,11 @@ function wireComments(f: Frame, main: HTMLElement): void {
     const quote = button("Quote", () => {
       const t = text();
       if (!t) return;
-      t.value = `${t.value}${t.value && !t.value.endsWith("\n") ? "\n\n" : ""}${quoteReply(c ? c.body : f.issue.body)}`;
+      // A quote is shown: its addresses stay hidden (CLAUDE.md), the quote saying "[email hidden]".
+      t.value = `${t.value}${t.value && !t.value.endsWith("\n") ? "\n\n" : ""}${quoteReply(maskEmails(c ? c.body : f.issue.body))}`;
       t.focus();
     });
-    bar.append(quote, " ", el("a", { href: newIssuePath(f.env.repo, { title: `Follow-up: ${f.issue.title}`.slice(0, 200), body: `${quoteReply(c ? c.body : f.issue.body)}From #${f.issue.number}.` }) }, "Reference in a new issue"));
+    bar.append(quote, " ", el("a", { href: newIssuePath(f.env.repo, { title: maskEmails(`Follow-up: ${f.issue.title}`).slice(0, 200), body: `${quoteReply(maskEmails(c ? c.body : f.issue.body)).slice(0, 6000)}From #${f.issue.number}.` }) }, "Reference in a new issue"));
     if (f.signedIn) {
       const pick = el("select", { "aria-label": "React" });
       pick.append(el("option", { value: "" }, "React…"), ...REACTIONS.map((r) => el("option", { value: r.key }, `${r.char} ${r.words}`)));
@@ -221,6 +223,13 @@ function wireComments(f: Frame, main: HTMLElement): void {
 /** The text's editor, in place: the description (and the title), or one's comment. */
 function editBox(f: Frame, node: HTMLElement, c: T.IssueComment | null, said: HTMLElement): void {
   if (node.querySelector(".edit-box")) return;
+  // A text that holds an email address is never shown whole, and a masked copy written back would
+  // lose the address (D04-16): such a text is edited on GitHub, said.
+  const raw = c ? c.body : `${f.issue.title}\n${f.issue.body}`;
+  if (maskEmails(raw) !== raw) {
+    said.replaceChildren(el("p", { class: "explain" }, "This text holds an email address, which the registry never shows: it cannot be edited here without losing it. Its author edits it ", el("a", { href: `${f.env.endpoints.web}/${f.env.repo.owner}/${f.env.repo.name}/issues/${f.issue.number}`, rel: "noopener noreferrer" }, "at the source"), "."));
+    return;
+  }
   const area = el("textarea", { class: "pull-text", rows: "8", "aria-label": c ? "The comment" : "The description" });
   area.value = c ? c.body : f.issue.body;
   const title = el("input", { type: "text", maxlength: "256", "aria-label": "The title" });
@@ -384,7 +393,7 @@ async function commentForm(f: Frame, into: HTMLElement): Promise<void> {
  *  lock, pin, transfer, sub-issues, dependencies, a branch, duplicate the issue. */
 function sideActions(f: Frame, into: HTMLElement, labels: readonly T.Label[], milestones: readonly T.Milestone[], branch: string | null): void {
   const { issue, env } = f;
-  const dup = el("p", { class: "summary-line" }, el("a", { href: newIssuePath(env.repo, { title: issue.title, body: issue.body.slice(0, 6000), labels: issue.labels.join(",") }) }, "Duplicate this issue"), ": a new one, prefilled (no comments).");
+  const dup = el("p", { class: "summary-line" }, el("a", { href: newIssuePath(env.repo, { title: maskEmails(issue.title), body: maskEmails(issue.body).slice(0, 6000), labels: issue.labels.join(",") }) }, "Duplicate this issue"), ": a new one, prefilled (no comments).");
   if (!f.signedIn) {
     into.replaceChildren(el("h3", {}, "Act"), el("p", { class: "summary-line" }, "Signed in, you comment, react, and — as GitHub allows your account — close, label, assign, lock, pin or transfer it here."), dup);
     return;

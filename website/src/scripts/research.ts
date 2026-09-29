@@ -115,9 +115,11 @@ function codeLine(i: IssueSummary): El {
   return h("p", { class: "summary-line" }, "Hosted elsewhere: ", i.code_url ? h("a", { href: i.code_url, rel: "noopener noreferrer" }, host || i.code_url) : "not named", i.anchor?.path ? ` · ${i.anchor.path}${i.anchor.start ? `, lines ${i.anchor.start}–${i.anchor.end ?? i.anchor.start}` : ""}` : "", ". Its authors may take issues there too; the registry keeps this one beside the paper.");
 }
 
-async function markdown(text: string): Promise<El> {
+/** Someone's Markdown, "#12" linked to the issue's repository (when it is on GitHub) and
+ *  "research#3" to the research issue. */
+async function markdown(text: string, repo: { owner: string; name: string } | null = null): Promise<El> {
   if (!text.trim()) return h("p", { class: "muted-note" }, "No description.");
-  return linkRefs((await renderMarkdown(text)).el, null);
+  return linkRefs((await renderMarkdown(text, repo ? { repo } : {})).el, repo);
 }
 
 async function mountIssue(root: HTMLElement, id: number): Promise<void> {
@@ -129,19 +131,21 @@ async function mountIssue(root: HTMLElement, id: number): Promise<void> {
   const { issue: i, comments, can, live } = read;
   document.title = `${i.title} · research#${i.id}${document.title.includes(" — ") ? document.title.slice(document.title.indexOf(" — ")) : ""}`;
   const item = fromResearch(i);
+  const coords = i.repo ? { owner: i.repo.path.split("/")[0], name: i.repo.path.split("/")[1] } : null;
+  const md = (text: string) => markdown(text, coords);
   const parts: El[] = [
     h(
       "div",
       { class: "comment issue-description", id: "issue-body" },
       h("p", { class: "comment-head" }, h("strong", null, byline(i.author, i.author_via)), i.author_role ? h("span", { class: "role" }, ` (${roleInWords(i.author_role)})`) : null, ` opened it on ${dayOfSeconds(i.created_at)}`),
-      await markdown(i.body),
+      await md(i.body),
     ),
   ];
   // Comments and events, in time order.
   const timeline: { at: number; el: El }[] = [];
   for (const c of comments) {
     const head = h("p", { class: "comment-head" }, h("strong", null, byline(c.author, c.author_via)), c.author_role ? h("span", { class: "role" }, ` (${roleInWords(c.author_role)})`) : null, ` commented on ${dayOfSeconds(c.created_at)}${c.edited_at ? " (edited)" : ""}`);
-    const content = c.deleted ? h("p", { class: "muted-note" }, "A deleted comment.") : c.hidden ? h("details", null, h("summary", null, `Hidden as ${c.hidden}: show it`), await markdown(c.body)) : await markdown(c.body);
+    const content = c.deleted ? h("p", { class: "muted-note" }, "A deleted comment.") : c.hidden ? h("details", null, h("summary", null, `Hidden as ${c.hidden}: show it`), await md(c.body)) : await md(c.body);
     timeline.push({ at: c.created_at, el: h("div", { class: "comment", id: `comment-${c.n}`, "data-n": String(c.n) }, head, content) });
   }
   for (const e of i.events) timeline.push({ at: e.at, el: h("p", { class: "timeline-event" }, h("strong", null, e.by || "someone"), ` ${researchEventInWords(e)} on ${dayOfSeconds(e.at)}`) });

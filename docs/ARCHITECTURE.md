@@ -664,3 +664,44 @@ merge, as the person.
 - **Files added to the site**: none (the page scripts' chunks grow).
 - **The screenshots**: `docs/night-screenshots/phase-04/` (desktop 1280×860, phone 390×844, against
   the fake GitHub and `wrangler dev`, signed in).
+
+### Issues (phase 05): triaged and closed in the registry
+
+Built on the night of 2026-09-29; the details are [ISSUES.md](ISSUES.md), the decisions D05-1 to
+D05-19 in [DECISIONS.md](DECISIONS.md). Two kinds of issues (D00-6): GitHub's ordinary issues stay
+GitHub's objects, read on the reader's quota and written as the person; research issues — a code
+error, a code–paper mismatch, a reproduction failure — are the registry's own, in `oscr_forge`.
+
+- **The views** are GitHub's shapes in the `/r/*` shell (D05-3): `issues` (the list, the chooser,
+  the form, an issue), `labels`, `milestones`, `milestone/<n>` (`repo-issues.ts`, `repo-issue.ts`),
+  and the Issues tab; the research issues have ONE shell of their own, `/research/*`
+  (`src/pages/research/index.astro`, `research.ts`; one `_redirects` rule, a CSP to this site only).
+  Their pure parts — `src/lib/issues.ts`, `issue-forms.ts`, `issue-view.ts`, `issue-page.ts` — are
+  tested in Node.
+- **The actions** (D05-1): eleven kinds in `act-issues.ts`, each one act as the person, 1 D1 row
+  (`migrations/d1-forge/0004_issues.sql`); `research_copy` (`act-research.ts`, D05-14); `pull_merge`
+  closes the research issues a pull request's text names (D05-13). GitBackend gains the issue type
+  (D05-6).
+- **Research issues** (D05-2, D05-11, D05-16): `research_issues` and `research_comments`
+  (`migrations/d1-forge/0005_research.sql`), the routes `GET /api/forge/research` and `POST
+  /api/forge/research/{open,comment,edit}` (`research.ts`, over the pure `research-core.ts`), 3, 3 or
+  2 rows a write, logged in `actions` so the caps count them; the reproduction report in the
+  reproduction failure's own row; the triagers are the paper's verified authors, the code's
+  maintainers and managers, the moderators (D05-12).
+- **The research layer**: the paper's page lists its research issues in Discussion and
+  Reproductions (`Later.astro`, `paper-research.ts`); the code view's line menu and the Code ↔ Paper
+  reader open the research forms prefilled with the paragraph, the file, the lines and the commit
+  (`issue-links.ts`, `code.astro`, D05-7); similar issues and suggestions set by rule while writing,
+  lexical and in words (D05-9, D05-10).
+- **The Mac**: `oscr/forgelayer.py` adds each repository's research issues to its layer shard and
+  writes 64 shards `/forge/research/NN.json` for signed-out readers (D05-17).
+- **Safety**: every GitHub action declared with the Worker's own rules and sentence (D01-28); the
+  research writes need the session, its CSRF token, the site's Origin and `FORGE_OPEN`; texts masked
+  before they are stored and when shown, a text holding an address never edited in the registry
+  (D05-15); the callback's links `/r/` and `/research/<n>` only; labels as words with a colour mark
+  from a fixed palette (D05-18). `FORGE_OPEN` unset: only the owner may act (the end-to-end run checks
+  another account's issue and research issue refused).
+- **Files added to the site**: 1 page (`/research/index.html`), and, when the export has them, at
+  most 64 research shards: a fixed number whatever the number of issues.
+- **The screenshots**: `docs/night-screenshots/phase-05/` (desktop 1280×860, phone 390×844, against
+  the fake GitHub and `wrangler dev`, signed out and signed in).

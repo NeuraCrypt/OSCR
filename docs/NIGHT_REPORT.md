@@ -45,7 +45,17 @@ Mis à jour au fil de la nuit. La mission est dans `docs/NIGHT_RUN.md`, le journ
   - **La couche recherche** : chaque pull request dit quels liens de carte de traçage elle touche, fichier par fichier (l'article, le paragraphe des Méthodes, les lignes, et si elles changent) ; les auteurs vérifiés de l'article sont suggérés comme relecteurs (aux seules personnes qui gèrent le code) ; CODEOWNERS est lu comme GitHub le lit.
   - **Essai de bout en bout** : tout passe (77 vérifications), dont ouvrir une pull request, un commentaire de ligne avec une suggestion, la suggestion appliquée, une fusion refusée parce que la tête a bougé, la fusion, un conflit refusé, et le fork et le commentaire d'un autre compte refusés (`FORGE_OPEN` non posé). Captures : `docs/night-screenshots/phase-04/` (28 images, bureau et téléphone, connecté).
   - **Tests à la clôture** : pytest 472 ; ruff propre ; `npm test` 1 036 sous Node 26 et Node 22 ; build 45 pages, 227 fichiers (aucun nouveau) ; `check --every-route` ok ; `tsc --strict` propre.
-- **Suite** : phase 05 (issues) sur la branche `night/phase-05-issues`, créée et poussée.
+- **Phase 05 (issues) : terminée**, branche `night/phase-05-issues`, poussée (8 commits : les éléments E1 à E6, la clôture en deux parties). Rien fusionné, rien déployé.
+  - **Les issues se lisent, s'écrivent, se trient et se ferment dans OSCR** (ta consigne : GitHub est le concurrent). Deux sortes : les issues ordinaires restent des objets de GitHub (lues dans le navigateur du lecteur, sur son quota ; écrites par GitHub en ton nom, une autorisation à la fois, 1 ligne D1) ; les **issues de recherche** sont les objets d'OSCR, dans `oscr_forge`.
+  - **Onze nouvelles actions sur les issues de GitHub** : ouvrir (étiquettes, assignés, jalon, type d'une organisation, sous-issue d'une autre), modifier et fermer comme terminée, non prévue ou doublon de #n, rouvrir, étiquettes et assignés ajoutés ou retirés, jalon, type — jusqu'à 25 issues en une seule autorisation —, commenter (modifier, supprimer), réagir, verrouiller avec une raison, épingler, transférer, sous-issues et « bloquée par », créer la branche de l'issue, gérer les étiquettes (les dix de GitHub et trois pour le code de recherche : data, environment, numerical difference, en une autorisation) et les jalons.
+  - **Les issues de recherche** : « erreur dans le code », « écart code ↔ article » (un lien de carte de traçage : le paragraphe de l'article, les lignes du fichier à un commit) et « échec de reproduction » (son rapport : résultat, environnement, commit, données, commande, ce que l'article annonce et ce qui est sorti). Chacune appartient à un article (son DOI) et à son code (un dépôt GitHub qu'OSCR connaît comme code de cet article, ou le code hébergé ailleurs : Zenodo, OSF…). Elles se nomment `research#12`. Ouvrir coûte 3 lignes D1, commenter 3, modifier 2 ; `FORGE_OPEN` les garde fermées aux autres que toi ; 20 par compte et par jour.
+  - **Une pull request qui ferme une issue de recherche le dit** : « Fixes research#12 » dans son texte, la barre latérale annonce « la fusion dans OSCR ferme research#12 : corrigée dans le code », et la fusion la ferme ainsi, au commit de fusion (seulement celles que son texte nomme, de ce dépôt, vers la branche par défaut). L'auteur d'une issue de recherche peut la copier une fois sur GitHub comme issue ordinaire, avec l'étiquette de son type.
+  - **Les pages**, aux adresses de GitHub dans la coquille `/r/` (aucun fichier par issue) et une nouvelle coquille `/research/` (un seul fichier) : la liste mêlant les deux sortes avec les qualificatifs de GitHub et ceux de la recherche (`is:research`, `type:mismatch`, `doi:`, `map-link:14:src/filter.py`, `resolution:`, `outcome:`…) et les actions groupées ; le choix du modèle (les trois formulaires de recherche d'abord, puis les modèles et formulaires du dépôt lus comme GitHub les lit) ; le formulaire (aperçu, **issues semblables** par mots partagés, **suggestions posées par règle** avec leur raison, jamais appliquées sans toi) ; la page d'une issue (la chronologie en mots, les réactions, les cases de la liste de tâches, les réponses enregistrées, le rappel « +1 », toutes les actions de tri) ; étiquettes (un mot et un petit carré de couleur tiré d'une palette de 16, jamais une pastille) et jalons ; la page d'une issue de recherche avec son rapport, sa résolution (corrigée dans le code, article corrigé, pas un écart, échec non reproduit, données disponibles).
+  - **La couche recherche** : la section Discussion de la page d'un article liste ses erreurs et écarts, Reproductions ses échecs de reproduction (épinglées d'abord, « problèmes connus ») ; le lecteur Code ↔ Article propose « Signaler un écart » sur chaque correspondance, et la vue du code « Signaler un écart sur ces lignes » : le formulaire arrive rempli avec le paragraphe, le fichier, les lignes et le commit.
+  - **Le Mac** : `oscr/forgelayer.py` publie chaque nuit les issues de recherche pour les lecteurs non connectés (64 fichiers au plus, « d'après la nuit dernière »).
+  - **Essai de bout en bout** : tout passe (102 vérifications), dont une issue GitHub typée, étiquetée, commentée et fermée comme non prévue ; une issue de recherche ouverte, étiquetée, commentée et fermée avec une résolution ; une autre fermée par la fusion d'une pull request ; une copie sur GitHub ; les écritures d'un autre compte refusées. Captures : `docs/night-screenshots/phase-05/` (40 images, bureau et téléphone, hors connexion et connecté).
+  - **Tests à la clôture** : pytest 474 ; ruff propre ; `npm test` 1 112 sous Node 26 et Node 22 ; build 46 pages, 233 fichiers (une nouvelle page : `/research/`) ; `check --every-route` ok ; `tsc --strict` propre.
+- **Suite** : phase 07 (versions, paquets et environnements) sur la branche `night/phase-07-releases`, créée et poussée.
 
 ## 2. À valider par Yann
 
@@ -116,9 +126,19 @@ Mis à jour au fil de la nuit. La mission est dans `docs/NIGHT_RUN.md`, le journ
 40. **Résoudre une conversation** (D04-9) : GitHub ne donne cet état qu'en GraphQL authentifié ; OSCR sait résoudre ou rouvrir, mais ne montre pas l'état aux lecteurs.
 41. **À tester avec la vraie App** : qu'un jeton utilisateur de l'App puisse committer sur la branche d'un fork dont la pull request autorise les mainteneurs ; `resolveReviewThread` et `revertPullRequest` avec ce jeton ; `merge-upstream` ; le message de GitHub quand une méthode de fusion n'est pas permise (405) ; la file de GitHub des « suggested changes » quand la même ligne a plusieurs suggestions.
 
+**Phase 05, à relire (décisions prises, D05-1 à D05-19) :**
+
+42. **À faire au moment de fusionner** : appliquer les deux nouvelles migrations de `oscr_forge` (`npx wrangler d1 migrations apply oscr_forge --remote`, ou relancer `sh tools/setup_cloudflare.sh`) : `0004_issues.sql` (les onze sortes d'actions) et `0005_research.sql` (les tables des issues de recherche et leur index). Tant qu'elle n'est pas appliquée, le Mac publie simplement « aucune issue de recherche ».
+43. **Les issues de recherche sont les objets d'OSCR** (D05-2) : une seule numérotation pour tout le registre (`research#12`), jamais une issue GitHub avec une étiquette ; une copie sur GitHub seulement à la demande de leur auteur, une fois (D05-14).
+44. **Qui trie une issue de recherche** (D05-12) : les auteurs vérifiés de l'article, les mainteneurs du code, la personne qui gère le dépôt dans OSCR (qui l'a lié ou créé, ou son propriétaire), les modérateurs. Si tu veux réserver le tri aux auteurs de l'article, c'est à changer.
+45. **La table `reproduction_reports` prévue au plan n'existait pas** (D05-11) : le rapport de reproduction est porté par l'issue « échec de reproduction » elle-même (une ligne) ; les reproductions réussies attendent l'espace par article de la phase 06.
+46. **Une fusion faite directement sur GitHub ne ferme pas d'issue de recherche** (D05-13) : seule la fusion faite dans OSCR le fait ; la page propose « Fermer : corrigée dans le code ». Le chemin par webhook est reporté.
+47. **Un texte qui contient une adresse e-mail ne se modifie pas dans OSCR** (D05-15) : il n'est jamais montré en clair, et une copie masquée réécrite perdrait l'adresse ; la page le dit et renvoie « à la source ».
+48. **À tester avec la vraie App** : les types d'issues d'une organisation (`type` en REST) ; épingler et transférer (GraphQL) ; sous-issues et dépendances (`sub_issues`, `dependencies/blocked_by`) avec un jeton utilisateur de l'App ; la réponse de GitHub quand un type est demandé sur un dépôt personnel.
+
 ## 3. Décisions prises
 
-Voir [`docs/DECISIONS.md`](DECISIONS.md) (entrées D00-1 à D00-16, puis D01-1 à D01-29 pour la phase 01 : les dix du plan, et dix-neuf prises en construisant ; D02-1 à D02-19 pour la phase 02, décrites dans [`docs/CODE_NAVIGATION.md`](CODE_NAVIGATION.md) ; D03-1 à D03-19 pour la phase 03, décrites dans [`docs/WEB_EDITING.md`](WEB_EDITING.md) ; D04-1 à D04-19 pour la phase 04, décrites dans [`docs/PULL_REQUESTS.md`](PULL_REQUESTS.md)).
+Voir [`docs/DECISIONS.md`](DECISIONS.md) (entrées D00-1 à D00-16, puis D01-1 à D01-29 pour la phase 01 : les dix du plan, et dix-neuf prises en construisant ; D02-1 à D02-19 pour la phase 02, décrites dans [`docs/CODE_NAVIGATION.md`](CODE_NAVIGATION.md) ; D03-1 à D03-19 pour la phase 03, décrites dans [`docs/WEB_EDITING.md`](WEB_EDITING.md) ; D04-1 à D04-19 pour la phase 04, décrites dans [`docs/PULL_REQUESTS.md`](PULL_REQUESTS.md) ; D05-1 à D05-19 pour la phase 05, décrites dans [`docs/ISSUES.md`](ISSUES.md)).
 
 Décision de stockage : aucune option ne permet à OSCR d'héberger lui-même des dépôts Git à coût nul avec une conformité certaine aux conditions des services (D00-1). Les dépôts vivent donc dans le compte GitHub du chercheur, créés et pilotés par l'App GitHub d'OSCR avec son autorisation, une autorisation par action, plus le mode miroir pour les dépôts existants ; OSCR ne garde que sa propre couche (articles, DOI, cartes de traçage, revues) dans une nouvelle base D1 `oscr_forge` et sur le Mac (D00-2).
 
@@ -176,6 +196,12 @@ Décision de stockage : aucune option ne permet à OSCR d'héberger lui-même de
 38. **Serveurs de test** : l'essai de bout en bout et les captures ont tourné sur 8791, 9490 et 9491 (wrangler dev, faux GitHub, simulateurs de connexion) et Chrome headless sur 9390 ; tout est arrêté. Le port 8790 (ton tableau de bord) n'a pas été touché.
 39. **Limites du faux GitHub, corrigées pour cette phase** : il garde désormais la tête d'une pull request après la suppression de sa branche (comme `refs/pull/<n>/head` de GitHub) et permet à un mainteneur de la base de committer sur la branche d'un fork dont la pull request l'autorise. La carte de traçage de la fixture pointe vers un commit fictif (`000…0`) : ses lignes sont retrouvées par le symbole, et le navigateur note une lecture brute 404 sans conséquence.
 
+**Phase 05 :**
+
+40. **Reporté** : les pièces jointes (les vérifications de la phase 16 d'abord : le Mac les inspecte, Hugging Face les stocke) ; les issues semblables calculées la nuit par le modèle local (seules les semblables par mots existent) ; les vues enregistrées, le tableau de bord des issues et les abonnements (boîte de réception de la phase 08) ; les champs d'issue et les types propres à un labo (phase 09) ; les projets (phase 06) ; masquer un commentaire GitHub et le commentaire épinglé (GraphQL, pas encore de méthode `GitBackend`) ; l'historique des modifications avec le texte de chaque révision ; les réactions sur les issues de recherche ; supprimer une issue ; archiver une étiquette (pas d'API) ; marquer « contesté » le lien de carte d'un écart ouvert (prochaine étape du Mac) ; le parent d'une sous-issue dans sa barre latérale (REST ne le dit pas) ; « Suivie par » pour les tâches.
+41. **Serveurs de test** : l'essai de bout en bout et les captures ont tourné sur 8791, 9490 et 9491 (wrangler dev, faux GitHub, simulateurs de connexion) et Chrome headless sur 9390 ; tout est arrêté. Le port 8790 (ton tableau de bord) n'a pas été touché.
+42. **Un incident, sans suite** : pendant la première série de captures, la page du lecteur Code ↔ Article a fait une requête GET vers Europe PMC (l'identifiant fictif `PMC0000001` de la fixture ; réponse 500). Le navigateur de test bloque depuis toute adresse extérieure (Europe PMC, Hugging Face, doi.org, GitHub), et la série a été refaite ainsi.
+
 ## 5. Branches, dans l'ordre de fusion
 
 1. `night/phase-00-research` : terminée et poussée.
@@ -183,7 +209,8 @@ Décision de stockage : aucune option ne permet à OSCR d'héberger lui-même de
 3. `night/phase-02-code-navigation` : terminée et poussée (construite sur la précédente).
 4. `night/phase-03-web-editing` : terminée et poussée (construite sur la précédente).
 5. `night/phase-04-pull-requests` : terminée et poussée (construite sur la précédente).
-6. `night/phase-05-issues` : créée à partir de `night/phase-04-pull-requests`, poussée, à construire.
+6. `night/phase-05-issues` : terminée et poussée (construite sur la précédente).
+7. `night/phase-07-releases` : créée à partir de `night/phase-05-issues`, poussée, à construire.
 
 ## 6. Ajouts à `science.css`
 
@@ -220,4 +247,11 @@ Décision de stockage : aucune option ne permet à OSCR d'héberger lui-même de
   - « Files changed » : `form.commit-select`, `.review-bar`, `section.review-panel`, `p.file-review`, `td.num.commentable`, les lignes de commentaires sous leurs lignes, `.suggestion`, `.file-traced` ;
   - les conflits : `.conflict`, `pre.conflict-ours`, `pre.conflict-theirs`, `pre.conflict-context`, `section.conflict-guide` ;
   - les forks : `ul.fork-list`, `p.fork-links`, `p.fork-status`, `form.fork-form` ;
+  - leurs réglages pour le téléphone.
+- Phase 05, dans le même esprit :
+  - la liste : `ul.issue-list` et `li.issue-row` (l'état et le type dits en mots, `.issue-state`, `.issue-type`, `.issue-flag` ; une issue épinglée marquée d'un filet à gauche, jamais une pastille), `.issue-bulk` ;
+  - les étiquettes : `.label` et `.label-mark[data-color]` (un petit carré de couleur devant le mot, seize couleurs nommées, jamais un attribut `style`), `ul.label-list`, `ul.milestone-list`, `ul.template-list`, `section.template-problems` ;
+  - le formulaire : `section.issue-form` et ses champs (`.form-field`, `.form-markdown`, `details.issue-meta`, `fieldset.issue-labels`), `.similar`, `p.rule-suggestion` ;
+  - la page d'une issue : `p.comment-actions`, `p.reactions` et `.reaction`, `.edit-box`, `section.task-panel` et `ul.task-list`, `.completions`, `ul.sub-issues`, `#issue-actions` ;
+  - l'onglet courant d'un dépôt en gras (`nav.tabs a[aria-current="page"]`) ;
   - leurs réglages pour le téléphone.
