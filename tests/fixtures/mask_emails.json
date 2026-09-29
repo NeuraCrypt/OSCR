@@ -1,0 +1,151 @@
+{
+ "about": "Cases of catalog.mask_emails (oscr/catalog.py) that its TypeScript port (website/src/lib/source.ts, maskEmails) must match: read by tests/test_catalog_source.py and website/tests/source.test.ts. The expected values come from the Python version.",
+ "mask": "[email hidden]",
+ "cases": [
+  {
+   "name": "an address in a comment",
+   "text": "% Author: Jane Doe <jane.doe@fib.fr>\n",
+   "masked": "% Author: Jane Doe <[email hidden]>\n"
+  },
+  {
+   "name": "a git remote stays",
+   "text": "url = 'git@github.com:lab/repo.git'\n",
+   "masked": "url = 'git@github.com:lab/repo.git'\n"
+  },
+  {
+   "name": "a Python decorator stays",
+   "text": "@property\ndef x(self): pass\n",
+   "masked": "@property\ndef x(self): pass\n"
+  },
+  {
+   "name": "a MATLAB anonymous function stays",
+   "text": "f = @(x) x.^2 + 1;\n",
+   "masked": "f = @(x) x.^2 + 1;\n"
+  },
+  {
+   "name": "R's slot operator stays",
+   "text": "obj@data <- NULL\n",
+   "masked": "obj@data <- NULL\n"
+  },
+  {
+   "name": "a tag and subdomains",
+   "text": "Contact: first.last+tag@lab.sub.example.org, thanks.\n",
+   "masked": "Contact: [email hidden], thanks.\n"
+  },
+  {
+   "name": "the sentence's final full stop is kept",
+   "text": "Write to a.b@uni.edu.\n",
+   "masked": "Write to [email hidden].\n"
+  },
+  {
+   "name": "an upper-case domain",
+   "text": "Mail X_Y@Lab.ORG today\n",
+   "masked": "Mail [email hidden] today\n"
+  },
+  {
+   "name": "a letter outside ASCII in the name",
+   "text": "# jérôme.müller@univ-lyon.fr wrote this\n",
+   "masked": "# [email hidden] wrote this\n"
+  },
+  {
+   "name": "a mailto link",
+   "text": "<a href=\"mailto:someone@example.com\">write</a>\n",
+   "masked": "<a href=\"mailto:[email hidden]\">write</a>\n"
+  },
+  {
+   "name": "an address in a URL's credentials",
+   "text": "https://user@host.example.com/path\n",
+   "masked": "https://[email hidden]/path\n"
+  },
+  {
+   "name": "no dot in the domain",
+   "text": "ssh me@localhost\n",
+   "masked": "ssh me@localhost\n"
+  },
+  {
+   "name": "a one-letter ending",
+   "text": "x@y.c\n",
+   "masked": "x@y.c\n"
+  },
+  {
+   "name": "digits only after the dot",
+   "text": "123@456.78\n",
+   "masked": "123@456.78\n"
+  },
+  {
+   "name": "no at sign",
+   "text": "print('hello world')\n",
+   "masked": "print('hello world')\n"
+  },
+  {
+   "name": "two at signs",
+   "text": "a@@b.com and c@d@e.org\n",
+   "masked": "a@@b.com and c@[email hidden]\n"
+  },
+  {
+   "name": "several on one line",
+   "text": "a@b.io; c.d@e.fr, f-g@h-i.co.uk\n",
+   "masked": "[email hidden]; [email hidden], [email hidden]\n"
+  },
+  {
+   "name": "a letter outside ASCII right after the ending",
+   "text": "x@example.comé\n",
+   "masked": "x@example.comé\n"
+  },
+  {
+   "name": "a digit right after the ending",
+   "text": "x@example.com2\n",
+   "masked": "x@example.com2\n"
+  },
+  {
+   "name": "an underscore right after the ending",
+   "text": "x@example.com_old\n",
+   "masked": "x@example.com_old\n"
+  },
+  {
+   "name": "lines are kept",
+   "text": "a\r\nb@c.de\r\n\nlast@line.org",
+   "masked": "a\r\n[email hidden]\r\n\n[email hidden]"
+  },
+  {
+   "name": "percent and dots in the name",
+   "text": "first%last.name@example.net\n",
+   "masked": "[email hidden]\n"
+  },
+  {
+   "name": "a Julia macro stays",
+   "text": "@time f(x)\n@assert a == b\n",
+   "masked": "@time f(x)\n@assert a == b\n"
+  },
+  {
+   "name": "an address after a word character",
+   "text": "prefixname@example.org\n",
+   "masked": "[email hidden]\n"
+  },
+  {
+   "name": "npm-style scope stays",
+   "text": "import x from '@scope/pkg'\n",
+   "masked": "import x from '@scope/pkg'\n"
+  },
+  {
+   "name": "an email inside quotes in code",
+   "text": "EMAIL = \"lab.admin@neuro.example.edu\"  # contact\n",
+   "masked": "EMAIL = \"[email hidden]\"  # contact\n"
+  },
+  {
+   "name": "a digit in the domain",
+   "text": "me@mail2.example.com\n",
+   "masked": "[email hidden]\n"
+  },
+  {
+   "name": "a hyphen starts the name",
+   "text": "-x@example.com\n",
+   "masked": "[email hidden]\n"
+  },
+  {
+   "name": "Greek letters",
+   "text": "αβγ@example.gr\n",
+   "masked": "[email hidden]\n"
+  }
+ ]
+}

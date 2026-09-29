@@ -32,10 +32,122 @@ its repository's license allows redistribution **and** is confirmed:
 
 The license published is the one that file or record names.
 
-Everything else stays on the Mac, and the site links to the source at the verified commit:
+Everything else stays on the Mac, and the site shows it from its source (below) or links to it
+there, at the verified commit:
 - a license inferred from a README sentence;
 - "other-open" without a license file;
 - no license.
+
+Since 2026-09-29 the site's lots of scripts and the public database apply the same audited filter
+(`catalog.copyable`, which calls `scriptstore.verified_license`). Until then they took the recorded
+license alone: on the production database of 2026-09-29, 67 repositories and 7,761 files were
+copied to the site without a verified license (34 MIT and 16 CC BY on forges without a recognized
+license file, 5 CC BY archives, 5 "other-open" archives, a few more). They are now held back like
+the others, and shown from their source.
+
+## Shown from the source (decided 2026-09-29)
+
+The owner wants the scripts without a redistributable license displayed too, **without any copy**.
+A reader's browser fetches such a file itself, from where its authors published it, at the version
+the registry verified, checks it, and shows it in the registry's own reader, with its colors, line
+numbers, tree and matches with the paper. The registry keeps and publishes no copy: no text in the
+site's lots, in the public database, or in the Hugging Face dataset. The public page
+`/policies/code/` explains it to readers and authors.
+
+**Only facts leave the Mac** (`catalog.script_lots`): for each readable file of a held-back
+repository, its path, language, kind, lines, `size` and `sha256` (the file's `digest` column: the
+SHA-256 of its **bytes**, computed when it was read — for a notebook too, whose text the Mac keeps by
+cells), and for the repository `source` = `{via, url, at}` from `catalog.source_of`: where a browser
+fetches a file (a template with `{path}`, `{file}` or `{sha256}`), and the pinned version (a commit,
+a Zenodo record). The tracing maps' line numbers were public already.
+
+| host | the browser fetches | pinned by |
+|---|---|---|
+| github.com | `raw.githubusercontent.com/<owner>/<name>/<commit>/<path>` | commit |
+| gitlab.com | its API, `…/repository/files/<path>/raw?ref=<commit>` | commit |
+| bitbucket.org | `bitbucket.org/<owner>/<name>/raw/<commit>/<path>` | commit |
+| codeberg.org | its API, `…/raw/<path>?ref=<commit>` | commit |
+| huggingface.co | `huggingface.co/<repo, its case kept>/raw/<commit>/<path>` | commit |
+| zenodo.org | `zenodo.org/api/records/<id>/files/<file>/content`, a file of the record itself | the record (a published record's files never change) |
+| any other forge (a GitLab of its own, Framagit, GIN…), a file inside a Zenodo archive | Software Heritage, `archive.softwareheritage.org/api/1/content/sha256:<digest>/raw/` | the digest itself |
+| OSF, PMC's supplementary files | nothing: their answers carry no `Access-Control-Allow-Origin` | — |
+
+Checked read-only on 2026-09-29 with `curl -sI -H "Origin: https://oscr.yannbellec-b.workers.dev"`:
+every host above answers a simple GET with `Access-Control-Allow-Origin` (`*`, or the site's origin
+for Hugging Face and figshare's downloads); GitHub refuses a preflight (a `Range` header), so the
+browser sends none; the self-hosted GitLabs tried (Inria, Framagit) answer too, but each would need
+its own line in the Content-Security-Policy, so they go through Software Heritage. OSF's API and
+files and PMC's bucket send no CORS header. A repository the Mac's last check found dead is not
+fetched (not even from Software Heritage: the authors withdrew it).
+
+**In the browser** (`website/src/lib/source.ts`, used by `src/scripts/reader.ts`):
+1. the address is filled from the template and must name one of `SOURCE_ORIGINS` over https,
+   without credentials, with no `..` in the path; the paper page's `connect-src` lists exactly those
+   origins (`public/_headers`, `worker/pages.ts`; a test holds the three together);
+2. a simple GET: no cookie (`credentials: "omit"`), no header of its own, no referrer (the page's
+   `Referrer-Policy: same-origin`), 20 seconds, at most **1 MB** (the `size` fact first, then
+   `Content-Length`, then the bytes as they arrive);
+3. the SHA-256 of the bytes (`crypto.subtle`) must be the `sha256` fact, else nothing is shown and no
+   pair is drawn;
+4. a binary file (a `.mlx`, a NUL byte in the first 8,000) is refused, as `contents.read` does;
+5. the bytes are decoded as `contents.decode` does (UTF-8 without its byte-order mark, else
+   Windows-1252, else Latin-1), a notebook turned into cells as `contents.notebook_to_text` does, and
+   the email addresses masked by `maskEmails`, a port of `catalog.mask_emails` (Python's `\w` as
+   Unicode's letters and numbers, its final `\b` as a lookahead); the cases of
+   `tests/fixtures/mask_emails.json` are the Python version's, and both test suites read them;
+6. the file is shown, with a notice in the pane's header: "Shown from GitHub at commit abc1234,
+   where its authors published it. OSCR keeps no copy: this repository has no license that allows
+   redistribution. Rights remain with its authors. How this works · Request its removal".
+
+A digest that differs, an HTTP error, no answer, a file too large or not text: the reader says which,
+in words, lists the file's matches as links to the lines at the source, and draws none. The "Raw"
+button opens the file at its source; nothing is downloaded from the registry.
+
+**Removals still win.** A repository or a file withheld at a removal request (`catalog.withheld`) gets
+no `sha256` and no `source`: it is neither offered nor fetched, and the reader says it was withheld.
+A record withdrawn leaves every output, its facts included.
+
+**Both renderers.** The static paper pages hold the Code ↔ Paper reader, which does all this. The
+reduced page of an older paper (rendered by the Worker) has no reader, for copies or not: it says,
+per repository, whether copies are kept, withheld, or not kept for its license (with a link to
+`/policies/code/`), and links to the source, as before.
+
+**The file budget** does not move: the facts ride in the existing `scripts/NN.json` lots (about 90
+bytes per file) and in each static page's reader data; no file per repository is added
+(`npm run check -- --every-route` and `npm run check:growth`: 113 → 2,674 files, the two policy pages
+included; only the shards differ between the two builds).
+
+**The licence audit.** The copy filter is unchanged: showing from the source copies nothing, so no new
+audit is needed (`tests/test_scriptstore.py`, the audit's own tests, and
+`tests/test_catalog_source.py::test_the_copy_filter_is_the_audited_one` pass). What changed on
+2026-09-29 is that the site's lots and the public database now apply that same audited filter.
+
+### What becomes viewable (production database, 2026-09-29, read-only)
+
+Files of the authors' code that the Mac read as text, in repositories linked to papers in scope,
+held back from copies (not verified for redistribution), by host and by how the browser gets them.
+The copies (a verified license) are 2,120 repositories and 129,038 files.
+
+| host | repositories | files | how |
+|---|---|---|---|
+| github.com | 1,452 | 76,991 | GitHub, at the commit |
+| github.com | 161 | 444 | not fetched: over 1 MB (mostly notebooks with their outputs) |
+| osf.io | 345 | 4,126 | not fetched: OSF sends no CORS header |
+| framagit.org | 1 | 2,000 | Software Heritage |
+| zenodo.org | 17 | 792 | Software Heritage (files inside the record's archive) |
+| zenodo.org | 4 | 5 | Zenodo, the record's own files |
+| zenodo.org | 4 | 5 | not fetched: over 1 MB |
+| bitbucket.org | 5 | 312 | Bitbucket, at the commit |
+| 15 self-hosted GitLabs (Bremen, ESRF, Inria, ETH, ICFO, Graz, Bochum, IIT…) | 25 | 646 | Software Heritage (13 more files over 1 MB not fetched) |
+| supplementary (PMC) | 28 | 184 | not fetched: PMC's bucket sends no CORS header |
+| gitlab.com | 6 | 64 | GitLab, at the commit (1 file over 1 MB) |
+| codeberg.org | 1 | 36 | Codeberg, at the commit |
+| huggingface.co | 9 (+1) | 28 (+1) | Hugging Face, at the commit (1 through Software Heritage) |
+
+In all: **77,436 files** fetched from their own host at the pinned version, **3,439** through
+Software Heritage — found there for 9 of 20 repositories sampled at random (2026-09-29), so roughly
+half of those will show and the others will say "no longer serves it" —, and **4,773** not fetched
+(4,126 on OSF, 184 of PMC, 463 over 1 MB), which the reader links to at their source.
 
 ## The license audit (2026-09-27)
 

@@ -2,8 +2,8 @@
 // `wrangler dev --env local` and the mocks of tests/account/e2e.sh: the page /removal/?paper=… signed
 // out; the sign-in, which comes back to it; the form and its own checks; the review, where nothing has
 // been sent yet; "Confirm and send" and the receipt. Then, after the Mac's `oscr jobs poll --local` and
-// the owner's `oscr reports accept … --local` (e2e.sh), the accepted request with the moderator's words,
-// on the page and on the account page.
+// the Mac's poll, whose rules apply a verified author's request at once (oscr/moderation.py; e2e.sh),
+// the accepted request with the rules' words, on the page and on the account page.
 //
 //   node --experimental-strip-types tests/contributions/removal-e2e.ts ask
 //   node --experimental-strip-types tests/contributions/removal-e2e.ts decided
@@ -112,7 +112,7 @@ async function ask(p: Page): Promise<void> {
   await p.waitFor(visible("removal-review"));
   const review = await text(p, "removal-review-summary");
   check("review: what, where, why", review.includes("One file: plot.py, in github.com/oscr-fixture/eeg-analysis") && review.includes("Copyright or license"), review);
-  check("review: the evidence and the confirmations", review.includes("https://lab.example/agreement") && review.includes("a moderator reviews the request"));
+  check("review: the evidence and the confirmations", review.includes("https://lab.example/agreement") && review.includes("you read how requests are decided"));
   const before = await p.evaluate<{ report: unknown }>(`fetch("/api/contributions/paper?id=${encodeURIComponent(P1)}").then((r) => r.json())`);
   check("review: nothing sent yet", before.report === null, before.report);
   byStep = "review";
@@ -128,8 +128,8 @@ async function ask(p: Page): Promise<void> {
   await p.waitFor(visible("removal-receipt"));
   const receipt = await text(p, "removal-receipt-summary");
   const id = Number(/^RequestNo\. (\d+)/.exec(receipt)?.[1] ?? 0);
-  check("receipt: said", (await text(p, "removal-receipt-state")) === "Your request is sent: a moderator reviews it.");
-  check("receipt: its number and status", id > 0 && receipt.includes("StatusOpen: it waits for a moderator"), receipt);
+  check("receipt: said, with what the rules will do", (await text(p, "removal-receipt-state")).startsWith("Your request is sent. The registry's rules apply it without waiting, as a request from a verified author of the paper"));
+  check("receipt: its number and status", id > 0 && receipt.includes("StatusOpen: the registry's rules decide it within minutes"), receipt);
   check("receipt: when a decision takes effect", receipt.includes("the nightly publication (04:17, the registry's local time) that follows, the copy of plot.py leaves"), receipt);
   byStep = "receipt";
   await shots(p, "receipt");
@@ -143,7 +143,7 @@ async function decided(p: Page): Promise<void> {
   await p.waitFor(visible("removal-request"));
   check("revisited: accepted", (await text(p, "removal-request-state")) === "Your request was accepted.");
   const state = await text(p, "removal-request-summary");
-  check("revisited: its status, with the moderator's words", state.includes("StatusAccepted on") && state.includes("Moderator's words“The file's copy is withheld.”"), state);
+  check("revisited: its status, with the rules' words", state.includes("StatusAccepted on") && state.includes("The decision's words“Applied at once, as a request from a verified author of the paper"), state);
   check("revisited: when it takes effect", state.includes("Takes effectAt the nightly publication (04:17"), state);
   check("revisited: its number", (await text(p, "removal-request-title")) === `Your request No. ${id}`);
   check("decided: no form", !(await p.evaluate<boolean>(visible("removal-form"))));

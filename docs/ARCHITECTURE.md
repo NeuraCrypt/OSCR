@@ -19,7 +19,7 @@ The rules that govern everything below are in [CLAUDE.md](../CLAUDE.md):
 | **The accounts** (`website/worker/account/`, Phase 5) | the Worker's code, `/api/auth/*` and `/api/account/*`, with the D1 database `oscr_community` | sign-in with ORCID, GitHub or Google; sessions; the verified authors and maintainers ([ACCOUNTS.md](ACCOUNTS.md)) | $0 |
 | **The accounts' facts** (`oscr community`) | the Mac | the ORCID iDs of the papers with a page, the owners of their repositories and which paper each is the code of, pushed to `oscr_community` as deltas (locally, or to Cloudflare: nightly with `OSCR_COMMUNITY_PUSH=remote`) | $0 |
 | **The contributions** (`website/worker/contributions/`, Phase 6) | the Worker's code, `/api/contributions`, `/api/submissions`, `/api/claims`, `/api/edits`, `/api/validations`, `/api/reports`, with `oscr_community` | submit a paper and its code, claim a paper, correct a record, validate a map, request a removal: checked at once, recorded with a job for the Mac ([CONTRIBUTIONS.md](CONTRIBUTIONS.md)) | $0 |
-| **The job runner** (`oscr jobs poll`, Phase 6) | the Mac, every ten minutes (proposed: `tools/org.oscr.jobs.plist`, not installed) | reads the new jobs in `oscr_community`, harvests a submitted paper into a draft, applies corrections as new versions, deposits validated maps on the Zenodo sandbox, lists claims and removal requests for the owner (`oscr claims`, `oscr reports`, `oscr submissions`) | $0 |
+| **The job runner** (`oscr jobs poll`, Phase 6) | the Mac, every ten minutes (`tools/org.oscr.jobs.plist`) | reads the new jobs in `oscr_community`, harvests a submitted paper into a draft, applies corrections as new versions, deposits validated maps on the Zenodo sandbox; decides removal requests, non-authors' submissions and claims by the automatic moderator's rules (`oscr/moderation.py`), leaving the rest to the owner (`oscr claims`, `oscr reports`, `oscr submissions`) 30 days at most | $0 |
 
 ```mermaid
 flowchart LR
@@ -112,8 +112,10 @@ A page of the website puts a paper and its authors' code side by side.
   browser.
 - **Right, the code.** One view is prerendered at build time; the others are fetched on
   demand from the lot of their repository (`/scripts/NN.json`). A script whose license does
-  not allow republication is not copied: the reader lists the file and links to it at the
-  source, at the verified commit.
+  not allow republication is not copied: the reader's browser fetches it from where its authors
+  published it, at the verified commit or record, and shows it only when its SHA-256 is the one
+  the Mac computed ("shown from the source": [SCRIPT_STORAGE.md](SCRIPT_STORAGE.md), the public
+  page `/policies/code/`); otherwise the reader says why and links to it at the source.
 - **The pairs** come from `alignments/NN.json`, read at build time. A pair joins paragraph
   number *i* (the index of a `<p>` among all the `<p>` of the JATS `<body>`, in document
   order, which the browser computes the same way) and a line range of one file: the same
@@ -317,11 +319,13 @@ What signed-in readers ask of the registry, and the Mac's answers ([CONTRIBUTION
   (`link_edit`), applied after every later scan, and each makes a new `version` with its
   provenance (the person's ORCID iD or GitHub login, on the Mac only). The Versions section says
   "a correction by a verified author".
-- **The owner decides what the machine cannot**: manual author claims, claims GitHub cannot
-  settle, removal requests, and submissions published by someone who is not among the paper's
-  authors (`oscr claims`, `oscr reports`, `oscr submissions`; moderation in the site is Phase 7).
-  An accepted removal takes the record out of every public output (`article.withdrawn`, like an
-  off-topic paper).
+- **An automatic moderator decides** (since 2026-09-29: no human moderator is on duty;
+  `oscr/moderation.py`, run by the job runner; the public page `/policies/moderation/`): removal
+  requests, submissions published by someone who is not among the paper's authors, and claims, by
+  published rules in the safe direction, each decision logged with its rule; what the rules cannot
+  decide waits for the owner 30 days at most (`oscr claims`, `oscr reports`, `oscr submissions`, which
+  also override and reverse the rules). An accepted removal takes the record out of every public
+  output (`article.withdrawn`, like an off-topic paper).
 - **Cheap by construction.** A request writes 3 rows (its row, its index entry, the job), an
   answer 1; per-account daily limits are counted from the rows; a signed-out reader's page view
   costs no Worker request (the pages ask only when the `__Host-oscr_signed_in` hint cookie is

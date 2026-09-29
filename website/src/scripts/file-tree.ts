@@ -5,7 +5,7 @@
 // link to itself in the reader (it opens in a new tab too); a file whose text is not here is
 // muted. Rendered by the browser from the reader's data: the page holds the list once.
 import { plural } from "../lib/format";
-import { fileHref, type ReaderData } from "../lib/reader";
+import { fileHref, fromSource, type ReaderData } from "../lib/reader";
 import { ancestors, buildTree, type TreeDir } from "../lib/tree";
 
 const el = <K extends keyof HTMLElementTagNameMap>(tag: K, cls = "", text = "") => {
@@ -34,8 +34,9 @@ export function fileTree(nav: HTMLElement, data: ReaderData, base: string, pick:
     const a = el("a");
     a.href = fileHref(base, r.repo, f.path, multi, "code");
     a.dataset.file = String(i);
-    a.title = f.text ? f.path : `${f.path}: not shown here, at the source`;
-    if (!f.text) a.classList.add("elsewhere");
+    const away = !f.text && !fromSource(data.repos, f);
+    a.title = f.text ? f.path : away ? `${f.path}: not shown here, at the source` : `${f.path}: shown from its source, not copied here`;
+    if (away) a.classList.add("elsewhere");
     a.append(el("span", "name", label));
     if (f.pairs.length) {
       const c = el("span", "count", String(f.pairs.length));

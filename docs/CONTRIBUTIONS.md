@@ -123,6 +123,96 @@ demand; the account page lists the reader's requests with links to them.
 
   Rejected, nothing changes; the requester reads the owner's words either way.
 
+## Moderation: the automatic moderator (decided 2026-09-29)
+
+There is no human moderator on duty. So that nothing waits forever and nothing harmful is published
+unchecked, `oscr jobs poll` (the Mac, every ten minutes) decides by published rules
+(`oscr/moderation.py`; the public page `/policies/moderation/`), in the safe direction: **hiding is
+automatic when in doubt, publishing needs a verified identity or checks that pass.** The owner's
+commands keep working: they decide what waits, override a rule's refusal (`accept`) and reverse what a
+rule did (`reverse`).
+
+### Where a reader's input reaches a public output (the inventory)
+
+| input | public output | the rule |
+|---|---|---|
+| a submission's code links (1–5, places the registry knows) | the record's links, once published | an author's: published; anyone else's: published only when each link is proven the paper's by what the submitter cannot forge (below), else it waits for the owner |
+| a submission's note, a correction's note, a claim's statement and link, a removal's justification and evidence | **none**: read by the owner only (no email address: the Worker strips them, the schema refuses an at sign) | — |
+| a correction of a record's links | the record's links, a new version ("a correction by a verified author") | only a verified author of the paper, or a trusted maintainer of its code for their own repository — its owner or a public member of its organization on GitHub, or made one by the owner; not a mere contributor (the Worker refuses, the Mac too: `edit.untrusted_maintainer`); applied by the Mac |
+| a map's validation | the map's DOI on Zenodo (the sandbox by default), the validator's name and ORCID iD on the paper's page (real ORCID only) | only a verified author with an ORCID identity; the name is the paper's own list of authors', else the account's through `public_name` (no address, no link) |
+| an author claim | the role that allows corrections, validations and removals applied at once | verified when the paper lists the ORCID iD, or when Crossref's automatic update put the paper in the claimant's ORCID record (never a work the claimant added, by hand or through a search wizard); else closed after 30 days |
+| a maintainer claim | the maintainer role | GitHub checks it at once (the Worker, Phase 5); otherwise closed after 30 days. A contributor gets the role, but the rules trust only an owner or an organization member for what changes a record or removes at once |
+| a removal request | hides: the record, copies (and their display from the source), the map | below |
+| the badge | a static image, no input | — |
+| an account's display name (from its provider) | only as a map's creator on Zenodo, when the paper does not list the validator | `public_name` |
+
+**No free text a reader types reaches a public page**, so no language model is used (Workers AI or
+other): the rules above suffice. Should a public free text ever be added, it would go through the
+same kind of filter first, and hold the text when unsure.
+
+### The rules
+
+| request | rule (in the log) | what happens | written to D1 |
+|---|---|---|---|
+| removal, from a verified author of the paper (a `verified_author` role, or the account's ORCID iD among the paper's authors on the Mac: the Worker's `author_verified` flag alone is not trusted) | `report.verified_author` | applied at once, whatever it names | 1 row |
+| removal of copies (a repository, a file, "the scripts") by a trusted maintainer of that code (owner or public organization member on GitHub, as the maintainer claim's `via` keeps it, or made one by the owner) | `report.maintainer` | applied at once, to the repositories they maintain; a contributor's request follows the rules for anyone | 1 |
+| removal of copies for copyright or personal data, by anyone else | `report.hide_at_once` | hidden at once (`withheld`), the request accepted with words that say the operator may restore it. **Guards**: at most 3 an account and 30 in all per 24 hours; not when the same justification (case, accents and punctuation aside) came with 3 requests in 7 days; not when the owner refused or reversed this request before. A guard sends it to the review | 1 |
+| any other removal (a whole record, a map, another reason, a guard) | `report.review` → `report.expired` | waits for the owner, nothing hidden; after 30 days, closed without removal (`rejected`), with how to ask again | 0, then 1 |
+| a submission published by a non-author (`moderation`) | `submission.corroborated` / `submission.review` → `submission.expired` | published when each link is proven the paper's by what the submitter cannot forge: the paper itself cites it (a `link` whose `found_by` is the text, `text:…`, or the publisher's Crossref metadata, `crossref:…`; or the source repository an archive the paper cites names, `zenodo:source`), or its owner is proven an author (an author's public ORCID record links to the GitHub account: `MacEvidence`; or an account that is a verified author of the paper and a trusted maintainer of the repository: `owner_role_proof`). **Not proof**, since the submitter can write them: a README citing the paper (`repository.cites_article`), a GitHub display name, a DataCite record declaring the paper (anyone can deposit one). Otherwise it waits for the owner (the submitter told why, in its row's message), and 30 days later is refused with how to ask again | 1, and 1 |
+| a draft not published | `submission.draft_expired` | refused after 30 days; correcting it makes a new draft (and a new deadline) | 1 |
+| an author claim | `claim.paper_metadata`, `claim.crossref_orcid`; else `claim.review` → `claim.expired` | verified when the paper lists the ORCID iD, or the ORCID record holds the paper as Crossref's automatic update added it (client `0000-0001-9884-1913`, on no one's behalf: `crossref_listed`) — not a work the claimant added, nor one a search wizard added (Crossref Metadata Search, Scopus, Europe PMC: they carry an assertion origin); the role granted by `rules`, which the sign-in's sync never revokes; else checked again each day, and closed after 30 days (`rejected`, `decided_by = 'rules'`) | 2 (claim and role), or 1 |
+| a maintainer claim GitHub did not settle | `claim.maintainer_review` → `claim.expired` | closed after 30 days with how to be checked again | 1 |
+| a correction as a maintainer who is only a contributor (one recorded before the Worker refused it) | `edit.untrusted_maintainer` | refused, with why | 1 |
+
+The site says what will happen: `src/lib/moderation.ts` holds the same base rules for a removal
+(`reportPath`: both test suites read `tests/fixtures/moderation_rules.json`), and the Worker answers
+`report.expected` = `{rule, outcome, words, deadline}` (the requester's roles read in one query, and the
+verified maintainer claims when it holds a maintainer role, for how GitHub showed it), shown on the
+receipt and the request's page; the guards are the Mac's alone. A submission's answer carries
+`expected.words` too (`SUBMISSION_WORDS`: what proves a link, what does not). The fixture also holds
+the submission cases (`submissionPath` / `submission_path`) and the maintainer cases
+(`maintainerTrusted` / `trusted_maintainer`).
+
+**What a requester could forge, and does not count** (reviewed 2026-09-29): a README citing the paper,
+a GitHub display name, a DataCite record declaring the paper, a paper added to one's own ORCID record
+(by hand or through a search wizard), being a contributor of a repository (one merged pull request).
+None of them publishes, verifies or removes anything by itself. The harvester itself still keeps the
+code a DataCite record declares for a paper (`datacite:…`, its discovery), as before: that is its
+recall, not a reader's request, and the owner's to decide.
+
+**Asking again.** A removal request refused (by the rules or the owner) may be asked again only in a
+way the rules decide at once (as a verified author, as a maintainer of the named code, or for the
+copies for copyright or personal data): the Worker reopens the same row (`reopenReport`: open, its
+time now, so that its 30 days and the day's limit count from it; 2 rows). An author claim closed by the
+rules (`decided_by = 'rules'`) is pending again when claimed again, its time now; a maintainer claim too
+when checked again. What the owner decided stays decided.
+
+**Where it runs.** On the Mac, in `oscr jobs poll`: each new request goes to the rules instead of the
+owner's list; the requests the owner's list held before the rules go through them once; then `sweep`
+closes what reached its deadline and checks the waiting author claims again (one D1 read of the rows by
+id). The state is the job runner's (`data/community/state.db`): `moderation_log` (every automatic and
+owner decision: when, which request, which rule, what, the details the guards need) and `waits`
+(what waits, since when, until when, when to check again). The Worker decides nothing: it checks and
+records as before, and tells the requester what the rules will do.
+
+**The owner's commands.**
+
+```sh
+oscr reports list [--auto-log [--days N]]     # what waits for you, or what the rules decided (with each rule)
+oscr reports accept|reject <n> [--message "…"] --remote   # decide what waits; `accept` also overrides a rule's closing
+oscr reports reverse <n> [--message "…"] --remote         # undo what the rules applied: withheld copies or a withdrawn record come back
+oscr claims list|accept|refuse|reverse <n> …    # `accept` a claim the rules closed; `reverse` one they verified (the role taken back)
+oscr submissions list|accept|refuse|reverse <n> …   # `accept` one the rules refused; `reverse` one they published (its links leave)
+oscr jobs status                                # includes the rules' decisions of the last 24 hours and what waits
+```
+
+**Budgets.** An automatic decision writes what an owner's decision writes (1 row; a verified claim 2),
+within the facts push's day (`community_budget`); the sweep stops when fewer than 3 rows are left, like
+the poll. The Worker writes as before (a request 3 rows; a reopening 2); the per-account daily limits
+stay, and a reopened request counts in them. The lookups (`MacEvidence`: ORCID's public API, GitHub's
+with the Mac's read-only token) cost a few requests per decision, cached a day; a failed lookup is
+no evidence, never a failed job.
+
 ## The tables (`migrations/d1-community/0002_contributions.sql`, `0003_removal_requests.sql`)
 
 Times are Unix seconds. No email address anywhere: the free texts lose theirs in the Worker
@@ -188,7 +278,10 @@ it is there: **a signed-out reader's page view costs no Worker request.**
 
 **The pages' headers** (`website/public/_headers`): `/submit/` and `/paper/:slug/` (one segment: the
 Code ↔ Paper reader keeps its own rules) get the account page's `Content-Security-Policy`
-(`script-src 'self'`, `connect-src 'self'`, `frame-ancestors 'none'`…) and `X-Frame-Options: DENY`.
+(`script-src 'self'`, `connect-src 'self'`, `frame-ancestors 'none'`…) and `X-Frame-Options: DENY`; a
+paper's page also connects to Europe PMC and NCBI (the paper's text) and, since 2026-09-29, to the
+places a file of the authors' code is shown from (`src/lib/source.ts`, SOURCE_ORIGINS:
+docs/SCRIPT_STORAGE.md, "Shown from the source").
 Astro writes every page script as a file (`vite.build.assetsInlineLimit: 0`), and `npm run check`
 fails on an inline script in those pages.
 
@@ -235,7 +328,8 @@ oscr community push --remote           # the facts, paper_repo included (nightly
 | correction of a record | 3 | 6 |
 | validation of a map | 3 | 13 |
 | manual author claim: new / asked again | 3 / 2 | 4 / 7 |
-| removal request (the page /removal/): new / completed while open | 3 / 2 | 8 / 10 |
+| removal request (the page /removal/): new / completed while open (the requester's roles read once, 2026-09-29) | 3 / 2 | 9 / 11 |
+| removal request asked again after a refusal (reopened; not measured, by construction) | 2 | — |
 | publication of a draft (the row, the job) | 2 | 8 |
 | revision of a draft (the row, the job; not measured, by construction) | 2 | — |
 | the account page's lists (`GET /api/contributions`) | 0 | 7 |
@@ -325,16 +419,17 @@ request comes. They stay here for a reinstallation:
 ## Limits and what comes next
 
 - The one-click pull request of the badge is not built (see "The badge").
-- Moderation in the site (claims, removals, submissions by non-authors) comes with Phase 7; until
-  then, the commands above. No global daily cap on the Worker's writes, no Turnstile yet.
+- Moderation is automatic (above, since 2026-09-29), with the owner's commands to decide, override and
+  reverse; a moderation interface in the site comes with Phase 7. No global daily cap on the Worker's
+  writes, no Turnstile yet.
 - A correction changes links only (code, data, tools): the bibliographic record comes from the
   paper's own metadata.
 - A draft's matches need the paper's full text (Europe PMC): without it, they come after
   publication, when the harvester aligns the paper.
 - A record withdrawn by a removal request comes back only by hand (`article.withdrawn = ''`); so does
   a copy or a map withheld (`DELETE FROM withheld WHERE …`).
-- A removal request is one per account and record: completed while it is open, it cannot be asked
-  again once decided (the owner may still act by hand). A request names at most one repository or one
+- A removal request is one per account and record: completed while it is open; once refused, asked
+  again only in a way the rules decide at once (above); the owner may still act by hand. A request names at most one repository or one
   file; a file past the 5,000 listed per repository is named in the justification, with its repository.
 - A copy already published on Hugging Face stays in its Parquet block (a published block never
   changes): the manifest that points to it is withdrawn, so no reader finds it. A tracing map deposited

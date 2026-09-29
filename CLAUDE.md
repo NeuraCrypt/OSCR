@@ -86,10 +86,23 @@ license audit: `docs/SCRIPT_STORAGE.md`; code: `oscr/scriptstore.py`, `oscr scri
   license allows redistribution AND is confirmed by the repository's own license file (for
   an archive without one: by its record). A license inferred from a README sentence,
   "other-open" without a license file, or no license: the file stays on the Mac, and the
-  site links to it at the source, at the verified commit.
+  site shows it from its source (below) or links to it there, at the verified commit.
 - The scripts dataset is published **only once the license filter is applied and verified**:
   done on 2026-09-27 (`oscr scripts audit`; figures in `docs/SCRIPT_STORAGE.md`). Any change
-  to the filter is audited again before the next publication.
+  to the filter is audited again before the next publication. The site's lots and the public
+  database apply the same audited filter (`catalog.copyable`, since 2026-09-29).
+- **Shown from the source** (decided 2026-09-29): a file held back for its license is still never
+  copied (no text in the site's lots, the public database or the Hugging Face dataset), but the
+  reader's **browser** fetches it from where its authors published it, at the pinned commit or
+  record (GitHub, GitLab.com, Bitbucket, Codeberg, Hugging Face, Zenodo; any other forge, and a file
+  inside a Zenodo archive, from Software Heritage by digest; OSF and PMC's files stay at the source),
+  checks its SHA-256 against `file.digest` (`crypto.subtle`), masks its email addresses as
+  `catalog.mask_emails` does (one shared fixture, `tests/fixtures/mask_emails.json`), and shows it with a
+  notice (where from, no copy kept, rights with the authors, `/policies/code/`, the removal page).
+  Only facts leave: path, language, size, lines, digest, pinned version, where to fetch
+  (`catalog.source_of`). A mismatch, an error, over 1 MB or binary: said in words, no pair drawn.
+  What a removal request withheld is neither given a fetch nor fetched. The paper page's
+  `connect-src` lists those origins only (`src/lib/source.ts`, `public/_headers`, `worker/pages.ts`).
 
 ## Accounts (Phase 5)
 
@@ -118,8 +131,8 @@ What signed-in readers ask of the registry (`website/worker/contributions/`, `os
 - **Submission**: a DOI and 1–5 code links, checked at once in the Worker (the DOI is registered,
   each link answers, and points to a place the registry knows: the Worker fetches nothing else).
   The license is the Mac's to read. The Mac harvests the paper into a draft; the submitter reviews,
-  corrects, publishes — at once when their ORCID iD is among the paper's authors, otherwise after
-  the owner's decision (`oscr submissions`). An off-topic paper stays out (D7).
+  corrects, publishes — at once when their ORCID iD is among the paper's authors, otherwise when the
+  moderator's rules tie each link to the paper (below). An off-topic paper stays out (D7).
 - **Edition**: a record's links only (code, data, tools), never markup, by a verified author of the
   paper or a maintainer of its code (their own repository). Every correction is a new version
   (`link_edit`, kept across rescans); who made it stays on the Mac — the pages say its role only.
@@ -132,10 +145,26 @@ What signed-in readers ask of the registry (`website/worker/contributions/`, `os
 - **Takedown**: one page, `/removal/?paper=…`, linked from every record (signed in until Turnstile):
   who asks, what (the record, the scripts' copies, a repository, a file, the tracing map), why, a
   justification without an email address, two confirmations, a review before sending. Decided by the
-  owner (`oscr reports`); accepted, it leaves every public output at the next nightly — the record
-  (`article.withdrawn`) or only what it names (`withheld`).
-- Manual author claims and claims GitHub cannot settle: decided by the owner (`oscr claims`) until
-  Phase 7's moderation.
+  moderator's rules (below); accepted, it leaves every public output at the next nightly — the record
+  (`article.withdrawn`) or only what it names (`withheld`: neither copied nor shown from the source).
+- **The automatic moderator** (decided 2026-09-29: no human moderator on duty; `oscr/moderation.py`,
+  run by `oscr jobs poll`; the public page `/policies/moderation/`). Rules first, in the safe direction,
+  and nothing waits more than 30 days: a removal from a verified author of the paper, or from a
+  maintainer of the code it names, is applied at once; copies of the authors' code are hidden at once
+  for copyright or personal data (3 an account, 30 in all a day; not a justification repeated 3 times
+  in 7 days; not after the owner said no); anything else waits for the owner, then closes without
+  removal. A non-author's submission is published only when each link is cited by the paper itself
+  (its text or its publisher's Crossref metadata) or its owner is proven an author (an author's ORCID
+  record links the GitHub account, or a verified author owns it); a README citing the paper, a display
+  name or a DataCite record never counts; otherwise it waits for the owner, then closes. A claim is
+  verified when the paper lists the iD or Crossref's automatic update put the paper in the claimant's
+  ORCID record (never a work they added themselves), otherwise closed after 30 days. A maintainer is
+  trusted (removals at once, corrections) only as the repository's owner or a public organization
+  member, not as a contributor. Every automatic decision is logged with its rule (`oscr reports|claims|
+  submissions list --auto-log`); the owner decides what waits, overrides a rule's refusal (`accept`)
+  and reverses what a rule did (`reverse`). The site tells the requester what will happen
+  (`src/lib/moderation.ts`, the same base rules: `tests/fixtures/moderation_rules.json`). No free text
+  of a reader is public, so no language model is used.
 - **Costs**: a request writes 3 D1 rows, an answer 1 (in the facts push's daily budget); per-account
   daily limits are counted from the rows; a signed-out reader's page view asks the Worker nothing
   (the `__Host-oscr_signed_in` hint cookie). No email address in any form: the texts lose theirs.
@@ -229,7 +258,7 @@ menus in `website/src/lib/info.ts`, the layout `src/components/Info.astro`):
   (decision D1; otherwise a summary and a link). The sentences that decided a link's verdict
   stay in the private database.
 - A file whose license does not allow redistribution is never published: its text stays
-  on the Mac (see "Script copies").
+  on the Mac; the reader's browser may show it from its source (see "Script copies").
 - No mass email to the authors: they come to us.
 - The Hugging Face dataset `opsecsystems/oscr-catalog` stays **private** until decided
   otherwise.

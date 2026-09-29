@@ -7,7 +7,9 @@ mode:
   evidence (found → alive → inventoried → imported), the method families, the
   repositories — the website is built from it;
 - `scripts/NN.json`: the TEXT of the scripts, repository by repository, in lots loaded
-  on demand by the reader;
+  on demand by the reader; for a repository whose license does not allow copying it, only
+  facts (each file's digest and size, and where a reader's browser fetches it at the pinned
+  version: "shown from the source", `source_of`);
 - `alignments/NN.json`: the paper ↔ code matches of each paper, for the reader;
 - in public mode, `entities/`, `lookup/` (oscr/entities.py) and `papers/NN.json`, the
   sections of each paper's page (oscr/paperpage.py);
@@ -33,7 +35,7 @@ from collections import Counter, defaultdict
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
-from urllib.parse import quote
+from urllib.parse import quote, urlsplit
 
 from . import methods
 
@@ -53,12 +55,114 @@ MAX_SITE_TEXT_PER_REPO: int = 8_000_000
 MAX_SITE_TEXT_PER_LOT: int = 16_000_000
 
 #: The licenses under which a script's text is republished. Without a license, code is
-#: "all rights reserved": it is shown at the source, not here.
+#: "all rights reserved": it is shown at the source, not here. A license of these kinds is not
+#: enough: it must be VERIFIED, by the repository's own license file or, for an archive without one,
+#: by its record (scriptstore.verified_license, the licence audit's rule: CLAUDE.md, "Script
+#: copies"); `copyable` applies both.
 PUBLISHABLE: frozenset[str] = frozenset({"yes", "with_conditions"})
+
+
+def copyable(con: sqlite3.Connection, d: sqlite3.Row) -> bool:
+    """Whether a repository's text may leave the Mac: its license allows redistribution AND is
+    verified — the same rule for the site's lots, the public database and the Hugging Face dataset.
+    (Until 2026-09-29 the site's lots and the public database took the recorded license alone, a
+    README's sentence included.)"""
+    from .scriptstore import verified_license
+    return d["redistributable"] in PUBLISHABLE and verified_license(con, d) is not None
 
 NOTE_LICENSE = "This repository's license does not allow republishing its text: read it at the source."
 NOTE_NO_LICENSE = "This repository has no license: its authors keep all rights. Read it at the source."
-NOTE_WITHHELD = "Withheld from this site at a removal request, after a moderator's review: read it at the source."
+NOTE_WITHHELD = "Withheld from this site at a removal request: read it at the source."
+NOTE_UNVERIFIED = ("This repository's license is not confirmed by its own license file: its text is not copied here. "
+                   "Read it at the source.")
+
+#: "Shown from the source" (decided 2026-09-29, docs/SCRIPT_STORAGE.md): a file whose license does
+#: not allow copying it is never copied, but a reader's browser may fetch it ITSELF from where its
+#: authors published it, at the pinned version (a commit, a Zenodo record), check its SHA-256
+#: against `file.digest` (the Mac's digest of the same bytes) and show it. Only facts leave the Mac:
+#: the path, language, size, lines, digest, the pinned version, and where the browser fetches it.
+#: A file past this size is not fetched.
+SOURCE_MAX_BYTES: int = 1_000_000
+#: Where a reader's browser fetches such a file: each answers a page of another site (CORS) with one
+#: file at an immutable version. `{path}` is the file's path with its slashes kept, `{file}` the path
+#: with its slashes encoded, `{sha256}` its digest; each part is percent-encoded by the reader. The
+#: site's Content-Security-Policy allows these origins only (website/src/lib/source.ts, SOURCE_ORIGINS).
+SOURCE_TEMPLATES: dict[str, str] = {
+    "github": "https://raw.githubusercontent.com/{owner}/{name}/{commit}/{path}",
+    "gitlab": "https://gitlab.com/api/v4/projects/{project}/repository/files/{file}/raw?ref={commit}",
+    "bitbucket": "https://bitbucket.org/{owner}/{name}/raw/{commit}/{path}",
+    "codeberg": "https://codeberg.org/api/v1/repos/{owner}/{name}/raw/{path}?ref={commit}",
+    "huggingface": "https://huggingface.co/{hf}/raw/{commit}/{path}",
+    "zenodo": "https://zenodo.org/api/records/{record}/files/{file}/content",
+    # Software Heritage keeps every file it archived under its SHA-256: the same bytes, whatever the
+    # forge (a GitLab of its own, Framagit, a file inside a Zenodo archive), and a version that
+    # cannot change.
+    "swh": "https://archive.softwareheritage.org/api/1/content/sha256:{sha256}/raw/",
+}
+_COMMIT = re.compile(r"[0-9a-f]{40}")
+_SEGMENT = re.compile(r"[A-Za-z0-9._-]{1,100}")
+
+
+def _hf_repo(url: str, key: str) -> str:
+    """The Hugging Face repository in its address, its case kept ('Owner/name', 'spaces/Owner/name',
+    'datasets/Owner/name'): the site answers the lowercased key with a redirect."""
+    parts = [p for p in urlsplit(url).path.split("/") if p]
+    n = 3 if parts and parts[0] in ("spaces", "datasets") else 2
+    repo = "/".join(parts[:n]) if len(parts) >= n else ""
+    ok = repo and all(_SEGMENT.fullmatch(p) for p in parts[:n]) and f"huggingface.co/{repo}".lower() == key.lower()
+    return repo if ok else ""
+
+
+def source_of(d: sqlite3.Row | dict) -> dict[str, str]:
+    """Where a reader's browser fetches the files of a repository whose license does not allow
+    copying them: {"via", "url" (a template), "at" (the pinned version)}, or {"via": "", "why"} when
+    it cannot (the site then links to the source). Files outside the via's reach (a file inside a
+    Zenodo archive) are fetched from Software Heritage by their digest (`file_via`)."""
+    repo, host, kind = d["repo"], d["host"], d["kind"]
+    commit = (d["commit_id"] or "").lower()
+    parts = repo.split("/")
+    if d["state"] == "dead":
+        return {"via": "", "why": "dead"}
+    if kind == "forge":
+        if not _COMMIT.fullmatch(commit):
+            return {"via": "", "why": "no_commit"}
+        owner_name = len(parts) == 3 and all(_SEGMENT.fullmatch(p) for p in parts[1:])
+        fill = {"owner": quote(parts[1], safe="") if owner_name else "", "name": quote(parts[-1], safe="") if owner_name else "",
+                "commit": commit}
+        if host == "github.com" and owner_name:
+            return {"via": "github", "url": SOURCE_TEMPLATES["github"].format(**fill, path="{path}"), "at": commit}
+        if host == "gitlab.com" and len(parts) >= 3 and all(_SEGMENT.fullmatch(p) for p in parts[1:]):
+            project = quote("/".join(parts[1:]), safe="")
+            return {"via": "gitlab", "url": SOURCE_TEMPLATES["gitlab"].format(project=project, commit=commit, file="{file}"),
+                    "at": commit}
+        if host == "bitbucket.org" and owner_name:
+            return {"via": "bitbucket", "url": SOURCE_TEMPLATES["bitbucket"].format(**fill, path="{path}"), "at": commit}
+        if host == "codeberg.org" and owner_name:
+            return {"via": "codeberg", "url": SOURCE_TEMPLATES["codeberg"].format(**fill, path="{path}"), "at": commit}
+        if host == "huggingface.co":
+            hf = _hf_repo(d["url"] or "", repo)
+            if hf:
+                return {"via": "huggingface", "url": SOURCE_TEMPLATES["huggingface"].format(hf=hf, commit=commit, path="{path}"),
+                        "at": commit}
+        # Another forge (a GitLab of its own, Framagit, GIN…): its pages do not all let another site
+        # read them; Software Heritage does, by digest.
+        return {"via": "swh", "url": SOURCE_TEMPLATES["swh"], "at": commit}
+    if repo.startswith("zenodo:") and repo.split(":", 1)[1].isdigit():
+        record = repo.split(":", 1)[1]
+        return {"via": "zenodo", "url": SOURCE_TEMPLATES["zenodo"].format(record=record, file="{file}"), "at": record}
+    if repo.startswith("osf:"):
+        return {"via": "", "why": "osf"}
+    if repo.startswith("supp:"):
+        return {"via": "", "why": "pmc"}
+    return {"via": "", "why": "host"}
+
+
+def file_via(source: dict[str, str], path: str, listed: set[str]) -> str:
+    """"" when a file is fetched the repository's way; "swh" when only Software Heritage can give it
+    (a file inside an archive of a Zenodo record, which lists the archive, not the file)."""
+    if source.get("via") == "zenodo" and path not in listed:
+        return "swh"
+    return ""
 
 _CODE_STATUSES = ("code_verified", "code_found", "code_empty", "code_dead")
 
@@ -393,7 +497,10 @@ def script_lots(con: sqlite3.Connection, public: bool) -> dict[int, dict[str, An
 
     In `public` mode, the text of a repository whose license does not allow
     republishing is REMOVED: the reader shows the file list and a link to each file at
-    the source, at the verified commit.
+    the source, at the verified commit. For such a repository, the entry says where a reader's
+    browser may fetch each file itself (`source`, catalog.source_of) and each file's facts: its
+    digest (`sha256`, of its bytes) and size — never its text. What a removal request withheld
+    gets neither: it is not fetched.
     """
     lots: dict[int, dict[str, Any]] = defaultdict(dict)
     lot_shown: dict[int, int] = defaultdict(int)
@@ -404,15 +511,31 @@ def script_lots(con: sqlite3.Connection, public: bool) -> dict[int, dict[str, An
         d = repos.get(repo)
         if d is None:
             continue
-        published = (not public) or (d["redistributable"] in PUBLISHABLE and repo not in held.repos)
-        withdrawn_note = NOTE_WITHHELD if repo in held.repos else NOTE_NO_LICENSE if not d["license"] else NOTE_LICENSE
+        published = (not public) or (repo not in held.repos and copyable(con, d))
+        withdrawn_note = (NOTE_WITHHELD if repo in held.repos else NOTE_NO_LICENSE if not d["license"] else
+                          NOTE_UNVERIFIED if d["redistributable"] in PUBLISHABLE else NOTE_LICENSE)
+        # Shown from the source: a repository held back for its license only (not one withheld).
+        source = source_of(d) if not published and repo not in held.repos else None
+        try:
+            listed = set(json.loads(d["files"] or "[]")) if source and source.get("via") == "zenodo" else set()
+        except ValueError:
+            listed = set()
         files = []
         shown = 0
         lot = lot_of(repo)
         for f in con.execute("SELECT * FROM file WHERE repo = ? ORDER BY kind DESC, path", (repo,)):
             text, note = (f["text"], f["note"]) if published else (None, withdrawn_note)
+            facts: dict[str, Any] = {}
+            if (source is not None and f["kind"] != "note" and f["text"] is not None and (repo, f["path"]) not in held.files
+                    and re.fullmatch(r"[0-9a-f]{64}", f["digest"] or "")):
+                facts = {"sha256": f["digest"], "size": f["size"]}
+                via = file_via(source, f["path"], listed) if source.get("via") else ""
+                if via:
+                    facts["via"] = via
             if published and (repo, f["path"]) in held.files:
                 text, note = None, NOTE_WITHHELD
+            if not published and (repo, f["path"]) in held.files:
+                note = NOTE_WITHHELD
             if public and text:
                 shown += len(text)
                 if shown > MAX_SITE_TEXT_PER_REPO:
@@ -434,9 +557,13 @@ def script_lots(con: sqlite3.Connection, public: bool) -> dict[int, dict[str, An
             files.append({
                 "path": f["path"], "language": f["language"], "kind": f["kind"], "lines": f["lines"],
                 "text": text, "truncated": bool(f["truncated"]), "note": note,
-                "source_url": file_url(d, f["path"]) if f["kind"] != "note" else ""})
-        lots[lot][repo] = {"repo": repo, "commit": d["commit_id"] or "", "license": d["license"] or "",
-                                    "published": published, "files": files}
+                "source_url": file_url(d, f["path"]) if f["kind"] != "note" else "", **facts})
+        entry = {"repo": repo, "commit": d["commit_id"] or "", "license": d["license"] or "",
+                 "published": published, "files": files}
+        if source is not None:
+            entry["redistributable"] = d["redistributable"]
+            entry["source"] = source
+        lots[lot][repo] = entry
     return lots
 
 
@@ -646,10 +773,16 @@ def public_db(con: sqlite3.Connection, path: Path) -> None:
     # and the pages say "a correction by a verified author", never who.
     target.execute("DROP TABLE IF EXISTS link_edit")
     target.execute("UPDATE field_provenance SET source_ref = '' WHERE source IN ('author', 'maintainer', 'submitter')")
+    # The licence audit's rule (`copyable`): a license that allows redistribution, verified by the
+    # repository's own license file or its record.
     target.execute(
         "UPDATE file SET text = NULL, note = ? WHERE repo IN "
         "(SELECT repo FROM repository WHERE redistributable NOT IN ('yes', 'with_conditions'))",
         (NOTE_LICENSE,))
+    unverified = [r["repo"] for r in con.execute("SELECT * FROM repository WHERE redistributable IN ('yes', 'with_conditions')")
+                  if not copyable(con, r)]
+    target.executemany("UPDATE file SET text = NULL, note = ? WHERE repo = ? AND text IS NOT NULL",
+                       [(NOTE_UNVERIFIED, r) for r in unverified])
     # The authors' contact details are private: they go to the private dataset only
     # (oscr/contacts.py), never into a public output. Email addresses in the scripts' text
     # are hidden, as on the site.

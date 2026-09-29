@@ -31,10 +31,12 @@ def w(tmp_path):
 
 
 def ask(w, **values) -> int:
-    """A removal request as the Worker records it from the page /removal/."""
-    row = {"user_id": "u_ada", "target_kind": "paper", "target_id": P1, "reason": "copyright",
+    """A removal request as the Worker records it from the page /removal/: by default one the
+    moderator's rules leave to the owner (someone the registry cannot verify, for a reason that hides
+    nothing at once: tests/test_moderation.py has the rules), so that the owner decides each scope."""
+    row = {"user_id": "u_ben", "target_kind": "paper", "target_id": P1, "reason": "other",
            "details": "This record reproduces material under an agreement that does not allow it.",
-           "requester_role": "author", "author_verified": 1, "scope": "record", "confirmed": 1, "created_at": T}
+           "requester_role": "other", "author_verified": 0, "scope": "record", "confirmed": 1, "created_at": T}
     return w.request("reports", "report", {**row, **values})
 
 
@@ -65,16 +67,17 @@ def article(out: dict, article_id: str) -> dict:
 # The owner's list, and decisions.
 
 def test_the_owners_list_says_who_asks_what_and_why(w):
-    ask(w, scope="file", scope_repo=EEG, scope_path="plot.py", evidence_url="https://lab.example/notice")
+    ask(w, scope="file", scope_repo=EEG, scope_path="plot.py", evidence_url="https://lab.example/notice", reason="incorrect",
+        requester_role="rights_holder")
     ask(w, user_id="u_ben", target_id=P2, requester_role="named_person", author_verified=0, scope="map", reason="personal_data",
         details="The record names me in a way I did not agree to, see the notice.")
     assert w.poll().owner == 2
     listed = jobs.describe_waiting(jobs.waiting(w.state, "local", ("report",)))
     assert ("request 1: remove the copy of one file (github.com/oscr-fixture/eeg-analysis: plot.py) of doi:10.5555/oscr.fixture.1 "
-            "(copyright), from Ada Fixture, ORCID 0000-0000-0000-001X, as an author of the paper (verified: their ORCID iD is "
-            "among the paper's authors)") in listed
+            "(incorrect), from Ben Example, GitHub ben-example, as the holder of the rights") in listed
     assert "    evidence: https://lab.example/notice" in listed
-    assert "    confirmed: the information is accurate; a moderator reviews it" in listed
+    assert "    confirmed: the information is accurate, and they read how requests are decided" in listed
+    assert "    the rules (report.review) close it by themselves on 26 October 2026" in listed
     assert ("request 2: remove the tracing map of doi:10.5555/oscr.fixture.2 (personal_data), from Ben Example, GitHub ben-example, "
             "as a person named in the record") in listed
 
@@ -144,7 +147,7 @@ def test_one_repositorys_copies(w, tmp_path):
     w.poll()
     jobs.decide_report(w.runner, rid, True)
     assert [tuple(r) for r in w.mac.execute("SELECT scope, repo, request, reason FROM withheld")] == [
-        ("repository", EEG, f"local:{rid}", "copyright")]
+        ("repository", EEG, f"local:{rid}", "other")]
     out = export(w, tmp_path)
     assert set(texts(out["lots"], EEG).values()) == {None}
     assert out["db"].execute("SELECT DISTINCT note FROM file WHERE repo = ?", (EEG,)).fetchall() == [(catalog.NOTE_WITHHELD,)]

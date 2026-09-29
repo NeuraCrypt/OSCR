@@ -10,7 +10,7 @@
 // 4. when that list was full or refused (a very large history), a commit of the login in the
 //    repository: GET /repos/{owner}/{name}/commits?author={login}&per_page=1.
 //
-// No answer, or a no: the claim waits for a moderator (Phase 7).
+// No answer, or a no: the claim waits, 30 days at most (the automatic moderator's rules, oscr/moderation.py).
 
 import { githubApi, type Provider } from "./providers.ts";
 

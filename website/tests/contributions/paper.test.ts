@@ -147,6 +147,15 @@ test("only a verified author of the paper, or a maintainer of its code", async (
   // Ben maintains github.com/oscr-fixture/unlicensed, the code of paper 2.
   const user = rows(w.db, "users").find((u) => u.github_login === "ben-example")!.id as string;
   w.db.sqlite.prepare("INSERT INTO roles (user_id, role, scope_kind, scope_id, granted_by, granted_at) VALUES (?, 'maintainer', 'repo', ?, 'system', 1)").run(user, UNLICENSED);
+  // GitHub showed him as a contributor only: not trusted to change the paper's record (lib/moderation.ts).
+  w.db.sqlite
+    .prepare("INSERT INTO claims (user_id, kind, repo, evidence, status, created_at, decided_by, decided_at) VALUES (?, 'maintainer', ?, ?, 'verified', 1, 'system', 1)")
+    .run(user, UNLICENSED, JSON.stringify({ via: "contributor" }));
+  const contributor = await ben.post("/api/edits", { paper_id: P2, as: "maintainer", repo: UNLICENSED, changes: [{ op: "role", repo: UNLICENSED, role: "tool" }] });
+  assert.equal(contributor.status, 403);
+  assert.match((await body(contributor)).error.message, /Only the owner of this repository, or a public member of its organization/);
+  // Its owner, then.
+  w.db.sqlite.prepare("UPDATE claims SET evidence = ? WHERE user_id = ? AND kind = 'maintainer'").run(JSON.stringify({ via: "owner" }), user);
   assert.equal((await ben.post("/api/edits", { paper_id: P1, as: "maintainer", repo: UNLICENSED, changes })).status, 403, "not paper 1's code");
   let ok = await ben.post("/api/edits", { paper_id: P2, as: "maintainer", repo: `https://${UNLICENSED}`, changes: [{ op: "role", repo: UNLICENSED, role: "tool" }] });
   assert.equal(ok.status, 202);

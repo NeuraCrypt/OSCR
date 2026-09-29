@@ -409,7 +409,18 @@ export type PaperRecord = {
   /** `repo`: the registry's key of the repository (github.com/owner/name), which a correction names;
    *  `files`: its files' paths (at most removal.FILES_LISTED, `files_more` others) and `copies`,
    *  whether the site holds copies of their text: what a removal request may name. */
-  code: { repo: string; name: string; url: string; license: string; state: string; copies?: boolean; files?: string[]; files_more?: number }[];
+  code: {
+    repo: string;
+    name: string;
+    url: string;
+    license: string;
+    state: string;
+    copies?: boolean;
+    /** Why no copy of its files is kept: their license ("license"), or a removal request ("withheld"). */
+    held?: "license" | "withheld";
+    files?: string[];
+    files_more?: number;
+  }[];
   files: number;
   pairs: number;
   map: string;
@@ -483,7 +494,8 @@ function contribute(p: PaperRecord): string {
     `<div id="contribute-signed-in" hidden><p id="contribute-who"></p>` +
     `<div id="claim-block" hidden><h3>Claim this paper</h3><p id="claim-state"></p>` +
     `<form id="claim-form" method="post" action="/api/claims" hidden>` +
-    `<p>Your ORCID iD is not among this paper's authors in its metadata: say why you are one of them, and a moderator looks at your claim.</p>` +
+    `<p>Your ORCID iD is not among this paper's authors in its metadata: say why you are one of them. The registry's rules verify ` +
+    `the claim as soon as Crossref adds this paper to your ORCID record, once its publisher deposited your iD with it (checked each day, 30 days at most; a work you add yourself proves nothing; ${a("how claims are decided", "/policies/moderation/")}).</p>` +
     `<p><label for="claim-statement">Why you are one of its authors</label><br>` +
     `<textarea id="claim-statement" name="statement" rows="3" maxlength="1000" required></textarea></p>` +
     `<p><label for="claim-link">A page that shows it (optional)</label><br>` +
@@ -506,7 +518,7 @@ function contribute(p: PaperRecord): string {
     `<h3 id="removal">Request its removal</h3>` +
     `<p>To ask for this record, the copies of its authors' scripts or its tracing map to be removed, use ` +
     `${a("the removal request page", removalUrl(p.id))}: signed in, you say who you are, what to remove and why, then review ` +
-    `and confirm the request. A moderator reviews every request.</p>` +
+    `and confirm the request. Published rules decide every request (${a("how", "/policies/moderation/")}).</p>` +
     `<p id="removal-state"></p>` +
     `</section>`
   );
@@ -544,6 +556,13 @@ export function paperView(p: PaperRecord): View {
             `<section><h3>${href(r.url) ? `<a class="code" href="${esc(href(r.url))}">${wrap(r.name)}</a>` : `<span class="code">${wrap(r.name)}</span>`}</h3>` +
             line("License", esc(r.license || "none: the authors keep all their rights")) +
             line("State", r.state === "alive" ? `<span class="ok">${esc(STATES.alive)}</span>` : `<span class="warning">${esc(STATES[r.state] ?? r.state)}</span>`) +
+            (r.copies
+              ? line("Copies", "kept by the registry: this license allows it")
+              : r.held === "withheld"
+                ? line("Copies", "withheld at a removal request: read it at its source")
+                : r.held === "license"
+                  ? line("Copies", `none: the registry keeps no copy of code whose license does not allow redistribution (${a("how this works", "/policies/code/")}); read it at its source`)
+                  : "") +
             `</section>`,
         )
         .join("")

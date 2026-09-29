@@ -12,6 +12,8 @@ import {
 import { toolOf, toolUrl } from "../../lib/entities";
 import { featureWords, type PaperPage } from "../../lib/paper";
 import { fileHref } from "../../lib/reader";
+import { sourceFacts } from "../../lib/source";
+import { SITE_NAME } from "../../config";
 import Statements from "./Statements.astro";
 import Wrap from "./Wrap.astro";
 
@@ -58,6 +60,11 @@ const kinds = new Set(p?.availability.statements.map((s) => s.kind) ?? []);
     const f = p?.code[r.repo];
     const files = e?.files ?? [];
     const readable = files.filter((x) => x.kind !== "note");
+    // Held back for its license, and shown from its source by the reader (src/lib/source.ts).
+    const src = e && !e.published && reader ? sourceFacts((e as { source?: unknown }).source) : null;
+    const fromSource = !!src?.via;
+    const pinned = src?.via === "zenodo" ? `record ${src.at}` : `commit ${(src?.at ?? "").slice(0, 7)}`;
+    const fetchable = (x: { sha256?: string; note: string }) => fromSource && !!x.sha256 && !/removal request/i.test(x.note);
     const languages = Object.entries(r.languages ?? {}).sort((x, y) => y[1] - x[1]);
     const features = f?.features ? featureWords(f.features) : null;
     const tools = (f?.tools ?? []).map((t) => ({ ...t, name: toolOf(t.id)?.name ?? t.id, url: toolUrl(t.id) }));
@@ -107,10 +114,16 @@ const kinds = new Set(p?.availability.statements.map((s) => s.kind) ?? []);
         )}
         {readable.length > 0 && (
           <details>
-            <summary>{plural(readable.length, "file")}{e && !e.published && ", to read at the source"}</summary>
-            {e && !e.published && (
+            <summary>{plural(readable.length, "file")}{e && !e.published && (fromSource ? ", not copied: shown from their source" : ", to read at the source")}</summary>
+            {e && !e.published && (fromSource ? (
+              <p class="warning">
+                {SITE_NAME} keeps no copy of these files: {r.license ? `the license of this repository (${r.license}) is not one it has verified to allow it` : "this repository has no license that allows it"}.
+                The reader above shows each one from its source, fetched by your browser at {pinned}, when its fingerprint is the one {SITE_NAME} verified.{" "}
+                <a href="/policies/code/">How this works</a>.
+              </p>
+            ) : (
               <p class="warning">{readable[0]?.note || "The license of this repository does not allow republishing its files: read them at the source."}</p>
-            )}
+            ))}
             <ul>
               {files.map((x) =>
                 x.kind === "note" ? (
@@ -120,7 +133,7 @@ const kinds = new Set(p?.availability.statements.map((s) => s.kind) ?? []);
                     <a class="code" href={readHere(r.repo, x.path)}><Wrap text={x.path} /></a> — {x.language || "text"}
                     {x.lines ? `, ${plural(x.lines, "line")}` : ""}
                     {matches(r.repo, x.path) > 0 && `, ${plural(matches(r.repo, x.path), "match", "matches")}`}
-                    {x.text === null && ", not shown here"}
+                    {x.text === null && (fetchable(x) ? ", shown from its source" : ", not shown here")}
                   </li>
                 ) : (
                   <li>

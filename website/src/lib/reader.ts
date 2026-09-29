@@ -8,7 +8,12 @@
 // withheld at a removal request). A pair joins a paragraph
 // of the paper and lines of one of these files (`file`, -1 when the file is not among them).
 // Never any text of the paper: only paragraph numbers, section titles and short terms.
+//
+// A file held back for its license ("license") may carry its digest (`sha256`), its size, and its
+// repository where the reader's browser fetches it itself, at the pinned version (`source`,
+// lib/source.ts): it is then shown from its source, never from a copy.
 import { sourceLines, splitLines, wholeFile } from "./lines.ts";
+import { cannotWords, sourceFacts, type SourceFacts } from "./source.ts";
 
 /** What the build knows of a repository's files (a lot's entry, oscr/catalog.py). */
 export type LotFileIn = {
@@ -20,6 +25,11 @@ export type LotFileIn = {
   truncated: boolean;
   note: string;
   source_url: string;
+  /** A file held back for its license: the SHA-256 of its bytes and their number (the export's
+   *  facts), and "swh" when only Software Heritage gives it. */
+  sha256?: string;
+  size?: number | null;
+  via?: string;
 };
 export type RepoIn = {
   repo: string;
@@ -29,7 +39,7 @@ export type RepoIn = {
   state: string;
   lot: string;
   /** The lot's entry, when files were read. */
-  entry?: { commit: string; license: string; published: boolean; files: LotFileIn[] };
+  entry?: { commit: string; license: string; published: boolean; files: LotFileIn[]; source?: unknown; redistributable?: string };
 };
 export type PairIn = {
   pair: number;
@@ -61,6 +71,9 @@ export type ReaderRepo = {
    *  (`prefix`) or this same address (`same`, an archive): the files then carry none. */
   sourcePrefix: string;
   sourceSame: string;
+  /** Where the reader's browser fetches its files itself, when it is held back for its license
+   *  (lib/source.ts); null otherwise. */
+  source: SourceFacts | null;
 };
 export type ReaderFile = {
   repo: number;
@@ -76,6 +89,10 @@ export type ReaderFile = {
   note: string;
   /** Its address at the source, when the repository's prefix does not give it. */
   source: string;
+  /** Held back for its license: the SHA-256 of its bytes ("" when unknown or withheld), and "swh"
+   *  when only Software Heritage gives it. */
+  sha256: string;
+  via: string;
   pairs: number[];
 };
 export type ReaderPair = {
@@ -108,6 +125,10 @@ export type ReaderData = {
   initial: number;
   /** Whether the text of the file shown first ends with a new line (the page's lines do not say). */
   initialEol: boolean;
+  /** The paper's id (its removal request's page) and the platform's name, for the words of a file
+   *  shown from its source. */
+  paperId: string;
+  site: string;
 };
 
 /** A path as an address: each part percent-encoded, the slashes kept. */
@@ -163,23 +184,28 @@ export function readerFiles(repos: RepoIn[]): { repos: ReaderRepo[]; files: Read
       note: e?.files.find((f) => f.kind === "note")?.note ?? "",
       sourcePrefix: rule.prefix,
       sourceSame: rule.same,
+      source: e && !e.published ? sourceFacts(e.source) : null,
     });
     for (const f of list) {
       const derived = rule.same || (rule.prefix ? rule.prefix + encodePath(f.path) : "");
       const index = files.length;
       const text = e?.published ? f.text : null;
+      const why = whyOf(!!e?.published, f);
+      const held = why === "license" && typeof f.sha256 === "string" && /^[0-9a-f]{64}$/.test(f.sha256);
       files.push({
         repo: i,
         path: f.path,
         language: f.language,
         kind: f.kind,
         lines: f.lines ?? (text !== null ? splitLines(text).length : null),
-        bytes: text !== null ? new TextEncoder().encode(text).length : null,
+        bytes: text !== null ? new TextEncoder().encode(text).length : held && typeof f.size === "number" ? f.size : null,
         text: text !== null,
         truncated: !!f.truncated,
-        why: whyOf(!!e?.published, f),
+        why,
         note: f.note,
         source: f.source_url && f.source_url !== derived ? f.source_url : "",
+        sha256: held ? f.sha256! : "",
+        via: held && f.via === "swh" ? "swh" : "",
         pairs: [],
       });
       if (text !== null) texts.set(index, text);
@@ -216,9 +242,15 @@ export function mapPairs(pairs: PairIn[], repos: ReaderRepo[], files: ReaderFile
     });
 }
 
+/** A file the reader's browser may show from its source: held back for its license, with its digest,
+ *  in a repository whose files can be fetched. */
+export const fromSource = (repos: readonly Pick<ReaderRepo, "source">[], f: Pick<ReaderFile, "why" | "sha256" | "repo">) =>
+  f.why === "license" && f.sha256 !== "" && !!repos[f.repo]?.source?.via;
+
 /** The file shown first: the one with the most pairs (the earliest pair breaks a tie), else the
- *  first script whose text is here, else any file whose text is here, else the first file. */
-export function initialFile(files: ReaderFile[]): number {
+ *  first script whose text is here (or can be shown from its source), else any such file, else the
+ *  first file. */
+export function initialFile(files: ReaderFile[], repos: readonly Pick<ReaderRepo, "source">[] = []): number {
   let best = -1;
   files.forEach((f, i) => {
     if (!f.pairs.length) return;
@@ -226,9 +258,10 @@ export function initialFile(files: ReaderFile[]): number {
     if (!b || f.pairs.length > b.pairs.length || (f.pairs.length === b.pairs.length && Math.min(...f.pairs) < Math.min(...b.pairs))) best = i;
   });
   if (best >= 0) return best;
-  const script = files.findIndex((f) => f.text && f.kind === "script");
+  const readable = (f: ReaderFile) => f.text || fromSource(repos, f);
+  const script = files.findIndex((f) => readable(f) && f.kind === "script");
   if (script >= 0) return script;
-  const any = files.findIndex((f) => f.text);
+  const any = files.findIndex(readable);
   return any >= 0 ? any : files.length ? 0 : -1;
 }
 
@@ -240,13 +273,24 @@ export function fileHref(base: string, repo: string, path: string, multi: boolea
 }
 
 /** Why a file's text is not shown here, in a sentence (`failure`: why it could not be loaded). */
-export function whyNotShown(f: Pick<ReaderFile, "why" | "note" | "path">, r: Pick<ReaderRepo, "license">, failure = ""): string {
+export function whyNotShown(
+  f: Pick<ReaderFile, "why" | "note" | "path"> & Partial<Pick<ReaderFile, "sha256">>,
+  r: Pick<ReaderRepo, "license"> & Partial<Pick<ReaderRepo, "source">>,
+  failure = "",
+): string {
   if (failure) return `This file could not be loaded here (${failure}).`;
-  if (f.why === "withheld") return "This file is not shown here: its copy was withheld at a removal request, after a moderator's review.";
-  if (f.why === "license") {
+  if (f.why === "withheld") return "This file is not shown here: it was withheld at a removal request.";
+  if (f.why === "license" && f.sha256 && r.source?.via) {
     return r.license
-      ? `This file is not shown here: the license of its repository (${r.license}) does not allow republishing it.`
-      : "This file is not shown here: its repository has no license, so its authors keep all their rights to it.";
+      ? `The registry keeps no copy of this file: the license of its repository (${r.license}) is not one it has verified to allow it. Your browser shows it from its source, with JavaScript.`
+      : "The registry keeps no copy of this file: its repository has no license, so its authors keep all their rights to it. Your browser shows it from its source, with JavaScript.";
+  }
+  if (f.why === "license") {
+    // Why the browser does not show it from its source either (an OSF project, PMC's files…).
+    const also = r.source && !r.source.via ? ` Your browser cannot show it from its source either: ${cannotWords(r.source.why ?? "")}.` : "";
+    return r.license
+      ? `This file is not shown here: the license of its repository (${r.license}) is not one the registry has verified to allow republishing it.${also}`
+      : `This file is not shown here: its repository has no license, so its authors keep all their rights to it.${also}`;
   }
   if (f.why === "binary") {
     return /\.mlx$/i.test(f.path)
@@ -265,8 +309,9 @@ export function whyNotShown(f: Pick<ReaderFile, "why" | "note" | "path">, r: Pic
 
 /** Why one would go to the source, said in the menu that leads there: the copy shown here is
  *  the one the registry read; the source has the authors' latest version and its history. */
-export function sourceWhy(commit: string, shown: boolean): string {
+export function sourceWhy(commit: string, shown: boolean | "source"): string {
   const at = commit ? ` at commit ${commit.slice(0, 7)}` : "";
+  if (shown === "source") return `Shown here from its source${at}, fetched by your browser: the registry keeps no copy of it. The source has the authors' latest version and its history.`;
   return shown
     ? `Shown here as the registry read it${at}. The source has the authors' latest version and its history.`
     : `Not shown here${at ? ` (read${at})` : ""}. The source has the file, the authors' latest version and its history.`;

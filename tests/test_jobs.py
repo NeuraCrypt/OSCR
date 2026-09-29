@@ -227,15 +227,20 @@ def test_a_published_submission_puts_its_links_on_the_record_as_a_new_version(w)
     assert ("align", paper, True) in w.harvester.calls
 
 
-def test_a_draft_published_by_someone_else_waits_for_the_owner(w, capsys, tmp_path, monkeypatch):
+def test_a_draft_published_by_someone_else_waits_for_the_owner_when_nothing_proves_its_links(w):
+    """The moderator's rules (tests/test_moderation.py has each): nothing the submitter cannot forge ties
+    this link to the paper, so it waits for the owner, 30 days at most, the submitter told why."""
     sid = _submit(w, user="u_ben")
     w.poll()
     assert w.row("submissions", sid)["author"] == 0
     w.d1con.execute("UPDATE submissions SET status = 'moderation' WHERE id = ?", (sid,))
     w.job("publish", sid, "u_ben")
     assert w.poll().owner == 1
+    row = w.row("submissions", sid)
+    assert row["status"] == "moderation" and row["message"].startswith("Waits for the operator's review, until 26 October 2026")
     listed = jobs.describe_waiting(jobs.waiting(w.state, "local", ("publish",)))
     assert f"submission {sid}: 10.5555/oscr.fixture.7" in listed and "GitHub ben-example" in listed
+    assert "the rules (submission.review) close it by themselves on 26 October 2026" in listed
     assert jobs.decide_submission(w.runner, sid, True, "Thank you.").endswith("published")
     row = w.row("submissions", sid)
     assert row["status"] == "published" and "Thank you." in row["message"]
@@ -244,8 +249,7 @@ def test_a_draft_published_by_someone_else_waits_for_the_owner(w, capsys, tmp_pa
     other = _submit(w, user="u_ben", doi="10.5555/oscr.fixture.8")
     w.poll()
     w.d1con.execute("UPDATE submissions SET status = 'moderation' WHERE id = ?", (other,))
-    w.job("publish", other, "u_ben")
-    w.poll()
+    w.d1con.commit()
     jobs.decide_submission(w.runner, other, False, "Not the authors' code.")
     assert (w.row("submissions", other)["status"], w.row("submissions", other)["message"]) == ("refused", "Not the authors' code.")
 
@@ -303,7 +307,18 @@ def test_a_correction_is_applied_as_a_new_version_with_its_provenance(w):
     assert set(dict(w.mac.execute("SELECT repo, role FROM link WHERE article_id = ?", (P1,)).fetchall())) == {EEG, "zenodo:1234567"}
 
 
+def maintainer(w, user: str, repo: str, via: str = "owner") -> None:
+    """A maintainer as the Worker records one after GitHub's check (the role, and the claim that keeps
+    how GitHub showed it: owner, org_member, contributor, commit_author)."""
+    w.d1con.execute("INSERT INTO roles (user_id, role, scope_kind, scope_id, granted_by, granted_at) VALUES "
+                    "(?, 'maintainer', 'repo', ?, 'system', ?)", (user, repo, T))
+    w.d1con.execute("INSERT INTO claims (user_id, kind, repo, evidence, status, created_at, decided_by, decided_at) VALUES "
+                    "(?, 'maintainer', ?, ?, 'verified', ?, 'system', ?)", (user, repo, json.dumps({"via": via}), T, T))
+    w.d1con.commit()
+
+
 def test_a_maintainer_removes_their_repository_and_the_verification_does_not_overrule_a_role(w):
+    maintainer(w, "u_ben", UNLICENSED)
     eid = _edit(w, [{"op": "remove", "repo": UNLICENSED}], user="u_ben", paper=P2, as_role="maintainer", repo=UNLICENSED)
     w.poll()
     assert w.row("edits", eid)["status"] == "applied"
@@ -437,6 +452,8 @@ def _claim(w, user="u_ben", kind="author", paper=P2, repo=""):
 
 
 def test_a_claim_waits_for_the_owner_who_grants_the_role(w):
+    """Nothing proves it (no ORCID iD): it waits, 30 days at most (tests/test_moderation.py), and the
+    owner may decide it meanwhile."""
     cid = _claim(w)
     w.job("claim", cid, "u_ben")                      # asked twice: answered once
     out = w.poll()
@@ -444,6 +461,7 @@ def test_a_claim_waits_for_the_owner_who_grants_the_role(w):
     listed = jobs.describe_waiting(jobs.waiting(w.state, "local", ("claim",)))
     assert listed.count(f"claim {cid}: Ben Example, GitHub ben-example as author of {P2}") == 1
     assert "I am the second author." in listed and "https://lab.example/ben" in listed
+    assert "the rules (claim.review) close it by themselves on 26 October 2026" in listed
     assert jobs.decide_claim(w.runner, cid, True, "Welcome.") == f"claim {cid} (author of {P2}): accepted"
     row = w.row("claims", cid)
     assert (row["status"], row["decided_by"], row["message"]) == ("verified", "owner", "Welcome.")
@@ -463,13 +481,12 @@ def test_a_maintainer_claim_refused_says_why(w):
 
 
 def test_a_removal_accepted_withdraws_the_record_from_every_public_output(w, tmp_path):
+    # Ada's ORCID iD is among the paper's authors: the rules apply her request at once.
     rid = w.request("reports", "report", {"user_id": "u_ada", "target_kind": "paper", "target_id": P1,
                                            "reason": "author_request", "details": "Please remove it.", "created_at": T})
-    assert w.poll().owner == 1
-    assert "remove the whole record of doi:10.5555/oscr.fixture.1 (author_request), from Ada Fixture" in jobs.describe_waiting(
-        jobs.waiting(w.state, "local", ("report",)))
-    jobs.decide_report(w.runner, rid, True, "Removed.")
+    assert (w.poll().done, jobs.waiting(w.state, "local", ("report",))) == (1, [])
     assert w.row("reports", rid)["status"] == "accepted"
+    assert w.row("reports", rid)["message"].startswith("Applied at once, as a request from a verified author")
     assert w.mac.execute("SELECT withdrawn FROM article WHERE id = ?", (P1,)).fetchone()[0].endswith(
         f"request {rid} (author_request)")
     assert P1 not in {a["id"] for a in catalog.catalog_data(w.mac)["articles"]}

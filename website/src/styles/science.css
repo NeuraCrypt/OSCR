@@ -231,6 +231,11 @@ a.reader-link {
 .file-path .repo { color: var(--muted); }
 .file-path .sep { color: #8b949e; margin: 0 .2em; }
 .pane > header p.file-facts { flex: 1 1 14em; margin: 0; font-size: .82em; }
+/* A file the registry keeps no copy of, shown from its source: where it comes from, above its lines */
+.pane > header p.file-source {
+  margin: .35em 0 0; padding: .3em .6em; font-size: .82em; line-height: 1.4;
+  background: var(--bg-sidebar); border: 1px solid var(--rule); overflow-wrap: anywhere;
+}
 .file-actions { display: flex; flex-wrap: wrap; gap: .3em; align-items: center; }
 .code-body { flex: 1; min-height: 0; display: flex; }
 

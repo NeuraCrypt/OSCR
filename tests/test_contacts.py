@@ -122,6 +122,14 @@ def test_the_site_hides_email_addresses_in_code():
     assert masked.count("\n") == code.count("\n")
 
 
+def _license_file(con, repo: str) -> None:
+    """A license confirmed by the repository's own license file: its text may be copied
+    (catalog.copyable, scriptstore.verified_license)."""
+    con.execute("INSERT INTO file (repo, path, version, language, kind, size, lines, text) VALUES "
+                "(?, 'LICENSE', 'c', 'License', 'doc', 50, 1, 'MIT License. Permission is hereby granted, free of charge')",
+                (repo,))
+
+
 def test_a_huge_repository_shows_only_part_of_its_text_on_the_site(tmp_path, monkeypatch):
     monkeypatch.setattr(catalog, "MAX_SITE_TEXT_PER_REPO", 50)
     con = _db_with_contacts(tmp_path)
@@ -134,10 +142,12 @@ def test_a_huge_repository_shows_only_part_of_its_text_on_the_site(tmp_path, mon
     for i in range(3):
         con.execute("INSERT INTO file (repo, path, version, language, kind, size, lines, text) VALUES "
                     "('github.com/big/toolbox', ?, 'c', 'Python', 'script', 30, 1, ?)", (f"f{i}.py", "x" * 30))
+    _license_file(con, "github.com/big/toolbox")
     con.commit()
     lots = catalog.script_lots(con, public=True)
     files = lots[catalog.lot_of("github.com/big/toolbox")]["github.com/big/toolbox"]["files"]
-    assert [f["text"] is not None for f in files] == [True, False, False]
+    assert [(f["path"], f["text"] is not None) for f in files] == [
+        ("f0.py", True), ("f1.py", False), ("f2.py", False), ("LICENSE", False)]
     assert "read it at the source" in files[2]["note"]
 
 
@@ -154,6 +164,7 @@ def test_a_lot_of_the_site_stays_under_its_text_budget(tmp_path, monkeypatch):
                     (repo, "https://" + repo))
         con.execute("INSERT INTO file (repo, path, version, language, kind, size, lines, text) VALUES "
                     "(?, 'a.py', 'c', 'Python', 'script', 40, 1, ?)", (repo, "x" * 40))
+        _license_file(con, repo)
     con.commit()
     files = [f for r in catalog.script_lots(con, public=True)[0].values() for f in r["files"]]
     assert sum(len(f["text"] or "") for f in files) <= 70

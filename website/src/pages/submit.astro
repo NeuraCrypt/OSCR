@@ -29,14 +29,17 @@ import { SITE_NAME } from "../config";
       commit, its license, its scripts) and matches it with the paper's paragraphs.</li>
     <li>A draft of the record comes back to <a href="/account/">your account page</a>: review it, correct the links if need
       be, then publish it.</li>
-    <li>When your ORCID iD is among the paper's authors, the record is published at once; otherwise a moderator looks at it
-      first. Papers outside neuroscience stay out of {SITE_NAME}.</li>
+    <li>When your ORCID iD is among the paper's authors, the record is published at once; otherwise the registry's rules
+      publish it when each code link is proven the paper's — cited by the paper itself, or its owner proven one of its
+      authors — and otherwise leave it to the operator, 30 days at most, saying why; a README citing the paper proves
+      nothing (<a href="/policies/moderation/">how submissions are decided</a>). Papers outside neuroscience stay out of
+      {" "}{SITE_NAME}.</li>
   </ol>
 
   <div id="submit-signed-out">
     <p>
       To submit a paper, sign in: <a href="/api/auth/orcid/start?return=/submit/">with ORCID</a> (an author of the paper is
-      then recognized at once), <a href="/api/auth/github/start?return=/submit/">with GitHub</a>, or from
+      then recognized at once), <a href="/api/auth/github/start?return=/submit/">with GitHub</a>, or from{" "}
       <a href="/account/">your account page</a>.
     </p>
   </div>
@@ -48,7 +51,7 @@ import { SITE_NAME } from "../config";
     <p><label for="submit-links">Links to its authors' code, one a line (at most five)</label><br />
       <textarea id="submit-links" name="code_urls" rows="3" spellcheck="false" required
         placeholder="https://github.com/owner/name"></textarea></p>
-    <p><label for="submit-note">A note for the moderators (optional; no address, please)</label><br />
+    <p><label for="submit-note">A note for the operator (optional; no address, please)</label><br />
       <textarea id="submit-note" name="note" rows="2" maxlength="1000"></textarea></p>
     <p><button type="submit">Submit</button></p>
   </form>

@@ -98,9 +98,9 @@ function sayArrival(params: URLSearchParams) {
       write(
         message,
         "warning",
-        `Your claim on ${repo} waits for a moderator: GitHub does not show you as its owner, a public member of its organization, or a contributor.`,
+        `Your claim on ${repo} waits, 30 days at most: GitHub does not show you as its owner, a public member of its organization, or a contributor. Ask for the check again once it does.`,
       );
-    } else if (outcome === "rejected") write(message, "warning", `Your claim on ${repo} was rejected by a moderator.`);
+    } else if (outcome === "rejected") write(message, "warning", `Your claim on ${repo} was rejected.`);
     else write(message, "warning", "GitHub did not answer: nothing was decided. Please try again later.");
   } else return;
   // The message is said once: the address goes back to the page's own.
@@ -211,8 +211,8 @@ function showSignedIn(me: Me) {
         commit_author: "you committed to it",
       };
       if (c.status === "verified") li.append(statusWords(`verified${c.via && via[c.via] ? `, ${via[c.via]}` : ""}`, "ok"));
-      else if (c.status === "pending") li.append(statusWords("waiting for a moderator", "warning"));
-      else li.append(statusWords("rejected by a moderator", "warning"));
+      else if (c.status === "pending") li.append(statusWords("waiting (30 days at most)", "warning"));
+      else li.append(statusWords("rejected", "warning"));
       if (c.message) li.append(document.createTextNode(` — ${c.message}`));
       return li;
     }),
@@ -287,7 +287,7 @@ const SUBMISSION: Record<string, [string, "ok" | "warning"]> = {
   queued: ["being read by the registry", "warning"],
   draft: ["draft ready: review it, then publish it", "ok"],
   publishing: ["being published", "warning"],
-  moderation: ["waits for a moderator", "warning"],
+  moderation: ["checked by the registry's rules, or waiting for the operator (30 days at most)", "warning"],
   published: ["published", "ok"],
   refused: ["refused", "warning"],
 };
@@ -364,7 +364,7 @@ function submissionItem(s: Submission): HTMLElement {
     form.dataset.revise = String(s.id);
     form.append(
       labelled(`revise-${s.id}`, "Its code links, one a line (at most five)", textarea(`revise-${s.id}`, s.code_urls.join("\n"), 3)),
-      labelled(`revise-note-${s.id}`, "A note for the moderators (optional)", textarea(`revise-note-${s.id}`, s.note, 2)),
+      labelled(`revise-note-${s.id}`, "A note for the operator (optional)", textarea(`revise-note-${s.id}`, s.note, 2)),
       button("Correct the links"),
     );
     box.append(form);
@@ -374,7 +374,7 @@ function submissionItem(s: Submission): HTMLElement {
     form.method = "post";
     form.dataset.publish = String(s.id);
     form.append(
-      para("", s.author ? "Your ORCID iD is among the paper's authors: the record is published at once." : "A moderator looks at the record before it is published."),
+      para("", s.author ? "Your ORCID iD is among the paper's authors: the record is published at once." : "The registry's rules publish it only when each code link is proven the paper's (cited by the paper itself, or its owner proven one of its authors); otherwise it waits for the operator, 30 days at most. A README citing the paper proves nothing."),
       button("Publish"),
     );
     box.append(form);
@@ -391,7 +391,7 @@ const VALIDATION: Record<string, [string, "ok" | "warning"]> = {
   refused: ["refused", "warning"],
   failed: ["could not be deposited", "warning"],
 };
-const REPORT: Record<string, [string, "ok" | "warning"]> = { open: ["waits for a moderator", "warning"], accepted: ["accepted", "ok"], rejected: ["refused", "warning"] };
+const REPORT: Record<string, [string, "ok" | "warning"]> = { open: ["open: decided by the rules, or waiting for the operator", "warning"], accepted: ["accepted", "ok"], rejected: ["refused", "warning"] };
 
 /** A removal request: its number and its page (/removal/), what it asks to remove, of which
  *  paper, why, and where it stands. */
@@ -466,7 +466,7 @@ byId("submissions-list")?.addEventListener("submit", async (ev) => {
     if (r.ok) write(out, "ok", "Corrected: the registry reads the links again and writes a new draft.");
   } else {
     r = await call(`/api/submissions/${form.dataset.publish}/publish`);
-    if (r.ok) write(out, "ok", r.data.status === "publishing" ? "Published: the record goes on the site at its next update." : "Sent: a moderator looks at the record before it is published.");
+    if (r.ok) write(out, "ok", r.data.status === "publishing" ? "Published: the record goes on the site at its next update." : "Sent: the registry's rules check its links within about ten minutes, then publish it, or leave it to the operator and say why.");
   }
   busy(form, false);
   if (!r.ok) return write(out, "warning", problem(r.data));
@@ -531,8 +531,8 @@ byId<HTMLFormElement>("maintainer-form")?.addEventListener("submit", async (ev) 
   }
   if (!r.ok) write(out, "warning", problem(r.data));
   else if (r.data.status === "verified") write(out, "ok", `You are a maintainer of ${repo}.`);
-  else if (r.data.status === "pending") write(out, "warning", `Your claim on ${repo} waits for a moderator: only GitHub is checked automatically.`);
-  else write(out, "warning", `Your claim on ${repo} was rejected by a moderator.`);
+  else if (r.data.status === "pending") write(out, "warning", `Your claim on ${repo} waits, 30 days at most: only GitHub is checked automatically.`);
+  else write(out, "warning", `Your claim on ${repo} was rejected.`);
   await load();
 });
 

@@ -1,6 +1,7 @@
 // What the contributions' routes answer: the rows of D1 as the pages read them (times in ISO 8601,
 // JSON columns parsed, each paper with its page), and the shape of a paper's id.
 
+import { expectedWords, reportPath, reviewDeadline, SUBMISSION_WORDS, type Path } from "../../src/lib/moderation.ts";
 import { removalUrl } from "../../src/lib/removal.ts";
 import { paperSlug } from "../account/index.ts";
 import type { AuthorClaimRow, EditRow, ReportRow, SubmissionRow, ValidationRow } from "./store.ts";
@@ -46,6 +47,8 @@ export function submissionJson(r: SubmissionRow) {
     message: r.message,
     created_at: iso(r.created_at),
     updated_at: iso(r.updated_at),
+    // What the moderator's rules do once a non-author publishes it (lib/moderation.ts).
+    expected: r.author !== 1 && (r.status === "draft" || r.status === "moderation") ? { rule: "submission", words: SUBMISSION_WORDS } : null,
   };
 }
 
@@ -85,7 +88,14 @@ export function validationJson(r: ValidationRow) {
 }
 
 /** A removal request: `url` is the paper's page, `removal_url` the request's own (/removal/). */
-export function reportJson(r: ReportRow) {
+/** What the moderator's rules do with a request (lib/moderation.ts), in words: `path` when the Worker
+ *  knows the requester's roles, else what the row says (a maintainer is then recognized by the Mac). */
+export function expectedOf(r: ReportRow, path?: Path) {
+  const p = path && typeof path === "object" ? path : reportPath(r.scope ?? "record", r.reason, r.author_verified === 1, false);
+  return { rule: p.rule, outcome: p.outcome, words: expectedWords(p, r.created_at), deadline: p.outcome === "review" ? reviewDeadline(r.created_at).toISOString() : null };
+}
+
+export function reportJson(r: ReportRow, path?: Path) {
   return {
     id: r.id,
     paper_id: r.target_id,
@@ -105,6 +115,7 @@ export function reportJson(r: ReportRow) {
     created_at: iso(r.created_at),
     updated_at: iso(r.updated_at),
     decided_at: iso(r.decided_at),
+    expected: r.status === "open" ? expectedOf(r, path) : null,
   };
 }
 

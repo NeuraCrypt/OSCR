@@ -5,7 +5,9 @@
 // by this browser, only while its pane is shown; a button hides the pane (the choice is kept in this browser).
 // RIGHT, the authors' code: the list of its files (file-tree.ts) and the viewer (code-view.ts).
 // The file shown first is written into the page by the build; the others are fetched from the
-// lot of their repository (/scripts/NN.json).
+// lot of their repository (/scripts/NN.json). A file the registry may not copy is fetched by this
+// browser from where its authors published it, at the pinned version, and shown only when its
+// SHA-256 is the registry's (lib/source.ts); its pairs are drawn then, and only then.
 //
 // A pair joins paragraph p-<i> and the lines start..end of a file: the same color on both
 // sides. Clicking one side brings the other into view and marks both `.is-active`; the legend,
@@ -17,7 +19,8 @@
 import { anchorText, lineAnchor, type Range } from "../lib/code";
 import { pairClass } from "../lib/lines";
 import { browserStore, PREFS, readPref, writePref } from "../lib/prefs";
-import { fileHref, type ReaderData } from "../lib/reader";
+import { fileHref, fromSource, type ReaderData } from "../lib/reader";
+import { failureWords, fetchVerified, planOf, type Fetched } from "../lib/source";
 import { codeView, scrollInto } from "./code-view";
 import { fileTree } from "./file-tree";
 import { paperPane } from "./reader-paper";
@@ -128,6 +131,41 @@ function start(data: ReaderData) {
     return lots.get(n)!;
   }
 
+  /** The files fetched from their source, by address: each once (a failure may be tried again). */
+  const fetched = new Map<string, Promise<Fetched>>();
+  function fromItsSource(url: string, expect: { path: string; sha256: string; size: number | null }): Promise<Fetched> {
+    if (!fetched.has(url)) {
+      const p = fetchVerified(url, expect);
+      void p.then((r) => {
+        if (!r.ok && r.reason !== "mismatch" && r.reason !== "large" && r.reason !== "binary") fetched.delete(url);
+      });
+      fetched.set(url, p);
+    }
+    return fetched.get(url)!;
+  }
+
+  /** File i, which the registry may not copy: fetched from its source by this browser, checked, shown. */
+  async function showFromSource(i: number, mine: number): Promise<boolean> {
+    const f = data.files[i];
+    const r = data.repos[f.repo];
+    const plan = planOf(r.source, f);
+    if (!plan.ok) {
+      view.showAway(i, "", `This file is not shown here: the registry keeps no copy of it, and ${plan.why}.`);
+      return true;
+    }
+    view.loading(i, `Fetching ${f.path} from ${plan.place}, where its authors published it…`);
+    say(`Fetching ${f.path} from ${plan.place}.`);
+    const got = await fromItsSource(plan.url, { path: f.path, sha256: f.sha256, size: f.bytes });
+    if (mine !== ticket) return false;
+    if (!got.ok) {
+      view.showAway(i, "", failureWords(got.reason, plan, got.status));
+      return false;
+    }
+    view.show(i, got.text, { plan, masked: got.masked });
+    say(`${f.path}, shown from ${plan.place}: its fingerprint is the one the registry verified.`);
+    return true;
+  }
+
   /** Show file i in the code pane; false if it could not be shown (or was overtaken). */
   async function show(i: number): Promise<boolean> {
     const mine = ++ticket;
@@ -136,6 +174,7 @@ function start(data: ReaderData) {
     tree?.setCurrent(i);
     if (i === view.current) return true;
     if (!f.text) {
+      if (fromSource(data.repos, f)) return showFromSource(i, mine);
       view.showAway(i);
       return true;
     }

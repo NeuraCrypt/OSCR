@@ -20,7 +20,8 @@
     oscr d1 build|push|status --local    Phase 3: the search's D1 databases, as deltas (docs/SEARCH.md)
     oscr community build|push --local    the sign-in's facts (ORCID iDs, repository owners) for D1 (--remote too)
     oscr jobs poll --local|--remote      Phase 6: the site's requests (submissions, corrections, validations…)
-    oscr claims|reports|submissions list|accept|refuse   the owner's decisions (docs/CONTRIBUTIONS.md)
+    oscr claims|reports|submissions list|accept|refuse|reverse   what the moderator's rules leave to the owner,
+                                         and what they did (--auto-log) (oscr/moderation.py)
 """
 from __future__ import annotations
 
@@ -89,13 +90,18 @@ def _article_id(con, doi: str) -> str:
 
 def _jobs(con, a: argparse.Namespace, cfg: dict[str, str], client: Client, opts: harvest.Options) -> str:
     """Phase 6: the site's requests, read from D1 community and answered (oscr/jobs.py)."""
-    from . import community, jobs
+    from . import community, jobs, moderation
     state = jobs.open_state(Path(a.folder) / "state.db")
     try:
         if a.command == "jobs" and a.action == "status":
             return jobs.status(state)
         target = "remote" if a.remote else "local" if a.local else ""
         kinds = {"claims": ("claim",), "reports": ("report",), "submissions": ("publish",)}.get(a.command, ())
+        if a.command != "jobs" and a.action == "list" and a.auto_log:
+            # What the moderator's rules decided, for the owner's audit (oscr/moderation.py).
+            logged = {"claims": ("claim",), "reports": ("report",), "submissions": ("submission",)}[a.command]
+            since = time.time() - a.days * 86_400 if a.days else 0
+            return moderation.describe_log(moderation.entries(state, target or None, logged, since))
         if a.command != "jobs" and a.action == "list":
             return jobs.describe_waiting(jobs.waiting(state, target or "remote", kinds) if target else
                                          jobs.waiting(state, "local", kinds) + jobs.waiting(state, "remote", kinds))
@@ -106,12 +112,16 @@ def _jobs(con, a: argparse.Namespace, cfg: dict[str, str], client: Client, opts:
         runner = jobs.Runner(con, d1, state, jobs.MacHarvester(client, opts), instance=a.instance,
                              zenodo_community=cfg.get("OSCR_ZENODO_COMMUNITY", "oscr"),
                              platform=cfg.get("OSCR_PLATFORM_NAME", "Open Scientific Code Registry (OSCR)"),
-                             budget=a.budget, report=lambda m: print(m, flush=True))
+                             budget=a.budget, report=lambda m: print(m, flush=True),
+                             evidence=moderation.MacEvidence(client))
         try:
             if a.command == "jobs":
                 return jobs.poll(runner).describe(target)
             if a.id is None:
                 raise SystemExit(f"{a.command} {a.action}: which one? (its number, from `oscr {a.command} list`)")
+            if a.action == "reverse":
+                return {"claims": moderation.reverse_claim, "reports": moderation.reverse_report,
+                        "submissions": moderation.reverse_submission}[a.command](runner, a.id, a.message)
             accept = a.action == "accept"
             if a.command == "claims":
                 return jobs.decide_claim(runner, a.id, accept, a.message)
@@ -320,14 +330,17 @@ def main(argv: list[str] | None = None) -> int:
                                     "claims, removal requests) and answer them")
     jb.add_argument("action", choices=["poll", "status"])
     community_target(jb)
-    for name, verbs, what in (("claims", ["list", "accept", "refuse"], "the claims that wait for the owner"),
-                              ("reports", ["list", "accept", "reject"], "the requests to remove a record"),
-                              ("submissions", ["list", "accept", "refuse"],
+    for name, verbs, what in (("claims", ["list", "accept", "refuse", "reverse"], "the claims that wait for the owner"),
+                              ("reports", ["list", "accept", "reject", "reverse"], "the requests to remove a record"),
+                              ("submissions", ["list", "accept", "refuse", "reverse"],
                                "the submissions published by someone who is not among the paper's authors")):
-        dp = sp.add_parser(name, help=f"Phase 6: {what}")
-        dp.add_argument("action", choices=verbs)
+        dp = sp.add_parser(name, help=f"Phase 6: {what}; the moderator's rules decide first (oscr/moderation.py)")
+        dp.add_argument("action", choices=verbs, help="list what waits for you (--auto-log: what the rules decided), "
+                                                      "decide it, or reverse what the rules did")
         dp.add_argument("id", type=int, nargs="?", help="its number, from the list")
         dp.add_argument("--message", default="", help="your words for the person who asked (shown on their account page)")
+        dp.add_argument("--auto-log", action="store_true", help="with list: the automatic decisions, each with its rule")
+        dp.add_argument("--days", type=int, default=0, help="with --auto-log: only the last N days (default: all)")
         community_target(dp)
 
     n = sp.add_parser("nightly", help="the publication: public catalogue, then Hugging Face and the website")

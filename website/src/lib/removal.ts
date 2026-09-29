@@ -19,7 +19,7 @@ import { shardOf, SHARDS } from "./shards.ts";
 export type Choice<T extends string> = readonly (readonly [T, string])[];
 
 /** Who asks. An author's request is marked verified when the account's ORCID iD is among the
- *  paper's authors (Phase 5's facts); a moderator checks every other claim. */
+ *  paper's authors (Phase 5's facts); the moderator's rules apply it then (lib/moderation.ts). */
 export const ROLES = [
   ["author", "An author of this paper"],
   ["rights_holder", "The holder of the rights (copyright, license)"],
@@ -339,7 +339,7 @@ export function checkRequest(body: Record<string, unknown>, facts: PaperFacts): 
   if (address || /[@＠]/.test(details)) {
     return refuse(
       "email_in_text",
-      `Your justification contains ${address ? `an email address (${address})` : "an at sign (@)"}: remove it. The registry never keeps an email address; a moderator answers you on this page and on your account page.`,
+      `Your justification contains ${address ? `an email address (${address})` : "an at sign (@)"}: remove it. The registry never keeps an email address; the decision comes to this page and to your account page.`,
       "details",
     );
   }
@@ -352,7 +352,7 @@ export function checkRequest(body: Record<string, unknown>, facts: PaperFacts): 
     return refuse("bad_evidence", `The evidence link must be a web address that starts with https:// (at most ${EVIDENCE_MAX} characters), or nothing.`, "evidence_url");
   }
   if (body.confirm_accurate !== true || body.confirm_review !== true) {
-    return refuse("not_confirmed", "Confirm both statements: that what you give is accurate, and that a moderator reviews the request.", "confirm");
+    return refuse("not_confirmed", "Confirm both statements: that what you give is accurate, and that you understand how requests are decided.", "confirm");
   }
   return { ok: true, request: { role, scope, repo, path, reason, details, evidence_url: evidence } };
 }
