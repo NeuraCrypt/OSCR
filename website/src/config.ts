@@ -25,4 +25,4 @@ export const OPERATOR_NAME: string = import.meta.env.OPERATOR_NAME || "";
 export const OPERATOR_ADDRESS: string = import.meta.env.OPERATOR_ADDRESS || "";
 
 /** The platform's source code, public (Apache-2.0): the About page, the footer, the policies. */
-export const SOURCE_URL = "https://github.com/yannbellec/Open-Scientific-Code-Registry-OSCR-";
+export const SOURCE_URL = "https://github.com/NeuraCrypt/OSCR";

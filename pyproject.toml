@@ -24,7 +24,7 @@ dependencies = [
 
 [project.urls]
 Homepage = "https://oscr.yannbellec-b.workers.dev"
-Repository = "https://github.com/yannbellec/Open-Scientific-Code-Registry-OSCR-"
+Repository = "https://github.com/NeuraCrypt/OSCR"
 
 [dependency-groups]
 dev = ["pytest>=8", "ruff>=0.6"]

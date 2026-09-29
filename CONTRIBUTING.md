@@ -33,8 +33,8 @@ You need Python 3.12 (3.11 works), [uv](https://docs.astral.sh/uv/) and git; Nod
 later for the website.
 
 ```bash
-git clone https://github.com/yannbellec/Open-Scientific-Code-Registry-OSCR-.git
-cd Open-Scientific-Code-Registry-OSCR-
+git clone https://github.com/NeuraCrypt/OSCR.git
+cd OSCR
 uv sync
 uv run pytest -q
 uv run ruff check oscr tests

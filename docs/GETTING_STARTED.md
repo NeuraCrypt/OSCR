@@ -11,7 +11,7 @@ Everything to do, in order. The commands are typed in the Mac's Terminal.
 | **The nightly publication** (Hugging Face) | connected through `hf auth login` (OAuth, renews itself) |
 | **The public website** (Cloudflare Workers) | online at https://oscr.yannbellec-b.workers.dev, rebuilt every night |
 | **Map DOIs** (Zenodo) | sandbox connected, community `oscr` created, one test deposit made |
-| **The code** | on https://github.com/yannbellec/Open-Scientific-Code-Registry-OSCR- |
+| **The code** | on https://github.com/NeuraCrypt/OSCR |
 | **Author validation** (ORCID) | not built yet; without it, no real DOI |
 
 The steps below say how each piece was connected, so that it can be done again on another
@@ -151,7 +151,7 @@ The free `workers.dev` address serves while the platform is being built; a domai
 
 ## Step 6: save the code (5 min)
 
-The code is on https://github.com/yannbellec/Open-Scientific-Code-Registry-OSCR- (a
+The code is on https://github.com/NeuraCrypt/OSCR (a
 **public** repository). It is pushed over SSH, with the Mac's key.
 
 - **What never goes in**: the data (`data/`), the generated outputs (`library/`, `mirror/`),

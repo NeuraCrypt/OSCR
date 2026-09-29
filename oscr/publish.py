@@ -76,7 +76,7 @@ metadata, then verified at the source.
   text of unlicensed repositories — for a website or a service.
 
 The catalogue metadata is CC0-1.0; every script keeps the license of its repository.
-Updated on {date} by the OSCR harvester — https://github.com/yannbellec/Open-Scientific-Code-Registry-OSCR-
+Updated on {date} by the OSCR harvester — https://github.com/NeuraCrypt/OSCR
 """
 
 

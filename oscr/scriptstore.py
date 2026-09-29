@@ -303,7 +303,7 @@ Files under a non-commercial license (CC BY-NC…) may only be reused non-commer
 ## Takedown
 
 An author who wants a file removed: open an issue at
-https://github.com/yannbellec/Open-Scientific-Code-Registry-OSCR-/issues.
+https://github.com/NeuraCrypt/OSCR/issues.
 """
 
 

@@ -9,10 +9,10 @@
       "name": "The OSCR contributors"
     }
   ],
-  "codeRepository": "https://github.com/yannbellec/Open-Scientific-Code-Registry-OSCR-",
-  "issueTracker": "https://github.com/yannbellec/Open-Scientific-Code-Registry-OSCR-/issues",
-  "continuousIntegration": "https://github.com/yannbellec/Open-Scientific-Code-Registry-OSCR-/actions/workflows/ci.yml",
-  "readme": "https://github.com/yannbellec/Open-Scientific-Code-Registry-OSCR-/blob/main/README.md",
+  "codeRepository": "https://github.com/NeuraCrypt/OSCR",
+  "issueTracker": "https://github.com/NeuraCrypt/OSCR/issues",
+  "continuousIntegration": "https://github.com/NeuraCrypt/OSCR/actions/workflows/ci.yml",
+  "readme": "https://github.com/NeuraCrypt/OSCR/blob/main/README.md",
   "url": "https://oscr.yannbellec-b.workers.dev",
   "license": "https://spdx.org/licenses/Apache-2.0",
   "dateCreated": "2026-09-25",

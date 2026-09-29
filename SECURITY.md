@@ -4,7 +4,7 @@
 
 Please **do not open a public issue**. Report it privately through GitHub's security
 advisories:
-[report a vulnerability](https://github.com/yannbellec/Open-Scientific-Code-Registry-OSCR-/security/advisories/new).
+[report a vulnerability](https://github.com/NeuraCrypt/OSCR/security/advisories/new).
 
 Include what you can of:
 - the component and the commit (`git rev-parse --short HEAD`);

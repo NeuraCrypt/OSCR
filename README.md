@@ -6,7 +6,7 @@
 </h1>
 
 <p align="center">
-  <a href="https://github.com/yannbellec/Open-Scientific-Code-Registry-OSCR-/actions/workflows/ci.yml"><img alt="CI status" src="https://img.shields.io/github/actions/workflow/status/yannbellec/Open-Scientific-Code-Registry-OSCR-/ci.yml?branch=main&label=CI"></a>
+  <a href="https://github.com/NeuraCrypt/OSCR/actions/workflows/ci.yml"><img alt="CI status" src="https://img.shields.io/github/actions/workflow/status/NeuraCrypt/OSCR/ci.yml?branch=main&label=CI"></a>
   <a href="LICENSE"><img alt="License: Apache-2.0" src="https://img.shields.io/badge/license-Apache--2.0-blue"></a>
   <a href="pyproject.toml"><img alt="Python 3.12" src="https://img.shields.io/badge/python-3.12-3776AB?logo=python&logoColor=white"></a>
   <a href="website/"><img alt="Website built with Astro" src="https://img.shields.io/badge/website-Astro-BC52EE?logo=astro&logoColor=white"></a>
@@ -307,8 +307,8 @@ You need Python 3.12 (3.11 works), [uv](https://docs.astral.sh/uv/) and git; Nod
 or later for the website.
 
 ```bash
-git clone https://github.com/yannbellec/Open-Scientific-Code-Registry-OSCR-.git
-cd Open-Scientific-Code-Registry-OSCR-
+git clone https://github.com/NeuraCrypt/OSCR.git
+cd OSCR
 uv sync
 uv run pytest -q
 
@@ -425,7 +425,7 @@ If you use OSCR or its catalogue, please cite it with the metadata in
 @software{oscr,
   author  = {{The OSCR contributors}},
   title   = {{OSCR}: Open Scientific Code Registry},
-  url     = {https://github.com/yannbellec/Open-Scientific-Code-Registry-OSCR-},
+  url     = {https://github.com/NeuraCrypt/OSCR},
   license = {Apache-2.0},
   year    = {2026}
 }

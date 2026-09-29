@@ -10,7 +10,7 @@ abstract: >-
   tracing maps validated by one of a paper's authors receive a Zenodo DOI.
 authors:
   - name: "The OSCR contributors"
-repository-code: "https://github.com/yannbellec/Open-Scientific-Code-Registry-OSCR-"
+repository-code: "https://github.com/NeuraCrypt/OSCR"
 url: "https://oscr.yannbellec-b.workers.dev"
 license: Apache-2.0
 keywords:
