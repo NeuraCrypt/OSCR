@@ -39,6 +39,8 @@ describe("the approval page", () => {
     assert.match(text, /ends in 10 minutes/);
     assert.match(text, /Approve only if you started this sign-in yourself/);
     assert.ok(!/@/.test(text));
+    const decided = textOf(requestView({ ...READ, state: "approved" }, Date.parse("2026-09-29T10:05:00Z")));
+    assert.ok(!/ends in/.test(decided) && !/Approve only if/.test(decided), "once decided, neither the countdown nor the warning");
   });
 
   test("the form asks the code and never shows it; approve and refuse", () => {

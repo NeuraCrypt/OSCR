@@ -48,8 +48,10 @@ const who = (a: DeviceRead["account"]): string => (a.github ? `your account (Git
 
 const minutesLeft = (expires: string, now: number): number => Math.max(0, Math.ceil((Date.parse(expires) - now) / 60_000));
 
-/** The request in words: who asks, what the token may do, for how long; the warning. */
+/** The request in words: who asks, what the token may do, for how long; the warning while it waits. */
 export function requestView(d: DeviceRead, now = Date.now()): El {
+  const waiting = d.state === "pending" && !d.expired;
+  const asked = `${d.requested_at.slice(0, 16).replace("T", " ")} UTC`;
   return h(
     "section",
     { class: "panel" },
@@ -66,15 +68,17 @@ export function requestView(d: DeviceRead, now = Date.now()): El {
       h("dt", null, "For"),
       h("dd", null, `${d.days} days, then it stops working; you can revoke it before in your personal tokens.`),
       h("dt", null, "Asked at"),
-      h("dd", null, `${d.requested_at.slice(0, 16).replace("T", " ")} UTC — this request ends in ${minutesLeft(d.expires_at, now)} minutes.`),
+      h("dd", null, waiting ? `${asked} — this request ends in ${minutesLeft(d.expires_at, now)} minutes.` : asked),
     ),
-    h(
-      "p",
-      { class: "warning" },
-      "Approve only if you started this sign-in yourself, a moment ago, in your own terminal (",
-      h("code", null, "oscr auth login"),
-      "). Someone who sent you this address would get a token that acts as you.",
-    ),
+    waiting
+      ? h(
+          "p",
+          { class: "warning" },
+          "Approve only if you started this sign-in yourself, a moment ago, in your own terminal (",
+          h("code", null, "oscr auth login"),
+          "). Someone who sent you this address would get a token that acts as you.",
+        )
+      : null,
   );
 }
 

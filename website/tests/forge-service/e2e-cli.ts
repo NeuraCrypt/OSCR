@@ -138,7 +138,8 @@ const scrub = (s: string) => {
 function transcript(name: string, argv: string[], r: { stdout: string; stderr: string; status: number | null }): void {
   if (!TRANSCRIPTS) return;
   mkdirSync(TRANSCRIPTS, { recursive: true });
-  const body = `$ oscr ${argv.join(" ")}\n${r.stdout}${r.stderr ? `${r.stderr}` : ""}[exit ${r.status}]\n`;
+  const quoted = argv.map((a) => (/^[A-Za-z0-9_@%+=:,./-]+$/.test(a) ? a : `'${a.replace(/'/g, "'\\''")}'`));
+  const body = `$ oscr ${quoted.join(" ")}\n${r.stdout}${r.stderr ? `${r.stderr}` : ""}[exit ${r.status}]\n`;
   const file = join(TRANSCRIPTS, `${name}.txt`);
   writeFileSync(file, (existsSync(file) ? readFileSync(file, "utf8") + "\n" : "") + scrub(body));
 }

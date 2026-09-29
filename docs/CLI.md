@@ -246,3 +246,19 @@ writes, opens a browser or asks a question (D14-11).
 - **Publishing** (the owner's step, an outside contact): choose the name on PyPI (in
   `cli/pyproject.toml`), then `cd cli && uv build` (hatchling; offline from the local cache works:
   `uv build --offline`) and `uv publish` with a PyPI token of the owner's (never in the repository).
+
+## Security review (the phase's close)
+
+What was checked, and what it led to:
+
+| point | how it holds | tested by |
+|---|---|---|
+| Tokens in the keychain only | `security -i` and `secret-tool` take the secret on standard input; `hosts.json` holds handles, scopes and expiries; the plain file only when asked (0600, warned, remembered per account) | `test_auth.py` (argv never holds the secret; a throwaway keychain file; the file store), `e2e-cli.ts` (the keychain file holds both, then none; `hosts.json` holds no token) |
+| Never in logs, argv or `--debug` | the `Authorization` header is never printed; `redact` removes every credential shape (`oscr_pat_`, `oscr_dc_`, `gh*_`, `github_pat_`, long words after a scheme, query parameters); no body printed; errors pass through it. **Fixed**: the redaction ate ordinary words after "token" in the registry's messages; now only credential-shaped words | `test_output.py`, `test_auth.py`, `e2e-cli.ts` (`--debug` without either token) |
+| The credential helper serves GitHub's host only | protocol and host must equal the configured GitHub address; the registry's host is refused even if configured the same; `store`/`erase` do nothing | `test_auth.py`, `e2e-cli.ts` |
+| Escape sequences neutralised | `sanitize.clean` on every network text shown (tables, lines, errors, `--jq`/`--template` strings); JSON escapes itself. **Fixed**: a release's tag and a research issue's id printed after a write now pass through it too | `test_output.py`, `test_github.py`, `test_registry.py` (titles with ESC, OSC, C1, bidi) |
+| The device flow | nothing written for a code; codes sealed with the server key (three purposes that cannot stand for each other); the user code typed, never shown; 15 minutes; a poll every 5 s at most; 10 codes a minute an address; 5 wrong codes a request; approval behind the cookie, Origin, CSRF, FORGE_OPEN, Turnstile and the caps; the token made at collection, once; the page's sign-in returns only to this site's `/device/?r=…` (`returnPath`), no other redirect | `device.test.ts` (Worker), `forge-pages/device.test.ts`, `e2e-cli.ts` (refused, expired, wrong scope) |
+| GitHub's sign-in cannot be pointed elsewhere | GitHub's addresses are the tool's own settings, never the registry's answer; the page opened must be on GitHub's configured host; only the public client id is taken from the registry | `test_auth.py` (a page elsewhere is refused) |
+| No email address | none asked, shown or kept; GitHub's `email` fields dropped from every answer; texts masked | `test_github.py`, `e2e-cli.ts` (`hosts.json`) |
+| No code executed | files read from git's object store as text; git with `core.hooksPath` at the null device; **added**: `core.fsmonitor=false` (a repository's own configuration could name a monitor that git runs); a static test refuses `eval`, `exec`, `compile`, `runpy`, `importlib`, `shell=True` and any program but git, the keychain's and the person's own browser and editor | `test_registry.py` (a setup.py, a Makefile, a conftest.py and a post-checkout hook never run) |
+| Redirects | the credential follows a redirect within its origin only | `test_output.py` |

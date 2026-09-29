@@ -1,0 +1,27 @@
+$ oscr trace list
+10.5555/oscr.fixture.1  A synthetic EEG study for the OSCR build test
+  pinned at 000000000000 — validated, map DOI 10.5555/oscr.fixture.map.1; 2 links
+    analysis.py:6–10  ↔  Methods › Spectral analysis ¶3
+    plot.py:4–6  ↔  Results ¶5
+[exit 0]
+
+$ oscr trace check
+10.5555/oscr.fixture.1  A synthetic EEG study for the OSCR build test
+  the map is pinned at 000000000000; checked at a58115a67410
+  found   analysis.py:6–10  the map's commit is not in this clone; found by its symbol at 6–10 (fetch the map's commit to compare the lines)
+  found   plot.py:4–6  the map's commit is not in this clone; found by its symbol at 4–6 (fetch the map's commit to compare the lines)
+A map stays valid at its pinned commit; a change only asks its authors for a new version. Every link is found at this commit.
+[exit 0]
+
+$ oscr trace propose 10.5555/oscr.fixture.1 analysis.py:7-9=3 --section 'Methods › Spectral analysis' --write
+Written: /private/var/folders/90/lmwpd3297vj4w_94fwpd7_6m0000gn/T/oscr-cli-e2e-7pljHR/eeg-analysis/.oscr/maps/10.5555_oscr.fixture.1.json
+Warning: Commit a58115a67410 is on no remote branch: push it first, so that readers can open the lines a map points to.
+OSCR does not receive proposed maps from the command line yet (D14-8): keep this file with your code, or cite its links in a research issue on the paper; `oscr trace check --file` checks it at any commit.
+[exit 0]
+
+$ oscr trace check --file /var/folders/90/lmwpd3297vj4w_94fwpd7_6m0000gn/T/oscr-cli-e2e-7pljHR/eeg-analysis/.oscr/maps/10.5555_oscr.fixture.1.json
+10.5555/oscr.fixture.1  
+  the map is pinned at a58115a67410; checked at a58115a67410
+  same    analysis.py:7–9  at the map's own commit
+A map stays valid at its pinned commit; a change only asks its authors for a new version. Every link is found at this commit.
+[exit 0]

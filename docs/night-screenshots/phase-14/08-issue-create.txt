@@ -1,0 +1,4 @@
+$ oscr issue create --title 'Band edges differ from Table 1 (e2e)' --body 'Seen from the command line.' -R oscr-fixture/eeg-analysis
+http://localhost:8791/r/oscr-fixture/eeg-analysis/issues/12
+Opened issue #12 on oscr-fixture/eeg-analysis (GitHub made it, as you).
+[exit 0]

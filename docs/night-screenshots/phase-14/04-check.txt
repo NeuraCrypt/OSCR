@@ -1,0 +1,11 @@
+$ oscr check
+All 7 checks passed
+  Passed     Licence: MIT, in LICENSE.
+  Passed     Environment: requirements.txt (pip's requirements).
+  Passed     The paper's DOI: Linked in the registry to its paper: 10.5555/oscr.fixture.1.
+  Passed     CITATION.cff: CITATION.cff cites “A synthetic EEG study for the OSCR build test” (10.5555/oscr.fixture.1).
+  Passed     Tracing maps: Every file the tracing maps point to is still here (2).
+  Passed     File sizes: No file over 50 MiB.
+  Passed     README: README: README.md, with how to run the code.
+Read as text at a58115a67410; nothing was run. The papers and maps: the registry, now.
+[exit 0]

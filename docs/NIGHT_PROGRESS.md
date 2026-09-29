@@ -18,7 +18,8 @@ from "Next step".
   resume from this journal. Start it only if no main session is orchestrating.
 - `science.css` is at `website/src/styles/science.css`.
 - **Tests at every commit**:
-  - `.venv/bin/python -m pytest -q` and `.venv/bin/ruff check oscr tests tools`;
+  - `.venv/bin/python -m pytest -q` and `.venv/bin/ruff check oscr tests tools cli`;
+  - since phase 14, the command line's own suite: `cd cli && ../.venv/bin/python -m pytest -q`;
   - in `website/`: `npm test` under the default Node and under Node 22 (CI), at
     `/private/tmp/claude-501/-Volumes-Expansion-Scrapper/2afc683b-88a8-4f04-89f2-a048bee9e298/scratchpad/tscheck/node_modules/node/bin`;
   - then `CATALOG_DIR=<worktree>/tests/fixtures/public-catalog npm run build` and
@@ -42,7 +43,8 @@ from "Next step".
 | 08 Social, discovery, notifications and search | night/phase-08-social | **done** 2026-09-29, pushed (7 commits: E1 to E5, the close in two parts) |
 | 10 Automation and integrations | night/phase-10-automation | **done** 2026-09-29, pushed (7 commits: E1 to E5, the close in two parts) |
 | 16 Content, abuse and rules | night/phase-16-rules | **done** 2026-09-29, pushed (9 commits: the merge of `main`, E1 to E5, the close in three parts) |
-| 14 The `oscr` command line | night/phase-14-command-line | **next, awaiting the owner's go**: branch created from night/phase-16-rules, nothing built on it. |
+| 14 The `oscr` command line | night/phase-14-command-line | **done** 2026-09-29, pushed (8 commits: E1 to E6, the close in two parts) |
+| 11 Security and quality | night/phase-11-security | **next, awaiting the owner's go**: branch created from night/phase-14-command-line, nothing built on it. |
 
 ## Phase 00: what it produced
 
@@ -347,9 +349,41 @@ from "Next step".
   `check:growth` ok; strict `tsc` clean (worker and tests; page scripts but for `src/config.ts`'s
   `import.meta.env`, as before); the end-to-end run: every check passed (216).
 
+## Phase 14: what it produced
+
+- **D14-1, the two `oscr` commands**: the harvester's untouched (its package, entry point, `.venv/bin/oscr`,
+  the launchd jobs' `python -m oscr`; one hint line after argparse's refusal of a researchers' command);
+  the researchers' tool is `cli/` (`oscr_cli`, standard library only, `pyproject.toml` of its own,
+  installed apart; here `PYTHONPATH=cli/src .venv/bin/python -m oscr_cli`); `tests/test_cli_coexistence.py`.
+- E1 the skeleton: the command tree, `--help` and examples everywhere, `oscr help <topic>`; terminals and
+  pipes; `--json`, `--jq` (a subset of jq), `--template` (a subset of Go's templates), standard library
+  only; colours, accessible colours, no spinner; the network's escape sequences neutralised; exit codes;
+  `--debug` without tokens; `oscr config`; `-R`, `OSCR_REPO`, `repo set-default`; completion; aliases.
+- E2 sign-in: GitHub's device flow with the App's public client id (the fake GitHub gained it), the
+  keychain only (`security -i`, `secret-tool`, a 0600 file when asked), several accounts, status, token,
+  switch, refresh, logout, the git credential helper for GitHub's host only.
+- E3 the registry's device flow: `device-core.ts`, `device.ts`, `/api/v1/cli`, `/api/v1/device/code`
+  (no row), `/api/v1/device/token`, `/api/v1/token/revoke`, the page `/device/` (the terminal's code
+  typed), `migrations/d1-forge/0011_device.sql` (`device_grants`), its retention, the privacy line.
+- E4 the registry's commands: `oscr check` (ported, held to `tests/fixtures/checks-cases.json`), `cite`,
+  `trace list/check/propose`, `paper link/list` (the settings' Papers pre-filled from `?paper=`).
+- E5 the GitHub side: repo, pr, issue (research issues too), release, search, api, browse, run, workflow.
+- E6 MCP (`oscr mcp serve`, 13 read-only tools) and the packaging (a wheel built offline, installed apart).
+- The close: `e2e.sh` stage 8 (`e2e-cli.ts`, 39 checks, 255 in all, every one passed); the security
+  review (git's fsmonitor off, redaction narrowed, two more lines cleaned); docs `docs/CLI.md`, API.md,
+  FORGE.md, ARCHITECTURE.md, CLAUDE.md "The command line", DECISIONS.md D14-1 to D14-16; screenshots and
+  transcripts in `docs/night-screenshots/phase-14/`.
+- An incident (D14-16): an early test wrote a dead localhost credential helper into the owner's
+  `~/.gitconfig`; the owner removes it (NIGHT_REPORT.md, item 82); the cause is fixed.
+- Tests at the close: pytest 539; ruff clean (with `cli`); the command line's own suite 126; `npm test`
+  1,423 under Node 26 and Node 22; build 66 pages, 402 files with the fixture; `check --every-route` ok,
+  within the file budget; `check:growth` ok; strict `tsc` clean; the end-to-end run 255 checks, every one
+  passed. Screenshots: 8 (desktop and phone) and 10 terminal transcripts.
+
 ## Next step
 
-Phase 14, the `oscr` command line, on branch `night/phase-14-command-line` (created from
-`night/phase-16-rules`, nothing built on it): **it awaits the owner's go**. Before any public opening,
-the owner's steps are in `docs/NIGHT_REPORT.md` (the Turnstile widget, the migrations, the policy
-drafts, then `FORGE_OPEN`).
+Phase 11, security and quality, on branch `night/phase-11-security` (created from
+`night/phase-14-command-line`, nothing built on it): **it awaits the owner's go**. Before any public
+opening, the owner's steps are in `docs/NIGHT_REPORT.md` (phase 16's Turnstile, migrations and policy
+drafts, then `FORGE_OPEN`; phase 14's device flow setting on the GitHub App, the migration 0011, the
+PyPI publication when a name is chosen).

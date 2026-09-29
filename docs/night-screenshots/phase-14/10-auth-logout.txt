@@ -1,0 +1,4 @@
+$ oscr auth logout
+GitHub: ada-fixture signed out here; the token is gone from this computer. It stays valid at GitHub until it expires (8 hours at most); to end it now, revoke the App at http://127.0.0.1:9490/web/settings/apps/authorizations.
+OSCR: ada-fixture signed out; the token was revoked and removed from this computer.
+[exit 0]

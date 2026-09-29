@@ -1,0 +1,4 @@
+$ oscr auth status
+GitHub on 127.0.0.1:9490: ada-fixture — valid (active; kept in the macOS keychain; expires in 7 hours)
+OSCR on localhost:8791: ada-fixture — valid (active; kept in the macOS keychain; expires 2026-12-28; may: repos:read, research:read)
+[exit 0]

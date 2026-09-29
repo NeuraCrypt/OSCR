@@ -1,0 +1,4 @@
+$ oscr cite --format apa
+Fixture, A. (2026). A synthetic EEG study for the OSCR build test. The fixture journal. https://doi.org/10.5555/oscr.fixture.1
+This cites the paper, as CITATION.cff prefers; --software cites the code itself.
+[exit 0]
