@@ -25,7 +25,7 @@
 //
 // Like every browser script, it never names the platform.
 
-import { PAPER_VERSIONS, VERSION_WORDS, type PaperVersion } from "../../worker/forge/service/act-releases.ts";
+import { PAPER_VERSIONS, VERSION_WORDS, type PaperVersion } from "../../worker/forge/service/paper-versions.ts";
 import { maskEmails } from "../../worker/forge/mask.ts";
 import type * as T from "../../worker/forge/types.ts";
 import { parseYaml } from "./citation.ts";

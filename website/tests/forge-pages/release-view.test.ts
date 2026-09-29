@@ -56,7 +56,7 @@ test("the tie: the version, the map versioned with its commit, the real Zenodo's
   assert.match(text, /versioned with it: digest dddddddddddd, 2 paragraph–line pairs in this repository; the map's lines are at commit bbbbbbb, the release at aaaaaaa\./);
   assert.match(text, /Zenodo DOI: 10\.5281\/zenodo\.9/);
   assert.match(text, /Zenodo: Deposited, \[email hidden\]/);
-  assert.match(text, /not answered yet: software heritage/);
+  assert.match(text, /not answered yet: Software Heritage's archive\./);
   assert.deepEqual(els.flatMap(hrefs), ["/paper/doi_10.1234_eeg.2026/", "https://doi.org/10.5281/zenodo.9"]);
   assert.match(textOf(tieBlock([])[1]), /tied to no version of a paper yet/);
   assert.equal(textOf(paperLink({ paper: { doi: "10.1/x", slug: null, title: null } }) as El), "doi:10.1/x");

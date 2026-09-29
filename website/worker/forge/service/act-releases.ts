@@ -51,22 +51,14 @@ import { isRefName, OBJECT_ID } from "../paths.ts";
 import type { Release, ReleaseAsset, RepoInfo, RepoRef, Tag } from "../types.ts";
 import { declaredRepo, onDeclaredRepo } from "./act-pulls.ts";
 import { ASSET_UPLOAD_BYTES } from "./caps.ts";
+import { PAPER_VERSIONS, VERSION_WORDS, type PaperVersion } from "./paper-versions.ts";
 import { communityRepoKey, paperId, paperStatuses } from "./papers.ts";
 import { all, deleteReleasePaper, first, insertJob, releasePapersOf, repoByKey, upsertReleasePaper, type ReleasePaperRow } from "./store.ts";
 import { ForgeProblem, type ActionContext, type ActionSpec, type AnyActionSpec, type PaperStatus, type RepoRow, type Write } from "./types.ts";
 
 // ─── shared ──────────────────────────────────────────────────────────────────
 
-/** The versions of a paper a release may accompany. */
-export const PAPER_VERSIONS = ["preprint", "submitted", "accepted", "published", "correction"] as const;
-export type PaperVersion = (typeof PAPER_VERSIONS)[number];
-export const VERSION_WORDS: Readonly<Record<PaperVersion, string>> = {
-  preprint: "the preprint",
-  submitted: "the submitted manuscript",
-  accepted: "the accepted manuscript",
-  published: "the version of record",
-  correction: "a correction",
-};
+export { PAPER_VERSIONS, VERSION_WORDS, type PaperVersion };
 /** GitHub's `make_latest`: "legacy" lets GitHub choose (the highest version, then the date). */
 export const LATEST = ["true", "false", "legacy"] as const;
 export type Latest = (typeof LATEST)[number];

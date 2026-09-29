@@ -2,12 +2,15 @@
 // mismatches) and Reproductions (reproduction failures). Signed out, from the nightly layer shards of
 // the paper's GitHub repositories (/forge/layer/NN.json, "as of last night": 0 Worker requests);
 // signed in, live (GET /api/forge/research?paper=…, 1 request), code hosted elsewhere included.
-// Pinned research issues come first, as "known issues". Text nodes only; it never names the platform.
+// Pinned research issues come first, as "known issues". Night phase 07: "Versions of its code", the
+// releases of its code tied to a version of the paper, from the same shards. Text nodes only; it never
+// names the platform.
 
 import type { IssueSummary } from "../../worker/forge/service/research-core.ts";
 import { layerShard } from "../lib/forge.ts";
 import { issueRow, parseSummaries } from "../lib/issue-view.ts";
 import { fromResearch, sortIssues } from "../lib/issues.ts";
+import { parseTies, releasePath, tieInWords, type ReleaseTie } from "../lib/releases.ts";
 import { h } from "../lib/repo-view.ts";
 import { show } from "./dom.ts";
 
@@ -30,6 +33,24 @@ async function nightly(paper: string, repos: string[]): Promise<IssueSummary[]> 
   return [...out.values()];
 }
 
+/** Phase 07: the releases of the paper's code tied to a version of it, from the same nightly shards. */
+async function releasesOf(paper: string, repos: string[]): Promise<{ repo: string; tie: ReleaseTie }[]> {
+  const out: { repo: string; tie: ReleaseTie }[] = [];
+  for (const path of repos.slice(0, 5)) {
+    const [owner, name] = path.split("/");
+    if (!owner || !name) continue;
+    try {
+      const res = await fetch(`/forge/layer/${await layerShard(owner, name)}.json`, { headers: { Accept: "application/json" } });
+      if (!res.ok) continue;
+      const shard = (await res.json()) as Record<string, { releases?: unknown }>;
+      for (const t of parseTies(shard[path.toLowerCase()]?.releases)) if (`doi:${t.paper.doi.toLowerCase()}` === paper) out.push({ repo: path, tie: t });
+    } catch {
+      // a shard missing: nothing from it
+    }
+  }
+  return out;
+}
+
 async function live(paper: string): Promise<IssueSummary[] | null> {
   try {
     const res = await fetch(`/api/forge/research?paper=${encodeURIComponent(paper)}`, { credentials: "same-origin", headers: { Accept: "application/json" } });
@@ -46,6 +67,31 @@ async function main(): Promise<void> {
   if (!section || !doi) return;
   const paper = `doi:${doi.toLowerCase()}`;
   const repos = (section.dataset.repos ?? "").split(",").filter(Boolean);
+  const versions = document.querySelector<HTMLElement>('.research-list[data-kind="releases"]');
+  if (versions) {
+    const found = await releasesOf(paper, repos);
+    show(
+      versions,
+      found.length
+        ? h(
+            "ul",
+            { class: "release-ties" },
+            ...found.map(({ repo, tie }) => {
+              const [owner, name] = repo.split("/");
+              return h(
+                "li",
+                null,
+                h("a", { href: releasePath({ owner, name }, tie.tag) }, `${tie.tag} of ${repo}`),
+                ` — ${tieInWords(tie)}`,
+                tie.map ? `; its tracing map versioned with it (${tie.map.pairs} paragraph–line ${tie.map.pairs === 1 ? "pair" : "pairs"})` : "",
+                tie.deposit ? ["; the map's DOI: ", h("a", { href: `https://doi.org/${tie.deposit.doi}` }, tie.deposit.doi)] : "",
+                tie.status === "proposed" ? " (proposed to the paper's authors)" : "",
+              );
+            }),
+          )
+        : h("p", { class: "line" }, "None as of last night."),
+    );
+  }
   const signedIn = document.cookie.split(/;\s*/).includes(HINT);
   let items = signedIn ? await live(paper) : null;
   const asOfLastNight = items === null;

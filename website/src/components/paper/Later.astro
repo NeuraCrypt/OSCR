@@ -6,7 +6,8 @@
 // Reproductions. Static here: what they hold and the ways to report one (/research/new, prefilled
 // with the DOI and the code). The page's script (src/scripts/paper-research.ts) lists them: signed
 // out, from the nightly layer shards of the paper's GitHub repositories ("as of last night", 0 Worker
-// requests); signed in, live (GET /api/forge/research, 1 request). Activity still opens later.
+// requests); signed in, live (GET /api/forge/research, 1 request). Night phase 07: "Versions of its
+// code", the releases tied to a version of this paper, from the same shards. Activity still opens later.
 import type { Article } from "../../lib/catalog";
 
 interface Props {
@@ -36,6 +37,12 @@ const hasCode = a.code.length > 0;
   <div class="research-list" data-kind="reproductions" aria-live="polite"></div>
   {hasCode && <p class="line"><a href={report("reproduction")}>Report a reproduction failure</a> (signed in)</p>}
 </section>
+{github.length > 0 && (
+  <section id="code-releases">
+    <p class="summary"><strong>Versions of its code</strong>: the releases of its code tied to a version of this paper (the preprint, the accepted manuscript, the version of record…), each with the tracing map versioned with it.</p>
+    <div class="research-list" data-kind="releases" aria-live="polite"></div>
+  </section>
+)}
 <section id="activity">
   <p class="summary"><strong>Activity</strong>: what happens around this paper: new versions of its record, its map's validation, discussions and reproductions. It opens with sign-in.</p>
 </section>

@@ -726,7 +726,7 @@ async function mountForm(slot: HTMLElement, env: CodeEnv, editTag: string | null
     el("p", {}, el("label", { for: "rel-latest" }, "The latest release "), latestSel),
     el(
       "fieldset",
-      { class: "choices release-research" },
+      { class: "release-research" },
       el("legend", {}, "For the paper"),
       el("p", {}, el("label", { for: "rel-paper" }, "The paper "), paperSel, " ", doiInput),
       el("p", {}, el("label", { for: "rel-version" }, "The version it goes with "), versionSel, " ", el("label", { for: "rel-label" }, "its label "), labelInput),

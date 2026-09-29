@@ -117,17 +117,18 @@ export function tieBlock(ties: readonly ReleaseTie[], answered: readonly { kind:
           ".",
         ),
       );
-    } else {
-      items.push(h("p", { class: "explain" }, "The registry's Mac versions the tracing map with the release when it next reads the release (its page says so here)."));
+    } else if (!answered.some((a) => a.kind === "release" && a.paper === t.paper.doi && a.outcome === "done")) {
+      items.push(h("p", { class: "explain" }, "The registry's Mac versions the tracing map with the release when it next reads it; this page then says so."));
     }
     if (t.deposit) items.push(h("p", null, "Its validated tracing map has a Zenodo DOI: ", h("a", { href: `https://doi.org/${t.deposit.doi}` }, t.deposit.doi), "."));
-    for (const a of answered.filter((x) => x.paper === t.paper.doi || x.kind === "archive")) {
+    // The Mac's words for this paper (its map versioned: only while last night's layer has no map yet).
+    for (const a of answered.filter((x) => (x.paper === t.paper.doi || x.kind === "archive") && !(x.kind === "release" && t.map))) {
       items.push(h("p", { class: a.outcome === "done" ? "ok" : a.outcome === "failed" ? "warning" : "" }, `${JOB_NAMES[a.kind] ?? a.kind}: ${maskEmails(a.message)}`));
     }
     out.push(h("div", { class: "tie" }, ...items));
   }
-  const waiting = [...new Set(pending.map((j) => j.kind).filter((k) => k in JOB_NAMES))];
-  if (waiting.length) out.push(h("p", { class: "explain" }, `Asked of the registry's Mac, not answered yet: ${waiting.map((k) => JOB_NAMES[k].toLowerCase()).join(", ")}.`));
+  const waiting = [...new Set(pending.map((j) => j.kind).filter((k) => k in JOB_WAITING))];
+  if (waiting.length) out.push(h("p", { class: "explain" }, `Asked of the registry's Mac, not answered yet: ${waiting.map((k) => JOB_WAITING[k]).join(", ")}.`));
   return out;
 }
 
@@ -135,6 +136,11 @@ const JOB_NAMES: Readonly<Record<string, string>> = {
   release: "The map versioned with the release",
   archive: "Software Heritage",
   deposit: "Zenodo",
+};
+const JOB_WAITING: Readonly<Record<string, string>> = {
+  release: "the tracing map's version",
+  archive: "Software Heritage's archive",
+  deposit: "the Zenodo deposit",
 };
 
 /** The release's files: GitHub's, each with its size, its SHA-256 (GitHub's, computed at upload) and

@@ -905,6 +905,10 @@ section.release-form input[type="text"] { width: min(24em, 100%); }
 section.release-form #rel-name { width: min(40em, 100%); }
 section.release-form select { max-width: 100%; }
 section.release-form fieldset.release-research { margin: 1em 0; padding: .2em .9em .5em; border: 1px solid var(--rule); }
+section.release-form fieldset.release-research legend { font-weight: bold; }
+section.release-form fieldset.release-research p { margin: .45em 0; }
+ul.release-ties { margin: .3em 0 .6em; padding-left: 1.2em; }
+ul.release-ties li { margin: .25em 0; overflow-wrap: anywhere; }
 ul.release-toc { list-style: none; margin: .2em 0 .6em; padding: 0; font-size: .9em; }
 ul.release-toc li { margin: .15em 0; overflow-wrap: anywhere; }
 table.tags td.archives { white-space: nowrap; }
