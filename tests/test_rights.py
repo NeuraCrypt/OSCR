@@ -2,8 +2,8 @@
 the safe direction — access, erasure and objection for an account signed in with its ORCID iD, the
 account deleted; the rest handed to the operator with its legal deadline, never closed unanswered. The
 contact details' suppression list (oscr/contacts.py), which the collection and the private dataset
-honour, and the private dataset's history rewritten after an erasure (a mocked HfApi: never Hugging
-Face). D1 is an SQLite database made from the real migrations."""
+honour, the private dataset's history rewritten after an erasure (a mocked HfApi: never Hugging Face),
+and the moderator's log kept 12 months. D1 is an SQLite database made from the real migrations."""
 import calendar
 import hashlib
 import json
@@ -409,7 +409,7 @@ def test_the_account_is_deleted_and_the_mac_names_it_by_its_number_only(w):
 
 
 # ---------------------------------------------------------------------------------------
-# A removal asked for personal data.
+# A removal asked for personal data, and the log's retention.
 
 def _report(w, reason, at=T, paper=P1):
     return w.request("reports", "report", {"user_id": "u_eve", "target_kind": "paper", "target_id": paper, "reason": reason,
@@ -451,3 +451,23 @@ def test_a_personal_data_request_recorded_before_the_rule_is_kept_open(w):
     assert w.row("reports", rid)["status"] == "open"
     rule = w.state.execute("SELECT rule FROM waits WHERE ref = ?", (rid,)).fetchone()[0]
     assert rule == "report.personal_data"
+
+
+def test_the_moderator_s_log_is_kept_twelve_months(w):
+    old = _report(w, "other")
+    w.poll()
+    w.clock.t = T + 31 * DAY
+    w.poll()                                       # closed: its job is settled
+    waiting = _report(w, "personal_data", at=int(w.clock.t), paper=P2)
+    w.poll()
+    before = len(moderation.entries(w.state, "local"))
+    assert before >= 3
+    w.clock.t = T + (moderation.LOG_RETENTION_DAYS + 40) * DAY
+    w.poll()
+    left = moderation.entries(w.state, "local")
+    assert all(e["at"] >= w.clock.t - moderation.LOG_RETENTION_DAYS * DAY for e in left)
+    assert not any(e["ref"] == old for e in left)
+    # What still waits is kept, however old: its job, and its place in the operator's list.
+    assert w.state.execute("SELECT COUNT(*) FROM job WHERE kind = 'report' AND ref = ?", (waiting,)).fetchone()[0] == 1
+    assert w.state.execute("SELECT COUNT(*) FROM job WHERE kind = 'report' AND ref = ?", (old,)).fetchone()[0] == 0
+    assert any(j["ref"] == waiting for j in jobs.waiting(w.state, "local", ("report",)))

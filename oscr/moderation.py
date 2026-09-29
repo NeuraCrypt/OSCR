@@ -61,6 +61,8 @@ REVIEW_S = REVIEW_DAYS * DAY
 #: it within one month (GDPR art. 12(3)), and so does a data-rights request (oscr/rights.py, which is
 #: never put among the `waits` the sweep closes).
 NEVER_CLOSE = ("report.personal_data",)
+#: How long the moderator's log, and the job runner's settled requests, are kept (the page /privacy/).
+LOG_RETENTION_DAYS = 365
 #: Automatic hides of copies at the word of someone the registry cannot verify: per account, and in
 #: all, in 24 hours. Past them, a request waits for the operator.
 HIDE_PER_ACCOUNT = 3
@@ -258,6 +260,22 @@ def one_month_after(t: float) -> float:
     d = datetime.fromtimestamp(t, tz=UTC)
     year, month = (d.year + 1, 1) if d.month == 12 else (d.year, d.month + 1)
     return d.replace(year=year, month=month, day=min(d.day, calendar.monthrange(year, month)[1])).timestamp()
+
+
+def purge(state: sqlite3.Connection, target: str, now: float) -> int:
+    """The retention of the operator's records (the page /privacy/): the moderator's log entries older than
+    LOG_RETENTION_DAYS, and the job runner's requests settled that long ago (their texts, the handles of
+    who asked), are deleted. What still waits is kept, however old."""
+    ensure_schema(state)
+    before = now - LOG_RETENTION_DAYS * DAY
+    n = state.execute("DELETE FROM moderation_log WHERE target = ? AND at < ?", (target, before)).rowcount
+    try:
+        n += state.execute("DELETE FROM job WHERE target = ? AND status IN ('done', 'failed') AND updated_at < ?",
+                           (target, before)).rowcount
+    except sqlite3.OperationalError:          # a state file without the job runner's table
+        pass
+    state.commit()
+    return n
 
 
 # ---------------------------------------------------------------------------------------
@@ -723,7 +741,7 @@ def sweep(runner: Runner) -> dict[str, int]:
     from .jobs import _settled, _stamp, _users, _write, words
     ensure_schema(runner.state)
     now = runner.now()
-    out = {"closed": 0, "verified": 0, "written": 0}
+    out = {"closed": 0, "verified": 0, "written": 0, "purged": purge(runner.state, runner.target, now)}
     never = ", ".join(literal(r) for r in NEVER_CLOSE)
     due = [dict(r) for r in runner.state.execute(f"SELECT * FROM waits WHERE target = ? AND rule NOT IN ({never}) AND "
                                                  "(due <= ? OR (next_check > 0 AND next_check <= ?)) ORDER BY due",
