@@ -76,6 +76,7 @@ export function codeView(data: ReaderData, hooks: { url(file: number, range: Ran
   const linkBtn = byId<HTMLButtonElement>("link-lines");
   const rawBtn = byId<HTMLButtonElement>("raw-file");
   const sources = byId("source-links");
+  const sourceLine = byId("file-source");
 
   let current = -1;
   /** The file shown came from its source (not from the registry's copy): how. */
@@ -129,6 +130,9 @@ export function codeView(data: ReaderData, hooks: { url(file: number, range: Ran
       el("li", "why", sourceWhy(r.commit, f.text ? true : from && current === i ? "source" : false)),
     );
     linkBtn.textContent = "Link";
+    // Where a file shown from its source comes from: always in view, above its lines.
+    if (from && current === i) sourceLine.replaceChildren(...sourceNotice(i, from));
+    sourceLine.hidden = !(from && current === i);
   }
 
   /** The line after the last one: the file, its license, and the source, discreetly. */
@@ -213,7 +217,6 @@ export function codeView(data: ReaderData, hooks: { url(file: number, range: Ran
     const tooBig = bytes > HIGHLIGHT_MAX_BYTES || lines.length > HIGHLIGHT_MAX_LINES;
     pairNote = [];
     notes([
-      from ? sourceNotice(i, from) : [],
       from?.masked ? ["Email addresses are hidden: read the original at the source."] : [],
       f.truncated && !from ? ["Shortened: only the first part of this file was kept here; ", link(sourceOf(r, f), "the whole file is at the source"), "."] : [],
       tooBig ? [`Syntax highlighting is off for this file: past ${sizeInWords(HIGHLIGHT_MAX_BYTES)} or ${plural(HIGHLIGHT_MAX_LINES, "line")}, it would slow the page.`] : [],
@@ -428,6 +431,8 @@ export function codeView(data: ReaderData, hooks: { url(file: number, range: Ran
     }
     const li = away.querySelector<HTMLElement>(`li[data-pairs~="${p.pair}"]`);
     li?.classList.add("is-active");
+    // Why the file is not shown comes first: the block from its top, when the entry is then in view.
+    if (li && li.getBoundingClientRect().bottom - away.getBoundingClientRect().top <= viewer.clientHeight - 24) return away;
     return li;
   }
 

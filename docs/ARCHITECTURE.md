@@ -112,8 +112,10 @@ A page of the website puts a paper and its authors' code side by side.
   browser.
 - **Right, the code.** One view is prerendered at build time; the others are fetched on
   demand from the lot of their repository (`/scripts/NN.json`). A script whose license does
-  not allow republication is not copied: the reader lists the file and links to it at the
-  source, at the verified commit.
+  not allow republication is not copied: the reader's browser fetches it from where its authors
+  published it, at the verified commit or record, and shows it only when its SHA-256 is the one
+  the Mac computed ("shown from the source": [SCRIPT_STORAGE.md](SCRIPT_STORAGE.md), the public
+  page `/policies/code/`); otherwise the reader says why and links to it at the source.
 - **The pairs** come from `alignments/NN.json`, read at build time. A pair joins paragraph
   number *i* (the index of a `<p>` among all the `<p>` of the JATS `<body>`, in document
   order, which the browser computes the same way) and a line range of one file: the same

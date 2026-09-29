@@ -35,8 +35,8 @@ const limit = `${SOURCE_MAX_BYTES / 1_000_000} MB`;
   <p>
     A copy is kept of a file of the authors' code when the license of its repository allows redistribution and that
     license is <a href="#verified">verified</a>. The copy serves two purposes: the file can be read beside the paper, in
-    the Code ↔ Paper reader, even when its repository is slow or gone; and it is kept, with its license, in
-    {SITE_NAME}'s open dataset of scripts (on Hugging Face), where each file keeps the license of its repository, its
+    the Code ↔ Paper reader, even when its repository is slow or gone; and it is kept, with its license, in the open
+    dataset of scripts of {SITE_NAME} (on Hugging Face), where each file keeps the license of its repository, its
     address and the commit it was read at, for anyone to reuse under that license.
   </p>
   <ul>
@@ -46,8 +46,7 @@ const limit = `${SOURCE_MAX_BYTES / 1_000_000} MB`;
       with a link to the whole file at its source.</li>
     <li>Each unique file is stored once, however many repositories hold it, and never changed once published: a new
       version of a file is a new file.</li>
-    <li>The license travels with the copy: the reader, the dataset and each file's page name it, and link to the
-      source.</li>
+    <li>The license travels with the copy: the reader and the dataset name it, and link to the source.</li>
   </ul>
 
   <h2 id="licenses">The licenses that allow redistribution</h2>
@@ -148,7 +147,7 @@ const limit = `${SOURCE_MAX_BYTES / 1_000_000} MB`;
 
   <h2 id="emails">Email addresses</h2>
   <p>
-    {SITE_NAME} never displays an email address. In the authors' code, each address is replaced by
+    {SITE_NAME} never displays an email address. In the authors' code, each address is replaced by{" "}
     <code>[email hidden]</code>, on the same line, so that the line numbers and the matches with the paper still hold:
     in the copies before they leave {SITE_NAME}'s machine, and in a file shown from its source by your browser, with the
     same rule, once the file is checked. The SSH address of a git repository (which starts with <code>git@</code>), a

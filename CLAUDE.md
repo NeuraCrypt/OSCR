@@ -86,10 +86,23 @@ license audit: `docs/SCRIPT_STORAGE.md`; code: `oscr/scriptstore.py`, `oscr scri
   license allows redistribution AND is confirmed by the repository's own license file (for
   an archive without one: by its record). A license inferred from a README sentence,
   "other-open" without a license file, or no license: the file stays on the Mac, and the
-  site links to it at the source, at the verified commit.
+  site shows it from its source (below) or links to it there, at the verified commit.
 - The scripts dataset is published **only once the license filter is applied and verified**:
   done on 2026-09-27 (`oscr scripts audit`; figures in `docs/SCRIPT_STORAGE.md`). Any change
-  to the filter is audited again before the next publication.
+  to the filter is audited again before the next publication. The site's lots and the public
+  database apply the same audited filter (`catalog.copyable`, since 2026-09-29).
+- **Shown from the source** (decided 2026-09-29): a file held back for its license is still never
+  copied (no text in the site's lots, the public database or the Hugging Face dataset), but the
+  reader's **browser** fetches it from where its authors published it, at the pinned commit or
+  record (GitHub, GitLab.com, Bitbucket, Codeberg, Hugging Face, Zenodo; any other forge, and a file
+  inside a Zenodo archive, from Software Heritage by digest; OSF and PMC's files stay at the source),
+  checks its SHA-256 against `file.digest` (`crypto.subtle`), masks its email addresses as
+  `catalog.mask_emails` does (one shared fixture, `tests/fixtures/mask_emails.json`), and shows it with a
+  notice (where from, no copy kept, rights with the authors, `/policies/code/`, the removal page).
+  Only facts leave: path, language, size, lines, digest, pinned version, where to fetch
+  (`catalog.source_of`). A mismatch, an error, over 1 MB or binary: said in words, no pair drawn.
+  What a removal request withheld is neither given a fetch nor fetched. The paper page's
+  `connect-src` lists those origins only (`src/lib/source.ts`, `public/_headers`, `worker/pages.ts`).
 
 ## Accounts (Phase 5)
 
@@ -196,7 +209,7 @@ the catalogue's size (`website/src/lib/shards.ts`, held by `npm run check`; docs
   (decision D1; otherwise a summary and a link). The sentences that decided a link's verdict
   stay in the private database.
 - A file whose license does not allow redistribution is never published: its text stays
-  on the Mac (see "Script copies").
+  on the Mac; the reader's browser may show it from its source (see "Script copies").
 - No mass email to the authors: they come to us.
 - The Hugging Face dataset `opsecsystems/oscr-catalog` stays **private** until decided
   otherwise.
