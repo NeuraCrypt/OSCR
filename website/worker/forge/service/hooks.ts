@@ -29,6 +29,7 @@
 import type { SignedIn } from "../../account/guard.ts";
 import { commitAutomation, mayAutomate, readJsonBody } from "./automation.ts";
 import { closed, globalCap, mayWrite } from "./gate.ts";
+import { hiddenEventFilter } from "./hidden.ts";
 import {
   deliveriesOf,
   deliveryInsert,
@@ -181,6 +182,9 @@ export async function deliverEvents(o: { db: D1Database; env: ForgeServiceEnv; o
     if (!hooks) continue;
     const e = await first<EventRow>(eventByKey(o.db, k.subject, k.at, k.nonce));
     if (!e) continue;
+    // Night phase 16: an event of a suspended account, a hidden repository or a hidden thread is never
+    // delivered.
+    if ((await hiddenEventFilter(o.db, [e]))(e)) continue;
     for (const h of hooks) {
       if (!wants(h, e.kind)) continue;
       done.push(

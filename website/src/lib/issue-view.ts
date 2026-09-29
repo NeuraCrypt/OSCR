@@ -110,7 +110,7 @@ export function parseView(v: unknown): IssueView | null {
   return { ...s, body: txt(o.body, 65_536), report, lock_reason: (["off-topic", "too heated", "resolved", "spam"] as const).find((x) => x === o.lock_reason) ?? "", events };
 }
 
-export function parseComments(v: unknown): (CommentView & { mine: boolean })[] {
+export function parseComments(v: unknown): (CommentView & { mine: boolean; moderated: string })[] {
   return (Array.isArray(v) ? v.slice(0, 2500) : [])
     .map(rec)
     .filter((c): c is Record<string, unknown> => !!c && int(c.n) !== null)
@@ -125,6 +125,8 @@ export function parseComments(v: unknown): (CommentView & { mine: boolean })[] {
       deleted: c.deleted === true,
       hidden: (["spam", "abuse", "off-topic", "outdated", "duplicate", "resolved"] as const).find((x) => x === c.hidden) ?? "",
       mine: c.mine === true,
+      // Night phase 16: hidden by moderation (the reason in words); its words withheld but from its author.
+      moderated: rec(c.moderated) ? txt(rec(c.moderated)!.words, 200) : "",
     }));
 }
 

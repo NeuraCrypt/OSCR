@@ -18,6 +18,7 @@ import type { CommentView, IssueSummary, IssueView, ResearchType, Resolution } f
 import { HIDE_REASONS, OUTCOME_WORDS, RESOLUTION_WORDS, RESOLUTIONS_OF, TYPE_WORDS } from "../../worker/forge/service/research-core.ts";
 import { answerKey, prefillAnswers, researchForm, researchPayload, RESEARCH_FORMS, type Answers, type FormElement, type IssueTemplate } from "../lib/issue-forms.ts";
 import { byline, dayOfSeconds, labelEl, linkRefs, parseComments, parseSummaries, parseView, roleInWords } from "../lib/issue-view.ts";
+import { reportHref } from "../lib/moderation.ts";
 import { fromResearch, issuePrefillOf, parseResearchPath, researchEventInWords, researchPath, stateInWords } from "../lib/issues.ts";
 import { renderMarkdown } from "../lib/markdown.ts";
 import { declarePull } from "../lib/pull-view.ts";
@@ -27,7 +28,7 @@ import { confirmAction, el, signedInHint, signInLine, whoIsHere } from "./pull-c
 
 interface Read {
   issue: IssueView & { mine: boolean };
-  comments: (CommentView & { mine: boolean })[];
+  comments: (CommentView & { mine: boolean; moderated: string })[];
   can: { write: boolean; comment: boolean; edit: boolean; triage: boolean };
   live: boolean;
 }
@@ -59,6 +60,8 @@ async function readIssue(id: number): Promise<Read | { problem: string }> {
       const res = await fetch(`/api/forge/research?id=${id}`, { credentials: "same-origin", headers: { Accept: "application/json" } });
       const body = (await res.json().catch(() => ({}))) as Record<string, unknown>;
       if (res.status === 404) return { problem: `The registry has no research issue #${id}.` };
+      // Night phase 16: hidden by moderation, for everyone but its author and the owner.
+      if (res.status === 410) return { problem: `Research issue #${id} is hidden by moderation: ${(body.error as { moderation?: { words?: string } } | undefined)?.moderation?.words ?? "it broke the rules"}. See the notices (/notices/).` };
       if (res.ok) {
         const issue = parseView(body.issue);
         if (!issue) return { problem: "The registry's answer is not readable." };
@@ -144,8 +147,25 @@ async function mountIssue(root: HTMLElement, id: number): Promise<void> {
   // Comments and events, in time order.
   const timeline: { at: number; el: El }[] = [];
   for (const c of comments) {
-    const head = h("p", { class: "comment-head" }, h("strong", null, byline(c.author, c.author_via)), c.author_role ? h("span", { class: "role" }, ` (${roleInWords(c.author_role)})`) : null, ` commented on ${dayOfSeconds(c.created_at)}${c.edited_at ? " (edited)" : ""}`);
-    const content = c.deleted ? h("p", { class: "muted-note" }, "A deleted comment.") : c.hidden ? h("details", null, h("summary", null, `Hidden as ${c.hidden}: show it`), await md(c.body)) : await md(c.body);
+    const head = h(
+      "p",
+      { class: "comment-head" },
+      h("strong", null, byline(c.author, c.author_via)),
+      c.author_role ? h("span", { class: "role" }, ` (${roleInWords(c.author_role)})`) : null,
+      ` commented on ${dayOfSeconds(c.created_at)}${c.edited_at ? " (edited)" : ""}`,
+      c.deleted || c.mine ? null : h("span", { class: "muted" }, " · ", h("a", { href: reportHref(`research:${i.id}#${c.n}`, `comment ${c.n} on “${i.title}”`) }, "Report")),
+    );
+    // Night phase 16: hidden by moderation, its words withheld (its author reads them, with the line).
+    const moderated = c.moderated ? h("p", { class: "moderated" }, `Hidden by moderation: ${c.moderated}.`) : null;
+    const content = c.deleted
+      ? h("p", { class: "muted-note" }, "A deleted comment.")
+      : c.moderated && !c.body
+        ? moderated
+        : c.hidden
+          ? h("details", null, h("summary", null, `Hidden as ${c.hidden}: show it`), await md(c.body))
+          : c.moderated
+            ? h("div", null, moderated, await md(c.body))
+            : await md(c.body);
     timeline.push({ at: c.created_at, el: h("div", { class: "comment", id: `comment-${c.n}`, "data-n": String(c.n) }, head, content) });
   }
   for (const e of i.events) timeline.push({ at: e.at, el: h("p", { class: "timeline-event" }, h("strong", null, e.by || "someone"), ` ${researchEventInWords(e)} on ${dayOfSeconds(e.at)}`) });
@@ -185,6 +205,8 @@ async function mountIssue(root: HTMLElement, id: number): Promise<void> {
         ` · ${TYPE_WORDS[i.type]} · opened ${dayOfSeconds(i.created_at)} by ${byline(i.author, i.author_via)}`,
         i.locked ? ` · locked${i.lock_reason ? ` as ${i.lock_reason}` : ""}` : "",
         live ? "" : " · as of last night",
+        i.mine ? "" : " · ",
+        i.mine ? "" : h("a", { href: reportHref(`research:${i.id}`, i.title) }, "Report"),
       ),
     ),
     h(

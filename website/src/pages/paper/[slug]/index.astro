@@ -29,6 +29,7 @@ import { datasetOf } from "../../../lib/entities";
 import { licenseLabel, pageOf, PROMINENT } from "../../../lib/paper";
 import { paperFacts } from "../../../lib/records";
 import { FACTS_ID, removalUrl } from "../../../lib/removal";
+import { hiddenReposOf } from "../../../lib/moderated";
 
 // The STATIC_PAPERS most recent papers (lib/shards.ts); the others' pages are rendered on demand
 // by the Worker (worker/pages.ts), from src/pages/records/.
@@ -75,6 +76,9 @@ const inReader = (repo: string) => (multi ? `/paper/${a.slug}/?${new URLSearchPa
 // What a removal request may name (src/lib/removal.ts: the paper, its repositories, their files),
 // at the very top of <main>: the page /removal/ and the Worker read it there, and stop reading.
 const facts = JSON.stringify(paperFacts(a)).replace(/</g, "\\u003c");
+// Night phase 16: a repository linked to this paper that moderation hid, said in one line each, so that
+// the tracing map and the Code section stay explained.
+const moderated = hiddenReposOf(a.doi);
 ---
 <Base
   title={a.title}
@@ -83,6 +87,13 @@ const facts = JSON.stringify(paperFacts(a)).replace(/</g, "\\u003c");
 >
   <script is:inline type="application/json" id={FACTS_ID} set:html={facts}></script>
   {reader && <Head title={a.title} notices={notices} sections={sections} />}
+  {moderated.map((m) => (
+    <p class="moderated">
+      A repository linked to this paper in the registry, {m.path}, is hidden from its pages
+      ({m.words}, since {new Date(m.since * 1000).toISOString().slice(0, 10)}): the tracing map keeps its
+      links as text. <a href="/notices/">The notices</a> say more.
+    </p>
+  ))}
   {reader && <Reader a={a} />}
   <div class="record">
     <div class="body">

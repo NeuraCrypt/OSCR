@@ -35,7 +35,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-from . import catalog, community
+from . import catalog, community, moderation
 
 SHARDS = 64
 FOLDER = Path("social")
@@ -164,15 +164,30 @@ def build(forge: community.D1, people: community.D1, *, names: dict[str, str] | 
     now = time.time() if now is None else now
     names = names or {}
     users, by_target = handles(people)
+    # Night phase 16: what moderation hid. A suspended account leaves every public file, retroactively
+    # (its stars, follows and lists no longer count); a hidden profile's words and a hidden list are
+    # left out; a hidden repository is not alive.
+    hidden = moderation.read(forge)
+    for uid in hidden.accounts:
+        users.pop(uid, None)
+    by_target = {t: uid for t, uid in by_target.items() if uid not in hidden.accounts}
     repos = {f"repo:{r['forge']}:{r['repo_id']}": r for r in rows(forge, "repos", "forge, repo_id, owner_login, name, state",
                                                                     ("forge", "repo_id"))}
-    alive = {k: f"{r['owner_login']}/{r['name']}" for k, r in repos.items() if r["state"] in ALIVE and r["name"]}
-    stars = rows(forge, "stars", "user_id, subject, at", ("user_id", "subject"))
-    follows = rows(forge, "follows", "user_id, target, level, at", ("user_id", "target"),
-                   "substr(target, 1, 7) != 'thread:' AND level != 'ignore'")
-    lists = rows(forge, "star_lists", "user_id, list_id, name, description, public, collection, at", ("user_id", "list_id"))
-    items = rows(forge, "star_list_items", "user_id, subject, list_id, at", ("user_id", "subject", "list_id"))
-    profiles = {r["user_id"]: r for r in rows(forge, "profiles", "*", ("user_id",))}
+    alive = {k: f"{r['owner_login']}/{r['name']}" for k, r in repos.items()
+             if r["state"] in ALIVE and r["name"] and f"{r['forge']}:{r['repo_id']}" not in hidden.repos}
+    stars = [s for s in rows(forge, "stars", "user_id, subject, at", ("user_id", "subject")) if s["user_id"] not in hidden.accounts]
+    follows = [f for f in rows(forge, "follows", "user_id, target, level, at", ("user_id", "target"),
+                               "substr(target, 1, 7) != 'thread:' AND level != 'ignore'") if f["user_id"] not in hidden.accounts]
+    lists = [li for li in rows(forge, "star_lists", "user_id, list_id, name, description, public, collection, at", ("user_id", "list_id"))
+             if li["user_id"] not in hidden.accounts and (li["user_id"], int(li["list_id"])) not in hidden.lists]
+    items = [it for it in rows(forge, "star_list_items", "user_id, subject, list_id, at", ("user_id", "subject", "list_id"))
+             if it["user_id"] not in hidden.accounts]
+    profiles = {r["user_id"]: r for r in rows(forge, "profiles", "*", ("user_id",))
+                if r["user_id"] not in hidden.accounts}
+    for uid in hidden.profiles:
+        if uid in profiles:
+            profiles[uid] = {**profiles[uid], **{k: "" for k in ("name", "bio", "pronouns", "location", "timezone", "website", "company", "status")},
+                             "links": "[]", "pinned": "[]"}
 
     def handle(uid: str) -> str | None:
         h = users.get(uid) or {}
@@ -395,7 +410,7 @@ def search_docs(out: Path) -> dict[str, dict[str, Any]]:
     docs: dict[str, dict[str, Any]] = {}
     social_entries = _load(out / FOLDER)
     for path, e in _load(out / "forge" / "layer").items():
-        if not isinstance(e, dict) or e.get("state") in ("hidden", "pending_deletion", "deleted") or "/" not in path:
+        if not isinstance(e, dict) or e.get("state") in ("hidden", "pending_deletion", "deleted") or "/" not in path or "moderated" in e:
             continue
         owner, name = path.split("/", 1)
         key = f"repo:{e.get('forge') or 'github'}:{e['id']}" if e.get("id") else f"repo-path:{path}"

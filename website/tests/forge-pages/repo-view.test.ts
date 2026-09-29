@@ -616,7 +616,7 @@ describe("reading a repository in the reader's browser (fake GitHub, anonymous)"
       },
     });
     assert.deepEqual(asked, ["/api/forge/repo?path=oscr-fixture%2Feeg-analysis"]);
-    assert.ok(live && live !== "unknown");
+    assert.ok(live && live !== "unknown" && !("moderated" in live));
     assert.equal(live.mode, "installed");
     assert.deepEqual(live.roles, ["owner"]);
     // Not linked (404): null, no further request.
@@ -635,8 +635,21 @@ describe("reading a repository in the reader's browser (fake GitHub, anonymous)"
       },
     });
     assert.deepEqual(asked, ["/api/forge/repo?path=oscr-fixture%2Feeg-analysis", shardUrl]);
-    assert.ok(fallback && fallback !== "unknown");
+    assert.ok(fallback && fallback !== "unknown" && !("moderated" in fallback));
     assert.equal(fallback.mode, "catalogue");
+  });
+
+  test("night phase 16: a repository moderation hid says only why, live (410) and as of last night", async () => {
+    const live = await readLayer(EEG, {
+      signedIn: true,
+      site: async () => new Response(JSON.stringify({ error: { code: "moderated", moderation: { words: "malware or a harmful file" } } }), { status: 410 }),
+    });
+    assert.deepEqual(live, { moderated: "malware or a harmful file" });
+    const nightly = await readLayer(EEG, {
+      signedIn: false,
+      site: async () => new Response(JSON.stringify({ "oscr-fixture/eeg-analysis": { moderated: { words: "spam or advertising", since: 1 } } })),
+    });
+    assert.deepEqual(nightly, { moderated: "spam or advertising" });
   });
 
   test("the layer names another repository at this address: it is not shown", async () => {

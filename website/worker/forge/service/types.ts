@@ -55,6 +55,13 @@ export type ForgeServiceEnv = AccountEnv &
     /** Development only (statuses.ts): GitHub Actions' OIDC issuer replaced by a mock (https, or http
      *  on this machine). Production: https://token.actions.githubusercontent.com. */
     GITHUB_OIDC_ISSUER?: string;
+    /** Phase 16 (turnstile.ts): Turnstile's secret key, a Cloudflare secret the owner sets
+     *  (tools/setup_cloudflare.sh). Unset: every protected form is refused, and FORGE_OPEN opens
+     *  nothing (gate.ts). */
+    TURNSTILE_SECRET_KEY?: string;
+    /** Development only (turnstile.ts): a stand-in of Cloudflare's siteverify on this machine (the
+     *  end-to-end run's). Never in wrangler.toml, never in production. */
+    TURNSTILE_VERIFY_URL?: string;
   };
 
 /** What the tests (and only they) inject. The Worker passes nothing: service/backend.ts builds
@@ -71,6 +78,8 @@ export interface ForgeDeps {
   /** Phase 10: the fetch outgoing webhooks are delivered with (a receiver in tests; no waits between
    *  attempts then). */
   hookFetch?: typeof fetch;
+  /** Phase 16: the fetch Turnstile's siteverify is asked with (a stand-in in tests). */
+  turnstileFetch?: typeof fetch;
 }
 
 /** One request to a forge route, as index.ts hands it to its handler: FORGE is bound, the method is
@@ -154,9 +163,15 @@ export type SocialKind = (typeof SOCIAL_KINDS)[number];
 export const AUTOMATION_KINDS = ["token", "hook", "status"] as const;
 export type AutomationKind = (typeof AUTOMATION_KINDS)[number];
 
+/** Phase 16's writes (migrations/d1-forge/0010_moderation.sql): a report (with or without an account:
+ *  `user_id` '' then), a decision of the owner, an appeal or counter-notice, a block, an interaction
+ *  limit, a data-rights request. Logged in `actions` like the others, with caps of their own. */
+export const MODERATION_KINDS = ["report", "moderate", "appeal", "block", "limit", "rights"] as const;
+export type ModerationRowKind = (typeof MODERATION_KINDS)[number];
+
 /** Every kind an action row may have. */
-export const ROW_KINDS = [...ACTION_KINDS, ...RESEARCH_KINDS, ...SOCIAL_KINDS, ...AUTOMATION_KINDS] as const;
-export type RowKind = ActionKind | ResearchKind | SocialKind | AutomationKind;
+export const ROW_KINDS = [...ACTION_KINDS, ...RESEARCH_KINDS, ...SOCIAL_KINDS, ...AUTOMATION_KINDS, ...MODERATION_KINDS] as const;
+export type RowKind = ActionKind | ResearchKind | SocialKind | AutomationKind | ModerationRowKind;
 
 export const isSocialKind = (value: unknown): value is SocialKind => typeof value === "string" && (SOCIAL_KINDS as readonly string[]).includes(value);
 

@@ -30,6 +30,12 @@
 //                                                 delete a webhook
 //   GET  /api/forge/statuses          signed in   phase 10: a commit's statuses posted by outside   statuses.ts
 //                                                 services (the API posts them: api.ts)
+//   POST /api/forge/report            anyone      phase 16: a report, with or without an account,     moderation.ts
+//                                                 behind Turnstile
+//   GET  /api/forge/moderation        the owner   the moderation queue; ?target= one thing's state      moderation.ts
+//   POST /api/forge/moderation/decide the owner   dismiss, hide, restore, answer an appeal             moderation.ts
+//   POST /api/forge/appeal            signed in   an appeal or a counter-notice (Turnstile)            moderation.ts
+//   GET  /api/forge/moderation/mine   signed in   what of the reader's is hidden; their requests        moderation.ts
 //
 // What every route gets here, in order: its path (another is 404), its method (405), the FORGE
 // binding (503 not_configured without it), and for the signed-in routes the accounts (COMMUNITY and
@@ -58,6 +64,7 @@ import { handleStart } from "./start.ts";
 import { handleTokens, handleTokenWrite } from "./tokens.ts";
 import { handleHookDeliveries, handleHooks, handleHookWrite } from "./hooks.ts";
 import { handleStatuses } from "./statuses.ts";
+import { handleAppeal, handleModerationMine, handleModerationRead, handleModerationWrite, handleReport } from "./moderation.ts";
 import type { Context, D1Database, ForgeDeps, ForgeRequest, ForgeServiceEnv, RouteHandler } from "./types.ts";
 import { handleWebhook } from "./webhook.ts";
 
@@ -102,6 +109,12 @@ export const FORGE_ROUTES: Readonly<Record<string, Route>> = {
   "/api/forge/hooks/write": { method: "POST", signedIn: true, handle: (r) => handleHookWrite(r) },
   // Phase 10: the statuses outside services posted on a commit (statuses.ts; posted through the API).
   "/api/forge/statuses": { method: "GET", signedIn: true, handle: (r) => handleStatuses(r) },
+  // Phase 16: reports (with or without an account), the owner's queue and decisions, appeals.
+  "/api/forge/report": { method: "POST", signedIn: false, handle: (r) => handleReport(r) },
+  "/api/forge/moderation": { method: "GET", signedIn: true, handle: (r) => handleModerationRead(r) },
+  "/api/forge/moderation/decide": { method: "POST", signedIn: true, handle: (r) => handleModerationWrite(r) },
+  "/api/forge/moderation/mine": { method: "GET", signedIn: true, handle: (r) => handleModerationMine(r) },
+  "/api/forge/appeal": { method: "POST", signedIn: true, handle: (r) => handleAppeal(r) },
 };
 
 const PREFIX = "/api/forge/";

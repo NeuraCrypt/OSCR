@@ -17,6 +17,7 @@
 // checked again here (repo-view.ts safeHref). Like every browser script, it never names the
 // platform: the page hands its name in (data-site).
 
+import { reportHref } from "../lib/moderation.ts";
 import { mountSocial } from "./social-buttons.ts";
 import { githubBackend } from "../../worker/forge/github/index.ts";
 import { cachedSession, gitCache, tabStore } from "../lib/gitcache.ts";
@@ -151,6 +152,13 @@ function sidebar(loaded: Loaded, site: string): El {
 export function page(loaded: Loaded, siteIn: string): El[] {
   const site = siteName(siteIn);
   const { repo, info, error, layer } = loaded;
+  // Night phase 16: a repository hidden by moderation shows why, and nothing of it.
+  if (loaded.moderated !== null) {
+    return [
+      h("h1", null, `${repo.owner}/${repo.name}`),
+      h("p", { class: "moderated" }, `This repository is hidden from ${site}'s pages: ${loaded.moderated}. `, link("/notices/", "The notices"), " say what was hidden and why."),
+    ];
+  }
   const out: El[] = [repoHead({ owner: repo.owner, name: repo.name, info })];
   out.push(statusLine(layer, site, loaded.layerUnknown));
   if (loaded.renamed) {
@@ -208,12 +216,21 @@ async function main(): Promise<void> {
   document.title = `${loaded.repo.owner}/${loaded.repo.name}${tail}`;
   const view = loaded.target.view;
   root.replaceChildren(...page(loaded, site).map(toDom));
+  if (loaded.moderated !== null) return;
   // Phase 08: Star and Watch, the registry's own (social-buttons.ts), under the repository's name.
   if (loaded.info) {
     const box = document.createElement("div");
     root.querySelector(".repo-head")?.after(box);
     const key = `repo:${loaded.info.key.forge}:${loaded.info.key.id}`;
     void mountSocial(box, { subject: key, target: key, label: `${loaded.repo.owner}/${loaded.repo.name}`.toLowerCase(), watch: "repository" });
+    // Night phase 16: report the repository (the form says what happens next).
+    const report = document.createElement("p");
+    report.className = "muted";
+    const a = document.createElement("a");
+    a.href = reportHref(key, `${loaded.repo.owner}/${loaded.repo.name}`);
+    a.textContent = "Report this repository";
+    report.append(a);
+    box.after(report);
   }
   wireCopy(root);
   const slot = document.getElementById("repo-view");

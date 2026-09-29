@@ -394,7 +394,7 @@ export const SUMMARY_COLUMNS =
 export const issueById = (db: D1Database, id: number) => db.prepare("SELECT * FROM research_issues WHERE id = ?").bind(id);
 export const commentsOf = (db: D1Database, id: number) => db.prepare("SELECT * FROM research_comments WHERE issue_id = ? ORDER BY n LIMIT 2500").bind(id);
 export const issuesOfPaper = (db: D1Database, paper: string, limit = LIST_PER_PAPER) =>
-  db.prepare(`SELECT ${SUMMARY_COLUMNS} FROM research_issues WHERE paper_id = ? ORDER BY id DESC LIMIT ?`).bind(paper, limit);
+  db.prepare(`SELECT ${SUMMARY_COLUMNS}, author_id FROM research_issues WHERE paper_id = ? ORDER BY id DESC LIMIT ?`).bind(paper, limit);
 
 /** A new issue (2 rows: the row and its index entry). */
 export function insertIssue(db: D1Database, p: OpenParsed, who: Person, role: IssueRow["author_role"], t: number): Write {

@@ -2348,3 +2348,67 @@ and the check are unchanged.
 
 **What would change it.** Fewer bundles (Vite's small chunks merged) or fewer shard families would
 give papers back their 300 static pages: the owner's choice.
+
+### D16-4. Reports: anyone, with or without an account, behind Turnstile; the owner alone decides
+
+**Decision.**
+- `POST /api/forge/report` takes a report of anything the GitHub side shows (a person, a repository,
+  a research issue or comment, a GitHub issue, pull request or release, a star list, a commit status;
+  a snippet is refused until phase 13), with a reason from the acceptable-use policy's list and the
+  reporter's words (required for "other" and for copyright). Signed in, the session and its CSRF
+  token; signed out, the site's Origin; always Turnstile, verified server-side. The target must exist
+  (1–2 reads by key). 3 rows. No IP address, no email address: a reporter without an account is ''.
+- Caps: 20 reports a day per account; 50 a day for all reports without an account together; one open
+  report per account and thing.
+- **Who moderates: the owner** (the account whose linked GitHub id is `FORGE_OWNER_GITHUB_ID`).
+  Moderators by the community `roles` table ('moderator') come later: every moderation route checks the
+  owner only, the safest default before the public opening. The Phase 6 removal requests of catalogue
+  records stay the Mac's (`oscr reports`); the queue page says so (reading them in the Worker would scan
+  `reports`).
+- Reports and appeals are open whatever `FORGE_OPEN` says: the registry's pages are public, so is the
+  way to report them.
+
+### D16-5. Hidden means absent from every answer at once, and from the static files at the next nightly
+
+**Decision.** One table, `moderation`, keyed (kind, ref). The Worker drops what it hides from every
+answer (hidden.ts): research issues and comments (410 for others; a comment's words withheld; the author
+and the owner read them with the notice), a suspended account's issues, comments, profile, activity,
+feed and inbox events, statuses, webhook deliveries; a repository's layer (410, but to whoever manages
+it and the owner); a hidden profile's words and lists; the search's answers (research issues and
+repositories at once, people at the next push). The Mac drops the same from the static files each night
+(oscr/moderation.py: layer, research shards, social shards, Explore, hence the search index), so a
+signed-out reader sees the change after the next nightly publication, as with main's removal requests.
+A hidden repository's layer entry says only why; the paper pages say it in one line
+(`forge/moderation.json` → `src/data/moderation.json`).
+
+**Why.** Signed-out pages ask the Worker nothing (the budget): the static files are the night's.
+
+### D16-6. A suspended account: every write refused, its tokens revoked, its hooks paused, retroactively hidden
+
+**Decision.** Hiding a person ("suspend") writes two rows (the account, and its GitHub numeric id so
+that its GitHub events from webhooks are hidden too), deletes its personal tokens and pauses its
+webhooks in the same batch (D10-14). `who.ts` refuses every write of a suspended account (403
+`suspended`, with the address of its page), and so does `start` for authorized actions; an appeal and
+a data-rights request stay open to it. Restoring does not bring the tokens back (they are gone for
+good) nor resume the hooks (their owner does). A person's profile alone can be hidden (`scope:
+"profile"`): its words, not the account.
+
+### D16-7. Appeals and counter-notices wait in the reports' queue; the owner answers once
+
+**Decision.** An appeal (or, for a copyright takedown, a counter-notice with its two statements: good
+faith and accuracy) marks the `moderation` row and adds a row to `content_reports` (reason 'appeal' or
+'counter_notice'), so that the owner's queue is one partial index. One appeal per decision; the answer
+(accepted: restored; rejected) is read on `/account/moderation/`, never sent. 4 rows.
+
+**Why.** The forge database keeps one index at most per table (tests/test_forge_schema.py).
+
+### D16-8. Every text is masked, and a remaining at sign is made harmless
+
+**Decision.** Reports', decisions', appeals' and notes' texts go through `cleanText`: control characters
+dropped, email addresses masked ("[email hidden]"), a remaining "@" (a mention) replaced by "＠" (U+FF20),
+which the CHECKs (`instr(…, '@') = 0`) accept.
+
+### D16-9. The column is `ref`, not `key`
+
+**Decision.** The migration's moderation table names its lookup column `ref`: the schema test refuses a
+column named with "key" (or token, secret…), a rule of every migration of `oscr_forge`.

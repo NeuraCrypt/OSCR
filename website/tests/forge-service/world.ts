@@ -15,7 +15,7 @@ import { Browser, world, type World } from "../account/browser.ts";
 import { MemoryBackend } from "../forge/memory.ts";
 import { handleForge, isForgePath } from "../../worker/forge/service/index.ts";
 import { actionRow, deliveryRow, insertJob, insertRepo, linkPapers, newNonce, updateRepo, type NewRepo } from "../../worker/forge/service/store.ts";
-import type { ActionKind, Context, ForgeDeps, ForgeServiceEnv, JobKind, Outcome, PaperStatus, RepoState, Write } from "../../worker/forge/service/types.ts";
+import type { Context, ForgeDeps, ForgeServiceEnv, JobKind, Outcome, PaperStatus, RepoState, RowKind, Write } from "../../worker/forge/service/types.ts";
 import { fakeForgeD1, type FakeForgeD1 } from "./d1.ts";
 
 /** 2026-09-28 12:00 UTC, the double's own default time. */
@@ -119,7 +119,7 @@ export const seed = {
   },
   async action(
     db: FakeForgeD1,
-    a: { userId: string; kind: ActionKind; t: number; rows?: number; outcome?: Outcome; forge?: string; repoId?: string; githubUser?: string },
+    a: { userId: string; kind: RowKind; t: number; rows?: number; outcome?: Outcome; forge?: string; repoId?: string; githubUser?: string },
   ): Promise<void> {
     await run(db, [actionRow(db, { nonce: newNonce(), rows: 1, outcome: "done", ...a })]);
   },

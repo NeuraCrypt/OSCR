@@ -22,6 +22,7 @@ import { identityOwner, userById } from "../../account/store.ts";
 import { FORGE_ROWS_PER_DAY } from "./caps.ts";
 import { readCapped } from "./flow.ts";
 import { closed, dailyCaps, globalCap, mayWrite, overCap } from "./gate.ts";
+import { accountHidden, hiddenAmong, hiddenOne, moderationView } from "./hidden.ts";
 import { json, problemAnswer } from "./http.ts";
 import { linkedGithub } from "./identity.ts";
 import {
@@ -203,12 +204,19 @@ export async function handleSocialPerson(r: ForgeRequest): Promise<Response> {
   const following = { github: mine.find((f) => f.target.startsWith("github:"))?.level ?? null, orcid: mine.find((f) => f.target.startsWith("orcid:"))?.level ?? null };
   if (!user) return json({ account: false, handles: { github: null, githubId, orcid }, following, can: { write: writes } });
   const me = user.id === s.user.id;
+  // Night phase 16: a suspended account shows nothing but that it is suspended; a hidden profile's
+  // words and hidden lists are withheld from everyone but their person.
+  const [suspendedRow, profileHidden] = await Promise.all([accountHidden(r.db, user.id), hiddenOne(r.db, "profile", user.id)]);
+  if (suspendedRow && !me) {
+    return json({ account: true, me, suspended: true, handles: { github: user.github_login ?? null, githubId, orcid: user.orcid ?? null }, following, can: { write: writes } });
+  }
   const [profile, lists, items] = await Promise.all([
     first<ProfileRow>(profileOf(r.db, user.id)),
     all<ListRow>(listsOf(r.db, user.id)),
     all<ItemRow>(itemsOf(r.db, user.id)),
   ]);
-  const view = profileView(profile, r.t);
+  const hiddenLists = me ? new Map() : await hiddenAmong(r.db, "list", lists.map((l) => `${user.id}/${l.list_id}`));
+  const view = profileHidden && !me ? { ...profileView(null, r.t), private: profileView(profile, r.t).private, hidden: moderationView(profileHidden).words } : profileView(profile, r.t);
   const open = me || !view.private;
   const stars: StarRow[] = open ? await all<StarRow>(starsOf(r.db, user.id)) : [];
   const follows: FollowRow[] = open ? await all<FollowRow>(followsOf(r.db, user.id)) : [];
@@ -217,7 +225,7 @@ export async function handleSocialPerson(r: ForgeRequest): Promise<Response> {
     me,
     handles: { github: user.github_login ?? null, githubId, orcid: user.orcid ?? null },
     profile: view,
-    lists: lists.filter((l) => me || (open && l.public === 1)).sort((a, b) => a.list_id - b.list_id).map((l) => listView(l, items.filter((i) => me || open))),
+    lists: lists.filter((l) => me || (open && l.public === 1 && !hiddenLists.has(`${user.id}/${l.list_id}`))).sort((a, b) => a.list_id - b.list_id).map((l) => listView(l, items.filter((i) => me || open))),
     stars: stars.sort((a, b) => b.at - a.at).map((x) => ({ subject: x.subject, kind: subjectKind(x.subject), label: x.label, at: x.at })),
     // Whom and what they follow; the threads they follow are their own business.
     follows: follows.filter((f) => !f.target.startsWith("thread:") && f.level !== "ignore").map((f) => ({ target: f.target, level: f.level, label: f.label })),

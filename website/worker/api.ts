@@ -7,6 +7,7 @@
 import type { Context, Env } from "./env.ts";
 import { BadRequest, canonicalSearch, classify, readQuery, runSearch, toCsv, toExportJson, toJson } from "./search.ts";
 import { ForgeSearchError, readForgeQuery, runForgeSearch } from "./forge-search.ts";
+import { withoutHidden } from "./forge/service/hidden-search.ts";
 
 export type { Env };
 
@@ -135,6 +136,9 @@ async function handleForgeSearch(url: URL, env: Env, ctx: Context): Promise<Resp
   try {
     if (env.SEARCH_SIMULATE_FAILURE) throw new Error(SIMULATED[env.SEARCH_SIMULATE_FAILURE] ?? SIMULATED.unavailable);
     const outcome = await runForgeSearch(env.SEARCH, query);
+    // Night phase 16: what moderation hid since the index's last push leaves the answer at once (the
+    // push itself leaves it out from the next night: oscr/moderation.py).
+    if (env.FORGE) outcome.results = await withoutHidden(env.FORGE, outcome.results);
     response = new Response(JSON.stringify(outcome), {
       headers: headers({ "Cache-Control": `public, max-age=${CACHE_SECONDS}`, ...costHeader(outcome.cost), "Content-Type": "application/json; charset=utf-8" }),
     });

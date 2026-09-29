@@ -594,6 +594,8 @@ export interface Loaded {
   renamed: boolean;
   /** The layer named another repository (another id) at this address: it is not shown. */
   otherRepository: boolean;
+  /** Night phase 16: hidden from the registry's pages by moderation, the reason in words (null: not). */
+  moderated: string | null;
 }
 
 const asError = (e: unknown): GitBackendError =>
@@ -601,11 +603,16 @@ const asError = (e: unknown): GitBackendError =>
 
 /** OSCR's layer for one repository: live when signed in, else the static shard; null when OSCR
  *  does not know it; "unknown" when neither could be read. */
-export async function readLayer(repo: RepoCoords, deps: Pick<ShellDeps, "site" | "signedIn">): Promise<ViewLayer | null | "unknown"> {
+export async function readLayer(repo: RepoCoords, deps: Pick<ShellDeps, "site" | "signedIn">): Promise<ViewLayer | null | "unknown" | { moderated: string }> {
   if (deps.signedIn) {
     try {
       const res = await deps.site(`/api/forge/repo?path=${encodeURIComponent(`${repo.owner}/${repo.name}`)}`);
       if (res.status === 404) return null;
+      // Night phase 16: hidden by moderation (410), the reason in words; nothing else of it is shown.
+      if (res.status === 410) {
+        const e = record(record(await res.json())?.error);
+        return { moderated: String(record(e?.moderation)?.words ?? "it broke the rules") };
+      }
       if (res.ok) {
         const body = record(await res.json());
         return parseLayer(body?.layer ?? body?.repo ?? body);
@@ -620,7 +627,11 @@ export async function readLayer(repo: RepoCoords, deps: Pick<ShellDeps, "site" |
     if (res.status === 404) return null;
     if (!res.ok) return "unknown";
     const shard = record(await res.json());
-    return shard ? parseLayer(shard[`${repo.owner}/${repo.name}`.toLowerCase()]) : null;
+    const entry = shard ? record(shard[`${repo.owner}/${repo.name}`.toLowerCase()]) : null;
+    // Night phase 16: last night's layer says only that it is hidden, and why.
+    const moderated = record(entry?.moderated);
+    if (moderated) return { moderated: String(moderated.words ?? "it broke the rules") };
+    return entry ? parseLayer(entry) : null;
   } catch {
     return "unknown";
   }
@@ -643,19 +654,29 @@ export async function loadRepository(target: RepoPath, deps: ShellDeps): Promise
     layerUnknown: false,
     renamed: false,
     otherRepository: false,
+    moderated: null,
   };
   try {
     out.info = await deps.session.repos.get(ref);
   } catch (e) {
     out.error = asError(e);
   }
-  let layer = await layerRead;
+  let layerOrHidden = await layerRead;
+  if (layerOrHidden && typeof layerOrHidden === "object" && "moderated" in layerOrHidden) {
+    out.moderated = layerOrHidden.moderated;
+    layerOrHidden = null;
+  }
+  let layer = layerOrHidden;
   if (out.info) {
     const now = { owner: out.info.ref.owner, name: out.info.ref.name };
     if (isOwner(now.owner) && isRepoName(now.name) && `${now.owner}/${now.name}`.toLowerCase() !== `${target.owner}/${target.name}`.toLowerCase()) {
       out.renamed = true;
       out.repo = now;
-      if (layer === null) layer = await readLayer(now, deps);
+      if (layer === null) {
+        const again = await readLayer(now, deps);
+        if (again && typeof again === "object" && "moderated" in again) out.moderated = again.moderated;
+        else layer = again;
+      }
     } else if (isOwner(now.owner) && isRepoName(now.name)) {
       out.repo = now; // GitHub's own case of the names
     }
@@ -665,6 +686,7 @@ export async function loadRepository(target: RepoPath, deps: ShellDeps): Promise
   else out.layer = layer;
 
   const info = out.info;
+  if (out.moderated !== null) return out;
   if (info && !info.disabled && target.view === "home") {
     const now: T.RepoRef = { forge: "github", ...out.repo };
     if (info.defaultBranch === null) out.empty = true;

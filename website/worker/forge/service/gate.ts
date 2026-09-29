@@ -56,16 +56,10 @@ export async function dailyCaps(db: D1Database, userId: string, kind: RowKind, t
   const by = new Map(rows.map((r) => [r.kind, Number(r.n)]));
   const count = (kinds: readonly string[]) => kinds.reduce((n, k) => n + (by.get(k) ?? 0), 0);
   const standalone = new Set([...OWN_CAPS].flatMap((c) => KINDS_OF[c as Exclude<Cap, "actions">]));
-  const used: Record<Cap, number> = {
+  const used = {
     actions: [...by].reduce((a, [k, n]) => a + (standalone.has(k as RowKind) ? 0 : n), 0),
-    creations: count(KINDS_OF.creations),
-    links: count(KINDS_OF.links),
-    research: count(KINDS_OF.research),
-    social: count(KINDS_OF.social),
-    notices: count(KINDS_OF.notices),
-    automation: count(KINDS_OF.automation),
-    statuses: count(KINDS_OF.statuses),
-  };
+    ...Object.fromEntries(Object.entries(KINDS_OF).map(([cap, kinds]) => [cap, count(kinds)])),
+  } as Record<Cap, number>;
   const specific = CAP_OF[kind];
   // Phase 08: a social write counts toward its own cap only.
   const caps: Cap[] = specific && OWN_CAPS.has(specific) ? [] : ["actions"];

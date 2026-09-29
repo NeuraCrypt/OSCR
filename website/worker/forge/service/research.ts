@@ -3,6 +3,8 @@
 
 import type { SignedIn } from "../../account/guard.ts";
 import { who as whoAsks } from "./who.ts";
+import { accountHidden, hiddenActors, hiddenAmong, hiddenCommentsOf, hiddenOne, moderationView } from "./hidden.ts";
+import { isOwner } from "./moderation.ts";
 import { queueHooks } from "./hooks.ts";
 import { FORGE_ROWS_PER_DAY } from "./caps.ts";
 import { readCapped } from "./flow.ts";
@@ -193,10 +195,30 @@ export async function handleResearchRead(r: ForgeRequest): Promise<Response> {
     if (!isId(id)) return problemAnswer(bad("A research issue is named by its number."));
     const row = await first<IssueRow>(issueById(r.db, id));
     if (!row) return problemAnswer(new ForgeProblem(404, "not_found", "The registry has no research issue of this number."));
-    const comments = (await all<CommentRow>(commentsOf(r.db, id))).map((c) => ({ ...commentViewOf(c), mine: c.author_id === s.user.id }));
+    const rows = await all<CommentRow>(commentsOf(r.db, id));
+    // Night phase 16: what moderation hid. The issue itself (or its author's account): gone for everyone
+    // but its author and the owner, who read it with the notice. A comment hidden, or by a suspended
+    // account: its words withheld from everyone but its author and the owner.
+    const owner = await isOwner(r, s);
+    const [issueHidden, commentsHidden, actors] = await Promise.all([
+      hiddenOne(r.db, "research", String(id)),
+      hiddenCommentsOf(r.db, id),
+      hiddenActors(r.db, [{ user: row.author_id }, ...rows.map((c) => ({ user: c.author_id }))]),
+    ]);
+    const issueMod = issueHidden ?? (actors.users.has(row.author_id) ? await accountHidden(r.db, row.author_id) : null);
+    if (issueMod && !owner && row.author_id !== s.user.id) {
+      return problemAnswer(new ForgeProblem(410, "moderated", `This research issue is hidden: ${moderationView(issueMod).words}.`, { moderation: moderationView(issueMod) }));
+    }
+    const comments = rows.map((c) => {
+      const view = { ...commentViewOf(c), mine: c.author_id === s.user.id };
+      const mod = commentsHidden.get(c.n) ?? (actors.users.has(c.author_id) ? ({ reason: "other", notice: "", created_at: 0, appeal: "" } as const) : null);
+      if (!mod) return view;
+      const words = { ...moderationView(mod), words: commentsHidden.has(c.n) ? moderationView(mod).words : "its author's account is suspended" };
+      return owner || view.mine ? { ...view, moderated: words } : { ...view, body: "", moderated: words };
+    });
     const triage = await triages(r.db, s.user, roles, row);
     return json({
-      issue: { ...viewOf(row), mine: row.author_id === s.user.id },
+      issue: { ...viewOf(row), mine: row.author_id === s.user.id, ...(issueMod ? { moderated: moderationView(issueMod) } : {}) },
       comments,
       can: { write: writes, comment: writes && (!row.locked || triage), edit: writes && (triage || row.author_id === s.user.id), triage: writes && triage },
     });
@@ -213,11 +235,21 @@ export async function handleResearchRead(r: ForgeRequest): Promise<Response> {
     repo = { forge: m[1], id: m[2] };
   }
   const issues: IssueSummary[] = [];
+  const rows: (Parameters<typeof summaryOf>[0] & { author_id: string })[] = [];
   for (const paper of papers as string[]) {
-    for (const row of await all<Parameters<typeof summaryOf>[0]>(issuesOfPaper(r.db, paper))) {
+    for (const row of await all<Parameters<typeof summaryOf>[0] & { author_id: string }>(issuesOfPaper(r.db, paper))) {
       if (repo && (row.forge !== repo.forge || row.repo_id !== repo.id)) continue;
-      issues.push(summaryOf(row));
+      rows.push(row);
     }
+  }
+  // Night phase 16: hidden issues, and those of suspended accounts, leave the list (the owner sees them).
+  const owner = await isOwner(r, s);
+  const [hiddenIssues, actors] = owner
+    ? [new Map(), { users: new Set<string>(), github: new Set<string>() }]
+    : await Promise.all([hiddenAmong(r.db, "research", rows.map((x) => String(x.id))), hiddenActors(r.db, rows.map((x) => ({ user: x.author_id })))]);
+  for (const row of rows) {
+    if (row.author_id !== s.user.id && (hiddenIssues.has(String(row.id)) || actors.users.has(row.author_id))) continue;
+    issues.push(summaryOf(row));
   }
   issues.sort((a, b) => b.id - a.id);
   return json({ issues, can: { write: writes, triage: writes && (roles.moderator || (papers as string[]).some((p) => roles.papers.has(p))) } });
@@ -272,6 +304,8 @@ export async function handleResearchComment(r: ForgeRequest): Promise<Response> 
   if (p instanceof ForgeProblem) return say(p);
   const issue = await first<IssueRow>(issueById(r.db, p.id));
   if (!issue) return say(new ForgeProblem(404, "not_found", "The registry has no research issue of this number."));
+  const moderated = await hiddenOne(r.db, "research", String(issue.id));
+  if (moderated && !(await isOwner(r, s))) return say(new ForgeProblem(410, "moderated", `This research issue is hidden: ${moderationView(moderated).words}.`));
   const roles = await rolesOf(s.db, s.user.id);
   const triage = await triages(r.db, s.user, roles, issue);
   const who = personOf(s.user);
@@ -320,6 +354,8 @@ export async function handleResearchEdit(r: ForgeRequest): Promise<Response> {
   if (p instanceof ForgeProblem) return say(p);
   const issue = await first<IssueRow>(issueById(r.db, p.id));
   if (!issue) return say(new ForgeProblem(404, "not_found", "The registry has no research issue of this number."));
+  const moderated = await hiddenOne(r.db, "research", String(issue.id));
+  if (moderated && !(await isOwner(r, s))) return say(new ForgeProblem(410, "moderated", `This research issue is hidden: ${moderationView(moderated).words}.`));
   const roles = await rolesOf(s.db, s.user.id);
   const triage = await triages(r.db, s.user, roles, issue);
   const mine = issue.author_id === s.user.id;

@@ -27,6 +27,7 @@ import { takeRequest } from "./bearer.ts";
 import { commitAutomation, mayAutomate, readJsonBody } from "./automation.ts";
 import { FORGE_ROWS_PER_DAY } from "./caps.ts";
 import { closed, dailyCaps, globalCap, mayWrite, overCap } from "./gate.ts";
+import { hiddenActors, hiddenAmong, hiddenOne } from "./hidden.ts";
 import { json, problemAnswer } from "./http.ts";
 import { parseTarget } from "./read.ts";
 import { cleanLine, httpsUrl } from "./social-core.ts";
@@ -141,7 +142,15 @@ export async function handleStatuses(r: ForgeRequest): Promise<Response> {
   if (!target) return problemAnswer(bad("Which repository? ?path=<owner>/<name> or ?id=<forge>:<id>."), s.cookies);
   const repo = await knownRepo(r.db, target.forge, "id" in target ? `${target.forge}:${target.id}` : `${target.owner}/${target.name}`);
   if (!repo) return problemAnswer(new ForgeProblem(404, "not_found", "The registry does not know this repository."), s.cookies);
-  const rows = await all<StatusRow>(statusesOf(r.db, repo.forge, repo.repo_id, sha));
+  const all_ = await all<StatusRow>(statusesOf(r.db, repo.forge, repo.repo_id, sha));
+  // Night phase 16: a status hidden by moderation, or posted by a suspended account, is left out; a
+  // repository hidden by moderation shows none.
+  if (await hiddenOne(r.db, "repo", `${repo.forge}:${repo.repo_id}`)) return problemAnswer(new ForgeProblem(410, "moderated", "This repository is hidden from the registry's pages."), s.cookies);
+  const [hiddenStatuses, actors] = await Promise.all([
+    hiddenAmong(r.db, "status", all_.map((x) => `${repo.forge}:${repo.repo_id}:${sha}:${x.context}`)),
+    hiddenActors(r.db, all_.map((x) => ({ user: x.by_user }))),
+  ]);
+  const rows = all_.filter((x) => !hiddenStatuses.has(`${repo.forge}:${repo.repo_id}:${sha}:${x.context}`) && !(x.by_user && actors.users.has(x.by_user)));
   return json({ repo: { forge: repo.forge, id: repo.repo_id, path: `${repo.owner_login}/${repo.name}` }, sha, state: combined(rows.map((x) => x.state)), statuses: rows.map(statusView) }, 200, s.cookies);
 }
 

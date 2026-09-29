@@ -1,0 +1,41 @@
+---
+// /notices/: the public notices of moderation (night phase 16; docs/MODERATION.md, docs/POLICIES.md):
+// what kind of thing was hidden or restored, why, when, and the owner's redacted words — never the
+// hidden words themselves, never who reported. As of last night (src/lib/moderated.ts). One page,
+// static. science.css only.
+import Base from "../layouts/Base.astro";
+import { SITE_NAME } from "../config";
+import { NOTICES } from "../lib/moderated";
+---
+<Base
+  title="Moderation notices"
+  description="What was hidden from the registry's pages, why and when, and what was restored: redacted public notices."
+  breadcrumb={[{ text: "Moderation notices" }]}
+>
+  <h1>Moderation notices</h1>
+  <p class="summary">
+    {NOTICES.length ? `${NOTICES.length.toLocaleString("en-GB")} ${NOTICES.length === 1 ? "decision" : "decisions"}, the newest first, as of last night.` : "No decision yet."}
+  </p>
+  <p>
+    When {SITE_NAME}'s owner hides something from the registry's pages — after a report, a takedown notice or
+    the registry's own check for known malware — a notice is published here: what kind of thing, why, when, and
+    whether it was restored. A notice never repeats the hidden words, never names who reported it, and never
+    publishes private information. Anything the registry shows can be reported from the “Report” link beside it.
+  </p>
+  {NOTICES.length > 0 && (
+    <table class="queue">
+      <thead><tr><th>Date</th><th>What</th><th>Why</th><th>Notice</th><th>Now</th></tr></thead>
+      <tbody>
+        {NOTICES.map((n) => (
+          <tr>
+            <td>{n.date}</td>
+            <td>{n.what.charAt(0).toUpperCase() + n.what.slice(1)}, by {n.by}</td>
+            <td>{n.reason}{n.counter_notice ? " (a counter-notice was filed)" : ""}</td>
+            <td class="text">{n.notice || "—"}</td>
+            <td>{n.state === "restored" ? <span class="ok">restored {n.updated}</span> : <span class="warning">hidden</span>}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  )}
+</Base>

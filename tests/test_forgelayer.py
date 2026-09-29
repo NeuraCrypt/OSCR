@@ -131,8 +131,10 @@ def test_output_is_written_only_under_forge_layer(tmp_path):
     out.mkdir()
     forgelayer.write(con, None, out, state=_state(), now=T)
     written = sorted(p.relative_to(out).as_posix() for p in out.rglob("*") if p.is_file())
-    # The layer's 64 shards, and (night phase 05) the research issues' 64: nothing else.
-    assert written == sorted([f"forge/layer/{n:02d}.json" for n in range(64)] + [f"forge/research/{n:02d}.json" for n in range(64)])
+    # The layer's 64 shards, (night phase 05) the research issues' 64, and (night phase 16) the notices'
+    # file: nothing else.
+    assert written == sorted([f"forge/layer/{n:02d}.json" for n in range(64)] + [f"forge/research/{n:02d}.json" for n in range(64)]
+                             + ["forge/moderation.json"])
     # A second run replaces them in place: nothing left over.
     forgelayer.write(con, None, out, state=_state(), now=T)
     assert sorted(p.relative_to(out).as_posix() for p in out.rglob("*") if p.is_file()) == written

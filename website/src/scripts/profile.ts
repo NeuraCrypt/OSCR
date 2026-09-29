@@ -27,6 +27,7 @@ import {
 import { show, toDom } from "./dom.ts";
 import { el } from "./pull-common.ts";
 import { mountSocial } from "./social-buttons.ts";
+import { reportHref } from "../lib/moderation.ts";
 import { authorPapers, getJson, postJson, problemOf, signedIn, socialEntry, type Json } from "./social-client.ts";
 
 const root = document.getElementById("profile-shell");
@@ -61,6 +62,8 @@ interface Person {
   followers: number | null;
   following: number | null;
   live: boolean;
+  /** Night phase 16: suspended by moderation (its activity hidden). */
+  suspended?: boolean;
 }
 
 const str = (v: unknown): string => (typeof v === "string" ? v : "");
@@ -119,6 +122,7 @@ async function live(handle: string): Promise<{ person: Person | null; githubId: 
       followers: null,
       following: null,
       live: true,
+      suspended: b.suspended === true,
     },
   };
 }
@@ -222,6 +226,13 @@ async function main(): Promise<void> {
   );
   const follow = el("div", {});
   const blocks: (Node | string)[] = [head, follow, said];
+  // Night phase 16: a suspended account shows only that; anyone may report a person (not themselves).
+  if (person?.suspended) {
+    root.replaceChildren(head, el("p", { class: "moderated" }, "This account is suspended: its activity is hidden from the registry's pages. ", el("a", { href: "/notices/" }, "The notices"), " say why."));
+    return;
+  }
+  const reportTarget = githubId ? `person:github:${githubId}` : orcid ? `person:orcid:${orcid}` : null;
+  if (reportTarget && !person?.me) blocks.push(el("p", { class: "muted" }, el("a", { href: reportHref(reportTarget, login ?? orcid ?? handle) }, "Report this person")));
   const names = await namesOf([...(p?.pinned ?? []), ...(person?.stars ?? []).slice(0, 100), ...(person?.lists ?? []).flatMap((l) => l.items)]);
   const item = (s: string) => {
     const href = subjectHref(s, names.get(s));

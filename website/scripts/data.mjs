@@ -16,6 +16,8 @@
 //   forge/layer/NN.json → public/forge/layer/NN.json (fetched by the repository pages, /r/*:
 //                                                     OSCR's layer for signed-out readers,
 //                                                     oscr/forgelayer.py; absent: none)
+//   forge/moderation.json → src/data/moderation.json (night phase 16: the public notices and the
+//                                                     hidden repositories; read at build time)
 //   social/NN.json, social/explore.json → public/social/… (night phase 08: stars, follows and
 //                                                     public profiles as of last night, the Explore
 //                                                     page; oscr/social.py; absent: none)
@@ -219,6 +221,13 @@ if (existsSync(`${source}/forge/layer`)) {
         misplaced += 1;
         continue;
       }
+      // Night phase 16: a repository moderation hid keeps only that it is hidden, and why (the /r/ page
+      // says so and shows nothing of it).
+      if (e && typeof e === "object" && e.moderated && typeof e.moderated === "object") {
+        clean[key] = { moderated: { words: scrub(String(e.moderated.words ?? "")).slice(0, 200), since: Number(e.moderated.since) || 0 } };
+        layered += 1;
+        continue;
+      }
       if (!e || typeof e !== "object" || !LAYER_MODES.has(e.mode) || LAYER_HIDDEN.has(e.state)) continue;
       clean[key] = scrub(e);
       layered += 1;
@@ -278,6 +287,36 @@ if (existsSync(`${source}/social`)) {
     if (explore && typeof explore === "object" && !Array.isArray(explore)) writeFileSync("public/social/explore.json", JSON.stringify(scrub(explore)));
   }
 }
+
+// Night phase 16: what moderation hid, as of last night (oscr/moderation.py): the public notices (the
+// /notices/ page) and the hidden repositories with their papers (a line on each paper's page). Read at
+// build time only: src/data/moderation.json. Absent: none. Never the hidden words, never who reported.
+let moderation = { notices: [], repos: {} };
+if (existsSync(`${source}/forge/moderation.json`)) {
+  const m = JSON.parse(readFileSync(`${source}/forge/moderation.json`, "utf8"));
+  const notices = (Array.isArray(m?.notices) ? m.notices : []).slice(0, 2000).filter((n) => n && typeof n === "object").map((n) => ({
+    date: /^\d{4}-\d{2}-\d{2}$/.test(n.date) ? n.date : "",
+    updated: /^\d{4}-\d{2}-\d{2}$/.test(n.updated) ? n.updated : "",
+    what: String(n.what ?? "").slice(0, 60),
+    reason: String(n.reason ?? "").slice(0, 120),
+    notice: String(n.notice ?? "").slice(0, 1000),
+    state: n.state === "restored" ? "restored" : "hidden",
+    by: String(n.by ?? "").slice(0, 60),
+    counter_notice: n.counter_notice === true,
+    appeal: ["", "open", "accepted", "rejected"].includes(n.appeal) ? n.appeal : "",
+  }));
+  const repos = {};
+  for (const [path, r] of Object.entries(m?.repos && typeof m.repos === "object" ? m.repos : {})) {
+    if (!/^[a-z0-9-]{1,39}\/[a-z0-9._-]{1,100}$/.test(path) || !r || typeof r !== "object") continue;
+    repos[path] = {
+      words: String(r.words ?? "").slice(0, 200),
+      since: Number(r.since) || 0,
+      papers: (Array.isArray(r.papers) ? r.papers : []).filter((d) => typeof d === "string" && /^10\.\S{1,200}$/.test(d)).slice(0, 50),
+    };
+  }
+  moderation = scrub({ notices, repos });
+}
+writeFileSync("src/data/moderation.json", JSON.stringify(moderation));
 
 const withCode = catalog.articles.filter((a) => a.code.length > 0).length;
 const withPage = catalog.articles.filter((a) => a.page === true || a.code.length > 0).length;

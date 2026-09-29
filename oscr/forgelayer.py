@@ -92,7 +92,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from . import catalog, community, entities, zenodo
+from . import catalog, community, entities, moderation, zenodo
 from . import forge as forges
 
 #: The actions of ``oscr forge`` this module answers.
@@ -799,16 +799,20 @@ def comment_view(c: dict[str, Any]) -> dict[str, Any]:
             "edited_at": c.get("edited_at"), "deleted": deleted, "hidden": c.get("hidden") or ""}
 
 
-def research(con: sqlite3.Connection, d1: community.D1 | None) -> dict[int, dict[str, Any]]:
+def research(con: sqlite3.Connection, d1: community.D1 | None, hidden: moderation.Hidden | None = None) -> dict[int, dict[str, Any]]:
     """The research issues to publish, by number: ``{"issue": view, "comments": [...]}``, scrubbed.
     Without ``d1``, none. An issue about a repository left out of the layer (waiting for deletion,
-    hidden, deleted), or about a paper the Mac holds off-topic or withdrawn, is left out."""
+    hidden, deleted), or about a paper the Mac holds off-topic or withdrawn, is left out. Night phase
+    16: so is an issue moderation hid, or one by a suspended account, or about a repository moderation
+    hid; a comment moderation hid, or by a suspended account, keeps its place without its words."""
     if d1 is None:
         return {}
+    hidden = hidden or moderation.Hidden()
     try:
         left_out = {r["repo_id"] for r in _forge_rows(d1, "repos", "repo_id, state") if r["state"] in LEFT_OUT}
+        left_out |= {k.split(":", 1)[1] for k in hidden.repos if k.startswith(f"{FORGE}:")}
         issues = _paged(d1, "SELECT * FROM research_issues WHERE {where} ORDER BY {order} LIMIT {limit}", ("id",))
-        comments = _paged(d1, "SELECT issue_id, n, author, author_via, author_role, body, created_at, edited_at, deleted, hidden "
+        comments = _paged(d1, "SELECT issue_id, n, author_id, author, author_via, author_role, body, created_at, edited_at, deleted, hidden "
                               "FROM research_comments WHERE {where} ORDER BY {order} LIMIT {limit}", ("issue_id", "n"))
     except (community.D1Error, sqlite3.Error) as e:
         if "no such table" in str(e):
@@ -817,12 +821,36 @@ def research(con: sqlite3.Connection, d1: community.D1 | None) -> dict[int, dict
     out_of_scope = {f"doi:{(r['doi'] or '').lower()}" for r in con.execute(f"SELECT doi FROM article WHERE doi IS NOT NULL AND NOT ({catalog.IN_SCOPE})")}
     by_issue: dict[int, list[dict[str, Any]]] = defaultdict(list)
     for c in comments:
-        by_issue[int(c["issue_id"])].append(comment_view(c))
+        view = comment_view(c)
+        why = hidden.comments.get((int(c["issue_id"]), int(c["n"])))
+        if why is None and c.get("author_id") in hidden.accounts:
+            why = "its author's account is suspended"
+        if why is not None:
+            view = {**view, "body": "", "moderated": {"words": why}}
+        by_issue[int(c["issue_id"])].append(view)
     out: dict[int, dict[str, Any]] = {}
     for r in issues:
         if (r.get("repo_id") and r["repo_id"] in left_out) or r["paper_id"] in out_of_scope:
             continue
+        if int(r["id"]) in hidden.research or r.get("author_id") in hidden.accounts:
+            continue
         out[int(r["id"])] = entities.scrub({"issue": research_view(r), "comments": by_issue.get(int(r["id"]), [])})
+    return out
+
+
+def apply_moderation(entries: dict[str, dict[str, Any]], hidden: moderation.Hidden) -> dict[str, dict[str, Any]]:
+    """Each entry of a repository moderation hid replaced by ``{"moderated": {"words", "since"}}`` (the
+    /r/ page says only that); returns them by path with the DOIs of their papers, for the papers'
+    pages (forge/moderation.json)."""
+    out: dict[str, dict[str, Any]] = {}
+    for path, entry in list(entries.items()):
+        row = hidden.repos.get(f"{FORGE}:{entry.get('id')}") if entry.get("id") else None
+        if row is None:
+            continue
+        since = int(row["created_at"])
+        out[path] = {"words": hidden.words(row["reason"]), "since": since,
+                     "papers": sorted({str(p.get("doi") or "").lower() for p in entry.get("papers") or [] if p.get("doi")})}
+        entries[path] = {"moderated": {"words": hidden.words(row["reason"]), "since": since}}
     return out
 
 
@@ -1000,21 +1028,27 @@ def write(con: sqlite3.Connection, d1: community.D1 | None, out: Path, *, state:
             said.append(f"traced paths: {plan.applied} statements applied, {plan.written} rows written"
                         + ("" if plan.complete else f", {plan.deferred} wait for tomorrow's budget"))
         try:
+            hidden = moderation.read(d1)
             entries, left_out = layer(con, d1, state)
-            issues = research(con, d1)
+            issues = research(con, d1, hidden)
             rels = releases(con, d1, state)
             pkgs = packages(d1)
-        except LayerError:
+        except (LayerError, community.D1Error) as e:
             _write_shards(out, {f"{n:02d}": {} for n in range(SHARDS)})
             _write_shards(out, {f"{n:02d}": {} for n in range(SHARDS)}, RESEARCH)
-            raise
+            if isinstance(e, LayerError):
+                raise
+            raise LayerError(f"D1 did not answer ({e})") from None
         attach_research(entries, issues)
         attach_releases(entries, rels)
         attach_packages(entries, pkgs)
         attach_maps(con, entries)
+        # Night phase 16: a repository moderation hid says only that, and why; its papers learn it.
+        moderated = apply_moderation(entries, hidden)
+        moderation.write(hidden, out, moderated, now=now)
         folder = _write_shards(out, shards(entries))
         _write_shards(out, research_shards(issues), RESEARCH)
-        catalogue_only = sum(1 for e in entries.values() if e["mode"] == "catalogue")
+        catalogue_only = sum(1 for e in entries.values() if e.get("mode") == "catalogue")
         summary = (f"{len(entries)} repositories in {SHARDS} shards ({catalogue_only} from the catalogue only, "
                    f"{len(entries) - catalogue_only} linked through OSCR; {left_out} left out: waiting for deletion, "
                    f"hidden, deleted or private); {len(issues)} research issues; "

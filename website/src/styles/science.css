@@ -1332,3 +1332,19 @@ footer a { margin-right: 1em; }
   /* Phase 10: the tokens', deliveries' and reference's tables scroll within the column */
   table.tokens, table.deliveries, table.scopes, table.errors { display: block; overflow-x: auto; }
 }
+
+/* Night phase 16: the content rules. The human check (Cloudflare Turnstile's widget, drawn in its own
+   frame) keeps its room so that the form does not jump when it appears; something hidden by moderation
+   is said in a ruled line, as a status, never a badge; the owner's queue is a table like the others,
+   the reporters' words with their line breaks. */
+.human-check { min-height: 70px; margin: .6em 0; }
+p.moderated { margin: .4em 0 1em; padding: .3em .7em; background: var(--bg-sidebar); border-left: 3px solid var(--warning); }
+table.queue { width: 100%; border-collapse: collapse; margin: .5em 0 1em; font-size: .95em; }
+table.queue th, table.queue td { text-align: left; vertical-align: top; padding: .3em .8em .3em 0; border-bottom: 1px solid var(--rule); }
+table.queue th { font-weight: bold; border-bottom-color: var(--text); }
+table.queue td.text { white-space: pre-wrap; overflow-wrap: anywhere; }
+table.queue td code { font-size: .85em; overflow-wrap: anywhere; }
+form.lookup input[type="text"] { width: min(28em, 100%); }
+@media (max-width: 640px) {
+  table.queue { display: block; overflow-x: auto; }
+}

@@ -16,3 +16,9 @@ export const SITE_TAGLINE: string =
 
 /** "OSCR (Open Scientific Code Registry)", or the name alone when there is no long form. */
 export const SITE_FULL_NAME = SITE_TAGLINE === SITE_NAME ? SITE_NAME : `${SITE_NAME} (${SITE_TAGLINE})`;
+
+/** Night phase 16: Turnstile's site key (public), written into the forms that need the human check
+ *  (reports, appeals, research issues and comments, profiles, lists, tokens, webhooks, data-rights
+ *  requests). Set at build time (`TURNSTILE_SITE_KEY=… npm run build`, or website/.env); unset, those
+ *  forms say the check is not set up and cannot be sent. Its secret is a Cloudflare secret, never here. */
+export const TURNSTILE_SITE_KEY: string = import.meta.env.TURNSTILE_SITE_KEY || "";

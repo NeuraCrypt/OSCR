@@ -24,6 +24,7 @@ import { isRefName, OBJECT_ID } from "../paths.ts";
 import { FLOW_SECONDS, START_BODY_BYTES } from "./caps.ts";
 import { callbackUrl, flowCookie, readCapped, repoTarget, sameOriginPath, type ForgeFlow } from "./flow.ts";
 import { closed, dailyCaps, mayWrite, overCap } from "./gate.ts";
+import { accountHidden, suspended } from "./hidden.ts";
 import { json, problem, problemAnswer } from "./http.ts";
 import { linkedGithub } from "./identity.ts";
 import { first, repoByKey, repoByPath } from "./store.ts";
@@ -106,8 +107,11 @@ export async function handleStart(r: ForgeRequest): Promise<Response> {
   // 2. A repository the registry knows.
   if (spec.needsRepo && !(await loadRepo(r.db, target.repo))) return say(unknownRepo());
 
-  // 3. Who may write (FORGE_OPEN), on the GitHub account linked to this account.
+  // 3. Who may write (FORGE_OPEN), on the GitHub account linked to this account; night phase 16: not a
+  //    suspended account.
   if (!mayWrite(r.env, await linkedGithub(s.db, s.user.id))) return say(closed());
+  const hidden = await accountHidden(r.db, s.user.id);
+  if (hidden) return say(suspended(hidden));
 
   // 4. The daily caps (reads only).
   const caps = await dailyCaps(r.db, s.user.id, target.kind, r.t);

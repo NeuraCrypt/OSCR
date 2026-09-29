@@ -49,6 +49,8 @@ import { SEGMENT } from "../paths.ts";
 import type { ForgeName } from "../types.ts";
 import { PER_ACCOUNT_DAY } from "./caps.ts";
 import { dailyCaps, mayWrite } from "./gate.ts";
+import { hiddenOne, moderationView } from "./hidden.ts";
+import { linkedGithub } from "./identity.ts";
 import { json, problem } from "./http.ts";
 import { packagesOfRepo } from "./act-packages.ts";
 import { all, first, papersOf, pendingJobsOf, recentJobsOf, releasePapersOf, repoByKey, repoByPath, reposOfOwner, tracedCount, type ReleasePaperRow } from "./store.ts";
@@ -388,7 +390,23 @@ export async function handleRepo(r: ForgeRequest): Promise<Response> {
       : await first<RepoRow>(repoByPath(r.db, target.forge, target.owner, target.name));
   // A hidden repository is answered exactly as an unknown one: nothing of it goes out.
   if (!row || row.state === "hidden") return problem(404, "not_found", NOT_FOUND);
+  // Night phase 16: a repository hidden by moderation shows only why, but to the person who manages it
+  // in the registry (who may appeal) and to the owner.
+  const moderated = await hiddenOne(r.db, "repo", `${row.forge}:${row.repo_id}`);
+  if (moderated) {
+    const view = moderationView(moderated);
+    if (row.linked_by !== who.user.id && !(await ownerAsks(r, who.user.id))) {
+      return problem(410, "moderated", `This repository is hidden from the registry's pages: ${view.words}.`, [], { moderation: view });
+    }
+    return json({ ...(await repoLayer(r.db, who.community, who.user, row, r.t)), moderation: view });
+  }
   return json(await repoLayer(r.db, who.community, who.user, row, r.t));
+}
+
+/** Whether the account asking is the registry's owner (FORGE_OWNER_GITHUB_ID; moderation.ts isOwner). */
+async function ownerAsks(r: ForgeRequest, userId: string): Promise<boolean> {
+  const owner = (r.env.FORGE_OWNER_GITHUB_ID ?? "").trim();
+  return /^\d{1,20}$/.test(owner) && !!r.env.COMMUNITY && (await linkedGithub(r.env.COMMUNITY, userId)) === owner;
 }
 
 // ─── GET /api/forge/mine ─────────────────────────────────────────────────────

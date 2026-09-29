@@ -22,7 +22,9 @@ TABLES = {"repos", "repo_papers", "installations", "traced_paths", "actions", "d
           "stars", "star_lists", "star_list_items", "follows", "events", "notice_state", "notice_marks",
           "profiles",
           # Phase 10: automation and integrations (0009_automation.sql).
-          "api_tokens", "hooks", "hook_deliveries", "statuses"}
+          "api_tokens", "hooks", "hook_deliveries", "statuses",
+          # Phase 16: content, abuse and rules (0010_moderation.sql).
+          "content_reports", "moderation", "blocks", "interaction_limits", "rights_requests"}
 T = 1_790_596_800
 
 
@@ -30,7 +32,7 @@ def _tables(con: sqlite3.Connection) -> dict[str, str]:
     return {name: sql for name, sql in con.execute("SELECT name, sql FROM sqlite_master WHERE type = 'table'")}
 
 
-def test_the_migration_applies_and_holds_the_twenty_three_tables(forge_d1):
+def test_the_migration_applies_and_holds_the_twenty_eight_tables(forge_d1):
     assert FORGE_MIGRATIONS and FORGE_MIGRATIONS[0].name == "0001_forge.sql"
     assert set(_tables(forge_d1.con)) == TABLES
     # The Mac's interface: rows in, rows out.
@@ -47,7 +49,9 @@ def test_at_most_one_index_per_table_and_without_rowid_where_the_key_is_text():
         per_table.setdefault(table, []).append(name)
     assert all(len(names) <= 1 for names in per_table.values()), per_table
     assert per_table == {"repos": ["repos_path"], "research_issues": ["research_paper"],
-                         "api_tokens": ["api_tokens_user"], "hooks": ["hooks_subject"]}
+                         "api_tokens": ["api_tokens_user"], "hooks": ["hooks_subject"],
+                         "content_reports": ["content_reports_open"], "moderation": ["moderation_owner"],
+                         "rights_requests": ["rights_requests_open"]}
     # No hidden autoindex either: a text key is the table itself.
     assert con.execute("SELECT count(*) FROM sqlite_master WHERE type = 'index' AND sql IS NULL AND name NOT LIKE 'sqlite_autoindex_%'").fetchone()[0] == 0
     for name, sql in _tables(con).items():
@@ -94,10 +98,10 @@ def test_the_checks_refuse_an_address_an_unknown_forge_and_a_private_name(forge_
 
 
 def test_the_action_kinds_are_the_workers():
-    """The migrations' CHECK on actions.kind (as the last one that rebuilt the table leaves it: 0009,
-    phase 10's automation) lists website/worker/forge/service/types.ts ACTION_KINDS, then its
-    RESEARCH_KINDS, SOCIAL_KINDS and AUTOMATION_KINDS (the registry's own writes, logged like the
-    actions)."""
+    """The migrations' CHECK on actions.kind (as the last one that rebuilt the table leaves it: 0010,
+    phase 16's content rules) lists website/worker/forge/service/types.ts ACTION_KINDS, then its
+    RESEARCH_KINDS, SOCIAL_KINDS, AUTOMATION_KINDS and MODERATION_KINDS (the registry's own writes,
+    logged like the actions)."""
     sql = forge_database().execute("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'actions'").fetchone()[0]
     assert "WITHOUT ROWID" in sql
     start = sql.index("kind         TEXT NOT NULL CHECK (kind IN (")
@@ -111,8 +115,10 @@ def test_the_action_kinds_are_the_workers():
     in_ts += re.findall(r'"([a-z_]+)"', types[start:types.index("] as const", start)])
     start = types.index("export const AUTOMATION_KINDS = [")
     in_ts += re.findall(r'"([a-z_]+)"', types[start:types.index("] as const", start)])
+    start = types.index("export const MODERATION_KINDS = [")
+    in_ts += re.findall(r'"([a-z_]+)"', types[start:types.index("] as const", start)])
     assert in_sql == in_ts
-    assert len(in_sql) == 66 and len(set(in_sql)) == 66
+    assert len(in_sql) == 72 and len(set(in_sql)) == 72
 
 
 def test_the_layer_shards_are_sha256_mod_64():

@@ -36,6 +36,8 @@ import { EVENT_TYPE_OF, EVENT_WORDS, eventByKey, eventsOf, RETENTION_SECONDS, th
 import { json, problemAnswer } from "./http.ts";
 import { linkedGithub } from "./identity.ts";
 import { mayWrite } from "./gate.ts";
+import { accountHidden, hiddenAmong, hiddenEventFilter } from "./hidden.ts";
+import { blockedBy } from "./blocks-core.ts";
 import { maySocial, socialCommit } from "./social.ts";
 import { cleanLine, followsOf, followWrite, profileOf, profileView, readTarget, readThreadKey, type FollowRow, type ProfileRow } from "./social-core.ts";
 import { readCapped } from "./flow.ts";
@@ -112,6 +114,8 @@ async function aliveRepos(db: D1Database, subjects: string[]): Promise<Map<strin
     const row = res?.results?.[0] as unknown as RepoRow | undefined;
     if (row && (row.state === "active" || row.state === "archived" || row.state === "pending_deletion") && row.name) out.set(`repo:${keys[i][1]}:${keys[i][2]}`, row);
   });
+  // Night phase 16: a repository hidden by moderation is not alive for anyone's inbox, feed or activity.
+  for (const key of (await hiddenAmong(db, "repo", [...out.keys()].map((k) => k.slice(5)))).keys()) out.delete(`repo:${key}`);
   return out;
 }
 
@@ -202,12 +206,15 @@ export async function computeInbox(db: D1Database, s: SignedIn, t: number): Prom
     first<{ read_before: number; settings: string }>(db.prepare("SELECT read_before, settings FROM notice_marks WHERE user_id = ?").bind(s.user.id)),
   ]);
   const grouped = new Map<string, { events: EventRow[]; reason: Reason }>();
+  // Night phase 16: what moderation hid, and whom the reader blocked, never reaches their inbox.
+  const hidden = await hiddenEventFilter(db, eventLists.flat(), await blockedBy(db, s.user.id));
   eventLists.forEach((events, i) => {
     const subject = subjects[i];
     const src = sources.get(subject)!;
     if (subject.startsWith("repo:") && !alive.has(subject)) return;
     for (const e of events) {
       if ((e.actor_user && e.actor_user === s.user.id) || (me.github && e.actor_github === me.github)) continue;
+      if (hidden(e)) continue;
       const key = `${e.subject}#${e.thread}`;
       const level = followed.get(key);
       if (level === "ignore") continue;
@@ -512,7 +519,10 @@ export async function handleFeed(r: ForgeRequest): Promise<Response> {
   const owners = await Promise.all(people.map((f) => identityOwner(s.db, f.target.startsWith("github:") ? "github" : "orcid", f.target.slice(f.target.indexOf(":") + 1))));
   const accounts = [...new Set(owners.filter((x): x is string => !!x && x !== s.user.id))];
   const profiles = await batchRows<ProfileRow>(r.db, accounts.map((id) => profileOf(r.db, id)));
-  const open = accounts.filter((_, i) => !profiles[i]?.[0] || profiles[i][0].private !== 1);
+  // Night phase 16: a suspended account's activity, and a blocked person's, leave the feed.
+  const blocked = await blockedBy(r.db, s.user.id);
+  const suspendedIds = await hiddenAmong(r.db, "account", accounts);
+  const open = accounts.filter((id, i) => (!profiles[i]?.[0] || profiles[i][0].private !== 1) && !suspendedIds.has(id) && !blocked.users.has(id));
   const items: FeedItem[] = [];
   const seen = new Set<string>();
   const subjectsSeen: string[] = [];
@@ -531,13 +541,14 @@ export async function handleFeed(r: ForgeRequest): Promise<Response> {
   const eventLists = await batchRows<EventRow>(r.db, subjects.map((subject) => eventsOf(r.db, subject, since, 20)));
   for (const list of personal) for (const x of list) subjectsSeen.push(x.action.subject);
   const alive = await aliveRepos(r.db, [...new Set([...subjects, ...subjectsSeen])]);
+  const hidden = await hiddenEventFilter(r.db, [...eventLists.flat(), ...personal.flat().map((x) => x.event).filter((e): e is EventRow => !!e)], blocked);
   const nameOf = (e: EventRow) => e.actor_name || "Someone";
   personal.forEach((list, who) => {
     for (const { action, event } of list) {
       if (action.subject.startsWith("repo:") && !alive.has(action.subject)) continue;
       if (event) {
         const k = `${event.subject}|${event.at}|${event.nonce}`;
-        if (seen.has(k)) continue;
+        if (seen.has(k) || hidden(event)) continue;
         seen.add(k);
         items.push({ at: event.at, kind: event.kind, words: EVENT_WORDS[event.kind], title: event.title, url: event.url, actor: nameOf(event), about: aboutOf(event.subject, alive), via: "person" });
       } else if (ACTION_WORDS[action.kind]) {
@@ -553,7 +564,7 @@ export async function handleFeed(r: ForgeRequest): Promise<Response> {
     for (const e of list) {
       if ((e.actor_user && e.actor_user === s.user.id) || (me.github && e.actor_github === me.github)) continue;
       const k = `${e.subject}|${e.at}|${e.nonce}`;
-      if (seen.has(k)) continue;
+      if (seen.has(k) || hidden(e)) continue;
       seen.add(k);
       items.push({
         at: e.at,
@@ -606,6 +617,8 @@ export async function handleActivity(r: ForgeRequest): Promise<Response> {
   } else return problemAnswer(bad("A person is named by ?github=, ?orcid= or ?me=1."));
   if (!userId) return json({ account: false });
   const me = userId === s.user.id;
+  // Night phase 16: a suspended account's activity is hidden from everyone else.
+  if (!me && (await accountHidden(r.db, userId))) return json({ account: true, suspended: true });
   const profile = profileView(await first<ProfileRow>(profileOf(r.db, userId)), r.t);
   if (profile.private && !me) return json({ account: true, private: true });
   const acts = await publicActions(r.db, userId, r.t, CALENDAR_DAYS);
@@ -617,8 +630,9 @@ export async function handleActivity(r: ForgeRequest): Promise<Response> {
   }
   const recent = acts.filter((x) => x.action.at > r.t - TIMELINE_DAYS * 86_400);
   const alive = await aliveRepos(r.db, [...new Set(recent.map((x) => x.action.subject))]);
+  const hidden = await hiddenEventFilter(r.db, recent.map((x) => x.event).filter((e): e is EventRow => !!e));
   const timeline = recent
-    .filter((x) => !(x.action.subject.startsWith("repo:") && !alive.has(x.action.subject)))
+    .filter((x) => !(x.action.subject.startsWith("repo:") && !alive.has(x.action.subject)) && !(x.event && hidden(x.event)))
     .map(({ action, event }) =>
       event
         ? { at: event.at, kind: event.kind, words: EVENT_WORDS[event.kind], title: event.title, url: event.url, about: aboutOf(event.subject, alive) }

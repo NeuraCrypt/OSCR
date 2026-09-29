@@ -8,10 +8,18 @@
 // The authorized actions on GitHub (start, act, asset) never read a principal: they need the person's
 // own authorization on GitHub, in their browser, one action at a time (D00-4).
 
+//
+// Night phase 16: a write (post) from a suspended account (hidden.ts `accountHidden`) is refused here,
+// for every shared route, 403 suspended — but an appeal and a data-rights request (`suspendedOk`).
+
 import { signedIn, type SignedIn } from "../../account/guard.ts";
+import { accountHidden, suspended } from "./hidden.ts";
+import { problemAnswer } from "./http.ts";
 import type { ForgeRequest } from "./types.ts";
 
-export function who(r: ForgeRequest, a: { post: boolean; touch: boolean }): Promise<SignedIn | Response> {
-  if (r.principal) return Promise.resolve(r.principal);
-  return signedIn(r.request, r.env, r.t, a);
+export async function who(r: ForgeRequest, a: { post: boolean; touch: boolean; suspendedOk?: boolean }): Promise<SignedIn | Response> {
+  const s = r.principal ?? (await signedIn(r.request, r.env, r.t, { post: a.post, touch: a.touch }));
+  if (s instanceof Response || !a.post || a.suspendedOk) return s;
+  const hidden = await accountHidden(r.db, s.user.id);
+  return hidden ? problemAnswer(suspended(hidden), s.cookies) : s;
 }
