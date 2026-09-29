@@ -18,8 +18,8 @@
 //   - the jobs the Mac has not answered yet, among the table's last JOBS_TAIL rows (store.ts
 //     pendingJobsOf: jobs has no index by repository, so an older unanswered job is not listed);
 //   - phase 07: its releases tied to a paper's version (release_papers, the key's prefix: at most 500),
-//     and what the Mac answered for its releases (the map versioned, Software Heritage, Zenodo), among
-//     the same tail of jobs (store.ts recentJobsOf).
+//     what the Mac answered for its releases (the map versioned, Software Heritage, Zenodo), among
+//     the same tail of jobs (store.ts recentJobsOf), and its packages (repo_packages, the key's prefix).
 //   What D1 bills: the rows it scans, not the rows it returns. The seeded example returns ≤ 12;
 //   the scanned rows are 1 (+1 by path) + the papers + the traced paths + 2 × (at most JOBS_TAIL + 1)
 //   jobs + the releases' ties
@@ -50,6 +50,7 @@ import type { ForgeName } from "../types.ts";
 import { PER_ACCOUNT_DAY } from "./caps.ts";
 import { dailyCaps, mayWrite } from "./gate.ts";
 import { json, problem } from "./http.ts";
+import { packagesOfRepo } from "./act-packages.ts";
 import { all, first, papersOf, pendingJobsOf, recentJobsOf, releasePapersOf, repoByKey, repoByPath, reposOfOwner, tracedCount, type ReleasePaperRow } from "./store.ts";
 import type { D1Database, D1PreparedStatement, ForgeRequest, PaperStatus, RepoMode, RepoRow, RepoState } from "./types.ts";
 
@@ -120,6 +121,8 @@ export interface RepoLayerAnswer {
   /** Phase 07: what the Mac answered for the releases (the map versioned, Software Heritage, Zenodo),
    *  the newest first, among the jobs table's last rows. Its words, never who asked. */
   answered: { kind: string; ref: string; paper: string; outcome: string; message: string; doneAt: number }[];
+  /** Phase 07: the packages a person who may push confirmed or declined (repo_packages); never who. */
+  packages: { registry: string; name: string; status: string; version: string; source: string }[];
 }
 
 export interface MineItem {
@@ -302,12 +305,13 @@ function authorsOf(community: D1Database, paperIds: string[]): D1PreparedStateme
 /** OSCR's layer over one repository, as the reader sees it. Reads: the repository (1 row), its
  *  papers, the traced count (1), the pending jobs, the reader's roles and facts. */
 export async function repoLayer(db: D1Database, community: D1Database, user: User, row: RepoRow, t: number): Promise<RepoLayerAnswer> {
-  const [papersRes, tracedRes, jobsRes, tiesRes, answeredRes] = await db.batch([
+  const [papersRes, tracedRes, jobsRes, tiesRes, answeredRes, packagesRes] = await db.batch([
     papersOf(db, row.forge, row.repo_id),
     tracedCount(db, row.forge, row.repo_id),
     pendingJobsOf(db, row.forge, row.repo_id, JOBS_TAIL),
     releasePapersOf(db, row.forge, row.repo_id),
     recentJobsOf(db, row.forge, row.repo_id, ["release", "deposit", "archive"], JOBS_TAIL),
+    packagesOfRepo(db, row.forge, row.repo_id),
   ]);
   const ties = (tiesRes?.results ?? []) as unknown as ReleasePaperRow[];
   const answered = ((answeredRes?.results ?? []) as { kind: string; ref: string; paper_id: string; done_at: number | null; outcome: string; message: string }[]).filter((j) => j.done_at !== null);
@@ -369,6 +373,7 @@ export async function repoLayer(db: D1Database, community: D1Database, user: Use
     reviewers: [...reviewers.values()],
     releaseTies: ties.map((t) => ({ tag: t.tag, paper: t.paper_id.replace(/^doi:/, ""), version: t.version, label: t.label, status: t.status, commit: t.commit_sha || null, shown: t.map_digest || null })),
     answered: answered.map((j) => ({ kind: j.kind, ref: j.ref, paper: (j.paper_id ?? "").replace(/^doi:/, ""), outcome: j.outcome, message: j.message, doneAt: Number(j.done_at) })),
+    packages: ((packagesRes?.results ?? []) as { registry: string; name: string; status: string; version: string; source: string }[]).map((p) => ({ registry: p.registry, name: p.name, status: p.status, version: p.version, source: p.source })),
   };
 }
 

@@ -105,6 +105,9 @@ export const ACTION_KINDS = [
   // (act-releases.ts).
   "release_create", "release_edit", "release_delete", "release_drafts", "release_research", "tag_create",
   "tag_delete", "asset_upload", "asset_delete",
+  // Phase 07 (migrations/d1-forge/0007_packages.sql): a package the manifests declare, confirmed or
+  // declined by a person who may push (act-packages.ts).
+  "package_confirm",
 ] as const;
 
 export type ActionKind = (typeof ACTION_KINDS)[number];

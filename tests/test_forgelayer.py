@@ -562,3 +562,17 @@ def test_releases_tied_to_papers_come_in_with_their_versioned_map_and_only_a_rea
     assert second["deposit"] == {"doi": "10.5281/zenodo.2", "record": "https://zenodo.example/records/1"}
     text = json.dumps(_shards(out))
     assert "10.5072" not in text and "oscr.fixture.9" not in text and "@" not in text
+
+
+def test_confirmed_packages_come_in_the_declined_stay_out(tmp_path, forge_d1):
+    con, state, reader = _mac(tmp_path), _state(), _reader()
+    forgelayer.resolve_ids(con, state, reader, now=T)
+    _repo(forge_d1, "101", "ada-lab", "eeg-analysis-2", mode="installed", installation="7", head=LATER)
+    forge_d1.run(["INSERT INTO repo_packages (forge, repo_id, registry, name, status, version, source, by_user, at) VALUES "
+                  "('github', '101', 'pypi', 'eeg-tools', 'confirmed', '1.2.0', 'pyproject.toml', 'u1', 1), "
+                  "('github', '101', 'cran', 'eegR', 'declined', '', 'DESCRIPTION', 'u1', 1)"])
+    out = tmp_path / "public"
+    forgelayer.write(con, forge_d1, out, state=state, now=T)
+    e = _entries(out)["ada-lab/eeg-analysis-2"]
+    assert e["packages"] == [{"registry": "pypi", "name": "eeg-tools", "version": "1.2.0", "source": "pyproject.toml"}]
+    assert "u1" not in json.dumps(e)

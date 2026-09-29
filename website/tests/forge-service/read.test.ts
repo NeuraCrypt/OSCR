@@ -144,6 +144,7 @@ describe("GET /api/forge/repo", () => {
       // Phase 07: no release tied to a paper yet; nothing the Mac answered for releases.
       releaseTies: [],
       answered: [],
+      packages: [],
     });
     // Budget R6: at most 12 rows read in both databases (phase 04's authors included), none
     // written, never a scan.

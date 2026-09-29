@@ -908,6 +908,18 @@ section.release-form fieldset.release-research { margin: 1em 0; padding: .2em .9
 ul.release-toc { list-style: none; margin: .2em 0 .6em; padding: 0; font-size: .9em; }
 ul.release-toc li { margin: .15em 0; overflow-wrap: anywhere; }
 table.tags td.archives { white-space: nowrap; }
+/* The environment a release carries (night phase 07, E6): each file with its reading as a short list of
+   sentences in their tone, the places it runs as plain links, the packages with their install line
+   in the code font */
+section.env-panel { margin: 1em 0; }
+ul.env-files, ul.env-elsewhere, ul.env-packages { margin: .3em 0 .8em; padding-left: 1.2em; }
+ul.env-files > li, ul.env-packages > li { margin: .4em 0; overflow-wrap: anywhere; }
+ul.env-files p, ul.env-packages p { margin: .15em 0; }
+ul.env-checks { margin: .1em 0 .3em; padding-left: 1.2em; font-size: .92em; }
+ul.env-checks li.ok { color: var(--ok); }
+ul.env-checks li.warning { color: var(--warning); }
+ul.env-elsewhere li { margin: .3em 0; font-size: .95em; }
+code.install { font-family: var(--font-code); font-size: .9em; overflow-wrap: anywhere; }
 section.asset-form { margin: .6em 0 1em; padding: .1em .9em .5em; border: 1px solid var(--rule); }
 section.asset-form h4 { margin: .4em 0 .2em; }
 section.asset-form p { margin: .35em 0; }

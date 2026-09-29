@@ -265,6 +265,7 @@ export function parseLayer(value: unknown): ViewLayer | null {
     releaseTies: Array.isArray(o.releaseTies) ? o.releaseTies.slice(0, 500) : undefined,
     answered: Array.isArray(o.answered) ? o.answered.slice(0, 100) : undefined,
     jobs: Array.isArray(o.jobs) ? o.jobs.slice(0, 100) : undefined,
+    packages: Array.isArray(o.packages) ? o.packages.slice(0, 200) : undefined,
   };
 }
 

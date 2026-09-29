@@ -68,7 +68,9 @@ a deposit on the real Zenodo: a sandbox deposit is a test and stays out of every
 (CLAUDE.md). The release itself (its title, notes, files) is GitHub's and never copied here. Each
 listed paper that has code in the registry also carries its tracing map's digest (``map``,
 ``zenodo.map_digest``, as the paper's page shows it): the release form ties a release to the map the
-person saw.
+person saw. An entry's ``packages`` are the ones a person who may push confirmed (D1 ``repo_packages``):
+the registry, the name, the version and the manifest that declared it; the package stays at its
+registry.
 
     oscr forge layer --local|--remote   the traced paths pushed, then the shards written
     oscr forge status                   what each target holds, the ids, the last runs
@@ -879,6 +881,35 @@ def releases(con: sqlite3.Connection, d1: community.D1 | None, state: sqlite3.Co
     return {k: v[:RELEASES_PER_REPO] for k, v in out.items()}
 
 
+#: The public registries a package record names (website/worker/forge/service/act-packages.ts).
+REGISTRIES: tuple[str, ...] = ("pypi", "cran", "conda-forge", "julia", "npm")
+
+
+def packages(d1: community.D1 | None) -> dict[str, list[dict[str, Any]]]:
+    """The packages a person who may push confirmed, by repository id (D1 ``repo_packages``, by its key;
+    the declined ones stay out). Before oscr_forge's migration 0007, none."""
+    if d1 is None:
+        return {}
+    try:
+        rows = _forge_rows(d1, "repo_packages", "repo_id, registry, name, status, version, source", ("repo_id", "registry", "name"))
+    except (community.D1Error, sqlite3.Error) as e:
+        if "no such table" in str(e):
+            return {}
+        raise LayerError(f"D1 did not answer for the packages: {e}") from None
+    out: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    for r in rows:
+        if r["status"] == "confirmed" and r["registry"] in REGISTRIES:
+            out[r["repo_id"]].append({"registry": r["registry"], "name": r["name"], "version": r["version"] or None,
+                                      "source": r["source"] or None})
+    return dict(out)
+
+
+def attach_packages(entries: dict[str, dict[str, Any]], pkgs: dict[str, list[dict[str, Any]]]) -> None:
+    for entry in entries.values():
+        if entry.get("id") and entry["id"] in pkgs:
+            entry["packages"] = entities.scrub(pkgs[entry["id"]][:100])
+
+
 def attach_releases(entries: dict[str, dict[str, Any]], rels: dict[str, list[dict[str, Any]]]) -> None:
     """Each layer entry's releases tied to papers, by its repository id."""
     for entry in entries.values():
@@ -972,12 +1003,14 @@ def write(con: sqlite3.Connection, d1: community.D1 | None, out: Path, *, state:
             entries, left_out = layer(con, d1, state)
             issues = research(con, d1)
             rels = releases(con, d1, state)
+            pkgs = packages(d1)
         except LayerError:
             _write_shards(out, {f"{n:02d}": {} for n in range(SHARDS)})
             _write_shards(out, {f"{n:02d}": {} for n in range(SHARDS)}, RESEARCH)
             raise
         attach_research(entries, issues)
         attach_releases(entries, rels)
+        attach_packages(entries, pkgs)
         attach_maps(con, entries)
         folder = _write_shards(out, shards(entries))
         _write_shards(out, research_shards(issues), RESEARCH)

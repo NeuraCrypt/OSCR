@@ -400,6 +400,7 @@ export async function seedReleases(ada: GitSession, repo: T.RepoRef): Promise<{ 
       { op: "put", path: ".devcontainer/devcontainer.json", content: te.encode(DEVCONTAINER) },
       { op: "put", path: ".gitattributes", content: te.encode("notebooks/ export-ignore\n*.ipynb export-ignore\n") },
       { op: "put", path: ".github/release.yml", content: te.encode(RELEASE_YML) },
+      { op: "put", path: "pyproject.toml", content: te.encode('[project]\nname = "eeg-analysis"\nversion = "1.1.0rc1"\nrequires-python = ">=3.11"\ndependencies = [\n  "numpy>=1.26",\n  "scipy>=1.11,<1.12",\n  "mne==1.6.0",\n]\n') },
     ],
   });
   const rc = await ada.git.resolve(repo, "main");

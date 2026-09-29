@@ -51,20 +51,21 @@ export const GITHUB = "https://github.com";
  *  releases/tag/<tag…> (a release), releases/new (the form; GitHub's ?tag=&target=&title=&body=
  *  &prerelease=1 prefill it), releases/edit/<tag…>, releases/latest, releases/latest/download/<file>,
  *  releases/download/<tag…>/<file> (the file is GitHub's: the page links it), and the registry's
- *  releases/changelog; tags (the list). src/lib/releases.ts reads them. */
+ *  releases/changelog; tags (the list); environment/<ref> (the environment files, read as text, and
+ *  the packages they declare). src/lib/releases.ts and src/lib/environments.ts read them. */
 export type RepoView =
   | "home" | "settings" | "branches" | "tree" | "blob" | "commits" | "commit" | "compare" | "find" | "search" | "docs"
   | "edit" | "new" | "upload" | "delete"
   | "pulls" | "pull" | "fork" | "forks"
   | "issues" | "labels" | "milestones" | "milestone"
-  | "releases" | "tags";
+  | "releases" | "tags" | "environment";
 export const REPO_VIEWS: readonly RepoView[] = ["home", "settings", "branches"];
 /** The views that carry segments after their name (a ref, a path, a commit, a comparison). */
 export const CODE_VIEWS: readonly RepoView[] = [
   "tree", "blob", "commits", "commit", "compare", "find", "search", "docs", "edit", "new", "upload", "delete",
   "pulls", "pull", "fork", "forks",
   "issues", "labels", "milestones", "milestone",
-  "releases", "tags",
+  "releases", "tags", "environment",
 ];
 /** The editing views (phase 03): they act on a branch, and their changes are commits. */
 export const EDIT_VIEWS: readonly RepoView[] = ["edit", "new", "upload", "delete"];
@@ -123,6 +124,7 @@ const SEGMENTS: Partial<Record<RepoView, [number, number]>> = {
   milestone: [1, 1],
   releases: [0, 66],
   tags: [0, 0],
+  environment: [0, 64],
 };
 
 /** The repository and the view a path of the shell names, or null: /r/<owner>/<name>/ (the final
@@ -296,6 +298,9 @@ export interface ShellLayer {
   releaseTies?: unknown[];
   answered?: unknown[];
   jobs?: unknown[];
+  /** Phase 07: the packages a person who may push confirmed (the static shard) or confirmed and
+   *  declined (signed in). Checked where read (src/scripts/repo-environment.ts). */
+  packages?: unknown[];
 }
 
 /** What the /r/ shell knows of a repository, and hands to mountSettings and mountBranches

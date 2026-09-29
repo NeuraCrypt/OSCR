@@ -17,7 +17,7 @@ from oscr import catalog, cli, community, forgejobs, forgelayer, jobs, publish
 
 ROOT = Path(__file__).resolve().parents[1]
 TABLES = {"repos", "repo_papers", "installations", "traced_paths", "actions", "deliveries", "jobs",
-          "research_issues", "research_comments", "release_papers"}
+          "research_issues", "research_comments", "release_papers", "repo_packages"}
 T = 1_790_596_800
 
 
@@ -25,7 +25,7 @@ def _tables(con: sqlite3.Connection) -> dict[str, str]:
     return {name: sql for name, sql in con.execute("SELECT name, sql FROM sqlite_master WHERE type = 'table'")}
 
 
-def test_the_migration_applies_and_holds_the_ten_tables(forge_d1):
+def test_the_migration_applies_and_holds_the_eleven_tables(forge_d1):
     assert FORGE_MIGRATIONS and FORGE_MIGRATIONS[0].name == "0001_forge.sql"
     assert set(_tables(forge_d1.con)) == TABLES
     # The Mac's interface: rows in, rows out.
@@ -88,8 +88,8 @@ def test_the_checks_refuse_an_address_an_unknown_forge_and_a_private_name(forge_
 
 
 def test_the_action_kinds_are_the_workers():
-    """The migrations' CHECK on actions.kind (as the last one that rebuilt the table leaves it: 0006,
-    phase 07's releases) lists website/worker/forge/service/types.ts ACTION_KINDS, then its
+    """The migrations' CHECK on actions.kind (as the last one that rebuilt the table leaves it: 0007,
+    phase 07's packages) lists website/worker/forge/service/types.ts ACTION_KINDS, then its
     RESEARCH_KINDS (the registry's own writes, logged like the actions)."""
     sql = forge_database().execute("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'actions'").fetchone()[0]
     assert "WITHOUT ROWID" in sql
@@ -101,7 +101,7 @@ def test_the_action_kinds_are_the_workers():
     start = types.index("export const RESEARCH_KINDS = [")
     in_ts += re.findall(r'"([a-z_]+)"', types[start:types.index("] as const", start)])
     assert in_sql == in_ts
-    assert len(in_sql) == 57 and len(set(in_sql)) == 57
+    assert len(in_sql) == 58 and len(set(in_sql)) == 58
 
 
 def test_the_layer_shards_are_sha256_mod_64():

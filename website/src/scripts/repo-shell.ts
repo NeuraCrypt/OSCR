@@ -67,6 +67,7 @@ import "./repo-issue.ts";
 import "./issue-links.ts";
 import "./repo-releases.ts";
 import "./repo-release-assets.ts";
+import "./repo-environment.ts";
 import { mountForkStatus } from "./repo-forks.ts";
 import { codePanel, quickSetup, useTemplate, wireCopy } from "./repo-code-panel.ts";
 import { mountBranches } from "./repo-branches.ts";
@@ -127,6 +128,8 @@ function sidebar(loaded: Loaded, site: string): El {
     // Phase 07: the releases and the tags, read on their pages (no request here).
     h("h3", null, "Releases"),
     h("p", null, h("a", { href: repoPath(repo, "releases") }, "The releases"), " · ", h("a", { href: repoPath(repo, "tags") }, "Tags"), " · ", h("a", { href: `${repoPath(repo, "releases")}latest` }, "The latest")),
+    h("h3", null, "Environment"),
+    h("p", null, h("a", { href: repoPath(repo, "environment") }, "How it runs again"), ": its environment files, read as text, and the packages it publishes."),
     pagesBlock(pagesSite(repo.owner, repo.name, info?.homepage), site),
     archive ? [h("h3", null, "Archive"), h("p", null, link(archive, "Software Heritage's archive"), " of this repository.")] : null,
     about.length ? [h("h3", null, "About"), ...about] : null,
