@@ -12,6 +12,7 @@
 // for an ordinary authorization (forge-client.ts `resumeAction`); a return with no action waiting in this tab says what
 // happened and what to do. Nothing is written as HTML; the page never names the platform.
 
+import { stashAnswer } from "../lib/release-stash.ts";
 import {
   completeAction,
   dropDrafts,
@@ -108,6 +109,9 @@ export async function arrive(search: string, deps: ClientDeps = {}): Promise<Out
   // A commit made: the editor's drafts it carried are dropped (phase 03); kept on any failure, so
   // the change is still there when the person goes back.
   if (res?.status === 200 && pending.drafts?.length) dropDrafts(pending.drafts, deps.local === undefined ? localStore() : deps.local);
+  // Phase 07: the draft releases GitHub showed the person, or the one just saved, kept in the tab for
+  // the releases page (masked texts as the Worker answered them; never a token).
+  if (res?.status === 200) stashAnswer(pending.kind, res.body.result, storage, now);
   const outcome = outcomeOf(res, pending);
   return installed ? [installed, outcome] : [outcome];
 }

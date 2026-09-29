@@ -384,6 +384,17 @@ export function pendingJobsOf(db: D1Database, forge: string, repoId: string, tai
     .bind(Math.max(1, Math.floor(tail)), forgeOf(forge), repoId);
 }
 
+/** A repository's jobs of these kinds among the table's last `tail` rows, answered or not, the newest
+ *  first (phase 07: the release page says what the Mac did, in its own words). */
+export function recentJobsOf(db: D1Database, forge: string, repoId: string, kinds: readonly JobKind[], tail = 50): D1PreparedStatement {
+  return db
+    .prepare(
+      "SELECT id, kind, ref, paper_id, created_at, done_at, outcome, message FROM jobs WHERE id > (SELECT coalesce(max(id), 0) FROM jobs) - ? " +
+        `AND forge = ? AND repo_id = ? AND kind IN (${kinds.map(() => "?").join(", ")}) ORDER BY id DESC`,
+    )
+    .bind(Math.max(1, Math.floor(tail)), forgeOf(forge), repoId, ...kinds);
+}
+
 // ─── the logs: actions and deliveries ────────────────────────────────────────
 
 /** The row of an authorized action (1 row written): the audit, and what the daily caps count.

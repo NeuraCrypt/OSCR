@@ -47,8 +47,9 @@ function validMap(x: unknown): x is TracedMap {
 
 let maps: Promise<TracedMap[]> | null = null;
 
-/** The maps of the repository the page shows (none when its shard cannot be read). */
-function mapsOf(env: Pick<CodeEnv, "repo">): Promise<TracedMap[]> {
+/** The maps of the repository the page shows (none when its shard cannot be read). Phase 07: the
+ *  release form's notes name the map links a release's changes touch. */
+export function mapsOf(env: Pick<CodeEnv, "repo">): Promise<TracedMap[]> {
   maps ??= (async () => {
     try {
       const shard = await layerShard(env.repo.owner, env.repo.name);

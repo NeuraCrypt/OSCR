@@ -141,6 +141,9 @@ describe("GET /api/forge/repo", () => {
       jobs: [{ id: 2, kind: "push", ref: HEAD, createdAt: T0 - 300, notBefore: null }],
       // Phase 04: the verified authors with a GitHub login, the reviewers a pull request suggests.
       reviewers: [{ login: "ada-fixture", papers: ["10.1234/one"] }],
+      // Phase 07: no release tied to a paper yet; nothing the Mac answered for releases.
+      releaseTies: [],
+      answered: [],
     });
     // Budget R6: at most 12 rows read in both databases (phase 04's authors included), none
     // written, never a scan.

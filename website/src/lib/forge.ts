@@ -258,6 +258,9 @@ export interface ShellPaper {
   title: string | null;
   /** linked (by a verified author or a maintainer) or proposed; null in the catalogue's layer. */
   status: "linked" | "proposed" | null;
+  /** Phase 07: its tracing map's digest (oscr/zenodo.py map_digest), as its page shows it, when it
+   *  has code in the registry (the static layer's): a release is tied to the map the person saw. */
+  map?: string | null;
 }
 
 /** OSCR's layer over a repository, from the static shard (signed out) or GET /api/forge/repo
@@ -286,6 +289,13 @@ export interface ShellLayer {
   /** Phase 05: the research issues about the repository, as of last night (the static shard only;
    *  read by src/lib/issue-view.ts parseSummaries). */
   research?: unknown[];
+  /** Phase 07: its releases tied to papers, as of last night, with the maps the Mac versioned (the
+   *  static shard; src/lib/releases.ts parseTies), and, signed in, the live ties and what the Mac
+   *  answered or has yet to (GET /api/forge/repo: releaseTies, answered, jobs). Checked where read. */
+  releases?: unknown[];
+  releaseTies?: unknown[];
+  answered?: unknown[];
+  jobs?: unknown[];
 }
 
 /** What the /r/ shell knows of a repository, and hands to mountSettings and mountBranches

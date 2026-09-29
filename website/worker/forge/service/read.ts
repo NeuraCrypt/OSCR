@@ -16,9 +16,13 @@
 //     `linked_by` (the reader linked or created it through the registry);
 //   - how many tracing maps and traced paths point to it (the number the deletion page shows);
 //   - the jobs the Mac has not answered yet, among the table's last JOBS_TAIL rows (store.ts
-//     pendingJobsOf: jobs has no index by repository, so an older unanswered job is not listed).
+//     pendingJobsOf: jobs has no index by repository, so an older unanswered job is not listed);
+//   - phase 07: its releases tied to a paper's version (release_papers, the key's prefix: at most 500),
+//     and what the Mac answered for its releases (the map versioned, Software Heritage, Zenodo), among
+//     the same tail of jobs (store.ts recentJobsOf).
 //   What D1 bills: the rows it scans, not the rows it returns. The seeded example returns ≤ 12;
-//   the scanned rows are 1 (+1 by path) + the papers + the traced paths + at most JOBS_TAIL + 1 jobs
+//   the scanned rows are 1 (+1 by path) + the papers + the traced paths + 2 × (at most JOBS_TAIL + 1)
+//   jobs + the releases' ties
 //   + the reader's few community rows: ≤ ~70 on a busy repository, 350,000 a day at the design's
 //   5,000 signed-in views, inside D1's free 5 million reads a day.
 //   A hidden repository (made private on GitHub, D00-14) answers 404 like an unknown one, and its
@@ -46,7 +50,7 @@ import type { ForgeName } from "../types.ts";
 import { PER_ACCOUNT_DAY } from "./caps.ts";
 import { dailyCaps, mayWrite } from "./gate.ts";
 import { json, problem } from "./http.ts";
-import { all, first, papersOf, pendingJobsOf, repoByKey, repoByPath, reposOfOwner, tracedCount } from "./store.ts";
+import { all, first, papersOf, pendingJobsOf, recentJobsOf, releasePapersOf, repoByKey, repoByPath, reposOfOwner, tracedCount, type ReleasePaperRow } from "./store.ts";
 import type { D1Database, D1PreparedStatement, ForgeRequest, PaperStatus, RepoMode, RepoRow, RepoState } from "./types.ts";
 
 // ─── the answers' shapes ─────────────────────────────────────────────────────
@@ -110,6 +114,12 @@ export interface RepoLayerAnswer {
    *  GitHub login — the reviewers a pull request's page suggests. Answered only to a reader who
    *  manages the repository or authored one of its papers; empty for anyone else. */
   reviewers: { login: string; papers: string[] }[];
+  /** Phase 07: the releases tied to a version of a paper, live (the static layer has them as of last
+   *  night, with the tracing maps the Mac versioned and the real Zenodo's DOIs). Never who tied. */
+  releaseTies: { tag: string; paper: string; version: string; label: string; status: PaperStatus; commit: string | null; shown: string | null }[];
+  /** Phase 07: what the Mac answered for the releases (the map versioned, Software Heritage, Zenodo),
+   *  the newest first, among the jobs table's last rows. Its words, never who asked. */
+  answered: { kind: string; ref: string; paper: string; outcome: string; message: string; doneAt: number }[];
 }
 
 export interface MineItem {
@@ -292,11 +302,15 @@ function authorsOf(community: D1Database, paperIds: string[]): D1PreparedStateme
 /** OSCR's layer over one repository, as the reader sees it. Reads: the repository (1 row), its
  *  papers, the traced count (1), the pending jobs, the reader's roles and facts. */
 export async function repoLayer(db: D1Database, community: D1Database, user: User, row: RepoRow, t: number): Promise<RepoLayerAnswer> {
-  const [papersRes, tracedRes, jobsRes] = await db.batch([
+  const [papersRes, tracedRes, jobsRes, tiesRes, answeredRes] = await db.batch([
     papersOf(db, row.forge, row.repo_id),
     tracedCount(db, row.forge, row.repo_id),
     pendingJobsOf(db, row.forge, row.repo_id, JOBS_TAIL),
+    releasePapersOf(db, row.forge, row.repo_id),
+    recentJobsOf(db, row.forge, row.repo_id, ["release", "deposit", "archive"], JOBS_TAIL),
   ]);
+  const ties = (tiesRes?.results ?? []) as unknown as ReleasePaperRow[];
+  const answered = ((answeredRes?.results ?? []) as { kind: string; ref: string; paper_id: string; done_at: number | null; outcome: string; message: string }[]).filter((j) => j.done_at !== null);
   const paperRows = (papersRes?.results ?? []) as { paper_id: string; status: PaperStatus; at: number }[];
   const traced = ((tracedRes?.results ?? [])[0] ?? { paths: 0, maps: 0 }) as { paths: number; maps: number };
   const jobRows = (jobsRes?.results ?? []) as { id: number; kind: string; ref: string; created_at: number; not_before: number | null }[];
@@ -353,6 +367,8 @@ export async function repoLayer(db: D1Database, community: D1Database, user: Use
     paths: Number(traced.paths ?? 0),
     jobs: jobRows.map((j) => ({ id: Number(j.id), kind: j.kind, ref: j.ref, createdAt: Number(j.created_at), notBefore: j.not_before })),
     reviewers: [...reviewers.values()],
+    releaseTies: ties.map((t) => ({ tag: t.tag, paper: t.paper_id.replace(/^doi:/, ""), version: t.version, label: t.label, status: t.status, commit: t.commit_sha || null, shown: t.map_digest || null })),
+    answered: answered.map((j) => ({ kind: j.kind, ref: j.ref, paper: (j.paper_id ?? "").replace(/^doi:/, ""), outcome: j.outcome, message: j.message, doneAt: Number(j.done_at) })),
   };
 }
 

@@ -10,7 +10,8 @@
 // line in words, the Code button, the quick setup of an empty repository, the papers, the GitHub
 // Pages site; under settings/ and branches/, E8's modules (mountSettings, mountBranches).
 // Phase 02 builds the code views here (repo-code.ts, repo-history.ts, repo-markdown.ts,
-// repo-traced.ts, repo-rich.ts, repo-docs.ts, repo-about.ts, repo-find.ts).
+// repo-traced.ts, repo-rich.ts, repo-docs.ts, repo-about.ts, repo-find.ts); phase 07 the releases
+// and the tags (repo-releases.ts).
 //
 // Everything is written as text nodes (masked for email addresses), never as HTML; links are
 // checked again here (repo-view.ts safeHref). Like every browser script, it never names the
@@ -64,6 +65,7 @@ import "./repo-conflicts.ts";
 import "./repo-issues.ts";
 import "./repo-issue.ts";
 import "./issue-links.ts";
+import "./repo-releases.ts";
 import { mountForkStatus } from "./repo-forks.ts";
 import { codePanel, quickSetup, useTemplate, wireCopy } from "./repo-code-panel.ts";
 import { mountBranches } from "./repo-branches.ts";
@@ -121,6 +123,9 @@ function sidebar(loaded: Loaded, site: string): El {
     // Filled once the files are read (repo-about.ts): languages, community files, the citation.
     h("div", { id: "about-extras", "aria-live": "polite" }),
     papersBlock(layer, site),
+    // Phase 07: the releases and the tags, read on their pages (no request here).
+    h("h3", null, "Releases"),
+    h("p", null, h("a", { href: repoPath(repo, "releases") }, "The releases"), " · ", h("a", { href: repoPath(repo, "tags") }, "Tags"), " · ", h("a", { href: `${repoPath(repo, "releases")}latest` }, "The latest")),
     pagesBlock(pagesSite(repo.owner, repo.name, info?.homepage), site),
     archive ? [h("h3", null, "Archive"), h("p", null, link(archive, "Software Heritage's archive"), " of this repository.")] : null,
     about.length ? [h("h3", null, "About"), ...about] : null,

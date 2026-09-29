@@ -872,6 +872,43 @@ nav.tabs a[aria-current="page"] { font-weight: bold; color: var(--text); }
 #issue-actions input[type="text"], #issue-actions select { font: inherit; border-radius: 0; max-width: 100%; }
 #issue-actions input[type="text"] { padding: .1em .3em; border: 1px solid #777; }
 
+/* Releases (night phase 07, E4): the list as ruled rows, a release's states in words (Latest,
+   Pre-release, Draft, Immutable: never a pill), its files as a ruled table with their SHA-256 in the
+   code font, the tie to a paper's version as a quiet ruled block, the form's fields in columns like
+   the pull request form's; the table of contents in the sidebar as a short list */
+ul.release-list { list-style: none; margin: 0 0 1em; padding: 0; }
+ul.release-list li.release-row { padding: .5em 0; border-bottom: 1px solid var(--rule); }
+ul.release-list .title { margin: 0; font-weight: bold; overflow-wrap: anywhere; }
+ul.release-list .line { margin: .15em 0 0; color: var(--muted); font-size: .9em; overflow-wrap: anywhere; }
+ul.release-list .excerpt { margin: .25em 0 0; font-size: .92em; overflow-wrap: anywhere; }
+.states { font-size: .88em; font-weight: normal; }
+.state { color: var(--muted); }
+.state.ok { color: var(--ok); }
+.state.warning { color: var(--warning); }
+.release-head h2 { margin: .4em 0 .2em; font-size: 1.35em; overflow-wrap: anywhere; }
+.release-head .line { margin: .15em 0; color: var(--muted); font-size: .92em; overflow-wrap: anywhere; }
+section.release-notes { margin: .8em 0 1em; padding: .1em .9em .4em; border: 1px solid var(--rule); }
+table.assets { width: 100%; border-collapse: collapse; margin: .4em 0 .8em; font-size: .92em; }
+table.assets th, table.assets td { text-align: left; vertical-align: baseline; padding: .3em .8em .3em 0; border-bottom: 1px solid var(--rule); }
+table.assets th { font-weight: bold; border-bottom-color: var(--text); }
+table.assets td.name { overflow-wrap: anywhere; }
+table.assets .label-text { color: var(--muted); }
+code.digest, td.digest code { font-family: var(--font-code); font-size: .9em; overflow-wrap: anywhere; word-break: break-all; }
+.tie { margin: .4em 0 .8em; padding: .2em .8em; border-left: 3px solid var(--masthead); background: var(--bg-sidebar); }
+.tie p { margin: .3em 0; overflow-wrap: anywhere; }
+.tie p.ok { color: var(--ok); }
+.tie p.warning { color: var(--warning); }
+form.release-research p, form.tag-form p { margin: .4em 0; }
+form.release-research select, form.release-research input[type="text"], form.tag-form input[type="text"] { font: inherit; border-radius: 0; max-width: 100%; }
+form.release-research input[type="text"], form.tag-form input[type="text"] { padding: .1em .3em; border: 1px solid #777; }
+section.release-form input[type="text"] { width: min(24em, 100%); }
+section.release-form #rel-name { width: min(40em, 100%); }
+section.release-form select { max-width: 100%; }
+section.release-form fieldset.release-research { margin: 1em 0; padding: .2em .9em .5em; border: 1px solid var(--rule); }
+ul.release-toc { list-style: none; margin: .2em 0 .6em; padding: 0; font-size: .9em; }
+ul.release-toc li { margin: .15em 0; overflow-wrap: anywhere; }
+table.tags td.archives { white-space: nowrap; }
+
 footer {
   max-width: var(--width); margin: 0 auto; padding: 1em;
   border-top: 1px solid var(--rule); font-size: .85em; color: var(--muted);
@@ -921,4 +958,8 @@ footer a { margin-right: 1em; }
   /* Phase 05: the issue forms take the column; a label keeps its words together */
   section.issue-form .form-field input[type="text"] { width: 100%; box-sizing: border-box; }
   ul.issue-list li.issue-row.pinned { padding-left: .3em; }
+  /* Phase 07: a release's files scroll within the column; the forms take it */
+  table.assets { display: block; overflow-x: auto; }
+  section.release-form input[type="text"], section.release-form #rel-name { width: 100%; box-sizing: border-box; }
+  section.release-notes, .tie { padding-left: .6em; padding-right: .6em; }
 }

@@ -235,6 +235,8 @@ export function parseLayer(value: unknown): ViewLayer | null {
       slug: typeof r.slug === "string" && SLUG.test(r.slug) ? r.slug : null,
       title: text(r.title),
       status: r.status === "linked" || r.status === "proposed" ? r.status : null,
+      // Phase 07: the tracing map's digest, when the static layer gives it.
+      ...(typeof r.map === "string" && /^[0-9a-f]{64}$/.test(r.map) ? { map: r.map } : {}),
     });
   }
   const swh = pick(o, "swh", "software_heritage", "softwareHeritage");
@@ -258,6 +260,11 @@ export function parseLayer(value: unknown): ViewLayer | null {
       .map((r) => ({ login: r.login as string, papers: (Array.isArray(r.papers) ? r.papers : []).filter((d): d is string => typeof d === "string" && DOI.test(d)).slice(0, 20) })),
     // Phase 05: the research issues, checked field by field where they are read (issue-view.ts).
     research: Array.isArray(o.research) ? o.research.slice(0, 1000) : undefined,
+    // Phase 07: the releases tied to papers and the Mac's answers, checked where read (releases.ts).
+    releases: Array.isArray(o.releases) ? o.releases.slice(0, 500) : undefined,
+    releaseTies: Array.isArray(o.releaseTies) ? o.releaseTies.slice(0, 500) : undefined,
+    answered: Array.isArray(o.answered) ? o.answered.slice(0, 100) : undefined,
+    jobs: Array.isArray(o.jobs) ? o.jobs.slice(0, 100) : undefined,
   };
 }
 
@@ -366,7 +373,7 @@ export function repoHead({ owner, name, info }: HeadFacts): El {
 export function repoTabs(repo: RepoCoords, view: RepoView): El {
   // Every code view (tree, blob, commits, commit, compare, find, search) is under Code; a pull
   // request and the list under Pull requests (phase 04); an issue, the list, labels and milestones
-  // under Issues (phase 05).
+  // under Issues (phase 05); the releases and the tags under Releases (phase 07).
   const shown: RepoView =
     view === "settings" || view === "branches"
       ? view
@@ -374,10 +381,16 @@ export function repoTabs(repo: RepoCoords, view: RepoView): El {
         ? "pulls"
         : view === "issues" || view === "labels" || view === "milestones" || view === "milestone"
           ? "issues"
-          : "home";
+          : view === "releases" || view === "tags"
+            ? "releases"
+            : "home";
   const tab = (v: RepoView, label: string) =>
     h("li", null, h("a", { href: repoPath(repo, v), "aria-current": v === shown ? "page" : null }, label));
-  return h("nav", { class: "tabs", "aria-label": "Repository" }, h("ul", null, tab("home", "Code"), tab("issues", "Issues"), tab("pulls", "Pull requests"), tab("branches", "Branches"), tab("settings", "Settings")));
+  return h(
+    "nav",
+    { class: "tabs", "aria-label": "Repository" },
+    h("ul", null, tab("home", "Code"), tab("issues", "Issues"), tab("pulls", "Pull requests"), tab("releases", "Releases"), tab("branches", "Branches"), tab("settings", "Settings")),
+  );
 }
 
 // ─── the papers, the Pages site, the archive ─────────────────────────────────

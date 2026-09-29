@@ -500,3 +500,23 @@ describe("the registry and FORGE_OPEN", () => {
     assert.equal(describeReleaseCreate(p), "Save the draft release v0.1.0 “First” at commit ddddddd (a pre-release)");
   });
 });
+
+describe("the signed-in layer (GET /api/forge/repo)", () => {
+  test("the live ties and what the Mac answered for the releases, never who asked", async () => {
+    const b = await signIn(w);
+    const { id, head } = await repository();
+    await w.forge.batch([
+      w.forge.prepare("INSERT INTO release_papers (forge, repo_id, tag, paper_id, release_id, repo_path, version, label, commit_sha, map_digest, status, by_user, at) VALUES ('memory', ?, 'v1.0.0', ?, '7', 'ada-fixture/eeg', 'accepted', 'revision 2', ?, ?, 'linked', 'u_secret', ?)").bind(id, PAPER, head, MAP, T0),
+      w.forge.prepare("INSERT INTO jobs (kind, forge, repo_id, ref, user_id, created_at, paper_id, proof, done_at, outcome, message) VALUES ('deposit', 'memory', ?, 'v1.0.0', 'u_secret', ?, ?, 'orcid-sandbox', ?, 'done', 'Deposited on Zenodo (sandbox).')").bind(id, T0, PAPER, T0 + 60),
+      w.forge.prepare("INSERT INTO jobs (kind, forge, repo_id, ref, user_id, created_at, paper_id) VALUES ('release', 'memory', ?, 'v1.0.0', 'u_secret', ?, ?)").bind(id, T0, PAPER),
+    ]);
+    const res = await b.fetch(`/api/forge/repo?id=memory:${id}`);
+    assert.equal(res.status, 200);
+    const layer = (await res.json()) as Record<string, unknown>;
+    assert.deepEqual(layer.releaseTies, [{ tag: "v1.0.0", paper: "10.1234/eeg.2026", version: "accepted", label: "revision 2", status: "linked", commit: head, shown: MAP }]);
+    assert.deepEqual(layer.answered, [{ kind: "deposit", ref: "v1.0.0", paper: "10.1234/eeg.2026", outcome: "done", message: "Deposited on Zenodo (sandbox).", doneAt: T0 + 60 }]);
+    assert.deepEqual((layer.jobs as { kind: string }[]).map((j) => j.kind), ["release"]);
+    assert.ok(!JSON.stringify(layer).includes("u_secret"));
+    assert.deepEqual(w.forge.scans, []);
+  });
+});
