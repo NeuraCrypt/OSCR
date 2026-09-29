@@ -18,7 +18,12 @@
 #    phase 05's issues: a GitHub issue opened with its type, labelled, commented, closed as not
 #    planned; a research issue (a code–paper mismatch) opened, labelled, commented, closed with a
 #    resolution; a second one closed by the merge of a pull request that says it fixes it; a copy on
-#    GitHub; Bob's issue and research issue refused (FORGE_OPEN).
+#    GitHub; Bob's issue and research issue refused (FORGE_OPEN); phase 07's releases: Ada's ORCID iD
+#    linked, a release published with notes, tied to the paper's accepted manuscript with its map,
+#    Software Heritage and a Zenodo deposit asked, tags, the drafts, a package confirmed; Bob's release
+#    and file refused;
+# 5. phase 07: the Mac's forge poll, offline, its Zenodo the mock sandbox (never a real Zenodo), then
+#    the checks of its answers: the map versioned with the release, the deposit made on the mock.
 #
 #   cd website && SITE_PORT=8791 MOCK_PORT=9491 FAKE_PORT=9490 sh tests/forge-service/e2e.sh
 #   (KEEP=1 leaves the three servers running, for screenshots; kill them after.)
@@ -93,5 +98,17 @@ until curl -fs "$SITE/api/account/me" >/dev/null 2>&1; do
   sleep 0.5
 done
 
-# 4. The run.
-SITE="$SITE" MOCK="$MOCK" FAKE="$FAKE" WEBHOOK_SECRET="$WEBHOOK_SECRET" node --experimental-strip-types tests/forge-service/e2e.ts
+# 4. The run. Phase 07: the fixture paper's tracing map digest, as the Mac computes it (the map the
+# release form shows), for the release's tie and its deposit.
+MAP_DIGEST=$(cd "$ROOT" && "$PYTHON" -c "import sqlite3; from oscr import zenodo; con = sqlite3.connect('$TMP/mac.db'); con.row_factory = sqlite3.Row; print(zenodo.map_digest(zenodo.map_of(con, 'doi:10.5555/oscr.fixture.1')))")
+SITE="$SITE" MOCK="$MOCK" FAKE="$FAKE" WEBHOOK_SECRET="$WEBHOOK_SECRET" MAP_DIGEST="$MAP_DIGEST" E2E_STATE="$TMP/phase07.json" \
+  node --experimental-strip-types tests/forge-service/e2e.ts
+
+# 5. Phase 07: the Mac's forge jobs, offline (no GitHub, no Software Heritage: those jobs wait), its Zenodo
+# the MOCK sandbox (an explicit sandbox, whatever the settings say; a token that is none), on the same
+# local D1; then the checks of what it answered.
+(cd "$ROOT" && OSCR_ZENODO_SANDBOX_URL="$MOCK/zenodo" ZENODO_SANDBOX_TOKEN="e2e-mock-token" "$PYTHON" -m oscr \
+  --db "$TMP/mac.db" --cache "$TMP/cache" --offline --no-verify --no-metadata --no-swh --no-contents --no-records \
+  forge poll --local --persist-to "$TMP/state" --folder "$TMP/community" --instance sandbox) >"$TMP/mac-forge.log" 2>&1 \
+  || { echo "the Mac's forge poll failed:"; tail -20 "$TMP/mac-forge.log"; exit 1; }
+SITE="$SITE" MOCK="$MOCK" FAKE="$FAKE" E2E_STATE="$TMP/phase07.json" node --experimental-strip-types tests/forge-service/e2e.ts after-mac

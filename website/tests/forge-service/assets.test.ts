@@ -128,6 +128,24 @@ describe("POST /api/forge/asset", () => {
     assert.equal(forgeRows(w.forge, "actions").length, 0);
   });
 
+  test("signed in, from the registry's own page, with its CSRF token: else refused before anything is read", async () => {
+    const b = await signIn(w);
+    const { id, release } = await draft();
+    const seen = watchAuth(w);
+    const headers = await authorized(b, input(id, { release, name: "a.csv", size: DATA.length, sha256: await sha(DATA), contentType: "text/csv" }));
+    const noCsrf = await postFile(b, DATA, { ...headers, "X-CSRF-Token": "forged" });
+    assert.equal(noCsrf.res.status, 403);
+    assert.equal(noCsrf.body.error.code, "bad_csrf");
+    const elsewhere = await postFile(b, DATA, { ...headers, Origin: "https://evil.example" });
+    assert.equal(elsewhere.res.status, 403);
+    assert.equal(elsewhere.body.error.code, "bad_origin");
+    b.jar.clear();
+    const out = new Request(new URL(ASSET_PATH, b.origin), { method: "POST", headers: { Origin: b.origin, "Content-Length": String(DATA.length), ...headers }, body: DATA as Uint8Array<ArrayBuffer> });
+    assert.equal(((await handleForge(out, w.env, w.ctx, w.deps)) as Response).status, 401);
+    assert.deepEqual(seen.issued, [], "no code was exchanged");
+    assert.deepEqual((await ada().releases.get(REF, release)).assets, []);
+  });
+
   test("closed to everyone but the owner while FORGE_OPEN is unset", async () => {
     w.restore();
     w = forgeWorld();

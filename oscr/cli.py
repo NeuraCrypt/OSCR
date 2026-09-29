@@ -156,6 +156,8 @@ def _forge(con, a: argparse.Namespace, cfg: dict[str, str], client: Client) -> s
     if a.action == "status":
         return "\n".join([forgejobs.command(con, "status", client=client, **common),
                           forgelayer.command(con, "status", out=Path(a.export), **common)])
+    if a.action == "poll":
+        return forgejobs.command(con, a.action, client=client, instance=a.instance, **common)
     return forgejobs.command(con, a.action, client=client, **common)
 
 
@@ -374,6 +376,8 @@ def main(argv: list[str] | None = None) -> int:
                     help="rows written a day, the facts push's included (default 10,000)")
     fg.add_argument("--export", default="data/public",
                     help="layer: the public export, whose forge/layer/ the shards go to")
+    fg.add_argument("--instance", choices=["sandbox", "zenodo"], default=cfg.get("OSCR_ZENODO_INSTANCE", "sandbox"),
+                    help="poll: the Zenodo of a release map's deposit (night phase 07; the sandbox by default)")
 
     n = sp.add_parser("nightly", help="the publication: public catalogue, then Hugging Face and the website")
     n.add_argument("--out", default="data/public", help="a separate folder, only ever generated in public mode")

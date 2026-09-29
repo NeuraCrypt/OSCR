@@ -95,6 +95,34 @@ class Client {
 
 const seed = (await (await fetch(`${FAKE}/control/seed`)).json()) as { ada: { id: string }; bob: { id: string } };
 
+// Phase 07, after the Mac's forge poll (e2e.sh runs it between the two): the tracing map versioned
+// with the release, and the deposit of its validated map on the MOCK Zenodo sandbox — never a real one.
+const STATE_FILE = process.env.E2E_STATE ?? "";
+if (process.argv[2] === "after-mac") {
+  const { readFileSync } = await import("node:fs");
+  const saved = JSON.parse(readFileSync(STATE_FILE, "utf8")) as { jar: [string, string][]; id: string; tag: string };
+  const ada = new Client();
+  ada.jar = new Map(saved.jar);
+  const layer = (await (await ada.request(`${SITE}/api/forge/repo?id=github:${saved.id}`)).json()) as Json;
+  const answered = (layer.answered ?? []) as Json[];
+  const release = answered.find((a) => a.kind === "release" && a.ref === saved.tag);
+  check("the Mac versioned the paper's tracing map with the release", release?.outcome === "done" && /is versioned with the release/.test(String(release?.message)), answered);
+  const deposit = answered.find((a) => a.kind === "deposit" && a.ref === saved.tag);
+  check("the Mac deposited the release's validated map on Zenodo's sandbox (the mock), a DOI said", deposit?.outcome === "done" && /deposited on Zenodo \(sandbox\): DOI 10\.5072\//.test(String(deposit?.message)), deposit);
+  const tie = ((layer.releaseTies ?? []) as Json[]).find((t) => t.tag === saved.tag);
+  check("the tie holds the map's digest the Mac versioned", /^[0-9a-f]{64}$/.test(String(tie?.shown)), tie);
+  const log = (await (await fetch(`${MOCK}/control/log`)).json()) as Json;
+  const calls = (log.zenodo ?? []) as string[];
+  // The fixture's map has a DOI already: the release's validated map is a new version of its record.
+  check("Zenodo was the local mock only: a new version of the map's record, its file, the publication", calls.some((c) => /^POST \/api\/records(\/[^/]+\/versions)?$/.test(c)) && calls.some((c) => /\/content$/.test(c)) && calls.some((c) => /\/actions\/publish$/.test(c)), calls);
+  const deposits = ((await (await fetch(`${MOCK}/control/zenodo`)).json().catch(() => [])) ?? []) as Json[];
+  const meta = deposits.map((d) => d.metadata as Json).find((m) => m?.version === saved.tag);
+  check("the record: the release's tag as its version; IsSupplementTo the paper; References the release's code", !!meta && JSON.stringify(meta.related_identifiers).includes("issupplementto") && JSON.stringify(meta.related_identifiers).includes("/tree/"), meta ? { version: meta.version, related: meta.related_identifiers } : deposits.length);
+  check("the code itself was not deposited: the record holds the map only", !!meta && /holds the map only/.test(String(meta.description)), meta?.description);
+  console.log(failures ? `${failures} check(s) failed` : "every check passed");
+  process.exit(failures ? 1 : 0);
+}
+
 // 0. Signed out: the reads ask for a session; the pages are static.
 const anon = new Client();
 check("signed out: GET /api/forge/mine is 401", (await anon.request(`${SITE}/api/forge/mine`)).status === 401);
@@ -359,6 +387,66 @@ check("webhook: a push moves the head (≤ 2 rows)", push.status === 200 && push
 const after = (await (await ada.request(`${SITE}/api/forge/repo?id=github:${id}`)).json()) as Json;
 check("the layer shows the push", after.headAt === pushedAt && after.head === "a".repeat(40), [after.head, after.headAt]);
 
+// 5b. Phase 07: releases. The pages are the /r/ shell; Ada links her ORCID iD (a verified author of the
+// fixture's paper), publishes a release with notes (hers and GitHub's generated ones), tied to the
+// accepted manuscript with the map she saw, asking for Software Heritage and the Zenodo deposit of the
+// map (jobs for the Mac: e2e.sh runs it next, its Zenodo the mock sandbox); she attaches no file here
+// (the browser's run does); she deletes a tag no release uses, and a tag a release uses is refused.
+for (const page of [
+  "/r/oscr-fixture/eeg-analysis/releases/",
+  "/r/oscr-fixture/eeg-analysis/releases/tag/v1.0",
+  "/r/oscr-fixture/eeg-analysis/releases/new?tag=v1.2.0",
+  "/r/oscr-fixture/eeg-analysis/releases/latest",
+  "/r/oscr-fixture/eeg-analysis/tags/",
+  "/r/oscr-fixture/eeg-analysis/environment/",
+]) {
+  const res = await anon.request(`${SITE}${page}`);
+  check(`GET ${page}: 200, the shell`, res.status === 200 && /text\/html/.test(res.headers.get("Content-Type") ?? ""), res.status);
+}
+{
+  const orcid = await ada.navigate(`${SITE}/api/auth/orcid/start?return=/account/`);
+  const me = await ada.me();
+  check("Ada links her ORCID iD: a verified author of the fixture's paper", orcid.pathname === "/account/" && JSON.stringify(me).includes("doi:10.5555/oscr.fixture.1"), [orcid.toString(), me.roles]);
+  const head = await headOf();
+  const MAP = process.env.MAP_DIGEST ?? "";
+  check("the fixture paper's map digest, from the Mac (e2e.sh)", /^[0-9a-f]{64}$/.test(MAP), MAP);
+  const notes = "The code of the accepted manuscript.\n\n## For the paper\n### Tracing-map links whose lines changed (to look at again)\n* paragraph 3 ↔ `analysis.py` lines 6–10";
+  const made = await ada.act(
+    "release_create",
+    { forge: "github", id },
+    { tag: "v1.2.0", target: head, name: "The code of the accepted manuscript", body: notes, generateNotes: true, latest: "true", paper: { doi: "10.5555/oscr.fixture.1", version: "accepted" }, map: MAP, archive: true, deposit: true },
+    "/r/oscr-fixture/eeg-analysis/releases/",
+  );
+  check("release_create: published as Ada, GitHub's tag at the commit the page showed", made.status === 200 && made.data.result?.tag === "v1.2.0" && made.data.result?.draft === false, made.data);
+  check("release_create: the tie, the map's version, Software Heritage and Zenodo asked: 5 rows", made.written === 5 && JSON.stringify(made.data.result?.jobs) === JSON.stringify(["release", "archive", "deposit"]), [made.written, made.data.result?.jobs]);
+  check("release_create: the tie is linked (Ada is a verified author)", made.data.result?.papers?.[0]?.status === "linked", made.data.result?.papers);
+  check("release_create: the sentence confirmed", /^Publish the release v1\.2\.0 “The code of the accepted manuscript” at commit [0-9a-f]{7} \(set as the latest; GitHub's generated notes added\); tie it to the accepted manuscript of doi:10\.5555\/oscr\.fixture\.1/.test(String(made.data.sentence)), made.data.sentence);
+  const onGitHub = (await (await fetch(`${FAKE}/api/repos/oscr-fixture/eeg-analysis/releases/tags/v1.2.0`)).json()) as Json;
+  check("GitHub holds the release: Ada's notes, then GitHub's generated ones", String(onGitHub.body).startsWith("The code of the accepted manuscript.") && /## What's Changed/.test(String(onGitHub.body)), String(onGitHub.body).slice(0, 200));
+  const tags = (await (await fetch(`${FAKE}/api/repos/oscr-fixture/eeg-analysis/tags?per_page=100`)).json()) as Json[];
+  const tagged = String(tags.find((t) => t.name === "v1.2.0")?.commit?.sha ?? "");
+  check("GitHub made the tag at that commit", tagged === head, [tagged, head]);
+  const latest = (await (await fetch(`${FAKE}/api/repos/oscr-fixture/eeg-analysis/releases/latest`)).json()) as Json;
+  check("GitHub's latest release is it", latest.tag_name === "v1.2.0", latest.tag_name);
+  const taken = await ada.act("release_create", { forge: "github", id }, { tag: "v1.2.0", target: head }, "/r/oscr-fixture/eeg-analysis/releases/");
+  check("release_create: the same tag again is refused, nothing written", taken.status === 409 && taken.data.error?.code === "tag_taken" && taken.written === 0, [taken.status, taken.data]);
+  const used = await ada.act("tag_delete", { forge: "github", id }, { name: "v1.2.0", confirm: "v1.2.0" }, "/r/oscr-fixture/eeg-analysis/tags/");
+  check("tag_delete: a tag a published release (and a paper) uses is refused", used.status === 409 && ["tied", "released"].includes(String(used.data.error?.code)), used.data);
+  const tag = await ada.act("tag_create", { forge: "github", id }, { name: "e2e-scratch", target: head, message: "A tag to delete" }, "/r/oscr-fixture/eeg-analysis/tags/");
+  const untag = await ada.act("tag_delete", { forge: "github", id }, { name: "e2e-scratch", confirm: "e2e-scratch" }, "/r/oscr-fixture/eeg-analysis/tags/");
+  check("tag_create, tag_delete: an annotated tag made, then deleted, as Ada (the action row each)", tag.status === 200 && tag.data.result?.annotated === true && untag.status === 200 && tag.written === 1 && untag.written === 1, [tag.data, untag.data]);
+  const drafts = await ada.act("release_drafts", { forge: "github", id }, {}, "/r/oscr-fixture/eeg-analysis/releases/");
+  check("release_drafts: the seeded draft, read as Ada, masked, the action row only", drafts.status === 200 && drafts.data.result?.drafts?.some((d: Json) => d.tag === "v1.1.0") && drafts.written === 1, drafts.data.result?.drafts?.map((d: Json) => d.tag));
+  const layer = (await (await ada.request(`${SITE}/api/forge/repo?id=github:${id}`)).json()) as Json;
+  check("the signed-in layer: the live tie, the Mac's jobs pending", layer.releaseTies?.some((t: Json) => t.tag === "v1.2.0" && t.shown === MAP) && ["release", "archive", "deposit"].every((k) => layer.jobs?.some((j: Json) => j.kind === k && j.ref === "v1.2.0")), [layer.releaseTies, layer.jobs]);
+  const pkg = await ada.act("package_confirm", { forge: "github", id }, { registry: "pypi", name: "eeg-analysis", version: "1.1.0rc1", source: "pyproject.toml", confirm: true }, "/r/oscr-fixture/eeg-analysis/environment/");
+  check("package_confirm: the package the manifest declares, confirmed by Ada (2 rows)", pkg.status === 200 && pkg.data.result?.status === "confirmed" && pkg.written === 2, [pkg.status, pkg.data, pkg.written]);
+  if (STATE_FILE) {
+    const { writeFileSync } = await import("node:fs");
+    writeFileSync(STATE_FILE, JSON.stringify({ jar: [...ada.jar], id, tag: "v1.2.0" }));
+  }
+}
+
 // 6. FORGE_OPEN unset: Bob may read, not act.
 await post(`${MOCK}/control`, { who: { github: { id: Number(seed.bob.id), login: "bob-fixture", name: "Bob Fixture" } } });
 await post(`${FAKE}/control`, { login: "bob-fixture" });
@@ -378,6 +466,11 @@ check("FORGE_OPEN unset: Bob's comment is refused at start (403 forge_closed)", 
 // Phase 05: Bob's issue and research writes are refused too (FORGE_OPEN unset); he may read.
 const bobIssue = await bob.act("issue_open", { forge: "github", id }, { title: "Bob's issue" }, "/r/oscr-fixture/eeg-analysis/issues");
 check("FORGE_OPEN unset: Bob's issue is refused at start (403 forge_closed)", bobIssue.start === 403 && bobIssue.data.error?.code === "forge_closed", bobIssue.data);
+// Phase 07: Bob's release and file are refused at start too (FORGE_OPEN unset).
+const bobRelease = await bob.act("release_create", { forge: "github", id }, { tag: "v9.9.9", target: "0".repeat(40) }, "/r/oscr-fixture/eeg-analysis/releases/");
+check("FORGE_OPEN unset: Bob's release is refused at start (403 forge_closed)", bobRelease.start === 403 && bobRelease.data.error?.code === "forge_closed", bobRelease.data);
+const bobAsset = await bob.act("asset_upload", { forge: "github", id }, { release: "1", name: "x.csv", size: 1, sha256: "c".repeat(64), contentType: "text/csv" }, "/r/oscr-fixture/eeg-analysis/releases/");
+check("FORGE_OPEN unset: Bob's file is refused at start (403 forge_closed)", bobAsset.start === 403 && bobAsset.data.error?.code === "forge_closed", bobAsset.data);
 const bobResearch = await bob.post("/api/forge/research/open", { paper: "10.5555/oscr.fixture.1", repo: { forge: "github", id, path: "oscr-fixture/eeg-analysis" }, type: "code_error", title: "Bob's" });
 check("FORGE_OPEN unset: Bob's research issue is refused (403 forge_closed), nothing written", bobResearch.status === 403 && bobResearch.data.error?.code === "forge_closed" && bob.written === 0, [bobResearch.status, bobResearch.data]);
 const bobReads = await bob.request(`${SITE}/api/forge/research?id=1`);

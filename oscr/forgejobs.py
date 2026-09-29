@@ -1036,7 +1036,7 @@ def _check(con: Any, target: str | None) -> None:
 def _open(con: sqlite3.Connection, state: sqlite3.Connection, *, target: str | None, budget: int | None,
           settings: dict[str, str] | None, persist_to: Path | None, client: Any, report: Callable[[str], None],
           opts: Any = None, readers: Callable[[str], ForgeReader] | None = None,
-          post: Callable[[str], net.Response] | None = None) -> Runner:
+          post: Callable[[str], net.Response] | None = None, instance: str | None = None) -> Runner:
     """The runner of `oscr forge poll|mirrors` on `target`: D1 oscr_forge and oscr_community, the
     harvester's own functions, GitHub's read-only reader with the Mac's client."""
     _check(con, target)
@@ -1048,7 +1048,7 @@ def _open(con: sqlite3.Connection, state: sqlite3.Connection, *, target: str | N
     if budget is None:
         budget = int(cfg.get("OSCR_COMMUNITY_BUDGET", str(community.DAILY_BUDGET)))
     readers = readers or (lambda f: forges.GitHubReader(client) if f == "github" else forges.reader(f))
-    instance = cfg.get("OSCR_ZENODO_INSTANCE", "sandbox")
+    instance = instance or cfg.get("OSCR_ZENODO_INSTANCE", "sandbox")
     if instance not in zenodo.INSTANCES:
         raise SystemExit(f"OSCR_ZENODO_INSTANCE: sandbox or zenodo, not {instance!r}")
     return Runner(con, d1, state, jobs.MacHarvester(client, opts or harvest.Options(records=False)), community=people,
