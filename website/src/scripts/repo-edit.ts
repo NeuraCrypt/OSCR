@@ -238,7 +238,11 @@ export async function mountEditor(slot: HTMLElement, env: CodeEnv, mode: "edit" 
   const notes: (El | HTMLElement)[] = [];
   if (mode === "new" && !draft) {
     const value = params.get("value");
-    if (value) startText = value.slice(0, PREFILL_CHARS).replace(/\r\n?/g, "\n");
+    if (value) {
+      startText = value.slice(0, PREFILL_CHARS).replace(/\r\n?/g, "\n");
+      // A text that came with the address (a link someone made): said, so that it is read first.
+      notes.push(el("p", { class: "warning" }, "This file's text came with the address you followed: read it before you commit it."));
+    }
   }
   if (draft) {
     startText = draft.text;

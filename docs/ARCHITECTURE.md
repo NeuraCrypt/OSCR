@@ -591,3 +591,38 @@ the registry's own, and GitHub is only a last resort, said as such (D02-2).
   anchor (CODE_NAVIGATION.md, "Where it meets the code-first branch").
 - **The screenshots**: `docs/night-screenshots/phase-02/` (desktop 1280×860, phone 390×844, against
   the fake GitHub).
+
+### Editing in the browser (phase 03): the registry's own editor
+
+Built on the night of 2026-09-29; the details are [WEB_EDITING.md](WEB_EDITING.md), the decisions
+D03-1 to D03-19 in [DECISIONS.md](DECISIONS.md). The editing happens in the registry; GitHub makes
+the commit, as the person.
+
+- **The views** are GitHub's editing shapes inside the `/r/*` shell (D03-2): `edit`, `new`,
+  `upload`, `delete`, registered into `repo-code.ts`'s `codeViews` by `repo-edit.ts` and
+  `repo-upload.ts`; `repo-templates.ts` plugs into the editor's own hooks (`nameHelpers`,
+  `editorAids`). Their pure parts: `src/lib/editor.ts`, `commit-view.ts`, `secrets.ts`, `upload.ts`,
+  `templates.ts`, tested in Node.
+- **The editor** (`code-editor.ts`, D03-3): a transparent textarea over the viewer's own
+  `ol.lines.code` in one grid cell (`science.css` `.editor-surface`), no library that injects styles;
+  indentation from `.editorconfig` or the file; find and replace, go to line, wrapping, the browser's
+  undo; the draft in `localStorage` until committed (D03-5).
+- **The commit** (D03-1): one authorized action of kind `commit` (`act-commit.ts`), the target's
+  repository, branch and head bound at start; `createCommitOnBranch` with `expectedHeadOid` (a moved
+  branch is 409, nothing recorded), the Git data API for moves and executable bits (GitBackend
+  decides), a new branch at the head seen (the pull request is phase 04's: `pullRequest` in the
+  answer), a fork when GitHub says the person may not write and the page allowed it (D03-8). The
+  Worker writes the trailers (co-authors' and the signer's GitHub no-reply addresses, D03-9); the
+  action row only (1 D1 row; `migrations/d1-forge/0002_commit.sql` adds the kind).
+- **The research link** (D03-10): the commit dialog lists the tracing-map links the change touches
+  (`repo-traced.ts` `mapLinksIn`, `commit-view.ts` `touchedLinks`), a new branch then chosen by
+  default.
+- **Safety**: the payload is checked twice with the Worker's own rules (the page imports
+  `validateCommit` and `describeCommit`: D01-28), paths refused where a repository may not hold them;
+  the answer's links are `/r/` paths only (`VIEWER_PATH`, D03-18); uploads capped by the Worker's 1
+  MiB and 100 files, LFS patterns obeyed, nothing uploaded ever run or served (D03-12); secrets warned
+  about before the commit (D03-11); email addresses hidden in the editor's visible layer (D03-4).
+  `FORGE_OPEN` unset: only the owner may commit (the end-to-end run checks another account's refusal).
+- **Files added to the site**: none (the page scripts' chunks grow).
+- **The screenshots**: `docs/night-screenshots/phase-03/` (desktop 1280×860, phone 390×844, against
+  the fake GitHub and `wrangler dev`, signed in).

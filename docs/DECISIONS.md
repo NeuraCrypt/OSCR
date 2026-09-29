@@ -1079,3 +1079,188 @@ stays on the home until the whole README replaces it, and stays alone when the f
 or shown (a rate limit, D02-7).
 
 **Why.** The reader never sees less than phase 01 gave; the tree's README costs no request.
+
+## Phase 03: editing in the browser (2026-09-29)
+
+Taken while building the registry's own editor and commit dialog ([WEB_EDITING.md](WEB_EDITING.md)),
+under the owner's directive of 2026-09-29 (GitHub is OSCR's competitor: the editing happens in OSCR)
+and D00-4, D00-7 (a commit is made by GitHub, as the person, one authorization per action).
+
+### D03-1. One action kind, `commit`, for every change made from the browser; no repository row needed
+
+**Decision.** Edits, new files, renames, moves, deletions and uploads are one kind of authorized
+action, `commit` (`worker/forge/service/act-commit.ts`): its target is the repository, the branch and
+the head the page read, bound at start in the flow cookie; its payload repeats the branch and the
+head (`branch`, `base`), and a payload prepared for another is refused. It does not need the
+repository to be one the registry follows (`needsRepo: false`): GitHub decides who may write. It
+writes the action row only (1 row). `migrations/d1-forge/0002_commit.sql` rebuilds `actions` with the
+kind (SQLite cannot change a CHECK in place); the schema tests read the effective schema.
+
+**Why.** One write path to secure, cap and audit (D01-7); a researcher fixing a README of a
+catalogue repository they may write to should not have to link it first; the row budget of §15.6.
+
+### D03-2. GitHub's own editing addresses, in the one /r/ shell
+
+**Decision.** `edit/<branch>/<path>`, `new/<branch>/<dir>` (with GitHub's `?filename=` and
+`?value=`), `upload/<branch>/<dir>` and `delete/<branch>/<path>` after `/r/<owner>/<name>/`. A text
+that came with the address is said ("read it before you commit it").
+
+**Why.** D02-1: a GitHub address becomes the registry's by changing its start; no new file.
+
+### D03-3. The registry's own editor: a transparent textarea over the viewer's lines
+
+**Decision.** The editor is the viewer's `ol.lines.code` (highlight.js's classes, the gutter, the
+exact indentation, tabs at the file's width) under a transparent textarea in one grid cell, one
+font, one line height and one padding (`science.css`). Undo and redo are the browser's own, every
+change going through `insertText`. The inventory named CodeMirror 6.
+
+**Why.** CodeMirror writes `<style>` elements: the pages' CSP (`style-src 'self'`) and the
+science.css-only rule forbid them. The overlay keeps editing identical to reading, with no
+dependency (the owner's directive: the editor matches the professional viewer).
+
+**What would change it.** A need the overlay cannot meet (multiple cursors, code folding): a
+CodeMirror build whose styles are moved into science.css, if its style module can be disabled.
+
+### D03-4. Email addresses are hidden in place in the editor's visible layer
+
+**Decision.** The visible layer masks each address character by character (`maskEmailsInPlace`:
+same length, so the columns hold); the textarea keeps the file's text, which is what the commit
+writes. The Changes and Preview tabs mask as the viewer does.
+
+**Why.** CLAUDE.md (no address shown) without corrupting the file the person commits.
+
+### D03-5. Drafts are kept in the reader's browser, dropped on success only
+
+**Decision.** The change is kept in `localStorage` as it is typed (every access in try/catch), keyed
+by the repository, the branch and the file, for a month. The page names its draft to the start
+(`startAction(…, {drafts})`); the callback page drops it only when GitHub made the commit. The
+settings kept: wrapping.
+
+**Why.** The inventory's "auto-save" adapted to the rule that the Worker keeps nothing of a person's
+work; a refused commit (the branch moved, a closed gate) loses nothing.
+
+### D03-6. A branch that moved: refused by the Worker, merged in the browser when it can be
+
+**Decision.** The Worker's `createCommitOnBranch` carries the head the page saw (the
+compare-and-swap); a moved branch answers 409 with `offer: "new_branch"`, nothing recorded. The
+editor, reopened, says so: this file unchanged, the change applies to the latest version; changed
+without overlap, a three-way merge in the browser (`diff.ts` `merge3`) on request; otherwise a new
+branch made at the version edited.
+
+**Why.** D00-7; the reader's own CPU, no server-side merge.
+
+### D03-7. A new branch starts at the head the page saw; the pull request is phase 04's
+
+**Decision.** "Create a new branch for this commit and start a pull request" makes the branch at the
+head the change started from (`createFrom`), GitHub's `<login>-patch-N` suggested. The Worker's
+answer names the pull request to open (`pullRequest: {repo, base, head}`) and links the comparison of
+the two branches in the registry's viewer; phase 04 opens it.
+
+**Why.** The plan: 04's suggestions and "new branch with a pull request" commit through 03's
+machinery.
+
+### D03-8. Propose changes: a fork, only when GitHub says the person may not write, and said first
+
+**Decision.** When GitHub gives the person no write permission and the page allowed it (`propose`,
+ticked by default and said in the sentence the person confirms), GitHub forks the repository into
+their account and the commit goes on a new branch there, at the same head. Without it: 403 with
+`offer: "propose"`. A fork GitHub is still copying is said ("wait a minute"), the draft kept.
+
+**Why.** GitHub's "Propose changes"; no copy made in someone's account without their confirmation.
+
+### D03-9. The Worker writes the trailers; the author's address is GitHub's
+
+**Decision.** `Co-authored-by` lines carry each co-author's GitHub login and no-reply address
+(`<id>+<login>@users.noreply.github.com`), their ids read from GitHub's public API in the reader's
+browser and shape-checked by the Worker; `Signed-off-by` carries the no-reply address of the account
+GitHub says authorized the action, when the person signs off or the repository requires it
+(`RepoInfo.signoffRequired`, GitHub's `web_commit_signoff_required`). No address typed on the page
+reaches a trailer. The commit's author and signature are GitHub's (the person's web-commit address);
+the inventory's OSCR no-reply address and OSCR's own signing key are not used.
+
+**Why.** D00-7 (GitHub signs web commits as the person) and D00-14 (no email address, ever).
+
+### D03-10. The tracing-map links a change touches are said before the commit
+
+**Decision.** The commit dialog lists each map link whose lines change, or whose file moves or is
+deleted — the paper, the Methods paragraph (opening the reader beside the code), the lines — and
+chooses a new branch by default then.
+
+**Why.** The plan's research link for phase 03: a paper's code changed knowingly, the map pinned to
+its own commit (valid), its authors able to re-anchor it after a merge (phase 04).
+
+### D03-11. Secrets: a warning in the browser, a tick to go on
+
+**Decision.** Token shapes (a short list with prefixes of their own, placeholders ignored) found in
+what the commit writes are said by line, the value hidden; committing anyway needs a tick. GitHub's
+push protection may still refuse.
+
+**Why.** The inventory's push protection "in web editing and uploads"; phase 11 brings the full
+list. Nothing found leaves the browser.
+
+### D03-12. Uploads: through the Worker's 1 MiB and 100 files; larger at the source
+
+**Decision.** An upload is one commit of at most 100 files and about 950 KiB of payload (texts as
+text, bytes as base64); a file too large is refused with GitHub's own upload page (25 MB) at the
+source. `.gitattributes`' `filter=lfs` is obeyed (refused, since GitHub would store the bytes). Types
+are not restricted; a compiled program or a large binary is said in words.
+
+**Why.** D00-7's cap (10 ms of CPU); nothing uploaded is ever run or served as a page by the
+registry (text as text nodes, images from object URLs, SVG as an image, HTML as source), so a type
+list would protect nothing.
+
+### D03-13. A folder is deleted file by file, reviewed first, at most 100
+
+**Decision.** `delete/<branch>/<folder>` lists every file under it, says the history keeps them, and
+commits their deletions in one commit (at most 100: beyond, `git rm -r`).
+
+**Why.** GitHub's "Delete directory", within the commit's cap.
+
+### D03-14. Licence and code-of-conduct templates from GitHub's API, in the reader's browser
+
+**Decision.** The pickers read GitHub's licences and codes-of-conduct API on the reader's quota
+(one request when a template is chosen), fill the year and the holder, and replace a code of
+conduct's contact (an email address in the originals) with the repository's page in the registry.
+Each licence says what it means for the registry's copies.
+
+**Why.** No licence text bundled (their exact texts are GitHub's to keep current); no address shown.
+
+### D03-15. CITATION.cff from the paper; metadata checked with the viewer's own reader
+
+**Decision.** A new CITATION.cff can start from the paper the repository is linked to (the preferred
+citation) with ORCID iDs and no address; CITATION.cff, `codemeta.json` and `.zenodo.json` are checked
+as they are written with phase 02's reader ("reads as: …" in APA, or what is missing). Workflow and
+`devcontainer.json` help is deferred (SchemaStore's licence to confirm).
+
+**Why.** The inventory's adaptation: the research metadata files first.
+
+### D03-16. Markdown aids of the registry's own; emoji autocomplete deferred
+
+**Decision.** A toolbar of plain words and GitHub's keys, a URL pasted over a selection made a link,
+spreadsheet cells a table, the slash commands `/table`, `/code`, `/details`, `/cite <DOI>`.
+
+**Why.** GitHub's writing features that matter for research READMEs; emoji need a data table.
+
+### D03-17. What the editor opens
+
+**Decision.** UTF-8 text files up to 512 KiB; LFS pointers, binaries (upload instead), submodules and
+symbolic links are changed with git, said. A file the viewer may not show (D02-7) is not opened in
+the editor either; a new file can always be created (a licence, first).
+
+**Why.** The Worker's 1 MiB with JSON's escapes; the licence gate: showing is publishing.
+
+### D03-18. The callback page links the registry's viewer only
+
+**Decision.** A commit's answer carries its links (the file as committed, the commit, the
+comparison) as `/r/` paths built by the Worker; the page keeps only paths matching the viewer's shape
+(`forge-client.ts` `VIEWER_PATH`: no other site, no `//`, no dot segment). "Back" is the editor.
+
+**Why.** No open redirect; the reader stays in the registry.
+
+### D03-19. A commit costs 4 Worker requests and 1 D1 row
+
+**Decision.** The dialog reads the session's CSRF token and GitHub login once (`/api/account/me`) and
+hands it to the start; after GitHub, the callback page reads it again, then acts: 4 requests (the
+plan counted start and act), 1 row. Editing, previewing and uploading ask the Worker nothing.
+
+**Why.** Phase 01's flow; ~600 requests a day at ~150 commits, inside the GitHub side's 40,000.

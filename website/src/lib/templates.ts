@@ -23,7 +23,7 @@ import { LICENCES, type Licence } from "./forge-templates.ts";
 // ─── licences ────────────────────────────────────────────────────────────────
 
 /** A file name GitHub reads as the licence (at the root). */
-export const isLicenceName = (path: string | null): boolean => !!path && /^(?:licen[cs]e|copying)(?:\.(?:md|markdown|txt))?$/i.test(path);
+export const isLicenceName = (path: string | null): boolean => !!path && /^(?:licen[cs]e|copying)(?:[-._][A-Za-z0-9.-]+)?(?:\.(?:md|markdown|txt))?$/i.test(path);
 
 export const isConductName = (path: string | null): boolean => !!path && /^(?:\.github\/|docs\/)?code[-_]of[-_]conduct(?:\.(?:md|markdown|txt))?$/i.test(path);
 

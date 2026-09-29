@@ -26,7 +26,7 @@ const apply = (v: string, e: Edit) => v.slice(0, e.from) + e.insert + v.slice(e.
 
 describe("licences and codes of conduct", () => {
   test("names, placeholders filled", () => {
-    assert.ok(isLicenceName("LICENSE") && isLicenceName("licence.md") && isLicenceName("COPYING"));
+    assert.ok(isLicenceName("LICENSE") && isLicenceName("licence.md") && isLicenceName("COPYING") && isLicenceName("LICENSE-data"));
     assert.ok(!isLicenceName("src/LICENSE") && !isLicenceName(null));
     assert.ok(isConductName("CODE_OF_CONDUCT.md") && isConductName(".github/code-of-conduct.md"));
     assert.ok(isCitationName("CITATION.cff") && !isCitationName("docs/CITATION.cff"));

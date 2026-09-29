@@ -26,7 +26,17 @@ Mis à jour au fil de la nuit. La mission est dans `docs/NIGHT_RUN.md`, le journ
   - **Coût** : zéro requête Worker et zéro ligne D1 hors connexion ; les fichiers sont lus en brut (hors quota GitHub du lecteur).
   - **Essai de bout en bout** : tout passe, avec les adresses de la phase 02 et le fragment des cartes. Captures : `docs/night-screenshots/phase-02/` (31 images, bureau et téléphone).
   - **Tests à la clôture** : pytest 472 ; ruff propre ; `npm test` 924 sous Node 26 et Node 22 ; build 45 pages, 227 fichiers ; `check --every-route` ok ; `tsc --strict` propre.
-- **Suite** : phase 03 (édition web) sur la branche `night/phase-03-web-editing`, créée et poussée.
+- **Phase 03 (édition dans le navigateur) : terminée**, branche `night/phase-03-web-editing`, poussée (6 commits : les éléments E1 à E5, la clôture). Rien fusionné, rien déployé.
+  - **L'éditeur d'OSCR, pas celui de GitHub** : modifier, créer, renommer, déplacer, supprimer et téléverser des fichiers se fait dans OSCR (`/r/<compte>/<nom>/edit/…`, `new/…`, `upload/…`, `delete/…`, les formes d'adresses de GitHub). L'éditeur ressemble à la visionneuse : ce sont ses propres lignes (couleurs highlight.js, gouttière de numéros, indentation exacte) sous une zone de texte transparente, sans bibliothèque qui injecte des styles (CodeMirror en injecte : refusé par la CSP et par la règle « science.css seulement »). Indentation lue dans `.editorconfig` ou dans le fichier, recherche et remplacement, aller à la ligne, retour à la ligne, annuler/rétablir, renommer et déplacer par le champ du nom, onglets Édition / Aperçu / Modifications, touche `e` depuis la visionneuse.
+  - **Le brouillon reste dans le navigateur** du lecteur jusqu'au commit ; si la branche a bougé entre-temps, la page le dit, fusionne à trois voies dans le navigateur quand les deux changements ne se touchent pas, sinon propose une nouvelle branche.
+  - **Le commit** : une seule action autorisée (`commit`), faite par GitHub en ton nom avec la tête de branche que la page a lue (si la branche a bougé, refus 409 et rien n'est enregistré) ; message et description, branche courante ou nouvelle branche (la pull request elle-même est pour la phase 04 : la réponse la prépare), proposition depuis une copie (fork) quand GitHub dit que la personne ne peut pas écrire, co-auteurs et « Signed-off-by » avec les adresses no-reply de GitHub (jamais une adresse tapée), 1 ligne D1.
+  - **Le lien recherche** : avant le commit, la boîte de dialogue liste les liens de carte de traçage que le changement touche (article, paragraphe des Méthodes, lignes) et choisit alors une nouvelle branche par défaut. Elle avertit aussi d'un secret apparent (jeton, clé), qu'il faut cocher pour continuer.
+  - **Téléversements et suppressions** : jusqu'à 100 fichiers et environ 1 Mio par commit via le Worker (au-delà, la page de GitHub, avec la raison) ; les motifs LFS de `.gitattributes` respectés ; un dossier supprimé est d'abord listé ; une image collée dans un Markdown rejoint le même commit à côté du fichier.
+  - **Modèles** : licences et codes de conduite (textes de l'API de GitHub, le contact d'un code de conduite remplacé par la page du dépôt dans OSCR, jamais une adresse), `CITATION.cff` depuis l'article lié, README de recherche ; `CITATION.cff`, `codemeta.json` et `.zenodo.json` vérifiés à la frappe ; barre d'outils Markdown, raccourcis, collage de lien et de tableau, commandes `/table`, `/code`, `/details`, `/cite`.
+  - **Coût** : éditer ne demande rien au Worker ; un commit coûte 4 requêtes Worker (le plan en comptait 2 : les deux lectures du jeton CSRF viennent du flux de la phase 01) et 1 ligne D1.
+  - **Essai de bout en bout** : tout passe, dont un commit à travers le faux GitHub, un refus quand la branche a bougé, une nouvelle branche, un déplacement, et le refus d'un autre compte (`FORGE_OPEN` non posé). Captures : `docs/night-screenshots/phase-03/` (30 images, bureau et téléphone, connecté, jusqu'à la page de retour après un vrai commit).
+  - **Tests à la clôture** : pytest 472 ; ruff propre ; `npm test` 983 sous Node 26 et Node 22 ; build 45 pages, 227 fichiers (aucun nouveau) ; `check --every-route` ok ; `tsc --strict` propre.
+- **Suite** : phase 04 (forks et pull requests) sur la branche `night/phase-04-pull-requests`, créée et poussée.
 
 ## 2. À valider par Yann
 
@@ -46,7 +56,7 @@ Mis à jour au fil de la nuit. La mission est dans `docs/NIGHT_RUN.md`, le journ
 7. **Décider s'il faut activer l'alias de clonage sur le domaine d'OSCR** (un 302 de `.../info/refs` vers github.com ; possible en une seule règle statique `_redirects`), après un clonage et une poussée de test avec identifiants.
 8. **Décider si OSCR peut demander par défaut à Software Heritage d'archiver les commits des cartes de traçage validées.** Aujourd'hui il ne fait que l'interroger, et une demande reste l'acte de l'auteur.
 9. **Facultatif** : créer un dépôt modèle public de « compendium de recherche » (README, LICENSE, CITATION.cff, fichier d'environnement, workflow de test facultatif sur les runners standard).
-10. **Une fois l'App créée, tester** : si une personne déjà autorisée est renvoyée sans invite ; `POST /user/repos` avec le jeton utilisateur de l'App quand l'installation ne couvre que des dépôts choisis ; la plus grosse charge `createCommitOnBranch` que GitHub accepte, et son erreur pour une tête périmée ; la taille réelle des webhooks ; le blame d'un long fichier dans les 10 s de GraphQL.
+10. **Une fois l'App créée, tester** : si une personne déjà autorisée est renvoyée sans invite ; `POST /user/repos` avec le jeton utilisateur de l'App quand l'installation ne couvre que des dépôts choisis ; la plus grosse charge `createCommitOnBranch` que GitHub accepte, et son erreur pour une tête périmée ; la taille réelle des webhooks ; le blame d'un long fichier dans les 10 s de GraphQL. Phase 03 ajoute : un commit depuis l'éditeur sur un dépôt où l'App est installée (et le message de GitHub quand elle ne l'est pas : un jeton d'App ne voit que les dépôts de ses installations) ; « Proposer » depuis un fork tout juste créé (GitHub copie en arrière-plan) ; si l'exigence de « sign-off » des commits web s'applique aussi à `createCommitOnBranch`.
 11. **Seulement si tu veux un jour qu'OSCR héberge lui-même les dépôts** (aucune option n'est à la fois gratuite et certaine) : Workers Paid plus R2 (environ 6,35 $ par mois à 100 Go) avec git-on-cloudflare ; Cloudflare Artifacts une fois disponible pour tous (environ 54,50 $ par mois) ; un Forgejo ou GitLab institutionnel sans carte, sous un accord signé ; ou la permission écrite de GitHub au titre de l'AUP §6 (déconseillé). Chacune ajouterait un backend derrière `GitBackend`.
 
 12. **Branche `openalex`** (hors mission de nuit, terminée et poussée, non fusionnée : la nuit interdit de fusionner dans `main`). Enrichissement par OpenAlex :
@@ -78,9 +88,18 @@ Mis à jour au fil de la nuit. La mission est dans `docs/NIGHT_RUN.md`, le journ
 27. **Blame** (D02-5) : reste la page de GitHub (elle exige une connexion GitHub), en dernier recours, avec la phrase.
 28. **Recherche** (D02-16) : dans le navigateur, pour les dépôts de moins de 300 fichiers et 4 Mo de texte ; au-delà, la recherche de code de GitHub, en dernier recours.
 
+**Phase 03, à relire (décisions prises, D03-1 à D03-19) — aucune action requise de ta part :**
+
+29. **Pas de CodeMirror** (D03-3) : l'inventaire le citait ; il écrit des balises `<style>`, que la CSP (`style-src 'self'`) et la règle « science.css seulement » interdisent. L'éditeur est la visionneuse elle-même sous une zone de texte transparente.
+30. **Un commit ne demande pas que le dépôt soit lié à OSCR** (D03-1) : GitHub décide qui peut écrire ; `FORGE_OPEN` restant non posé, toi seul peux committer pour l'instant.
+31. **Proposer depuis un fork** (D03-8) : case cochée par défaut, et dite dans la phrase à confirmer ; GitHub crée alors la copie dans le compte de la personne si elle n'a pas le droit d'écrire.
+32. **Adresse et signature d'un commit** (D03-9) : celles que GitHub donne aux commits web de la personne (son adresse no-reply si elle garde la sienne privée) ; l'inventaire proposait une adresse no-reply d'OSCR et une signature d'OSCR, écartées puisque GitHub fait et signe le commit (D00-7).
+33. **Types de fichiers téléversés non restreints** (D03-12) : rien de téléversé n'est jamais exécuté ni servi comme une page par OSCR ; les motifs LFS sont respectés ; au-delà d'environ 1 Mio, la page de GitHub, avec la raison.
+34. **Coût mesuré** (D03-19) : 4 requêtes Worker par commit (le plan en comptait 2), 1 ligne D1.
+
 ## 3. Décisions prises
 
-Voir [`docs/DECISIONS.md`](DECISIONS.md) (entrées D00-1 à D00-16, puis D01-1 à D01-29 pour la phase 01 : les dix du plan, et dix-neuf prises en construisant ; D02-1 à D02-19 pour la phase 02, décrites dans [`docs/CODE_NAVIGATION.md`](CODE_NAVIGATION.md)).
+Voir [`docs/DECISIONS.md`](DECISIONS.md) (entrées D00-1 à D00-16, puis D01-1 à D01-29 pour la phase 01 : les dix du plan, et dix-neuf prises en construisant ; D02-1 à D02-19 pour la phase 02, décrites dans [`docs/CODE_NAVIGATION.md`](CODE_NAVIGATION.md) ; D03-1 à D03-19 pour la phase 03, décrites dans [`docs/WEB_EDITING.md`](WEB_EDITING.md)).
 
 Décision de stockage : aucune option ne permet à OSCR d'héberger lui-même des dépôts Git à coût nul avec une conformité certaine aux conditions des services (D00-1). Les dépôts vivent donc dans le compte GitHub du chercheur, créés et pilotés par l'App GitHub d'OSCR avec son autorisation, une autorisation par action, plus le mode miroir pour les dépôts existants ; OSCR ne garde que sa propre couche (articles, DOI, cartes de traçage, revues) dans une nouvelle base D1 `oscr_forge` et sur le Mac (D00-2).
 
@@ -126,12 +145,19 @@ Décision de stockage : aucune option ne permet à OSCR d'héberger lui-même de
 32. **Captures** : servies par un petit serveur statique qui applique les en-têtes du site et autorise en plus le faux GitHub local dans `connect-src` (outil de test seulement ; les en-têtes du site sont inchangés, D01-29).
 33. **Point de rencontre avec `code-first`** : les classes `.hljs-*`, `ol.lines.code`, `nav.file-tree`, `.pair-1` à `.pair-6` et l'ancre `#pair-N` du lecteur ; `traced.ts` répète `pairClass` de `lines.ts` (qui ne se charge pas dans les tests Node). À la fusion, garder une seule définition.
 
+**Phase 03 :**
+
+34. **Reporté** : saisie automatique des emoji ; aide à l'édition des workflows et de `devcontainer.json` (la licence du schéma SchemaStore est à vérifier avant de l'embarquer) ; co-auteurs choisis parmi les comptes OSCR (ce sont des comptes GitHub aujourd'hui) ; signature des commits par OSCR (GitHub signe les commits web) ; l'avertissement de branche protégée avant le commit (GitHub refuse au commit, en mots, et une nouvelle branche est proposée) ; « Proposer » de la liste communautaire en pull request (phase 04).
+35. **Serveurs de test** : l'essai de bout en bout et les captures ont tourné sur 8791, 9490 et 9491 (wrangler dev, faux GitHub, simulateurs de connexion), plus le faux GitHub sur 9492, un serveur statique sur 8793 et Chrome headless sur 9390 ; tout est arrêté. Le port 8790 (ton tableau de bord) et le Chrome 9396 de l'agent `code-first` n'ont pas été touchés. Un `wrangler deploy` lancé depuis le checkout de production (pas par moi) tournait pendant la clôture : laissé intact.
+36. **Non vérifiable sans la vraie App** : qu'un jeton utilisateur de l'App puisse committer sur un dépôt où l'App n'est pas installée (GitHub le refuse sans doute : la page le dit alors en mots) ; le délai de copie d'un fork tout neuf avant un commit (la page dit d'attendre une minute) ; l'application de l'exigence de « sign-off » à `createCommitOnBranch`.
+
 ## 5. Branches, dans l'ordre de fusion
 
 1. `night/phase-00-research` : terminée et poussée.
 2. `night/phase-01-git-hosting` : terminée et poussée (construite sur la précédente).
 3. `night/phase-02-code-navigation` : terminée et poussée (construite sur la précédente).
-4. `night/phase-03-web-editing` : créée à partir de `night/phase-02-code-navigation`, poussée, à construire.
+4. `night/phase-03-web-editing` : terminée et poussée (construite sur la précédente).
+5. `night/phase-04-pull-requests` : créée à partir de `night/phase-03-web-editing`, poussée, à construire.
 
 ## 6. Ajouts à `science.css`
 
@@ -154,4 +180,10 @@ Décision de stockage : aucune option ne permet à OSCR d'héberger lui-même de
   - les fichiers riches : `.notebook` et ses cellules, `table.data` et son filtre, `p.rich-note` ;
   - la vue Docs : `.docs-layout`, `nav.docs-nav` ; l'À propos : `p.languages`, `ul.community`, `details.cite-repo` ;
   - la recherche : `form.finder`, `ol.finder-results`, `form.repo-search`, `ol.search-results` ;
+  - leurs réglages pour le téléphone.
+- Phase 03, dans le même esprit :
+  - l'éditeur : `.editor-surface` et `.editor-stack` (la visionneuse sous une zone de texte transparente, une même police, un même interligne, une même marge), `textarea.editor-input`, les réglages de largeur de tabulation et de retour à la ligne, `.editor-tools`, `.editor-find`, `form.editor-goto`, `.editor-tabs`, `.editor-panel`, `p.editor-status`, `p.editor-foot`, `p.draft-note`, `.edit-head` (le chemin et le champ du nom), `button.primary` ;
+  - la boîte de commit : `section.commit-dialog`, `.secret-warning` ;
+  - téléversements et suppressions : `.upload-drop`, `table.upload-files`, `ul.delete-files`, `p.editor-extra` ;
+  - modèles et aides : `.template-picker`, `.md-toolbar`, `p.metadata-check`, `p.community-missing` ;
   - leurs réglages pour le téléphone.

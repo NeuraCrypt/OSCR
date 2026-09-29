@@ -2,7 +2,8 @@
 
 The "GitHub" side of OSCR: hosting, versioning and evolving research code, linked to papers.
 Phase 02's code views (the registry's own viewer, history, Markdown, tracing maps, notebooks,
-search) are described in [CODE_NAVIGATION.md](CODE_NAVIGATION.md). This
+search) are described in [CODE_NAVIGATION.md](CODE_NAVIGATION.md), phase 03's editor and web commits
+(the action `commit`) in [WEB_EDITING.md](WEB_EDITING.md). This
 page is the contract the parts of phase 01 build on: the routes, the authorized actions and their
 payloads, the rows each writes, the caps, the switch `FORGE_OPEN`, the pages, the static layer,
 the Mac's jobs and the budget. The decisions behind it: [DECISIONS.md](DECISIONS.md) D00-1 to
@@ -129,6 +130,7 @@ The rules every spec keeps:
 | `restore` | act-delete.ts (E4) | known | `{}` | repos 1 + action 1 | – |
 | `delete_final` | act-delete.ts (E4) | known | `{confirmName}` (only in `pending_deletion`) | repos 1 + action 1 | – |
 | `software_heritage` | act-delete.ts (E4) | known | `{}` | job `archive` 1 + action 1 | – |
+| `commit` (phase 03) | act-commit.ts | any public repository the person may write to (or fork: `propose`); start's `branch` and `expectedHead` required | `{branch, base, newBranch?, propose?, message, description?, coAuthors?: [{login, id}], signOff?, changes: [{op: "put", path, text \| base64, executable?} \| {op: "delete", path} \| {op: "move", from, to}]}` (≤ 100 changes, ≤ 1 MiB) | action 1 | – |
 
 A paper is a DOI (`10.…`), stored as `doi:10.…` in lower case, as `oscr_community`'s paper ids.
 Its status is `linked` when the person is a verified author of the paper or a maintainer of the
@@ -137,7 +139,8 @@ authorized actions an account may make in 24 hours.
 
 ## The rows of `oscr_forge`
 
-`migrations/d1-forge/0001_forge.sql`: WITHOUT ROWID where the key is text, one index in the whole
+`migrations/d1-forge/0001_forge.sql` (and `0002_commit.sql`, phase 03: `actions` rebuilt with the
+kind `commit`): WITHOUT ROWID where the key is text, one index in the whole
 database (`repos_path`), Unix seconds, no email, token or Git object column, public repositories
 only.
 
@@ -237,6 +240,7 @@ Static pages (the Worker's assets), `science.css` only, the platform's name from
 | `/new/import/` | imports on the researcher's machine | E12 |
 | `/repositories/` | "Your repositories" (signed out: a sentence, no Worker request) | E6 |
 | `/forge/authorized/` | the callback of one authorized action (`Referrer-Policy: no-referrer`) | E1 |
+| `/r/<owner>/<name>/edit/…`, `new/…`, `upload/…`, `delete/…` | phase 03's editing views (the same shell; [WEB_EDITING.md](WEB_EDITING.md)) | phase 03 |
 | `/r/<owner>/<name>/`, `…/settings/`, `…/branches/` | the repository pages: ONE shell, `/r/index.html`, serves them all (`public/_redirects`: `/r/* /r/ 200`); it reads GitHub's anonymous API and raw files on the reader's quota (its CSP allows `api.github.com` and `raw.githubusercontent.com`) | E7, E8 |
 | `/hosting/`, `/hosting/limits/`, `/hosting/large-files/`, `/hosting/git/`, `/hosting/history/`, `/hosting/tokens/` | the guides | E11 |
 | `/hosting/import/`, `/hosting/leave/` | importing, and the exit path | E12 |
@@ -325,8 +329,11 @@ installation pages, `/raw`, with CORS; `POST /control {"login"}` names who appro
 `{"offline": true}` makes it fail), builds the site with `FORGE_GITHUB_*_URL` pointing at it, and
 runs `wrangler dev --env local` with development values only (`FORGE_OPEN` unset,
 `FORGE_OWNER_GITHUB_ID` the fake's Ada). `tests/forge-service/e2e.ts` then signs in, creates and
-links repositories through real redirects, changes settings, branches and autolinks, sends signed
-webhooks, and checks the rows written and `FORGE_OPEN`'s refusal. A test browser that shows the
+links repositories through real redirects, changes settings, branches and autolinks, makes web
+commits (phase 03: an edit, a branch that moved refused, a new branch, a move), sends signed
+webhooks, and checks the rows written and `FORGE_OPEN`'s refusal. The fake also answers GitHub's
+`/users/{login}`, `/licenses/{key}` and `/codes_of_conduct/{key}` (the editor's co-authors and
+templates). A test browser that shows the
 `/r/` pages against the fake needs the Content-Security-Policy bypassed for them (it allows
 GitHub's own hosts, not the fake's): the screenshots in `docs/night-screenshots/phase-01/` were
 taken so, in headless Chrome only.

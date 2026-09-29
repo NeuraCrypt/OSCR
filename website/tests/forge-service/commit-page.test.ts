@@ -107,6 +107,7 @@ describe("a commit from the page", () => {
         { href: "https://evil.test/r/ada/eeg/", text: "x" },
         { href: "//evil.test/r/a/b/", text: "x" },
         { href: "/r/ada/eeg/../../account/", text: "x" },
+        { href: "/r/ada/eeg/%2e%2e/%2E%2e/%2e%2e/account/", text: "x" },
         { href: "/r//evil.test/x/", text: "x" },
         { href: "javascript:alert(1)", text: "x" },
         { href: "/api/forge/act", text: "x" },

@@ -11,7 +11,8 @@
 #    the fake's, the webhook secret this run's, FORGE_OPEN unset and FORGE_OWNER_GITHUB_ID the fake's
 #    Ada;
 # 4. tests/forge-service/e2e.ts: sign-in, create, link, settings, branches, autolinks, webhooks,
-#    FORGE_OPEN closed to another account, with D1's count of rows written.
+#    FORGE_OPEN closed to another account, with D1's count of rows written; phase 03's web commits:
+#    an edit committed through the fake GitHub, a branch that moved refused, a new branch, a move.
 #
 #   cd website && SITE_PORT=8791 MOCK_PORT=9491 FAKE_PORT=9490 sh tests/forge-service/e2e.sh
 #   (KEEP=1 leaves the three servers running, for screenshots; kill them after.)

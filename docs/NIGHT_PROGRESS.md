@@ -35,7 +35,8 @@ from "Next step".
 | 00 research and architecture | night/phase-00-research | **done** 2026-09-29, pushed (last code commit 831deaf) |
 | 01 Git hosting | night/phase-01-git-hosting | **done** 2026-09-29, pushed (13 commits, the foundation, E1 to E12, the end-to-end run) |
 | 02 Code navigation | night/phase-02-code-navigation | **done** 2026-09-29, pushed (9 commits: E1 to E7, the security review, the close) |
-| 03 Web editing | night/phase-03-web-editing | next: branch created from night/phase-02-code-navigation |
+| 03 Web editing | night/phase-03-web-editing | **done** 2026-09-29, pushed (6 commits: E1 to E5, the close) |
+| 04 Forks and pull requests | night/phase-04-pull-requests | next: branch created from night/phase-03-web-editing |
 
 ## Phase 00: what it produced
 
@@ -102,12 +103,41 @@ from "Next step".
   strict `tsc` clean (worker and tests; page scripts with `--module esnext --moduleResolution
   bundler`); the end-to-end run: every check passed.
 
+## Phase 03: what it produced
+
+- One authorized action for every change made from the browser, `commit` (`act-commit.ts`, E1): ONE
+  commit made by GitHub as the person (`createCommitOnBranch` with the head the page saw: a branch
+  that moved is 409 offer new_branch, nothing recorded; the Git data API for moves and executable
+  bits), a new branch at that head with phase 04's pull-request hook in the answer, a fork when
+  GitHub says the person may not write (propose changes), trailers written by the Worker
+  (co-authors' and the signer's GitHub no-reply addresses; sign-off when the repository requires
+  it). 1 D1 row; `migrations/d1-forge/0002_commit.sql` adds the kind.
+- The editor's pure core (`src/lib/editor.ts`, `secrets.ts`, E2) and the registry's own editor
+  (E3): `edit/`, `new/` in the `/r/` shell, a transparent textarea over the viewer's
+  `ol.lines.code` (highlight.js, the gutter, the exact indentation; no library that injects
+  styles), EditorConfig, find and replace, go to line, wrapping, undo, rename and move by the name
+  field, Edit / Preview / Changes, the draft in localStorage, a branch that moved merged in the
+  browser when it can be; the commit dialog with the tracing-map links the change touches and the
+  secret warning; "Edit" and the key `e` in the viewer.
+- Uploads, deletions (a folder reviewed first) and images added to Markdown (E4); licence and
+  code-of-conduct pickers, CITATION.cff from the paper, research metadata checked as written, the
+  Markdown toolbar, keys, paste and slash commands, the community checklist's "Add" (E5).
+- Docs: `docs/WEB_EDITING.md`, `FORGE.md` (the `commit` kind), `ARCHITECTURE.md` ("Editing in the
+  browser (phase 03)"), decisions D03-1 to D03-19; screenshots `docs/night-screenshots/phase-03/`
+  (30: desktop and phone, signed in against `wrangler dev` and the fake GitHub, a whole commit from
+  the page to the callback's outcome).
+- Tests at the close: pytest 472 passed; ruff clean; `npm test` 983 passed under Node 26 and Node
+  22; build 45 pages, 227 files (no new file); `check --every-route` ok; strict `tsc` clean (worker
+  and tests; page scripts); the end-to-end run: every check passed (an edit committed through the
+  fake GitHub, a branch that moved refused, a new branch, a move, another account's commit refused).
+
 ## Next step
 
-Phase 03, web editing, on branch `night/phase-03-web-editing` (created from
-`night/phase-02-code-navigation`): follow `docs/PLATFORM_PLAN.md` §15.6 "Phase 03". The code views'
-hooks (`website/src/scripts/repo-code.ts`: `codeViews`, `renderers`, `treeExtras`, `lineMarkers`,
-`blobNotes`, `lineMenuExtras`, `binaryViews`, `languageOverrides`) are where an editor plugs in; the
-one Markdown renderer (`src/lib/markdown.ts`) serves the previews. The owner's actions are in
-`docs/NIGHT_REPORT.md` §2; until the App exists, everything runs against the fake GitHub and the
-in-memory double.
+Phase 04, forks and pull requests, on branch `night/phase-04-pull-requests` (created from
+`night/phase-03-web-editing`): follow `docs/PLATFORM_PLAN.md` §15.6 "Phase 04". Phase 03's hooks for
+it: the commit action's `pullRequest: {repo, base, head}` in its answer and the comparison link
+(`act-commit.ts`), `propose` (a fork and a branch), the commit dialog (`src/scripts/commit-dialog.ts`
+`openCommitDialog`) and the editor (`repo-edit.ts` `mountEditor`, `nameHelpers`, `editorAids`) for
+suggestions and conflict resolution (a commit with two parents goes through the same action once
+`CommitPayload` gains `parents`). The owner's actions are in `docs/NIGHT_REPORT.md` §2; until the App
+exists, everything runs against the fake GitHub and the in-memory double.

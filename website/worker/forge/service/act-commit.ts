@@ -235,7 +235,9 @@ export function describeCommit(p: CommitParsed): string {
     p.coAuthors.length ? `with ${plural(p.coAuthors.length, "co-author")}` : "",
     p.signOff ? "signed off" : "",
   ].filter(Boolean);
-  return `Commit “${p.message}” ${where} (${changesInWords(p.counts)}${also.length ? `; ${also.join(", ")}` : ""})`;
+  // A proposal from a fork is said before it is made: GitHub makes a copy in the person's account.
+  const fork = p.propose ? "; if GitHub says you may not write to the repository, on a new branch of your own copy of it (a fork)" : "";
+  return `Commit “${p.message}” ${where} (${changesInWords(p.counts)}${also.length ? `; ${also.join(", ")}` : ""}${fork})`;
 }
 
 /** The target a commit needs: a repository, a branch and the head the page saw. */
@@ -298,7 +300,10 @@ export const commitSpec: ActionSpec<CommitParsed, CommitDone> = {
       branch = p.newBranch ?? `${ctx.github.login}-patch-${p.base.slice(0, 7)}`;
       createFrom = p.base;
       proposed = true;
-      if (!fork.ready) notes.push("GitHub made your copy of the repository (a fork) for this change.");
+      notes.push(
+        `GitHub said your account may not write to ${info.ref.owner}/${info.ref.name}: the change is on the branch ${branch} of your own copy, ${where.ref.owner}/${where.ref.name}, to propose from there.`,
+      );
+      if (!fork.ready) notes.push("GitHub made that copy (a fork) for this change.");
     }
     let done;
     try {

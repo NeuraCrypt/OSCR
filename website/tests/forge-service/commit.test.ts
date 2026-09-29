@@ -215,6 +215,7 @@ describe("a web commit", () => {
     assert.equal(run.act?.status, 200, JSON.stringify(run.actBody));
     const r = run.actBody!.result;
     assert.equal(r.proposed, true);
+    assert.match(r.notes[0], /may not write to ada-fixture\/eeg: the change is on the branch bob-fixture-patch-[0-9a-f]{7} of your own copy, bob-fixture\/eeg/);
     assert.equal(r.owner, "bob-fixture");
     assert.equal(r.branch, `bob-fixture-patch-${head.slice(0, 7)}`);
     assert.equal(r.compare, `/r/ada-fixture/eeg/compare/main...bob-fixture:bob-fixture-patch-${head.slice(0, 7)}/`);
@@ -271,6 +272,10 @@ describe("the commit's payload (validate, describe)", () => {
   test("the sentence and the message", () => {
     const p = validateCommit({ ...base, newBranch: "docs", coAuthors: [{ login: "grace-h", id: "7" }], signOff: true, changes: [{ op: "put", path: "a", text: "" }, { op: "move", from: "b", to: "c" }, { op: "delete", path: "d" }] }) as CommitParsed;
     assert.equal(describeCommit(p), "Commit “Update README.md” on a new branch docs, from main (1 file written, 1 file moved, 1 file deleted; with 1 co-author, signed off)");
+    assert.equal(
+      describeCommit(validateCommit({ ...base, propose: true }) as CommitParsed),
+      "Commit “Update README.md” to the branch main (1 file written; if GitHub says you may not write to the repository, on a new branch of your own copy of it (a fork))",
+    );
     assert.equal(commitMessage({ message: "One", description: "", coAuthors: [] }, null), "One");
     assert.equal(commitMessage({ message: "One", description: "Two\n", coAuthors: [] }, { login: "a", id: "1" }), "One\n\nTwo\n\nSigned-off-by: a <1+a@users.noreply.github.com>");
   });

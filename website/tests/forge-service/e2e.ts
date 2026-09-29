@@ -80,10 +80,10 @@ class Client {
 
   /** One authorized action, as the page and the callback page do it: start, GitHub (the fake
    *  approves at once), act. */
-  async act(kind: string, repo: unknown, payload: unknown, back = "/repositories/"): Promise<{ start: number; status: number; data: Json; written: number }> {
+  async act(kind: string, repo: unknown, payload: unknown, back = "/repositories/", on: { branch?: string; expectedHead?: string } = {}): Promise<{ start: number; status: number; data: Json; written: number }> {
     const text = JSON.stringify(payload);
     const digest = createHash("sha256").update(text).digest("hex");
-    const s = await this.post("/api/forge/start", { kind, repo, branch: null, expectedHead: null, digest, back });
+    const s = await this.post("/api/forge/start", { kind, repo, branch: on.branch ?? null, expectedHead: on.expectedHead ?? null, digest, back });
     if (s.status !== 200) return { start: s.status, status: s.status, data: s.data, written: 0 };
     const landed = await this.navigate(String(s.data.location));
     const code = landed.searchParams.get("code");
@@ -162,6 +162,40 @@ check("branch_delete of the default branch: refused before GitHub", noDefault.st
 const autolink = await ada.act("autolink_create", { forge: "github", id }, { keyPrefix: "RRID:SCR_", urlTemplate: "https://scicrunch.org/resolver/RRID:SCR_<num>", isAlphanumeric: false });
 check("autolink_create: done", autolink.status === 200 && autolink.data.result?.autolink?.keyPrefix === "RRID:SCR_", autolink.data);
 
+// 4b. Phase 03: web commits through the fake GitHub (one commit made by GitHub as Ada, the
+// compare-and-swap on the head the page saw, a new branch at that head).
+for (const page of [
+  "/r/oscr-fixture/eeg-analysis/edit/main/analysis.py",
+  "/r/oscr-fixture/eeg-analysis/new/main/docs/",
+  "/r/oscr-fixture/eeg-analysis/upload/main/",
+  "/r/oscr-fixture/eeg-analysis/delete/main/docs/methods.md",
+]) {
+  const res = await anon.request(`${SITE}${page}`);
+  check(`GET ${page}: 200, the shell`, res.status === 200 && /text\/html/.test(res.headers.get("Content-Type") ?? ""), res.status);
+}
+const headOf = async () => String(((await (await fetch(`${FAKE}/api/repos/oscr-fixture/eeg-analysis/branches/main`)).json()) as Json).commit?.sha ?? "");
+const rawAt = async (ref: string, path: string) => (await fetch(`${FAKE}/raw/oscr-fixture/eeg-analysis/${ref}/${path}`)).text();
+const seen = await headOf();
+const readme = `${await rawAt(seen, "README.md")}\nEdited in the registry's own editor.\n`;
+const edit = { branch: "main", base: seen, message: "Say where the README was edited", propose: false, changes: [{ op: "put", path: "README.md", text: readme }] };
+const committed = await ada.act("commit", { forge: "github", id }, edit, "/r/oscr-fixture/eeg-analysis/edit/main/README.md", { branch: "main", expectedHead: seen });
+const after1 = await headOf();
+check("commit: an edit committed through the fake GitHub, as Ada", committed.status === 200 && committed.data.result?.sha === after1 && after1 !== seen, committed.data);
+check("commit: the action row only (1 row)", committed.written === 1, committed.written);
+check("commit: the file changed on the branch", (await rawAt("main", "README.md")) === readme);
+check("commit: the answer links the registry's own viewer", Array.isArray(committed.data.result?.links) && committed.data.result.links.every((l: Json) => String(l.href).startsWith("/r/oscr-fixture/eeg-analysis/")), committed.data.result?.links);
+check("commit: the sentence confirmed", committed.data.sentence === "Commit “Say where the README was edited” to the branch main (1 file written)", committed.data.sentence);
+const stale = await ada.act("commit", { forge: "github", id }, { ...edit, message: "Too late", changes: [{ op: "put", path: "README.md", text: "stale\n" }] }, "/r/oscr-fixture/eeg-analysis/edit/main/README.md", { branch: "main", expectedHead: seen });
+check("commit: a branch that moved is refused (409, offer new_branch), nothing written", stale.status === 409 && stale.data.error?.code === "conflict" && stale.data.error?.offer === "new_branch" && stale.written === 0, [stale.status, stale.data, stale.written]);
+check("commit: the branch as it was after the first commit", (await headOf()) === after1);
+const branched = await ada.act("commit", { forge: "github", id }, { ...edit, message: "The same change, on its own branch", newBranch: "ada-patch-1", changes: [{ op: "put", path: "README.md", text: "stale\n" }] }, "/r/oscr-fixture/eeg-analysis/edit/main/README.md", { branch: "main", expectedHead: seen });
+const patchHead = String(((await (await fetch(`${FAKE}/api/repos/oscr-fixture/eeg-analysis/branches/ada-patch-1`)).json()) as Json).commit?.sha ?? "");
+check("commit: a new branch at the head the page saw, the change on it", branched.status === 200 && branched.data.result?.branch === "ada-patch-1" && patchHead === branched.data.result?.sha && (await rawAt("ada-patch-1", "README.md")) === "stale\n", branched.data);
+check("commit: the new branch's comparison and phase 04's pull request hook", branched.data.result?.compare === "/r/oscr-fixture/eeg-analysis/compare/main...ada-patch-1/" && branched.data.result?.pullRequest?.head === "ada-patch-1", branched.data.result);
+check("commit: main untouched by the new branch", (await headOf()) === after1);
+const moved = await ada.act("commit", { forge: "github", id }, { branch: "main", base: after1, message: "Move the docs", propose: false, changes: [{ op: "move", from: "docs/methods.md", to: "docs/methods/index.md" }] }, "/r/oscr-fixture/eeg-analysis/", { branch: "main", expectedHead: after1 });
+check("commit: a move through the Git data API", moved.status === 200 && (await rawAt("main", "docs/methods/index.md")).length > 0, moved.data);
+
 // 5. Webhooks: GitHub's signature, an installation, a push.
 async function deliver(event: string, payload: Json, secret = WEBHOOK_SECRET): Promise<{ status: number; data: Json; written: number }> {
   const body = JSON.stringify(payload);
@@ -205,6 +239,9 @@ landed = await bob.navigate(`${SITE}/api/auth/github/start?return=/repositories/
 check("Bob signed in with GitHub", landed.pathname === "/repositories/", landed.toString());
 const closed = await bob.act("create", null, { name: "bobs-repo" });
 check("FORGE_OPEN unset: Bob's action is refused at start (403 forge_closed)", closed.start === 403 && closed.data.error?.code === "forge_closed", closed.data);
+const bobHead = String(((await (await fetch(`${FAKE}/api/repos/oscr-fixture/eeg-analysis/branches/main`)).json()) as Json).commit?.sha ?? "");
+const bobCommit = await bob.act("commit", { forge: "github", id }, { branch: "main", base: bobHead, message: "Bob's", propose: true, changes: [{ op: "put", path: "b.txt", text: "b\n" }] }, "/r/oscr-fixture/eeg-analysis/", { branch: "main", expectedHead: bobHead });
+check("FORGE_OPEN unset: Bob's commit is refused at start too", bobCommit.start === 403 && bobCommit.data.error?.code === "forge_closed", bobCommit.data);
 const bobMine = await bob.request(`${SITE}/api/forge/mine`);
 check("Bob may still read his dashboard", bobMine.status === 200, bobMine.status);
 await post(`${FAKE}/control`, { login: "ada-fixture" });

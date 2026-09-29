@@ -321,7 +321,8 @@ export function viewerLinks(value: unknown): { href: string; text: string }[] {
   const out: { href: string; text: string }[] = [];
   for (const l of value.slice(0, 5)) {
     if (!l || typeof l.href !== "string" || typeof l.text !== "string" || !l.text.trim() || l.text.length > 120) continue;
-    if (!VIEWER_PATH.test(l.href) || l.href.includes("//") || /(?:^|\/)\.{1,2}(?:\/|$)/.test(l.href)) continue;
+    // No "//", no dot segment, and no encoded dot (a URL parser reads "%2e%2e" as "..").
+    if (!VIEWER_PATH.test(l.href) || l.href.includes("//") || /(?:^|\/)\.{1,2}(?:\/|$)/.test(l.href) || /%2e/i.test(l.href)) continue;
     out.push({ href: l.href, text: l.text });
   }
   return out;
