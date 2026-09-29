@@ -213,6 +213,11 @@ class FakeOscr(FakeServer):
         self.on("POST", "/api/v1/device/token", self._token)
         self.on("GET", "/api/v1/user", self._user)
         self.on("POST", "/api/v1/token/revoke", self._revoke)
+        # Static files (the site's /forge/*.json shards) and the registry's layer over repositories.
+        self.files: dict[str, Any] = {}
+        self.repos: dict[str, dict[str, Any]] = {}
+        self.on("GET", "/forge/.+", lambda r: (200, self.files[r.path]) if r.path in self.files else (404, b"Not Found"))
+        self.on("GET", "/api/v1/repos", self._repo)
 
     @property
     def host(self) -> str:
@@ -269,6 +274,14 @@ class FakeOscr(FakeServer):
         if not t:
             return 401, {"error": {"code": "bad_credentials", "message": "This token is not valid."}}
         return 200, {"github": t["github"], "orcid": t["orcid"], "token": {"id": t["id"], "scopes": t["scopes"], "expires_at": t["expires_at"]}}
+
+    def _repo(self, r: Req) -> tuple[int, Any]:
+        if not self.tokens.get(r.token or ""):
+            return 401, {"error": {"code": "requires_authentication", "message": "This route needs a token."}}
+        repo = self.repos.get((r.q("path") or "").lower())
+        if not repo:
+            return 404, {"error": {"code": "not_found", "message": "The registry does not know this repository."}}
+        return 200, repo
 
     def _revoke(self, r: Req) -> tuple[int, Any]:
         t = self.tokens.pop(r.token or "", None)

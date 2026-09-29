@@ -20,6 +20,7 @@ import {
   transferText,
   typedNameMatches,
   type BranchRow,
+  papersFromSearch,
 } from "../../src/lib/repo-settings-view.ts";
 import { TRANSFER_EFFECTS } from "../../worker/forge/service/act-settings.ts";
 import { ACTIONS } from "../../worker/forge/service/actions.ts";
@@ -210,5 +211,14 @@ describe("the pages' markup", () => {
     }
     const branches = readFileSync(new URL("../../src/scripts/repo-branches.ts", import.meta.url), "utf8");
     for (const kind of ["branch_create", "branch_rename", "branch_delete"]) assert.ok(branches.includes(`"${kind}"`), kind);
+  });
+});
+
+describe("the papers pre-filled from the address (night phase 14: oscr paper link)", () => {
+  test("DOIs in their forms, lower case, once, at most 20; anything else left out", () => {
+    assert.deepEqual(papersFromSearch("?paper=10.5555/OSCR.Fixture.1&paper=doi:10.1234/abc&paper=https://doi.org/10.1234/abc"), ["10.5555/oscr.fixture.1", "10.1234/abc"]);
+    assert.deepEqual(papersFromSearch("?paper=javascript:alert(1)&paper=10.1/x&paper=ada@example.org"), []);
+    assert.equal(papersFromSearch(Array.from({ length: 30 }, (_, i) => `paper=10.1234/p${i}`).join("&")).length, 20);
+    assert.deepEqual(papersFromSearch(""), []);
   });
 });

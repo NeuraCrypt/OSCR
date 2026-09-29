@@ -15,6 +15,7 @@ import {
   declare,
   deleteConsequences,
   GRACE_DAYS,
+  papersFromSearch,
   SUGGESTED_AUTOLINKS,
   transferText,
   typedNameMatches,
@@ -192,7 +193,7 @@ export function mountSettings(root: HTMLElement, repo: ShellRepo): void {
   row(
     "Papers",
     papers.length ? `${papers.map((p) => `${p.doi} (${p.status === "linked" ? "linked" : "proposed to its authors"})`).join(", ")}.` : "No paper yet.",
-    on("papers", "Save", [labelled("Add, as DOIs separated by spaces", input("add")), labelled("Remove, as DOIs separated by spaces", input("remove"))], (f) => ({
+    on("papers", "Save", [labelled("Add, as DOIs separated by spaces", input("add", papersFromSearch(location.search).join(" "))), labelled("Remove, as DOIs separated by spaces", input("remove"))], (f) => ({
       repository: `${repo.owner}/${repo.name}`,
       add: val(f, "add").split(/[\s,]+/).filter(Boolean),
       remove: val(f, "remove").split(/[\s,]+/).filter(Boolean),

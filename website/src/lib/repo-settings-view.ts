@@ -193,3 +193,17 @@ export function ago(date: number | null, now: number): string {
   }
   return "just now";
 }
+
+/** Night phase 14: the papers to add, pre-filled from the address (?paper=DOI, repeated), as the command
+ *  line's `oscr paper link` opens the page for a repository the registry knows already. DOIs only
+ *  (10.…, doi: or doi.org forms), lower case, at most 20; anything else is left out. The person still
+ *  confirms, then authorizes the one action on GitHub. */
+export function papersFromSearch(search: string): string[] {
+  const out: string[] = [];
+  for (const raw of new URLSearchParams(search).getAll("paper")) {
+    const m = /^(?:https?:\/\/(?:dx\.)?doi\.org\/|doi:)?(10\.\d{4,9}\/[^\s"<>@]{1,190})$/i.exec(raw.trim());
+    if (m && !out.includes(m[1].toLowerCase())) out.push(m[1].toLowerCase());
+  }
+  return out.slice(0, 20);
+}
+
