@@ -1,0 +1,77 @@
+---
+// Policy: the code of conduct, for the registry's forms and the project's spaces (the project's
+// CODE_OF_CONDUCT.md, Contributor Covenant 2.1, for its community spaces).
+import Info from "../../components/Info.astro";
+import { SITE_NAME, SOURCE_URL } from "../../config";
+
+const toc = [
+  { id: "where", text: "Where it applies" },
+  { id: "expected", text: "What is expected" },
+  { id: "unacceptable", text: "What is not acceptable" },
+  { id: "authors", text: "Towards authors" },
+  { id: "enforcement", text: "Enforcement" },
+  { id: "report", text: "Reporting" },
+];
+---
+<Info
+  title="Code of conduct"
+  description={`How to behave in ${SITE_NAME}'s forms and the project's spaces, and how the code of conduct is enforced.`}
+  group="policies"
+  path="/policies/conduct/"
+  parents={[{ text: "Policies", href: "/policies/" }]}
+  toc={toc}
+>
+  <p class="lead" slot="lead">
+    {SITE_NAME} is a place where researchers' work is recorded, and where they and others can correct it. That only works
+    with honesty and respect, towards the authors above all.
+  </p>
+
+  <h2 id="where">Where it applies</h2>
+  <ul>
+    <li>Everything you write in the registry's forms: submissions and their notes, claims and their statements,
+      corrections and their notes, removal requests and their justifications.</li>
+    <li>The project's own spaces: its <a href={`${SOURCE_URL}/issues`}>GitHub issues</a> and pull requests, under the
+      project's <a href={`${SOURCE_URL}/blob/main/CODE_OF_CONDUCT.md`}>code of conduct</a> (the Contributor Covenant,
+      version 2.1).</li>
+    <li>Later, the discussions and reproduction reports the registry will open with its moderation.</li>
+  </ul>
+
+  <h2 id="expected">What is expected</h2>
+  <ul>
+    <li>Truthfulness: claim a paper only if you are among its authors, a repository only if you maintain it; give facts
+      you believe accurate.</li>
+    <li>Respect for the authors, their work and their choices, including their licences and their wish to be removed.</li>
+    <li>Care with other people's data: never write someone else's personal details in a form.</li>
+    <li>Good faith: use the removal and correction forms for what they are for.</li>
+  </ul>
+
+  <h2 id="unacceptable">What is not acceptable</h2>
+  <ul>
+    <li>impersonating an author, a maintainer or anyone else;</li>
+    <li>false claims, false corrections, or links to what is not the paper's code or data;</li>
+    <li>harassment, insults, threats, or discriminatory language, in any text;</li>
+    <li>publishing, or asking to publish, another person's private information;</li>
+    <li>flooding the forms, or using them to advertise;</li>
+    <li>trying to get around the registry's security or limits.</li>
+  </ul>
+
+  <h2 id="authors">Towards authors</h2>
+  <p>
+    A missing or dead link is a fact to record, not a fault to denounce. The registry says what it found in neutral words,
+    and asks the same of those who use it: a correction or a note states what is wrong, not who is to blame.
+  </p>
+
+  <h2 id="enforcement">Enforcement</h2>
+  <p>
+    The operator reads every request before it has any effect, and may refuse one, with a reason. Misuse may lead to a
+    role being withdrawn or an account being closed (<a href="/policies/terms/#accounts">the terms</a>). In the project's
+    spaces, the Contributor Covenant's guidelines apply.
+  </p>
+
+  <h2 id="report">Reporting</h2>
+  <p>
+    To report conduct in the registry — a false claim, an abusive text, content about you — use the paper's
+    <a href="/help/removal/">removal request</a> or a <a href="/help/correct/">correction</a>, as fits, and say what
+    happened. For the project's spaces, open an issue on GitHub. {SITE_NAME} has no email address.
+  </p>
+</Info>

@@ -47,7 +47,7 @@ const json = (f) => JSON.parse(readFileSync(join(DIST, f), "utf8"));
 
 // 1. The fixed pages, the shells of the pages rendered on demand, and the rewrites that serve
 // an entity's shell for its address (public/_redirects).
-const FIXED = ["/", "/about/", "/browse/", "/authors/", "/journals/", "/institutions/", "/tools/", "/datasets/",
+const FIXED = ["/", "/about/", "/help/", "/policies/", "/privacy/", "/brand/", "/labs/", "/taxonomy/", "/list/", "/browse/", "/authors/", "/journals/", "/institutions/", "/tools/", "/datasets/",
   "/lookup/", "/search/", "/404.html", "/account/", "/submit/", "/removal/", "/badge.svg", "/paper/404.html",
   ...ENTITY_TYPES.map((t) => `/${t}/`)];
 for (const route of FIXED) if (!exists(route)) problems.push(`missing page ${route}`);
@@ -311,6 +311,13 @@ console.log(`Papers: ${n(staticPapers.length)} static (at most ${n(STATIC_PAPERS
   `${n(onDemand.length)} rendered on demand; every other file: ${n(others)} (at most ${n(FIXED_FILES_MAX)}).`);
 console.log("Pages by kind:");
 console.log(Object.entries(kinds).map(([k, c]) => `  ${String(n(c)).padStart(7)}  ${k}`).join("\n"));
+// A launch warning, never a failure: the privacy page and the terms name the operator (OPERATOR_NAME and
+// OPERATOR_ADDRESS, src/config.ts, or at build time); while they are empty, the pages say that they are
+// published before the public launch.
+if (all.has("/privacy/index.html") && readFileSync(join(DIST, "privacy/index.html"), "utf8").includes('id="operator-missing"')) {
+  console.warn("LAUNCH WARNING: the operator's name and postal address are empty (OPERATOR_NAME, OPERATOR_ADDRESS in " +
+    "src/config.ts, or at build time): /privacy/ and /policies/terms/ say they are published before the launch.");
+}
 if (others > FIXED_FILES_MAX) problems.push(`${n(others)} files besides the papers' pages: past ${n(FIXED_FILES_MAX)}`);
 if (files.length > FILE_MARGIN) problems.push(`${n(files.length)} files: past the margin of ${n(FILE_MARGIN)} (limit ${n(FILE_LIMIT)})`);
 if (problems.length) {

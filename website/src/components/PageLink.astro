@@ -1,0 +1,12 @@
+---
+// A link to a page of the site that another branch may not have merged yet (src/lib/info.ts,
+// `pageExists`): the link when the page exists, its text alone otherwise, so that no build holds a
+// broken link.
+import { pageExists } from "../lib/info";
+
+interface Props {
+  href: string;
+}
+const { href } = Astro.props;
+---
+{pageExists(href.split("#")[0]) ? <a href={href}><slot /></a> : <span><slot /></span>}

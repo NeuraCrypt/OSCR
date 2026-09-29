@@ -1,0 +1,124 @@
+---
+// Help: signing in, the account page, roles, sessions and notifications (docs/ACCOUNTS.md,
+// website/worker/account/, src/pages/account.astro).
+import Info from "../../components/Info.astro";
+import { SITE_NAME } from "../../config";
+
+const toc = [
+  { id: "why", text: "Why sign in" },
+  { id: "providers", text: "ORCID, GitHub or Google" },
+  { id: "kept", text: "What signing in keeps, and never" },
+  { id: "link", text: "Linking several identities" },
+  { id: "roles", text: "Roles: verified author, maintainer" },
+  { id: "page", text: "Your account page" },
+  { id: "notifications", text: "Notifications" },
+  { id: "sessions", text: "Sessions and signing out" },
+  { id: "limits", text: "What is not possible yet" },
+];
+---
+<Info
+  title="Signing in and your account"
+  description={`Signing in to ${SITE_NAME} with ORCID, GitHub or Google, without an email address: what is kept, the roles, the account page and its notifications.`}
+  group="help"
+  path="/help/accounts/"
+  parents={[{ text: "Help", href: "/help/" }]}
+  toc={toc}
+>
+  <p class="lead" slot="lead">
+    Reading needs no account. Signing in is for contributing: submitting a paper, claiming it, correcting its links,
+    validating its map, adding the badge, asking for a removal. You sign in with an identity you already have, and
+    {SITE_NAME} never asks for your email address.
+  </p>
+
+  <h2 id="why">Why sign in</h2>
+  <p>
+    A contribution changes a public record, so the registry needs to know who asks and in which role — an author of the
+    paper, a maintainer of its code, anyone else — and to answer them. It does that with the identity providers
+    researchers already use, not with a password of its own.
+  </p>
+
+  <h2 id="providers">ORCID, GitHub or Google</h2>
+  <dl class="terms">
+    <dt>ORCID</dt>
+    <dd>The best choice for an author: when a paper's metadata lists your ORCID iD, you are recognized as its author at
+      once. {SITE_NAME} asks ORCID for the <code>openid</code> scope only — your iD and your public name.</dd>
+    <dt>GitHub</dt>
+    <dd>The way to be recognized as a maintainer of a repository on GitHub. {SITE_NAME} asks GitHub for no scope at all:
+      public information only, of which it reads your account's number, login and name — never an address, even a
+      public one.</dd>
+    <dt>Google</dt>
+    <dd>For anyone else. {SITE_NAME} asks Google for the <code>openid</code> scope only: an opaque identifier, not even a
+      name.</dd>
+  </dl>
+  <p>
+    Each sign-in goes to the provider's own page and comes back to the page you were on. It is protected against forged
+    or replayed returns (a short signed cookie holds the flow's secrets for ten minutes). While the platform is being
+    built, sign-in with ORCID may use ORCID's sandbox — a test service — and then says so; anything validated through it
+    is recorded as a test.
+  </p>
+
+  <h2 id="kept">What signing in keeps, and never</h2>
+  <ul>
+    <li><strong>Kept</strong>: the name the provider gives (ORCID's public name, GitHub's name or login; Google gives
+      none), your public handles (ORCID iD, GitHub login), each provider's identifier for you, your roles, your requests
+      and their answers, and for each session a short description of the browser ("Firefox on macOS").</li>
+    <li><strong>Never</strong>: an email address; a password; the provider's access token, used during the sign-in only
+      and then dropped; your session's identifier itself — the database keeps only its SHA-256.</li>
+  </ul>
+  <p>The <a href="/privacy/#accounts">privacy page</a> lists every column of every table.</p>
+
+  <h2 id="link">Linking several identities</h2>
+  <p>
+    Signed in, choose another provider on your account page: its identity joins your account, so that, for instance, an
+    author who signed in with ORCID can also prove maintainership on GitHub. One identity per provider; an identity
+    already linked to another account is refused.
+  </p>
+
+  <h2 id="roles">Roles: verified author, maintainer</h2>
+  <dl class="terms">
+    <dt>Member</dt>
+    <dd>Everyone signed in: may submit a paper, claim authorship, and ask for a removal.</dd>
+    <dt>Verified author</dt>
+    <dd>Of a given paper: automatically, when your account's ORCID iD is among the paper's authors in its published
+      metadata — checked at each sign-in, and again with "Check my papers again" on your account page. Otherwise, by a
+      <a href="/help/claim/">claim</a> the operator accepts. A verified author may correct the paper's links and validate
+      its map.</dd>
+    <dt>Maintainer</dt>
+    <dd>Of a given repository: on GitHub, checked at once with your GitHub identity — you own it, are a public member of
+      the organization that owns it, are among its contributors, or authored a commit in it. Elsewhere (GitLab,
+      Codeberg…), your claim waits for the operator. A maintainer may correct the links of the papers whose code it is,
+      for their own repository.</dd>
+  </dl>
+
+  <h2 id="page">Your account page</h2>
+  <p>
+    <a href="/account/">Your account page</a> shows who you are signed in as, your linked identities, your roles, the
+    papers that list your ORCID iD, the form to claim a repository, and every request you made — submissions,
+    corrections, validations, claims, removal requests — with its status and the answer.
+  </p>
+
+  <h2 id="notifications">Notifications</h2>
+  <p>
+    Notifications stay in the site, by decision: {SITE_NAME} sends no email. Today, the answers to your requests appear
+    on your account page and on the pages concerned (a removal request's page shows its decision and the operator's
+    words). Notifications of their own — new activity on your papers — will come with the site's moderation, still in
+    the site only.
+  </p>
+
+  <h2 id="sessions">Sessions and signing out</h2>
+  <p>
+    A session lasts 30 days from your last visit (renewed at most once a day), in a cookie your browser sends to this
+    site only and that page scripts cannot read. A second, harmless cookie tells the pages that you are signed in, so
+    that a signed-out reader's visit never asks the site anything. "Sign out" on your account page ends the session and
+    deletes it. The <a href="/privacy/#cookies">privacy page</a> lists the cookies.
+  </p>
+
+  <h2 id="limits">What is not possible yet</h2>
+  <ul>
+    <li>Deleting your account or unlinking an identity from the site itself; signing out of every browser at once. Until
+      then, ask through a <a href="/help/removal/">removal request</a> naming your account, and the operator does it
+      (<a href="/privacy/#rights">your rights</a>).</li>
+    <li>Maintainer checks outside GitHub are decided by hand; archives (Zenodo, OSF) have no owner in their address, so
+      no maintainer claim.</li>
+  </ul>
+</Info>

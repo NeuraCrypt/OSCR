@@ -1,0 +1,79 @@
+---
+// Policy: accessibility — what the site does (science.css, the markup of the pages), what is known
+// not to work well yet, and how to report a barrier. No formal audit has been made: none is claimed.
+import Info from "../../components/Info.astro";
+import { SITE_NAME, SOURCE_URL } from "../../config";
+
+const toc = [
+  { id: "aim", text: "The aim" },
+  { id: "does", text: "What the site does" },
+  { id: "limits", text: "Known limits" },
+  { id: "report", text: "Reporting a barrier" },
+];
+---
+<Info
+  title="Accessibility"
+  description={`What ${SITE_NAME} does for accessibility, its known limits, and how to report a barrier.`}
+  group="policies"
+  path="/policies/accessibility/"
+  parents={[{ text: "Policies", href: "/policies/" }]}
+  toc={toc}
+>
+  <p class="lead" slot="lead">
+    Research code should be readable by everyone who reads research. {SITE_NAME} aims at the Web Content Accessibility
+    Guidelines (WCAG) 2.2, level AA. It has not been audited against them, and does not claim to conform: this page says
+    what it does and what is known not to work well yet.
+  </p>
+
+  <h2 id="aim">The aim</h2>
+  <p>
+    Plain pages, built ahead of time, in one stylesheet, with the structure of a scientific archive: headings, lists,
+    tables and words, rather than widgets and colours.
+  </p>
+
+  <h2 id="does">What the site does</h2>
+  <ul>
+    <li><strong>Structure</strong>: the language of each page is declared; each page has one main heading, then headings
+      in order; the masthead, the breadcrumb, the main content and the footer are landmarks; lists are lists and tables
+      have headers.</li>
+    <li><strong>Words before colours</strong>: a paper's status is said in words, never by a colour or a badge alone; the
+      Code ↔ Paper reader lists every match in words, beside its colours.</li>
+    <li><strong>Keyboard</strong>: every link, button and field can be reached and used with the keyboard, with a visible
+      focus outline; the reader's panes can be focused and scrolled.</li>
+    <li><strong>Forms</strong>: every field has a label; results and errors are announced to screen readers
+      (<code>role="status"</code>, <code>role="alert"</code>); nothing is sent before a review, for the removal request.</li>
+    <li><strong>Zoom and small screens</strong>: the pages reflow down to a phone's width without scrolling sideways,
+      and the browser's zoom enlarges everything; long names, addresses and titles wrap.</li>
+    <li><strong>Contrast</strong>: text on the default ground meets a contrast of 4.5:1; the code's syntax colours keep
+      4.5:1 on every shade of the reader's matches.</li>
+    <li><strong>Motion</strong>: the only animation, a loading bar, stops when your system asks for reduced motion.</li>
+    <li><strong>Images</strong>: the logo and the badge have text alternatives; the site has no image that carries
+      information without words.</li>
+    <li><strong>Without JavaScript</strong>: every static page — a paper's record, the lists, the categories, the
+      information pages — reads whole.</li>
+  </ul>
+
+  <h2 id="limits">Known limits</h2>
+  <ul>
+    <li>The search, the DOI lookup, the pages of authors, journals, institutions, tools and datasets, the forms and the
+      reader's paper pane need JavaScript.</li>
+    <li>The Code ↔ Paper reader — two panes that scroll on their own, colour-paired highlights — is the most complex part
+      of the site and has not been tested with screen readers in depth; the list of matches and the file's source links
+      are the accessible way through it.</li>
+    <li>The six colours of the matches are told apart by colour only on the page; their order and number are in the list
+      of matches.</li>
+    <li>The paper's text in the reader is shown as plain text: its figures, tables and equations are not reproduced; the
+      reader links to the paper.</li>
+    <li>The base text size is set in pixels: the browser's zoom enlarges it, but a default text size chosen in the
+      browser's settings does not.</li>
+    <li>Content comes from papers and repositories as their authors wrote them: a title's formula may read awkwardly, a
+      script may be uncommented.</li>
+  </ul>
+
+  <h2 id="report">Reporting a barrier</h2>
+  <p>
+    Open an issue on the <a href={`${SOURCE_URL}/issues`}>project's GitHub</a>, saying the page, what you tried to do, and
+    what you use (browser, assistive technology). {SITE_NAME} has no email address. The operator reads the project's
+    issues; a fix goes into the public history of the code.
+  </p>
+</Info>

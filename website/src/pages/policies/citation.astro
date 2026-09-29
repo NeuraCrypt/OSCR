@@ -1,0 +1,80 @@
+---
+// Policy: citation — the registry, a paper's record, a tracing map, the datasets, the software and
+// the authors' code (CITATION.cff; the Cite section of a paper's page; oscr/zenodo.py).
+import Info from "../../components/Info.astro";
+import { SITE_NAME, SITE_TAGLINE, SOURCE_URL } from "../../config";
+import { catalog, generatedInWords } from "../../lib/catalog";
+
+const year = catalog.generated_at.slice(0, 4);
+const site = new URL("/", Astro.site).href;
+const toc = [
+  { id: "principle", text: "Cite the source first" },
+  { id: "code", text: "The authors' code" },
+  { id: "map", text: "A tracing map" },
+  { id: "record", text: "A paper's record" },
+  { id: "registry", text: "The registry" },
+  { id: "datasets", text: "The datasets" },
+  { id: "software", text: "The software" },
+];
+---
+<Info
+  title="Citation"
+  description={`How to cite ${SITE_NAME}, a paper's record, a tracing map, the datasets and the software — and the authors' code first.`}
+  group="policies"
+  path="/policies/citation/"
+  parents={[{ text: "Policies", href: "/policies/" }]}
+  toc={toc}
+>
+  <p class="lead" slot="lead">
+    {SITE_NAME} exists to make research code citable. Cite the work first — the paper and its authors' code — and the
+    registry when you used it to find, read or check them.
+  </p>
+
+  <h2 id="principle">Cite the source first</h2>
+  <p>
+    A paper is cited by its DOI, as its journal says. A paper's page on {SITE_NAME} gives ready formats — an APA-like text,
+    BibTeX, RIS and CSL-JSON — in its Cite section, each with a Copy button.
+  </p>
+
+  <h2 id="code">The authors' code</h2>
+  <p>
+    Cite the code as its authors ask: their repository's CITATION.cff when there is one (the Repositories section says
+    so), or its archive's DOI (a Zenodo release, for instance). For a git repository, give the commit — the page shows the
+    one that was verified — and, when Software Heritage has archived it, its permanent identifier.
+  </p>
+
+  <h2 id="map">A tracing map</h2>
+  <p>
+    A map validated by an author has a DOI: cite it when you mean "this paper's code, as its author confirmed it". Its
+    creators are the validating author and the platform; the paper's page gives its citation once it has one. A map
+    without a DOI — proposed by the machine — is not meant to be cited; cite the paper's page with the date you read it.
+  </p>
+
+  <h2 id="record">A paper's record</h2>
+  <p>
+    The record of a paper changes as its code is checked again or corrected; its Versions section lists each change. To
+    cite what you read, give the page's address and the date:
+  </p>
+  <pre>{`${SITE_NAME}. Record of <the paper's DOI>. ${site}paper/<its identifier>/ (read on <date>).`}</pre>
+
+  <h2 id="registry">The registry</h2>
+  <pre>{`The ${SITE_NAME} contributors (${year}). ${SITE_NAME}${SITE_TAGLINE === SITE_NAME ? "" : `: ${SITE_TAGLINE}`}. Catalogue of ${generatedInWords(catalog.generated_at)}. ${site}`}</pre>
+  <p>The <a href="/about/#cite">About page</a> gives the same in BibTeX.</p>
+
+  <h2 id="datasets">The datasets</h2>
+  <p>
+    Cite the scripts' dataset by its address and the revision you used (each upload is a commit of the dataset's
+    repository):
+  </p>
+  <pre>{`The ${SITE_NAME} contributors (${year}). OpenScientificCodeRegistry/Database [Data set]. Hugging Face. https://huggingface.co/datasets/OpenScientificCodeRegistry/Database (revision <commit>).`}</pre>
+  <p>
+    A script taken from it is still its authors' work: cite them, and keep the licence its manifest names.
+  </p>
+
+  <h2 id="software">The software</h2>
+  <p>
+    The harvester, the site and its Worker are open source (Apache-2.0). The repository's
+    <a href={`${SOURCE_URL}/blob/main/CITATION.cff`}>CITATION.cff</a> gives the software's citation; GitHub turns it into
+    APA and BibTeX with its "Cite this repository" button.
+  </p>
+</Info>

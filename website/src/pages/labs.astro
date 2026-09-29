@@ -1,0 +1,211 @@
+---
+// Labs (2026-09-29), on the model of arXiv Labs: what is experimental on the site, the open data
+// and how to query it (Parquet by range requests), the tracing maps' format, the site's own files and
+// its search API, the badge — and, clearly marked, what is in development on branches not merged
+// (the GitHub-side hosting layer, the researchers' command line, the public API with tokens, the
+// non-executing checks: the night/* branches, docs/NIGHT_REPORT.md there).
+import Info from "../components/Info.astro";
+import { SITE_NAME, SOURCE_URL } from "../config";
+import { LOOKUP_HEX, SHARDS } from "../lib/shards";
+import { number } from "../lib/format";
+
+const DATASET = "https://huggingface.co/datasets/OpenScientificCodeRegistry/Database";
+const site = new URL("/", Astro.site).href;
+const hyparquet = `// A script's text from the open dataset, in a browser: the block's footer once, then the one
+// row group (64 rows) that holds the file, by HTTP range requests. npm: hyparquet, hyparquet-compressors.
+import { asyncBufferFromUrl, parquetReadObjects } from "hyparquet";
+import { compressors } from "hyparquet-compressors";
+
+const base = "${DATASET}/resolve/main";
+// 1. The repository's manifest: its commit, its licence, and where each file's text is.
+const repo = "github.com/owner/name";
+const shard = [...new Uint8Array(await crypto.subtle.digest("SHA-1", new TextEncoder().encode(repo)))]
+  .map((b) => b.toString(16).padStart(2, "0")).join("").slice(0, 2);
+const manifest = await (await fetch(\`\${base}/manifests/\${shard}/\${repo.replace(/[^A-Za-z0-9._-]+/g, "__")}.json\`)).json();
+const file = manifest.files.find((f) => f.path === "analysis/run.py");
+// 2. That row of that block.
+const block = await asyncBufferFromUrl({ url: \`\${base}/blocks/\${String(file.block).padStart(5, "0")}.parquet\` });
+const [row] = await parquetReadObjects({ file: block, compressors, rowStart: file.row, rowEnd: file.row + 1 });
+console.log(manifest.license, row.sha256 === file.sha256, row.content);`;
+const map = `{
+  "format": "tracing-map/0.1",
+  "paper": { "doi": "10.1234/abcd", "title": "…", "journal": "…", "published": "2026-09-21",
+             "authors": ["…"] },
+  "code": [{
+    "repo": "github.com/owner/name", "url": "https://github.com/owner/name",
+    "state": "alive", "license": "MIT", "commit": "7a034b0a…", "commit_date": "2026-09-01T10:00:00+02:00",
+    "type": "", "software_heritage_archived": true, "level": "inventoried",
+    "found_by": "text:availability", "section": "Code availability",
+    "files": [{ "path": "analysis/run.py", "language": "Python", "digest": "c26da9b3…" }]
+  }],
+  "alignments": [{
+    "paragraph": 42, "section": "Methods › EEG preprocessing", "repo": "github.com/owner/name",
+    "path": "analysis/run.py", "start_line": 10, "end_line": 38, "symbol": "preprocess",
+    "score": 3.1, "evidence": ["notch 50", "ica", "l_freq"], "method": "lexical-v1"
+  }],
+  "proposed": { "by": "oscr", "on": "2026-09-29" },
+  "validated": { "by": "Family, Given", "orcid": "0000-0000-0000-0000", "on": "2026-10-02", "proof": "orcid" }
+}`;
+const toc = [
+  { id: "now", text: "Experiments you can use today" },
+  { id: "datasets", text: "The open datasets" },
+  { id: "parquet", text: "Reading one script with range requests" },
+  { id: "maps", text: "The tracing maps' format" },
+  { id: "site-files", text: "The site's own files" },
+  { id: "search-api", text: "The search's API" },
+  { id: "badge", text: "The badge" },
+  { id: "development", text: "In development" },
+  { id: "feedback", text: "Feedback" },
+];
+---
+<Info
+  title="Labs"
+  description={`${SITE_NAME} Labs: the experiments on the site, the open data and how to query it, the tracing maps' format, and what is in development.`}
+  group="about"
+  path="/labs/"
+  toc={toc}
+>
+  <p class="lead" slot="lead">
+    {SITE_NAME} is young, and much of it is an experiment in how research code can be found, read and cited. This page
+    gathers what is experimental, how to build on the registry's data, and what is being built — marked as such.
+  </p>
+
+  <h2 id="now">Experiments you can use today</h2>
+  <dl class="terms">
+    <dt>The Code ↔ Paper matches</dt>
+    <dd>Method <code>lexical-v1</code>: paragraphs and code units reduced to technical terms, a pair kept when several
+      rare terms agree. A first method, measured by hand on 25 papers; its next steps are a better reading of the paper's
+      structure, a real parser for the code, and a local model. <a href="/help/reader/">The reader</a> shows every match
+      with its evidence and score.</dd>
+    <dt>The paper from two sources</dt>
+    <dd>When Europe PMC does not answer, the reader reads PubMed Central's copy, whose paragraphs may be numbered
+      otherwise, and places each match by its section and evidence terms.</dd>
+    <dt>The classification</dt>
+    <dd>Rules over a paper's title, keywords, MeSH terms, subjects, abstract and journal, with their reasons; a local
+      model will settle the ambiguous cases once compared with hand labels (<a href="/taxonomy/#method">how</a>).</dd>
+    <dt>A registry within a fixed number of files</dt>
+    <dd>Whatever the catalogue's size, the site keeps a bounded number of files: authors, journals, institutions, tools
+      and datasets are rendered in the browser from a fixed number of shards, and older papers by the Worker from their
+      records.</dd>
+  </dl>
+
+  <h2 id="datasets">The open datasets</h2>
+  <p>
+    <a href={DATASET}>OpenScientificCodeRegistry/Database</a>, on Hugging Face: the authors' scripts under verified
+    licences, deduplicated by the SHA-256 of their text, as Parquet blocks (<code>blocks/NNNNN.parquet</code>: sha256,
+    language, size, lines, content; 64 rows a row group; zstd) with one JSON manifest per repository
+    (<code>manifests/&lt;xx&gt;/&lt;repository&gt;.json</code>). <a href="/help/data/">Accessing the data</a> gives the
+    layout in full, and how to read it with Python or DuckDB.
+  </p>
+
+  <h2 id="parquet">Reading one script with range requests</h2>
+  <p>
+    The blocks are cut for the browser: a reader fetches a block's footer once, then only the row group that holds the
+    file it wants — about 78 KB for one script — by HTTP range requests, which Hugging Face answers with the headers a
+    page on another site needs. With <a href="https://github.com/hyparam/hyparquet">hyparquet</a> and its zstd
+    decompressor:
+  </p>
+  <pre>{hyparquet}</pre>
+  <p>
+    Check the file's <code>sha256</code> against the manifest's, and keep the licence the manifest names. A block, once
+    published, never changes: its rows can be cached for good.
+  </p>
+
+  <h2 id="maps">The tracing maps' format</h2>
+  <p>
+    A map is one JSON file, <code>tracing-map.json</code>, format <code>tracing-map/0.1</code>, deposited on Zenodo under
+    CC0-1.0 once an author validated it (<a href="/help/maps/">what a map is</a>). Its shape, shortened:
+  </p>
+  <pre>{map}</pre>
+  <dl class="terms">
+    <dt><code>code[].level</code></dt>
+    <dd><code>found</code> (the paper cites it), <code>alive</code> (it answers), <code>inventoried</code> (files listed,
+      commit recorded).</dd>
+    <dt><code>code[].files[].digest</code></dt>
+    <dd>the SHA-256 of the file's text at the recorded commit.</dd>
+    <dt><code>alignments[].paragraph</code></dt>
+    <dd>the paragraph's position among the <code>&lt;p&gt;</code> of the <code>&lt;body&gt;</code> of the paper's
+      open-access XML at Europe PMC, counted from 0 in document order; <code>evidence</code> holds short terms only, never
+      a sentence.</dd>
+  </dl>
+  <p>
+    <code>validated</code> appears once an author validated the map. The digest a validation carries is the SHA-256 of the
+    map without <code>proposed</code> and <code>validated</code>, serialized as compact JSON with sorted keys.
+  </p>
+
+  <h2 id="site-files">The site's own files</h2>
+  <p>Every record the pages show is a public, static JSON file, rebuilt every night. They serve the pages first; their layout may change.</p>
+  <dl class="terms">
+    <dt><code>/lookup/NN.json</code></dt>
+    <dd>The DOI lookup: {number(16 ** LOOKUP_HEX)} shards; <code>NN</code> is the first {LOOKUP_HEX} hex characters of the
+      SHA-1 of the lower-cased DOI. Each maps a DOI to <code>[status, day read]</code>, and the page's identifier when it
+      has one.</dd>
+    <dt><code>/records/&lt;type&gt;/NN.json</code></dt>
+    <dd>The authors ({number(SHARDS.author)} shards), institutions ({number(SHARDS.institution)}), tools
+      ({number(SHARDS.tool)}), journals ({number(SHARDS.journal)}) and datasets ({number(SHARDS.dataset)}): each shard holds
+      <code>entities</code> by key and the <code>rows</code> of their papers. A key's shard is the leading bits of the SHA-1
+      of the key (an ORCID iD in capitals; any other key in lower case), as many as the number of shards needs, in
+      hexadecimal.</dd>
+    <dt><code>/records/paper/NN.json</code></dt>
+    <dd>The records of the papers whose pages are rendered on demand ({number(SHARDS.paper)} shards, by the SHA-1 of the
+      page's identifier).</dd>
+    <dt><code>/badge.svg</code>, <code>/sitemap.xml</code></dt>
+    <dd>The badge; the sitemap and its shards, listing every page.</dd>
+  </dl>
+
+  <h2 id="search-api">The search's API</h2>
+  <p>
+    The search page asks <code>GET /api/search</code>, which anyone may call — each call counts against the site's daily
+    free quota, so call it sparingly:
+  </p>
+  <pre>{`${site}api/search?q=eeg&modality=eeg&sort=newest&page=1&size=20
+${site}api/search?q=tool:mne&format=csv        (the first 500 results, CSV or JSON)`}</pre>
+  <p>
+    Parameters: <code>q</code> (<a href="/help/search/#language">the query language</a>), the filters (<code>status</code>,
+    <code>year</code>, <code>modality</code>, <code>organism</code>, <code>population</code>, <code>subfield</code>,
+    <code>tool</code>, <code>language</code>, <code>journal</code>, <code>data</code>, <code>host</code>,
+    <code>code_license</code>, <code>type</code>, <code>license</code>, <code>matches</code>, <code>oa</code>, repeated
+    for OR), <code>from</code>, <code>to</code>, <code>sort</code> (relevance, newest, oldest, cited), <code>page</code>,
+    <code>size</code> (1–50), <code>format</code>. The answer is JSON: the results, the total (exact up to 500), the
+    facets' counts, and what the search cost in database rows. When the quota is spent it answers
+    <code>503</code> with the code <code>quota</code>.
+  </p>
+
+  <h2 id="badge">The badge</h2>
+  <p>One static image for every paper, linked to the paper's page from its code's README: <a href="/help/badge/">how</a>, and <a href="/brand/#badge">its rules</a>.</p>
+
+  <h2 id="development">In development</h2>
+  <p class="note">
+    <strong>Not available on this site.</strong> What follows is being built on branches of the
+    <a href={SOURCE_URL}>project's repository</a> that are not merged or deployed. It may change, or not ship.
+  </p>
+  <dl class="terms">
+    <dt>A research layer over GitHub</dt>
+    <dd>Researchers' repositories would stay in their own GitHub accounts, operated through a GitHub App with their
+      consent, one authorization at a time, and read in {SITE_NAME}'s own viewer: the code with its tracing maps' lines in
+      colour, editing in the browser, pull requests and releases linked to the paper's versions, and research issues —
+      an error in the code, a mismatch between code and paper, a failed reproduction — attached to a paper and its map.
+      GitHub would be the storage, and the last resort for what the registry cannot show.</dd>
+    <dt>The <code>oscr</code> command line for researchers</dt>
+    <dd>A program for the terminal, standard-library Python only, that links a repository to its paper, checks it as the
+      registry does, traces its lines to the paragraphs of the Methods, produces a citation, and works with the GitHub
+      repository — never running the code it reads. Not published yet.</dd>
+    <dt>A public API with tokens</dt>
+    <dd>Versioned read and write routes under <code>/api/v1/</code>, by personal tokens only — shown once, stored as a
+      digest, each with its rights and an expiry — with limits per token and a reference built from the routes
+      themselves.</dd>
+    <dt>Checks that never run the code</dt>
+    <dd>On a repository's pull requests and at any commit: its licence, an environment file saying how the code runs
+      again, its link to the paper's DOI, a usable CITATION.cff, the files its tracing maps point to, file sizes, a README
+      that says how to run it — read as text, nothing built, installed or executed; a change fails only when it breaks
+      what a paper relies on.</dd>
+  </dl>
+
+  <h2 id="feedback">Feedback</h2>
+  <p>
+    {SITE_NAME} has no email address. About a paper — a wrong match, a missed link, a misjudged repository — use that
+    paper's own forms, signed in: a correction and its note reach the operator (<a href="/help/correct/">how</a>). About
+    the experiments themselves, an idea or a bug, open an issue on the <a href={`${SOURCE_URL}/issues`}>project's
+    GitHub</a>.
+  </p>
+</Info>

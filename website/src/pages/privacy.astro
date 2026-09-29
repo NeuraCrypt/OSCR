@@ -1,0 +1,325 @@
+---
+// Privacy (2026-09-29, required for the public launch): every personal datum the registry holds,
+// read from the code — the accounts and requests (migrations/d1-community/), the cookies
+// (website/worker/account/), the reader's browser requests (the paper pages' policy, public/_headers),
+// the authors' contact details (oscr/contacts.py, CLAUDE.md), the services involved. The operator's
+// identity comes from OPERATOR_NAME and OPERATOR_ADDRESS (src/config.ts): until they are set, the page
+// says so, and `npm run check` prints a launch warning. The text awaits the owner's review.
+import Info from "../components/Info.astro";
+import PageLink from "../components/PageLink.astro";
+import { OPERATOR_ADDRESS, OPERATOR_NAME, SITE_NAME, SOURCE_URL } from "../config";
+
+const operatorKnown = OPERATOR_NAME !== "" && OPERATOR_ADDRESS !== "";
+const UPDATED = "29 September 2026";
+const toc = [
+  { id: "short", text: "In short" },
+  { id: "controller", text: "Who is responsible" },
+  { id: "visitors", text: "Visiting the site" },
+  { id: "browser", text: "What your browser asks other services" },
+  { id: "cookies", text: "Cookies and local storage" },
+  { id: "accounts", text: "Accounts" },
+  { id: "requests", text: "Requests you send" },
+  { id: "authors", text: "Authors in the published records" },
+  { id: "contacts", text: "Authors' contact details, kept privately" },
+  { id: "operator", text: "On the operator's computer" },
+  { id: "services", text: "The services involved" },
+  { id: "retention", text: "How long" },
+  { id: "bases", text: "Purposes and legal bases" },
+  { id: "rights", text: "Your rights, and how to use them" },
+  { id: "transfers", text: "Where the data is" },
+  { id: "security", text: "Security" },
+  { id: "changes", text: "Changes to this page" },
+];
+---
+<Info
+  title="Privacy"
+  description={`Every personal datum ${SITE_NAME} holds — visitors, accounts, requests, authors' published records and their privately kept contact details — why, where, for how long, and your rights.`}
+  group="policies"
+  path="/privacy/"
+  toc={toc}
+>
+  <p class="lead" slot="lead">
+    This page lists every piece of personal data {SITE_NAME} holds or causes to be processed, read from its code rather
+    than written from memory: what it is, why, where it lives, for how long, and how to exercise your rights — without
+    an email address, since the registry has none. Last updated: {UPDATED}.
+  </p>
+
+  <h2 id="short">In short</h2>
+  <ul>
+    <li>Reading the site needs no account, sets no cookie, and runs no analytics, advertising or third-party tracker.</li>
+    <li>Signing in (ORCID, GitHub or Google) asks for <strong>no email address</strong>; the registry keeps your public
+      handles, your roles and your requests — never a password or a provider's token.</li>
+    <li>The records show authors as their papers publish them: names, ORCID iDs, affiliations. Never an email address or
+      a telephone number.</li>
+    <li><strong>The operator does keep, privately, the contact details that papers publish for their authors</strong> —
+      email addresses included — to cite the authors of the code and to reach an author about their own work. They are
+      never shown, never published, never used for mass email, and can be erased on request
+      (<a href="#contacts">below</a>).</li>
+    <li>When you open a paper's Code ↔ Paper reader, your browser fetches the paper from Europe PMC or NCBI directly.</li>
+  </ul>
+
+  <h2 id="controller">Who is responsible</h2>
+  {operatorKnown ? (
+    <p>
+      The controller of the personal data described here, in the sense of the EU General Data Protection Regulation
+      (GDPR), is {OPERATOR_NAME}, {OPERATOR_ADDRESS}, who operates {SITE_NAME} alone, with no institution behind it.
+    </p>
+  ) : (
+    <p class="warning" id="operator-missing">
+      The controller of the personal data described here, in the sense of the EU General Data Protection Regulation
+      (GDPR), is the registry's sole operator. The operator's name and postal address are published on this page before
+      the registry's public launch.
+    </p>
+  )}
+  <p>
+    {SITE_NAME} has no email address. To reach the operator about your data, see <a href="#rights">your rights</a>.
+  </p>
+
+  <h2 id="visitors">Visiting the site</h2>
+  <p>
+    The site is hosted by Cloudflare, on its Workers platform. To deliver each page, Cloudflare's network necessarily
+    processes your IP address, the address you ask for and what your browser sends with it (its user agent, its
+    language). {SITE_NAME}'s own code keeps no log of visits: its pages are static files, and the few requests that run
+    its code — the search, sign-in, requests, the pages of older papers, a missing page — are answered without writing
+    who asked. Cloudflare processes that traffic under its own policy, for delivery and security; its responses may ask
+    your browser to report network errors to Cloudflare. No other service sees your visit, except those your browser
+    contacts on the pages listed below.
+  </p>
+  <p>
+    A search is sent to the site (the words, the filters) and answered from its database; it is not recorded with who
+    searched. The DOI lookup runs in your browser, which fetches one of the site's files: the DOI you type is not sent
+    anywhere else.
+  </p>
+
+  <h2 id="browser">What your browser asks other services</h2>
+  <ul>
+    <li><strong>A paper's Code ↔ Paper reader</strong>: to show the paper, your browser fetches its full text from Europe
+      PMC (EMBL-EBI, <code>www.ebi.ac.uk</code>), else from NCBI's copy of PubMed Central
+      (<code>eutils.ncbi.nlm.nih.gov</code>), when the paper pane is shown. Those services receive your IP address and
+      the paper's identifier, as when you read the paper on their sites. Hiding the paper pane before it loads avoids
+      the request.</li>
+    <li><strong>A script's copy from the open dataset</strong>: if a page reads a script from {SITE_NAME}'s dataset on
+      Hugging Face, your browser fetches it from <code>huggingface.co</code> directly; the
+      <PageLink href="/policies/code/">code policy</PageLink> says which pages do.</li>
+    <li><strong>Signing in</strong> takes you to ORCID, GitHub or Google, which then know that you signed in to
+      {SITE_NAME}.</li>
+    <li><strong>Links</strong> you follow (doi.org, a publisher, a forge, Zenodo) lead to those sites; the site tells them
+      nothing of where you came from (its referrer policy sends no address to other sites).</li>
+  </ul>
+  <p>Every page's security policy forbids it to load anything from any other site than those named here.</p>
+
+  <h2 id="cookies">Cookies and local storage</h2>
+  <p>No cookie is set while you read. Signing in sets these, for this site only, over HTTPS only:</p>
+  <div class="table-wrap">
+    <table class="facts">
+      <thead><tr><th>Name</th><th>What for</th><th>Holds</th><th>Lasts</th></tr></thead>
+      <tbody>
+        <tr><td><code>__Host-oscr_session</code></td><td>keeps you signed in</td><td>a random 256-bit identifier (the database keeps only its SHA-256); not readable by page scripts</td><td>30 days from your last visit, renewed at most daily; deleted at sign-out</td></tr>
+        <tr><td><code>__Host-oscr_flow</code></td><td>protects a sign-in in progress against forgery</td><td>the sign-in's one-time secrets, signed with the server's key</td><td>10 minutes</td></tr>
+        <tr><td><code>__Host-oscr_signed_in</code></td><td>tells the pages you are signed in, so that a signed-out visit asks the site nothing</td><td><code>1</code>; grants nothing</td><td>as the session</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>
+    These are strictly necessary for a service you ask for: they need no consent banner, and the site has none. The
+    reader also remembers, in your browser's local storage, three display choices — the paper pane hidden, long lines
+    wrapped, the list of files open or closed. They stay on your device and are never sent.
+  </p>
+
+  <h2 id="accounts">Accounts</h2>
+  <p>
+    Stored in a Cloudflare D1 database (<code>oscr_community</code>), for each account: a random identifier; the name
+    a provider gave (ORCID's public name, GitHub's name or login; Google gives none, and a name never holds an at sign);
+    your ORCID iD and GitHub login once linked; when it was created. For each linked identity: the provider and its
+    identifier for you (your ORCID iD; GitHub's account number; Google's opaque identifier). For each session: the
+    SHA-256 of its cookie's identifier, when it began, expires and was last seen (to the hour), and a short
+    description of the browser such as "Firefox on macOS" — never the full user agent, never an IP address. Your roles
+    (verified author of a paper, maintainer of a repository), who granted them (the system or the operator) and when.
+  </p>
+  <p>
+    Never stored: an email address, a password, a provider's access token (used during the sign-in, or once for a
+    maintainer check, then dropped). ORCID and Google are asked for the <code>openid</code> scope only; GitHub for no
+    scope.
+  </p>
+  <p>
+    To recognize authors, the same database holds public facts from the papers: the ORCID iDs listed as a paper's
+    authors, with the paper's identifier and title (<code>paper_orcid</code>), and the owners of its code repositories as
+    their addresses name them (<code>repo_owner</code>, <code>paper_repo</code>).
+  </p>
+
+  <h2 id="requests">Requests you send</h2>
+  <p>Each request is a row linked to your account, in the same database, with a row that tells the operator's computer to look at it:</p>
+  <dl class="terms">
+    <dt>A submission</dt>
+    <dd>the DOI, one to five code links, your note, the site's checks, its status, the draft the harvester made, and the operator's words.</dd>
+    <dt>An author claim or a maintainer claim</dt>
+    <dd>the paper or repository, your statement and optional link, or the evidence of the GitHub check (your GitHub login
+      and number, and how the check succeeded), its status and the operator's words.</dd>
+    <dt>A correction</dt>
+    <dd>the paper, your role, the changes, your note, its status and the version it made.</dd>
+    <dt>A validation</dt>
+    <dd>the paper, your ORCID iD, how it was proven (ORCID or ORCID's sandbox), the map's digest, its status, and the DOI and
+      record it received.</dd>
+    <dt>A removal request</dt>
+    <dd>the paper, who you are (author, rights holder, named person, other), whether you are a verified author, what to
+      remove, why, your justification, your evidence link, your confirmations, its status and the operator's words.</dd>
+  </dl>
+  <p>
+    Every free text loses any email address before it is stored, and the database refuses an at sign. The operator's
+    computer keeps its own copy of what it needs to answer (the job's state), and, for an applied correction, who made it
+    (your ORCID iD or GitHub login) in the record's history — which the pages never show: they say "a verified author".
+  </p>
+
+  <h2 id="authors">Authors in the published records</h2>
+  <p>
+    The records show the authors of each paper as the paper and its public metadata publish them: names in order,
+    ORCID iDs, affiliations, institutions (with their ROR identifiers, from OpenAlex), and whether an author is the
+    corresponding one. An author with an ORCID iD has a page listing their papers, tools and institutions. The same
+    facts are in the search's database and the site's public files. Email addresses and telephone numbers are removed
+    from everything published, and the site hides any email address written in the authors' code.
+  </p>
+  <p>
+    The scripts' copies in the open dataset are files as their authors published them under an open licence; the site
+    hides email addresses when it shows them, but the dataset keeps each file's text as it is at the source. A validated
+    tracing map deposited on Zenodo names the validating author and their ORCID iD, publicly and permanently: that is
+    what a validation is for.
+  </p>
+
+  <h2 id="contacts">Authors' contact details, kept privately</h2>
+  <p>
+    Papers publish how to reach their authors. For the papers it reads, {SITE_NAME} keeps, for each author, what the
+    paper itself (its full text) and its Europe PMC record publish: given and family names, ORCID iD, email address,
+    organization, postal address, affiliation, whether the author is the corresponding one — linked to the paper, its
+    DOI, title, journal and date.
+  </p>
+  <ul>
+    <li><strong>Why</strong>: to cite the authors of the code correctly, and to reach an author about their own work —
+      their tracing map, a correction, a removal.</li>
+    <li><strong>Never</strong>: shown on the site, published in any public output (the public exports drop the whole
+      table), used for mass email, sold or shared.</li>
+    <li><strong>Where</strong>: in the database on the operator's computer, and in a private Hugging Face dataset,
+      <code>OpenScientificCodeRegistry/Private</code>, which only the operator can read; the software refuses to send it
+      to a dataset that is not private.</li>
+    <li><strong>How long</strong>: as long as the paper is in the registry's database; erased on request.</li>
+    <li><strong>Your rights</strong>: an author may ask what is kept about them, have it corrected, or have it erased, and
+      may object to it (<a href="#rights">how</a>).</li>
+  </ul>
+
+  <h2 id="operator">On the operator's computer</h2>
+  <p>
+    The harvester's database, on the operator's own computer, holds everything above that comes from papers — their
+    public metadata, their authors, the contact details — along with the full texts it read (never published), the
+    history of every record with who corrected it, and the state of the requests it answered. Backups stay on that
+    computer's disks. Nothing listens on the network there: requests reach it only as rows the computer reads from the
+    site's database.
+  </p>
+
+  <h2 id="services">The services involved</h2>
+  <div class="table-wrap">
+    <table class="facts">
+      <thead><tr><th>Service</th><th>Role</th><th>Personal data it receives</th><th>Based in</th></tr></thead>
+      <tbody>
+        <tr><td><a href="https://www.cloudflare.com/privacypolicy/">Cloudflare</a></td><td>hosts the site, runs its code, holds the D1 databases (search, accounts, requests)</td><td>visitors' requests; accounts, sessions, requests; the published records</td><td>United States; the databases in Western Europe</td></tr>
+        <tr><td><a href="https://huggingface.co/privacy">Hugging Face</a></td><td>holds the open scripts' dataset, the private catalogue and the private contact details</td><td>the contact details (private); authors' files and names in the public data; visitors' requests for a script, where a page reads one</td><td>United States</td></tr>
+        <tr><td><a href="https://info.orcid.org/privacy-policy/">ORCID</a></td><td>sign-in</td><td>that you sign in; ORCID gives back your iD and public name</td><td>United States</td></tr>
+        <tr><td><a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement">GitHub</a></td><td>sign-in; maintainer checks; hosts the source code and its issues</td><td>that you sign in; for a maintainer check, the repository and your login</td><td>United States</td></tr>
+        <tr><td><a href="https://policies.google.com/privacy">Google</a></td><td>sign-in</td><td>that you sign in; Google gives back an opaque identifier</td><td>United States</td></tr>
+        <tr><td><a href="https://about.zenodo.org/privacy-policy/">Zenodo</a> (CERN)</td><td>DOIs of validated maps</td><td>the validating author's name and ORCID iD, public</td><td>Switzerland</td></tr>
+        <tr><td><a href="https://europepmc.org/">Europe PMC</a> (EMBL-EBI)</td><td>source of the papers; the reader's paper text</td><td>your IP address, when your browser fetches a paper</td><td>United Kingdom</td></tr>
+        <tr><td><a href="https://www.nlm.nih.gov/web_policies.html">NCBI</a> (US National Library of Medicine)</td><td>second source of the reader's paper text</td><td>your IP address, when your browser fetches a paper from it</td><td>United States</td></tr>
+        <tr><td><a href="https://openalex.org/">OpenAlex</a></td><td>enriches the records (institutions, topics)</td><td>none from visitors: it is asked about papers, by DOI</td><td>United States</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>
+    The harvester also reads, about papers and code, Crossref, DataCite, doi.org, the Retraction Watch data, Software
+    Heritage and the forges and archives the papers cite; the site asks doi.org and the cited forges whether a submitted
+    DOI and links exist. They receive identifiers of papers and repositories, not data about visitors.
+  </p>
+
+  <h2 id="retention">How long</h2>
+  <div class="table-wrap">
+    <table class="facts">
+      <thead><tr><th>Data</th><th>Kept</th></tr></thead>
+      <tbody>
+        <tr><td>A session</td><td>until you sign out, or 30 days without a visit; an expired session's row is deleted at your next sign-in</td></tr>
+        <tr><td>The sign-in flow cookie</td><td>10 minutes</td></tr>
+        <tr><td>The reader's display choices</td><td>in your browser, until you clear its storage</td></tr>
+        <tr><td>Your account, identities and roles</td><td>while the account exists; deleted on request (deletion from the site itself is not built yet)</td></tr>
+        <tr><td>Your requests and their answers</td><td>as long as your account, as the record of what was decided; the operator's side as long as the record they concern</td></tr>
+        <tr><td>Published records of papers and authors</td><td>as long as the paper is in the catalogue; a removal takes them out at the next nightly publication</td></tr>
+        <tr><td>Authors' contact details</td><td>as long as the paper is in the registry's database; erased on request</td></tr>
+        <tr><td>A validated map's record on Zenodo</td><td>permanently, as a DOI requires</td></tr>
+        <tr><td>Visitors' requests at Cloudflare</td><td>as Cloudflare's policy says; {SITE_NAME}'s code keeps none</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 id="bases">Purposes and legal bases</h2>
+  <dl class="terms">
+    <dt>Delivering the site</dt>
+    <dd>Processing your requests to deliver pages and keep the service secure: the operator's legitimate interest in
+      running the registry (GDPR, article 6(1)(f)).</dd>
+    <dt>Accounts and requests</dt>
+    <dd>Signing you in and answering what you ask — a submission, a correction, a validation, a claim, a removal: the
+      service you request (article 6(1)(b)).</dd>
+    <dt>Authors in the published records</dt>
+    <dd>Showing who wrote a paper and its code, from what the paper and its public metadata publish: the legitimate
+      interest of the registry and its readers in a public, citable record of research code (article 6(1)(f)).</dd>
+    <dt>Authors' contact details</dt>
+    <dd>Citing the authors of the code and reaching an author about their own work, from what the paper publishes: the
+      operator's legitimate interest (article 6(1)(f)), balanced by keeping them private, never mass-emailing, and
+      erasing them on request. This page is the information the GDPR requires when data is not obtained from the person
+      (article 14).</dd>
+  </dl>
+
+  <h2 id="rights">Your rights, and how to use them</h2>
+  <p>
+    Under the GDPR you may ask for access to the data about you, its correction, its erasure, the restriction of its
+    processing, and a copy of what you gave in a reusable form; and you may object to processing based on legitimate
+    interests — in particular to the keeping of your contact details, which is then erased.
+  </p>
+  <p>{SITE_NAME} has no email address. Use the site itself:</p>
+  <ol class="steps">
+    <li><a href="/account/">Sign in</a> (with ORCID if you are an author: your papers are then recognized as yours,
+      which proves who you are).</li>
+    <li>Open the <a href="/removal/">removal request</a> of a paper that concerns you — from its page, "Request its
+      removal" — and choose the reason <strong>personal data</strong>.</li>
+    <li>In the justification, say what you ask: a copy of your data, a correction, the erasure of your contact details,
+      the deletion of your account, an objection. No email address is needed: the answer comes back on the request's page
+      and on your account page.</li>
+  </ol>
+  <p>
+    For a matter that concerns your account alone, use the same form from any paper's page and say so in the
+    justification: a dedicated form will replace this path. The operator answers within one month, as the GDPR requires,
+    and may ask you to sign in with the identity concerned to confirm it is yours. You may also complain to the data
+    protection authority of the country where you live or work.
+  </p>
+
+  <h2 id="transfers">Where the data is</h2>
+  <p>
+    The site's databases are held by Cloudflare in Western Europe, and its pages are delivered from Cloudflare's servers
+    nearest to you. The harvester's database is on the operator's computer. Several services named above are based
+    outside the European Economic Area — in the United States, the United Kingdom and Switzerland — and receive the data
+    listed in their row when you use them or when the operator publishes; each describes, in its policy linked above (or
+    on its site), how it protects the personal data it receives from the European Union.
+  </p>
+
+  <h2 id="security">Security</h2>
+  <ul>
+    <li>Sessions: random identifiers, stored hashed; cookies for this site only, over HTTPS only, and not sent with other
+      sites' requests; every change requires a token bound to your session, from this site's own pages.</li>
+    <li>No provider token is kept; GitHub is never asked for a permission.</li>
+    <li>Every page forbids framing and loads nothing from other sites than those it needs; every connection is
+      HTTPS.</li>
+    <li>Secrets live in Cloudflare's secret store and the operator's keychain, never in the code.</li>
+  </ul>
+  <p>To report a vulnerability, use <a href={`${SOURCE_URL}/security/advisories/new`}>GitHub's private security advisories</a>.</p>
+
+  <h2 id="changes">Changes to this page</h2>
+  <p>
+    This page changes when the registry does. Its history is public in the project's source
+    (<a href={`${SOURCE_URL}/commits/main/website/src/pages/privacy.astro`}>the page's history</a>). Last updated:
+    {UPDATED}.
+  </p>
+</Info>

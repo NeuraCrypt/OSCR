@@ -1,0 +1,70 @@
+---
+// Help: the badge (src/pages/badge.svg.ts; the Contribute section's snippets; docs/CONTRIBUTIONS.md,
+// "The badge").
+import Info from "../../components/Info.astro";
+import { SITE_NAME } from "../../config";
+
+const site = new URL("/", Astro.site).href;
+const badge = new URL("/badge.svg", Astro.site).href;
+const page = `${site}paper/<your paper>/`;
+const snippets = [
+  { label: "Markdown (a README.md)", text: `[![${SITE_NAME}](${badge})](${page})` },
+  { label: "reStructuredText (a README.rst)", text: `.. image:: ${badge}\n   :target: ${page}\n   :alt: ${SITE_NAME}` },
+  { label: "HTML", text: `<a href="${page}"><img src="${badge}" alt="${SITE_NAME}"></a>` },
+];
+const toc = [
+  { id: "what", text: "What the badge is" },
+  { id: "get", text: "Getting your snippet" },
+  { id: "github", text: "Adding it on GitHub" },
+  { id: "why", text: "Why no pull request is made for you" },
+];
+---
+<Info
+  title="The badge"
+  description={`The ${SITE_NAME} badge links a paper's code repository to its page: one image, three snippets, added by the author.`}
+  group="help"
+  path="/help/badge/"
+  parents={[{ text: "Help", href: "/help/" }]}
+  toc={toc}
+>
+  <p class="lead" slot="lead">
+    The badge, in the README of a paper's code, sends the code's readers to the paper's page on {SITE_NAME}: the paper
+    beside the code, its tracing map, its citation.
+  </p>
+
+  <h2 id="what">What the badge is</h2>
+  <p><img src="/badge.svg" alt={`${SITE_NAME}: paper ↔ code`} /></p>
+  <p>
+    One image for every paper, <a href="/badge.svg"><code>/badge.svg</code></a>: a flat rectangle with the platform's name
+    and "paper ↔ code". What makes it yours is the link around it, to your paper's page. There is no image per paper —
+    the site keeps a fixed number of files — and the badge says nothing that could become false.
+  </p>
+
+  <h2 id="get">Getting your snippet</h2>
+  <p>
+    Signed in as a verified author of the paper, or a maintainer of its code, open the paper's page: its Contribute
+    section shows "Add the badge to its README" with three snippets, already pointing to the paper's page, each with a
+    Copy button. They look like this:
+  </p>
+  {snippets.map((s) => (
+    <>
+      <h3>{s.label}</h3>
+      <pre>{s.text}</pre>
+    </>
+  ))}
+
+  <h2 id="github">Adding it on GitHub</h2>
+  <p>
+    For each GitHub repository of the paper, the section links to its README in GitHub's own editor (or to the
+    repository when it has none). Paste the snippet at the top, and GitHub offers to commit it, or to open a pull request
+    if you cannot write to the repository. Elsewhere, edit the README as you usually do.
+  </p>
+
+  <h2 id="why">Why no pull request is made for you</h2>
+  <p>
+    A one-click pull request would need your GitHub authorization with the <code>public_repo</code> scope, which gives
+    write access to every public repository you have. {SITE_NAME} never asks GitHub for any permission: the badge is added
+    by you, in GitHub's editor — your consent is in the gesture itself. The <a href="/brand/#badge">brand page</a> gives
+    the badge's rules of use.
+  </p>
+</Info>

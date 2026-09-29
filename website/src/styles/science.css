@@ -477,3 +477,61 @@ img.wordmark { display: block; width: min(18em, 70%); height: auto; margin: 1.2e
 .logo-samples figure > div.on-dark { background: var(--masthead); }
 .logo-samples img { display: block; width: 100%; max-width: 16em; height: auto; margin: 0 auto; }
 .logo-samples figcaption { padding: .4em .8em; border-top: 1px solid var(--rule); font-size: .9em; background: var(--bg-sidebar); }
+
+/* The information pages (About, Help, Policies, Privacy, Brand, Labs, Taxonomy; 2026-09-29), on the
+   model of arXiv's: the text in a readable column, its table of contents, and the menu of its group
+   on the left (below the text on a phone); the footer's links, as arXiv's, on every page. */
+footer nav { display: flex; flex-wrap: wrap; gap: .3em 0; margin: 0 0 .5em; }
+footer p { margin: 0; }
+.info { display: flex; gap: 2.5em; align-items: flex-start; }
+.info-body { flex: 1 1 auto; min-width: 0; max-width: 50em; }
+.info-body > p, .info-body li, .info-body dd { line-height: 1.55; }
+.info-body h2 {
+  font-size: 1.3em; margin: 1.9em 0 .5em; padding-bottom: .15em;
+  border-bottom: 1px solid var(--rule); scroll-margin-top: .5em;
+}
+.info-body h3 { font-size: 1.08em; margin: 1.4em 0 .35em; scroll-margin-top: .5em; }
+.info-body ol.steps > li { margin: .7em 0; }
+.info-body dl.terms dt { font-weight: bold; margin-top: .7em; }
+.info-body dl.terms dd { margin: .15em 0 0 1.5em; }
+.info-body .note {
+  margin: 1em 0; padding: .55em .9em;
+  border-left: 3px solid var(--masthead); background: var(--bg-sidebar);
+}
+.info-body .note > :first-child { margin-top: 0; }
+.info-body .note > :last-child { margin-bottom: 0; }
+nav.toc { margin: 1em 0 1.6em; padding: .55em 1em .7em; border: 1px solid var(--rule); background: var(--bg-sidebar); }
+nav.toc h2 { font-size: 1em; margin: 0 0 .3em; padding: 0; border: 0; }
+nav.toc ol { margin: 0; padding-left: 1.5em; columns: 2 17em; column-gap: 2em; }
+nav.toc li { break-inside: avoid; margin: .1em 0; }
+.info-menu {
+  order: -1; flex: 0 0 13em; position: sticky; top: .8em;
+  padding: .2em 1.2em .4em 0; border-right: 1px solid var(--rule); font-size: .92em;
+}
+.info-menu h2 { font-size: 1em; margin: .8em 0 .3em; }
+.info-menu h2:first-child { margin-top: .9em; }
+.info-menu ul { list-style: none; margin: 0; padding: 0; }
+.info-menu li { margin: .3em 0; line-height: 1.35; }
+dl.index dt { font-weight: bold; margin-top: .9em; }
+dl.index dd { margin: .15em 0 0; color: var(--muted); }
+.table-wrap { overflow-x: auto; margin: .8em 0 1.2em; }
+table.facts { border-collapse: collapse; width: 100%; font-size: .94em; }
+table.facts th, table.facts td { padding: .35em .6em; border-bottom: 1px solid var(--rule); text-align: left; vertical-align: top; }
+table.facts thead th { background: var(--bg-sidebar); border-bottom-color: #aaa; }
+table.facts td.n, table.facts th.n { text-align: right; white-space: nowrap; }
+@media (max-width: 800px) {
+  .info { flex-direction: column; gap: 1em; }
+  .info-menu {
+    order: 0; position: static; width: 100%; box-sizing: border-box;
+    padding: .4em 0 0; border-right: 0; border-top: 1px solid var(--rule);
+  }
+  .info-menu ul { columns: 2 12em; column-gap: 1.5em; }
+  .info-menu li { break-inside: avoid; }
+}
+/* The brand page's colours: a square of each, ruled, beside its name and values */
+.swatch { display: inline-block; width: 1.5em; height: 1.5em; border: 1px solid #999; vertical-align: middle; }
+.swatch-logo { background: #04408f; }
+.swatch-masthead { background: var(--masthead); }
+.swatch-link { background: var(--link); }
+.swatch-text { background: var(--text); }
+.swatch-white { background: #fff; }

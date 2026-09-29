@@ -3,7 +3,8 @@
 // imported here only. The name of the platform comes from src/config.ts, and only
 // from there.
 import "../styles/science.css";
-import { SITE_NAME, SITE_TAGLINE } from "../config";
+import { SITE_FULL_NAME, SITE_NAME, SITE_TAGLINE, SOURCE_URL } from "../config";
+import { FOOTER, pageExists } from "../lib/info";
 import { catalog, generatedInWords } from "../lib/catalog";
 
 interface Props {
@@ -79,13 +80,14 @@ const sections = [
       <slot />
     </main>
     <footer>
-      <a href="/">Catalogue</a>
-      <a href="/browse/">Browse</a>
-      <a href="/lookup/">DOI lookup</a>
-      <a href="/about/">About</a>
-      <a href="https://github.com/yannbellec/Open-Scientific-Code-Registry-OSCR-">GitHub</a>
-      {SITE_NAME} · Catalogue of {generatedInWords(catalog.generated_at)}. Each script keeps the license of its
-      repository; the source always prevails.
+      <nav aria-label="About the registry">
+        {FOOTER.filter((l) => pageExists(l.href.split("#")[0])).map((l) => <a href={l.href}>{l.text}</a>)}
+        <a href={SOURCE_URL}>Source code</a>
+      </nav>
+      <p>
+        {SITE_FULL_NAME} · Catalogue of {generatedInWords(catalog.generated_at)}. Each script keeps the licence of its
+        repository; the source always prevails. No email address is ever asked for or shown.
+      </p>
     </footer>
   </body>
 </html>

@@ -1,0 +1,106 @@
+---
+// Help: requesting a removal (the page /removal/, src/pages/removal.astro, src/lib/removal.ts;
+// docs/CONTRIBUTIONS.md, "Request a removal"; oscr/jobs.py `oscr reports`).
+import Info from "../../components/Info.astro";
+import PageLink from "../../components/PageLink.astro";
+import { SITE_NAME } from "../../config";
+
+const toc = [
+  { id: "where", text: "Where to ask" },
+  { id: "who", text: "Who you are" },
+  { id: "what", text: "What can be removed" },
+  { id: "why", text: "Why" },
+  { id: "form", text: "The justification, the evidence, the confirmations" },
+  { id: "review", text: "Review, then send" },
+  { id: "decision", text: "The decision, and when it takes effect" },
+  { id: "limits", text: "Limits" },
+];
+---
+<Info
+  title="Requesting a removal"
+  description={`How to ask ${SITE_NAME} to remove a record, the copies of a paper's scripts, a repository, a file or a tracing map, and how requests are decided.`}
+  group="help"
+  path="/help/removal/"
+  parents={[{ text: "Help", href: "/help/" }]}
+  toc={toc}
+>
+  <p class="lead" slot="lead">
+    Anyone signed in may ask {SITE_NAME} to remove something from a paper's record: the whole record, or only part of
+    it. Every request is read by a person before anything is removed, and its answer comes back in words.
+  </p>
+
+  <h2 id="where">Where to ask</h2>
+  <p>
+    Every paper's page links to its removal request — "Request removal" in its sidebar, "Request its removal" in its
+    Contribute section — which opens <code>/removal/?paper=…</code> for that paper. You can also open
+    <a href="/removal/">the removal page</a> and name the paper by its DOI. Signed out, the page offers to sign in (with
+    ORCID, an author is recognized at once) and brings you back.
+  </p>
+
+  <h2 id="who">Who you are</h2>
+  <p>
+    One of: an author of the paper (marked <em>verified</em> when your account's ORCID iD is among its authors), the
+    holder of the rights, a person named in the record, or someone else. Anyone may ask; who asks weighs in the decision.
+  </p>
+
+  <h2 id="what">What can be removed</h2>
+  <dl class="terms">
+    <dt>The whole record</dt>
+    <dd>The paper's page, its entry in the lists, the lookup, the search and the open data.</dd>
+    <dt>Only the copies of the authors' scripts</dt>
+    <dd>Their text leaves the site and the open dataset; the files stay listed, with their links to the source.</dd>
+    <dt>One repository's copies</dt>
+    <dd>The same, for one of the paper's repositories, chosen in a list.</dd>
+    <dt>One file</dt>
+    <dd>The same, for one file of one repository, chosen in a list.</dd>
+    <dt>The tracing map</dt>
+    <dd>Its matches, digest, validations and DOI leave the site and the open data; its Map section says it is withheld.</dd>
+  </dl>
+
+  <h2 id="why">Why</h2>
+  <p>
+    Copyright or licence; personal data; wrongly attributed, or not your work; a retracted paper; an incorrect record — in
+    which case the page first suggests <a href="/help/correct/">correcting it</a>, which is faster, but lets you ask all
+    the same; or another reason.
+  </p>
+
+  <h2 id="form">The justification, the evidence, the confirmations</h2>
+  <ul>
+    <li>A <strong>justification</strong> of 30 to 2,000 characters, in your words. It may not hold an email address: the
+      request is answered in the site, never by email.</li>
+    <li>An optional <strong>evidence link</strong> (https only): a licence, a notice, a statement.</li>
+    <li>Two <strong>confirmations</strong>: that the information is accurate, and that you understand a moderator reviews
+      every request and what can follow.</li>
+  </ul>
+
+  <h2 id="review">Review, then send</h2>
+  <p>
+    The page checks the request with the site's own rules, then shows a summary of everything; nothing is sent before
+    "Confirm and send". The receipt gives the request's number and its status (open). Coming back to the page shows the
+    request: while it is open you may complete it (it keeps its number); once decided, it shows the decision and the
+    operator's words. Your account page lists your requests.
+  </p>
+
+  <h2 id="decision">The decision, and when it takes effect</h2>
+  <p>
+    The operator reads each request and accepts or rejects it, with words the requester reads
+    (<a href="/policies/removal/">the removal policy</a>; <PageLink href="/policies/moderation/">moderation</PageLink>).
+    Accepted, what the request names leaves every public output at the <strong>next nightly publication</strong> (at
+    04:17, the operator's local time): the site, the DOI lookup, the search, the community's facts and the open data.
+    The operator's computer keeps the record, marked withdrawn or withheld, so that the harvester does not bring it back.
+  </p>
+  <p class="note">
+    What cannot be undone elsewhere: a copy already published in a Parquet block on Hugging Face stays in that block (a
+    published block never changes) — the manifest that points to it is withdrawn, so no reader finds it; a map's DOI
+    already given stays on Zenodo — a DOI is permanent — though the site no longer shows it.
+  </p>
+
+  <h2 id="limits">Limits</h2>
+  <ul>
+    <li>One request per account and record; decided, it is not asked again (write a new justification while it is open
+      instead).</li>
+    <li>A request names at most one repository or one file; for more, choose the paper's scripts or the whole record, or
+      say it in the justification.</li>
+    <li>At most 10 requests a day per account. Signing in is required until the site has a bot check of its own.</li>
+  </ul>
+</Info>

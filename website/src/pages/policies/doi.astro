@@ -1,0 +1,85 @@
+---
+// Policy: DOIs for tracing maps (CLAUDE.md, "DOIs and Zenodo"; oscr/zenodo.py deposit_payload).
+import Info from "../../components/Info.astro";
+import { SITE_NAME } from "../../config";
+
+const toc = [
+  { id: "only", text: "Only for maps an author validated" },
+  { id: "covers", text: "What the DOI covers" },
+  { id: "record", text: "The Zenodo record" },
+  { id: "relations", text: "Its relations" },
+  { id: "creators", text: "Its creators" },
+  { id: "versions", text: "Versions" },
+  { id: "sandbox", text: "The sandbox, while building" },
+  { id: "cost", text: "Cost" },
+];
+---
+<Info
+  title="DOIs for tracing maps"
+  description={`${SITE_NAME} assigns Zenodo DOIs only to tracing maps validated by one of the paper's authors: what the DOI covers, its relations and creators.`}
+  group="policies"
+  path="/policies/doi/"
+  parents={[{ text: "Policies", href: "/policies/" }]}
+  toc={toc}
+>
+  <p class="lead" slot="lead">
+    A DOI is a promise of permanence. {SITE_NAME} makes that promise only for what an author has confirmed: a paper's
+    tracing map, validated by one of its authors, deposited on Zenodo.
+  </p>
+
+  <h2 id="only">Only for maps an author validated</h2>
+  <p>
+    A DOI is assigned <strong>only</strong> to a tracing map validated by an author of the paper, signed in with the ORCID
+    iD the paper lists (or whom the operator verified as an author). A map the harvester proposed never receives one, nor
+    does any record the machine generated: no DOI for a paper's page, a repository, a script or a match.
+  </p>
+
+  <h2 id="covers">What the DOI covers</h2>
+  <p>
+    The map: its links and metadata, in one file, <code>tracing-map.json</code>
+    (<a href="/help/maps/#holds">what it holds</a>). Not the authors' code, which is never deposited again: it stays in
+    its repository, which the map references at the validated commit. Not the paper, which has its own DOI.
+  </p>
+
+  <h2 id="record">The Zenodo record</h2>
+  <ul>
+    <li>Zenodo is the free research repository run by CERN; the maps are gathered in the registry's community,
+      <code>oscr</code>.</li>
+    <li>The record's type is a dataset; its title, "Code tracing map:" and the paper's title; its description lists the
+      repositories, with their commits and licences, and says that the code is not redeposited.</li>
+    <li>Its licence is CC0-1.0: anyone may reuse a map.</li>
+    <li>Its subjects: code tracing map, research software, reproducibility, neuroscience.</li>
+  </ul>
+
+  <h2 id="relations">Its relations</h2>
+  <dl class="terms">
+    <dt><code>IsSupplementTo</code></dt>
+    <dd>the paper's DOI.</dd>
+    <dt><code>References</code></dt>
+    <dd>each code repository: its own DOI when it is an archive with one (a Zenodo record, for instance), otherwise its
+      address at the validated commit.</dd>
+  </dl>
+
+  <h2 id="creators">Its creators</h2>
+  <p>
+    The author who validated, with their ORCID iD, and the platform ({SITE_NAME}). An author's name and iD on a Zenodo
+    record are public and permanent: that is the purpose of the validation, and the page that asks for it says so.
+  </p>
+
+  <h2 id="versions">Versions</h2>
+  <p>
+    A map validated again after a correction becomes a new version of the same record, under the same concept DOI; each
+    version keeps its own DOI. A map withheld at a removal request keeps its DOI on Zenodo — a DOI cannot be deleted —
+    but the site no longer shows it.
+  </p>
+
+  <h2 id="sandbox">The sandbox, while building</h2>
+  <p>
+    All development uses Zenodo's sandbox (sandbox.zenodo.org), whose DOIs are not real. Real deposits begin when the
+    operator switches the registry to Zenodo itself. A validation made through ORCID's sandbox sign-in is a test: only the
+    sandbox accepts it, and no public output shows it.
+  </p>
+
+  <h2 id="cost">Cost</h2>
+  <p>None, for the author or the registry: Zenodo is free, and no paid service is involved.</p>
+</Info>

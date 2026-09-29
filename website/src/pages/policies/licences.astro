@@ -1,0 +1,74 @@
+---
+// Policy: licences, abstracts and availability statements (the owner's decision D1, 2026-09-27;
+// oscr/catalog.py `statement_is_publishable`; src/components/paper/Statements.astro).
+import Info from "../../components/Info.astro";
+import PageLink from "../../components/PageLink.astro";
+import { SITE_NAME, SOURCE_URL } from "../../config";
+
+const toc = [
+  { id: "rule", text: "The rule" },
+  { id: "open", text: "Under an open licence" },
+  { id: "other", text: "Under any other licence" },
+  { id: "search", text: "In the search" },
+  { id: "code", text: "The authors' code" },
+  { id: "registry", text: "What the registry itself publishes" },
+];
+---
+<Info
+  title="Licences and availability statements"
+  description={`What ${SITE_NAME} shows of a paper's abstract and its code and data availability statements, and under which licences.`}
+  group="policies"
+  path="/policies/licences/"
+  parents={[{ text: "Policies", href: "/policies/" }]}
+  toc={toc}
+>
+  <p class="lead" slot="lead">
+    A paper's abstract and its code and data availability statements are the paper's own text. {SITE_NAME} shows them in
+    full only when the paper's licence allows anyone to reuse them; otherwise it says what they point to, from facts,
+    and links to the paper.
+  </p>
+
+  <h2 id="rule">The rule</h2>
+  <p>
+    The abstract and the availability statements are shown in full when the paper's licence is one of
+    <strong>CC BY, CC0, CC BY-SA or CC BY-NC</strong>, in any version. Under any other licence — the "no derivatives"
+    variants (CC BY-ND, CC BY-NC-ND), a publisher's own licence, or none stated — they are not reproduced. This was
+    decided by the operator on 27 September 2026, and applies to every paper the same way.
+  </p>
+
+  <h2 id="open">Under an open licence</h2>
+  <p>
+    The text is shown as the paper gives it, with the paper's licence named beside it ("Reproduced under the paper's
+    licence"), and the paper cited above it. The kind of statement is said: code availability, data availability, or
+    both.
+  </p>
+
+  <h2 id="other">Under any other licence</h2>
+  <p>
+    The page says, from facts the harvester extracted and not in the paper's words, what the statements point to — the
+    datasets and repositories they cite — and whether they say that the code or the data are "available on request",
+    and links to the paper, where the statements can be read. The sentences themselves stay in the registry's private
+    database, as do the sentences that decided each link's verdict.
+  </p>
+
+  <h2 id="search">In the search</h2>
+  <p>
+    An abstract is searchable only under the same four licences, and even then the index keeps no copy of it: a search
+    finds the paper by its abstract's words, and answers with its title, never an excerpt.
+  </p>
+
+  <h2 id="code">The authors' code</h2>
+  <p>
+    Code has licences of its own, decided by its authors, and its own rules here: a script's text is republished only
+    when its repository's licence allows redistribution; otherwise it is listed and linked at the source. See the
+    <PageLink href="/policies/code/">code policy</PageLink>.
+  </p>
+
+  <h2 id="registry">What the registry itself publishes</h2>
+  <ul>
+    <li>The catalogue's metadata, when released as open data: CC0-1.0.</li>
+    <li>Tracing maps deposited on Zenodo: CC0-1.0.</li>
+    <li>The registry's software: Apache-2.0 (<a href={SOURCE_URL}>its source</a>).</li>
+    <li>The logo: the operator's work, used as the <a href="/brand/">brand page</a> says.</li>
+  </ul>
+</Info>

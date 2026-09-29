@@ -1,0 +1,123 @@
+---
+// Policy: the terms of use. They describe the service as its code behaves; the operator's identity
+// comes from OPERATOR_NAME and OPERATOR_ADDRESS (src/config.ts). The text awaits the owner's review.
+import Info from "../../components/Info.astro";
+import PageLink from "../../components/PageLink.astro";
+import { OPERATOR_ADDRESS, OPERATOR_NAME, SITE_NAME, SOURCE_URL } from "../../config";
+
+const known = OPERATOR_NAME !== "" && OPERATOR_ADDRESS !== "";
+const toc = [
+  { id: "service", text: "The service" },
+  { id: "operator", text: "Who provides it" },
+  { id: "use", text: "Using the site" },
+  { id: "accounts", text: "Accounts" },
+  { id: "contributions", text: "What you contribute" },
+  { id: "content", text: "The content and its licences" },
+  { id: "accuracy", text: "Accuracy, and the source" },
+  { id: "availability", text: "Availability" },
+  { id: "liability", text: "Liability" },
+  { id: "changes", text: "Changes" },
+];
+---
+<Info
+  title="Terms of use"
+  description={`The terms of use of ${SITE_NAME}: the service, accounts, contributions, the content's licences, accuracy and availability.`}
+  group="policies"
+  path="/policies/terms/"
+  parents={[{ text: "Policies", href: "/policies/" }]}
+  toc={toc}
+>
+  <p class="lead" slot="lead">
+    Using {SITE_NAME} means accepting these terms. They are short because the service is simple: a free registry,
+    run on free plans, that asks little of you and promises only what it does.
+  </p>
+
+  <h2 id="service">The service</h2>
+  <p>
+    {SITE_NAME} is a free registry of the code published with open-access neuroscience papers: records of papers and
+    their code, copies of scripts where licences allow, a reader that shows a paper beside its code, tracing maps, and the
+    means for authors and others to correct, validate and request removals. There is no fee, no paid tier and no
+    advertising.
+  </p>
+
+  <h2 id="operator">Who provides it</h2>
+  {known ? (
+    <p>The service is provided by {OPERATOR_NAME}, {OPERATOR_ADDRESS}, who operates it alone.</p>
+  ) : (
+    <p>
+      The service is provided by its sole operator, whose name and postal address are published here and on the
+      <a href="/privacy/#controller">privacy page</a> before the registry's public launch.
+    </p>
+  )}
+
+  <h2 id="use">Using the site</h2>
+  <ul>
+    <li>Reading, searching and downloading need no account and no acceptance beyond these terms.</li>
+    <li>Automated access is welcome at a reasonable pace: the site runs on a free plan whose daily requests are shared by
+      every reader. For bulk use, take the <a href="/help/data/">open datasets</a> rather than crawling pages.</li>
+    <li>Do not try to break into the service, to get around its limits or its security, or to make it publish what its
+      rules forbid. Report a vulnerability privately through <a href={`${SOURCE_URL}/security/advisories/new`}>GitHub's
+      security advisories</a>.</li>
+  </ul>
+
+  <h2 id="accounts">Accounts</h2>
+  <ul>
+    <li>You sign in with an ORCID, GitHub or Google identity that is yours. {SITE_NAME} asks for no email address and no
+      password.</li>
+    <li>A role you hold — verified author of a paper, maintainer of a repository — lets you act for that paper or
+      repository: use it only for them, and only truthfully.</li>
+    <li>The operator may refuse a request, withdraw a role or close an account that is misused: false claims,
+      impersonation, abuse of requests, or conduct against the <a href="/policies/conduct/">code of conduct</a>.</li>
+  </ul>
+
+  <h2 id="contributions">What you contribute</h2>
+  <ul>
+    <li><strong>Links</strong> you submit or correct become part of a paper's public record, as facts about where its code
+      and data are. Who made a correction is not published: the record says "a verified author" or "a maintainer".</li>
+    <li><strong>Your notes, statements and justifications</strong> are read by the operator and are not published.</li>
+    <li><strong>A validation</strong> puts your name and ORCID iD on the map's public Zenodo record, as one of its
+      creators, permanently.</li>
+    <li>You give the operator the right to use what you contribute to run the registry, and you confirm that it is
+      accurate to your knowledge.</li>
+  </ul>
+
+  <h2 id="content">The content and its licences</h2>
+  <ul>
+    <li>The authors' scripts keep their repositories' licences; reuse them as those licences say
+      (<PageLink href="/policies/code/">the code policy</PageLink>).</li>
+    <li>Abstracts and availability statements, shown only under CC BY, CC0, CC BY-SA or CC BY-NC, keep the paper's
+      licence (<a href="/policies/licences/">the licence policy</a>).</li>
+    <li>The records' metadata, when released as open data, and the tracing maps are under CC0-1.0.</li>
+    <li>The software is under the Apache-2.0 licence (<a href={SOURCE_URL}>its source</a>).</li>
+    <li>The name and the logo identify the registry; use them as the <a href="/brand/">brand page</a> says.</li>
+  </ul>
+
+  <h2 id="accuracy">Accuracy, and the source</h2>
+  <p>
+    Records are made by a harvester, and matches by a method, not by people: they can be wrong or incomplete, and every
+    page says how each verdict was reached. The paper and the repository are the reference: when {SITE_NAME} and the
+    source disagree, the source prevails. A copy is a convenience, not an archive of record; for that, see Software
+    Heritage, which the pages indicate when it has archived a repository.
+  </p>
+
+  <h2 id="availability">Availability</h2>
+  <p>
+    The service runs on free plans and the operator's own computer, with no guarantee of availability. Parts of it stop
+    for the day when a free quota is spent (the search says so), and features may change or end. The static pages, the
+    datasets on Hugging Face and the maps on Zenodo do not depend on the rest.
+  </p>
+
+  <h2 id="liability">Liability</h2>
+  <p>
+    The service and its content are provided as they are, free of charge, without warranty of any kind. To the extent
+    the law allows, the operator is not liable for any loss arising from their use, including the use of code shown or
+    linked here, which remains its authors' and is governed by its licence. Nothing in these terms limits a right you
+    have under the law that applies to you, including your data protection rights (<a href="/privacy/">privacy</a>).
+  </p>
+
+  <h2 id="changes">Changes</h2>
+  <p>
+    These terms may change with the service; their history is public in the project's source. Last updated: 29 September
+    2026.
+  </p>
+</Info>

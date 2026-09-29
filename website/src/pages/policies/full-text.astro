@@ -1,0 +1,69 @@
+---
+// Policy: the paper's full text and PDF are never redistributed (CLAUDE.md, "Already in force";
+// oscr/catalog.py public_db; the reader's browser fetches the paper: public/_headers).
+import Info from "../../components/Info.astro";
+import { SITE_NAME } from "../../config";
+
+const toc = [
+  { id: "never", text: "Never stored on the site, never served" },
+  { id: "reader", text: "How the reader shows a paper" },
+  { id: "evidence", text: "Evidence without sentences" },
+  { id: "harvester", text: "What the harvester keeps, and why" },
+  { id: "checked", text: "How it is checked" },
+];
+---
+<Info
+  title="The paper's full text"
+  description={`${SITE_NAME} never stores, serves or republishes a paper's full text or PDF: the reader's browser fetches it from Europe PMC.`}
+  group="policies"
+  path="/policies/full-text/"
+  parents={[{ text: "Policies", href: "/policies/" }]}
+  toc={toc}
+>
+  <p class="lead" slot="lead">
+    Neither the full text nor the PDF of a paper ever leaves the operator's computer. {SITE_NAME} links to the paper by
+    its DOI, and the Code ↔ Paper reader shows its text by having your browser fetch it from Europe PMC.
+  </p>
+
+  <h2 id="never">Never stored on the site, never served</h2>
+  <p>
+    The site, its search, its files, its open data and its tracing maps hold no paper's body text and no PDF. A paper's
+    page shows its bibliographic record and, under an open licence only, its abstract and availability statements
+    (<a href="/policies/licences/">the licence policy</a>). Everything else about the paper is a link: to doi.org, to the
+    publisher, to Europe PMC.
+  </p>
+
+  <h2 id="reader">How the reader shows a paper</h2>
+  <p>
+    When you open a paper's reader, your browser asks Europe PMC for the paper's open-access XML, and, if Europe PMC fails,
+    NCBI for PubMed Central's copy. The text goes from their servers to your screen; it does not pass through
+    {SITE_NAME}, which never sees it. The page's security policy names the services the browser may contact; for the
+    paper's text, those two. If they are down, the reader shows links to the paper, not a copy.
+  </p>
+
+  <h2 id="evidence">Evidence without sentences</h2>
+  <p>
+    A match between a paragraph and lines of code refers to the paragraph by its number (its position among the
+    paragraphs of the paper's XML) and its section's title, and gives as evidence a few short technical terms — no term
+    longer than 60 characters is kept, so no sentence can pass. Where a link was found is said by its place ("the
+    availability statement", "the references"), never by the sentence.
+  </p>
+
+  <h2 id="harvester">What the harvester keeps, and why</h2>
+  <p>
+    To find the code, the harvester must read the paper. On the operator's computer it keeps the full texts it read, in
+    its cache (to read them again without asking Europe PMC twice), and, in its private database, the sentences that
+    decided each verdict (so that a verdict can be checked and explained to an author who asks). They never leave that
+    computer: the public export removes them, and the site's build drops, again, any evidence term long enough to be a
+    sentence.
+  </p>
+
+  <h2 id="checked">How it is checked</h2>
+  <ul>
+    <li>The public database is made from the private one by removing every table and column that holds a paper's text.</li>
+    <li>The site's build keeps only the known fields of a match, and drops any evidence term long enough to be a
+      sentence.</li>
+    <li>The pages' Content-Security-Policy lets a paper's page connect only to the services it names — Europe PMC and
+      NCBI for the paper's text — and every other page to the site alone.</li>
+  </ul>
+</Info>

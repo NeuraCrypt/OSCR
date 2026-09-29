@@ -1,0 +1,104 @@
+---
+// Policy: removal and takedown (the page /removal/; docs/CONTRIBUTIONS.md, "Request a removal";
+// oscr/jobs.py `oscr reports`; oscr/migrations/0008_withheld.sql).
+import Info from "../../components/Info.astro";
+import PageLink from "../../components/PageLink.astro";
+import { SITE_NAME } from "../../config";
+
+const toc = [
+  { id: "scope", text: "What may be removed" },
+  { id: "who", text: "Who may ask" },
+  { id: "how", text: "How to ask" },
+  { id: "decisions", text: "How requests are decided" },
+  { id: "effect", text: "What an accepted request does" },
+  { id: "permanent", text: "What cannot be undone elsewhere" },
+  { id: "rejected", text: "A rejected request" },
+  { id: "back", text: "Coming back" },
+];
+---
+<Info
+  title="Removal and takedown"
+  description={`${SITE_NAME}'s removal policy: what can be removed, who may ask, how a person decides each request, and what a removal does.`}
+  group="policies"
+  path="/policies/removal/"
+  parents={[{ text: "Policies", href: "/policies/" }]}
+  toc={toc}
+>
+  <p class="lead" slot="lead">
+    {SITE_NAME} publishes records of papers and copies of code that their licences allow. Anyone may still ask for a
+    record, or part of it, to be removed: every request is read and decided by a person, and the answer comes back in
+    words.
+  </p>
+
+  <h2 id="scope">What may be removed</h2>
+  <ul>
+    <li>a paper's whole record;</li>
+    <li>the copies of its authors' scripts, all of them, one repository's, or one file's (the files stay listed with
+      their links to the source);</li>
+    <li>its tracing map, with its matches, validations and DOI on the site.</li>
+  </ul>
+  <p>
+    A record's links are better corrected than removed, by its authors (<a href="/help/correct/">how</a>). Data about
+    you, including the contact details kept privately, follow the <a href="/privacy/#rights">privacy page</a>, through
+    the same form.
+  </p>
+
+  <h2 id="who">Who may ask</h2>
+  <p>
+    Anyone signed in: an author of the paper (marked verified when their ORCID iD is on the paper), the holder of the
+    rights, a person named in the record, or someone else. Signing in is required until the site has its own bot
+    check; it asks for no email address, and it lets the answer reach you.
+  </p>
+
+  <h2 id="how">How to ask</h2>
+  <p>
+    From the paper's page, "Request removal", or <a href="/removal/">the removal page</a>: who you are, what to remove,
+    why (copyright or licence, personal data, wrongly attributed or not your work, a retracted paper, an incorrect
+    record, another reason), a justification of 30 to 2,000 characters, an optional evidence link, and two
+    confirmations; then a review before sending (<a href="/help/removal/">the guide</a>).
+  </p>
+
+  <h2 id="decisions">How requests are decided</h2>
+  <p>
+    The operator reads each request, with the record it names, the requester's role and the evidence given, and accepts
+    or rejects it, with a few words the requester reads on the request's page and on their account page. Until
+    moderation is part of the site, this is done by hand, one request at a time, and nothing is removed without that
+    decision. How requests and claims are reviewed is the subject of the
+    <PageLink href="/policies/moderation/">moderation policy</PageLink>.
+  </p>
+
+  <h2 id="effect">What an accepted request does</h2>
+  <p>
+    What it names leaves every public output at the <strong>next nightly publication</strong> (04:17, the operator's local
+    time): the site, the DOI lookup, the search, the facts the sign-in uses, and the open data.
+  </p>
+  <ul>
+    <li>A whole record: the paper leaves as an off-topic paper does, everywhere; the operator's computer keeps it, marked
+      withdrawn, with when and why, so that the harvester does not bring it back.</li>
+    <li>Copies: their text leaves the site's files, the public database and the scripts' dataset (its manifests); the files
+      stay listed, with their links, and the reader says "withheld at a removal request".</li>
+    <li>A map: its section says it is withheld, with neither digest (nothing left to validate), matches, validations nor
+      DOI, on the site, in the open data and in the search.</li>
+  </ul>
+
+  <h2 id="permanent">What cannot be undone elsewhere</h2>
+  <ul>
+    <li>A copy already in a published Parquet block on Hugging Face stays in that block, since a published block never
+      changes: the manifest that points to it is withdrawn, so no reader of the dataset finds it.</li>
+    <li>A DOI given to a validated map stays on Zenodo, since a DOI is permanent; the site no longer shows it.</li>
+    <li>Copies others made while it was public are beyond the registry's reach.</li>
+  </ul>
+
+  <h2 id="rejected">A rejected request</h2>
+  <p>
+    Nothing changes; the requester reads the reason. One request per account and record: a decided request is not asked
+    again through the form. A new fact can be brought to the operator through a correction, or, when you are an author,
+    a claim.
+  </p>
+
+  <h2 id="back">Coming back</h2>
+  <p>
+    A record withdrawn or a copy withheld comes back only by the operator's hand, for instance at the request of the
+    person who asked for its removal.
+  </p>
+</Info>

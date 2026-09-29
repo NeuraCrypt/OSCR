@@ -1,0 +1,136 @@
+---
+// Help: the Code ↔ Paper reader (src/components/paper/Reader.astro, src/scripts/reader*.ts;
+// docs/ARCHITECTURE.md, "The Code ↔ Paper reader").
+import Info from "../../components/Info.astro";
+import PageLink from "../../components/PageLink.astro";
+import { SITE_NAME } from "../../config";
+
+const toc = [
+  { id: "panes", text: "Two panes" },
+  { id: "paper", text: "Where the paper comes from" },
+  { id: "pairs", text: "Matches and their colours" },
+  { id: "weak", text: "Weak matches" },
+  { id: "moving", text: "Moving between matches" },
+  { id: "hide", text: "Hiding the paper" },
+  { id: "files", text: "The files, and the tools of a file" },
+  { id: "source", text: "A copy, or the source" },
+  { id: "phone", text: "On a phone" },
+  { id: "keyboard", text: "Keyboard and screen readers" },
+];
+---
+<Info
+  title="The Code ↔ Paper reader"
+  description={`How ${SITE_NAME}'s Code ↔ Paper reader shows a paper beside its authors' code: matches, colours, hiding the paper, the file tools.`}
+  group="help"
+  path="/help/reader/"
+  parents={[{ text: "Help", href: "/help/" }]}
+  toc={toc}
+>
+  <p class="lead" slot="lead">
+    The reader is the first section of a paper's page when its authors' code was read: the paper on the left, the code
+    on the right, and between them the matches that {SITE_NAME} computed — which paragraph of the paper goes with which
+    lines of code.
+  </p>
+
+  <h2 id="panes">Two panes</h2>
+  <p>
+    The reader takes the window's whole width, wider than the rest of the page, because code needs it. Each pane scrolls
+    on its own. The bar above them says how many matches there are and by which method they were computed; its buttons
+    move between matches and hide the paper.
+  </p>
+
+  <h2 id="paper">Where the paper comes from</h2>
+  <p>
+    The paper is not stored by {SITE_NAME}, nor sent by it: when the pane is shown, <strong>your browser</strong> fetches
+    the paper's full text from Europe PMC (the open-access XML) and shows it as plain text, its paragraphs numbered in
+    the XML's order. Europe PMC often takes a few seconds; the pane says it is loading, and when it is slow. A try waits
+    20 seconds and is made once more. If Europe PMC still does not answer, a paper in PubMed Central is read from NCBI's
+    copy instead, and the pane says so; its paragraphs may be numbered otherwise, so each match is placed by its section
+    and its evidence terms. When neither answers, the pane keeps links to the paper at doi.org and on Europe PMC, and a
+    button to try again. Without JavaScript, only those links are there.
+  </p>
+  <p>
+    These requests go from your browser to Europe PMC (www.ebi.ac.uk) or NCBI (eutils.ncbi.nlm.nih.gov) directly: those
+    services see your address, as they would if you read the paper on their sites (<a href="/privacy/#browser">the
+    privacy page</a>).
+  </p>
+
+  <h2 id="pairs">Matches and their colours</h2>
+  <p>
+    A match joins one paragraph of the paper and a range of lines of one file. Both sides take the same colour — six
+    colours used in turn, so that neighbouring matches differ: a light tint on the paragraph and on its lines, with a thin
+    mark in the paragraph's margin and in the code's gutter. The match you are reading turns a stronger shade, on both
+    sides, with a wider mark. The rest of the code keeps its white ground and its syntax colours.
+  </p>
+  <ul>
+    <li>Click a coloured paragraph: its lines come into view, in the code pane.</li>
+    <li>Click coloured lines: their paragraph comes into view, in the paper pane.</li>
+    <li>"The matches", above the panes, unfolds the list of every match: the paragraph's section, the file and its
+      lines, the score, and the evidence — a few short technical terms that both sides share (identifiers, constants,
+      tool names), never a sentence of the paper. Each entry opens its match on both sides.</li>
+  </ul>
+  <p>
+    Matches are computed by the harvester beforehand (method <code>lexical-v1</code>): a pair is kept only when several
+    rare terms agree on both sides. They are proposals, not statements by the authors; a wrong one can be reported from
+    the paper's Contribute section. A paper without matches yet still shows its paper and its code side by side.
+  </p>
+
+  <h2 id="weak">Weak matches</h2>
+  <p>
+    When a match covers a whole file (nine tenths of its lines or more), it says only "this paragraph goes with this
+    file". Such a weak match tints only the file's first line, and the list of matches marks it "a weak match".
+  </p>
+
+  <h2 id="moving">Moving between matches</h2>
+  <p>
+    "‹ Previous" and "Next ›" go through the matches in order, opening each on both sides. The page opens on the first
+    match of the file it shows. The address follows what you read: <code>#pair-3</code> for a match,
+    <code>?path=…</code> for a file, <code>#L10-L20</code> for lines, so a link you copy opens the same view.
+  </p>
+
+  <h2 id="hide">Hiding the paper</h2>
+  <p>
+    "Hide the paper" folds the paper pane; the code then takes the whole width. "Show the paper" brings it back. Your
+    browser remembers the choice for the next papers (in its local storage, on your device only; nothing is sent).
+    Hiding the paper before it has loaded also means it is not fetched.
+  </p>
+
+  <h2 id="files">The files, and the tools of a file</h2>
+  <ul>
+    <li><strong>Files</strong> opens or closes the list of the code's files: the matched files first, then the
+      repository's folders, with a filter. A file without a copy here is in italics.</li>
+    <li><strong>Wrap</strong> wraps long lines instead of scrolling sideways.</li>
+    <li><strong>Copy</strong> copies the whole file; line numbers are never part of what you copy.</li>
+    <li><strong>Link</strong> copies a link to the file, or to the lines you selected: click a line number, and
+      Shift-click another for a range.</li>
+    <li><strong>Raw</strong> downloads the file as {SITE_NAME} keeps it.</li>
+    <li><strong>⋯</strong> links to the file and to its repository at the source, at the verified commit, and says why.</li>
+  </ul>
+  <p>
+    Notebooks show their cells, their Markdown as text; the syntax is coloured by language. Email addresses written in
+    the code are hidden, with a note.
+  </p>
+
+  <h2 id="source">A copy, or the source</h2>
+  <p>
+    A file's text is shown from {SITE_NAME}'s copy only when its repository's licence allows it. Otherwise the reader
+    lists the file, says why its text is not here, and links to it — and to the exact lines of each match — at the
+    source, at the verified commit. The rules, and where each copy is read from, are in the
+    <PageLink href="/policies/code/">code policy</PageLink>. A file may also be withheld at a removal request; the reader
+    says so.
+  </p>
+
+  <h2 id="phone">On a phone</h2>
+  <p>
+    On a narrow screen the panes are stacked, the code first; the list of files, when open, sits above the code. Long
+    lines scroll inside the code pane, never the page.
+  </p>
+
+  <h2 id="keyboard">Keyboard and screen readers</h2>
+  <p>
+    Each pane can be focused and scrolled with the keyboard; every button is a real button with a label, and the
+    paper's loading state is announced. Colours are never the only sign of a match: the list of matches names each one
+    in words. <a href="/policies/accessibility/">The accessibility statement</a> lists what is known not to work well
+    yet.
+  </p>
+</Info>

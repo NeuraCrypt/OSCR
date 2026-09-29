@@ -1,0 +1,40 @@
+---
+// Policies: the index of every policy, with a short summary of each (src/lib/info.ts POLICIES).
+// Two are written with the Code ↔ Paper reader, on another branch (/policies/code/,
+// /policies/moderation/): linked once they exist, named until then.
+import Info from "../../components/Info.astro";
+import { SITE_NAME } from "../../config";
+import { pageExists, POLICIES } from "../../lib/info";
+---
+<Info
+  title="Policies"
+  description={`${SITE_NAME}'s policies: licences and statements, the authors' code, the paper's full text, removals, moderation, DOIs, privacy, terms, conduct, accessibility, citation.`}
+  group="policies"
+  path="/policies/"
+>
+  <p class="lead" slot="lead">
+    The rules {SITE_NAME} holds itself to, each in its own page: what it shows and copies, what it never does, how it
+    decides what people ask of it, and what it asks of them. They describe how the registry's code actually behaves;
+    when one changes, its page says so.
+  </p>
+
+  <dl class="index">
+    {POLICIES.map((l) => (
+      <>
+        <dt>{pageExists(l.href) ? <a href={l.href}>{l.text}</a> : <>{l.text} <span class="muted">(to be published)</span></>}</dt>
+        <dd>{l.summary}</dd>
+      </>
+    ))}
+  </dl>
+
+  <h2 id="principles">The principles behind them</h2>
+  <ul>
+    <li><strong>The source prevails.</strong> The registry records and links; the paper and the repository are the
+      reference.</li>
+    <li><strong>Licences first.</strong> Nothing is copied or shown beyond what its licence allows.</li>
+    <li><strong>No email address</strong> is asked for, shown or needed to use any part of the registry.</li>
+    <li><strong>A person decides</strong> what a machine cannot: claims it cannot settle, submissions by non-authors, and
+      every removal.</li>
+    <li><strong>Zero cost</strong>, for readers and for the registry: no fee, no advertising, no tracking.</li>
+  </ul>
+</Info>

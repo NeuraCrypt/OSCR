@@ -1,0 +1,133 @@
+---
+// Help: accessing the data (oscr/scriptstore.py, the Hugging Face dataset
+// OpenScientificCodeRegistry/Database; oscr/publish.py, the catalogue's dataset, private;
+// oscr/contacts.py, private; the site's own JSON files).
+import Info from "../../components/Info.astro";
+import { SITE_NAME, SOURCE_URL } from "../../config";
+
+const DATASET = "https://huggingface.co/datasets/OpenScientificCodeRegistry/Database";
+const toc = [
+  { id: "overview", text: "What is open, what is not" },
+  { id: "scripts", text: "The scripts' dataset" },
+  { id: "python", text: "With Python or DuckDB" },
+  { id: "browser", text: "In a browser, one script at a time" },
+  { id: "licences", text: "Licences of the data" },
+  { id: "site", text: "The site's own files" },
+  { id: "maps", text: "Tracing maps" },
+  { id: "private", text: "What stays private" },
+  { id: "polite", text: "Using the data politely" },
+];
+---
+<Info
+  title="Accessing the data"
+  description={`${SITE_NAME}'s open data: the authors' scripts as Parquet on Hugging Face, the site's JSON files, the tracing maps on Zenodo — and what stays private.`}
+  group="help"
+  path="/help/data/"
+  parents={[{ text: "Help", href: "/help/" }]}
+  toc={toc}
+>
+  <p class="lead" slot="lead">
+    Everything {SITE_NAME} publishes can be downloaded and reused under its licence, without an account on this site.
+    This guide says what is where, and how to read it.
+  </p>
+
+  <h2 id="overview">What is open, what is not</h2>
+  <div class="table-wrap">
+    <table class="facts">
+      <thead><tr><th>What</th><th>Where</th><th>Access</th></tr></thead>
+      <tbody>
+        <tr><td>The authors' scripts, under verified licences</td><td><a href={DATASET}>Hugging Face: OpenScientificCodeRegistry/Database</a></td><td>public</td></tr>
+        <tr><td>Every record the site shows (papers, authors, journals, institutions, tools, datasets, the DOI lookup)</td><td>this site's JSON files (<a href="/labs/#site-files">Labs</a>)</td><td>public</td></tr>
+        <tr><td>Tracing maps validated by their authors</td><td>Zenodo, the registry's community</td><td>public, CC0-1.0</td></tr>
+        <tr><td>The source code of the harvester, the site and the Worker</td><td><a href={SOURCE_URL}>GitHub</a></td><td>public, Apache-2.0</td></tr>
+        <tr><td>The catalogue as tables, and a public SQLite database</td><td>a Hugging Face dataset</td><td>private until the operator opens it</td></tr>
+        <tr><td>The authors' contact details from the papers</td><td>a Hugging Face dataset and the operator's computer</td><td>private, always</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 id="scripts">The scripts' dataset</h2>
+  <p>
+    <a href={DATASET}>OpenScientificCodeRegistry/Database</a> holds the text of the authors' scripts whose repository's
+    licence allows redistribution, confirmed by the repository's own licence file (or, for an archive without one, by its
+    record). Each unique file is stored once, whatever the number of repositories that hold it.
+  </p>
+  <dl class="terms">
+    <dt><code>blocks/NNNNN.parquet</code></dt>
+    <dd>One row per unique file: <code>sha256</code> (of its text), <code>language</code>, <code>size</code>,
+      <code>lines</code>, <code>content</code>. Rows sorted by language then size, 64 to a row group, pages compressed
+      with zstd. A published block never changes: new files go into new blocks.</dd>
+    <dt><code>manifests/&lt;xx&gt;/&lt;repository&gt;.json</code></dt>
+    <dd>One per repository (format <code>oscr-script-manifest/1</code>): its address, host, commit, licence, how the licence
+      was confirmed (<code>license_confirmed_by</code>), and for each file its path, <code>sha256</code>, language, lines,
+      and the <code>block</code> and <code>row</code> that hold its text. <code>&lt;xx&gt;</code> is the first two hex
+      characters of the SHA-1 of the repository's key (<code>github.com/owner/name</code>); the file's name is that key
+      with every other character replaced by <code>__</code>.</dd>
+    <dt><code>README.md</code>, <code>LICENSE.md</code></dt>
+    <dd>The card, with the number of files and repositories and the repositories by licence; the note on licences.</dd>
+  </dl>
+
+  <h2 id="python">With Python or DuckDB</h2>
+  <p>Hugging Face serves each file over plain HTTPS; its libraries also read <code>hf://</code> addresses.</p>
+  <pre>{`# Python: every file of one block, with pandas and huggingface_hub installed
+import pandas as pd
+df = pd.read_parquet("hf://datasets/OpenScientificCodeRegistry/Database/blocks/00001.parquet")
+print(df.groupby("language").size().sort_values(ascending=False).head())`}</pre>
+  <pre>{`-- DuckDB: the Python scripts of every block, without downloading them whole
+SELECT sha256, lines FROM 'hf://datasets/OpenScientificCodeRegistry/Database/blocks/*.parquet'
+WHERE language = 'Python' ORDER BY lines DESC LIMIT 10;`}</pre>
+  <p>
+    To find a repository's files, read its manifest (plain JSON), then the rows it names. The dataset's card also declares
+    the blocks to Hugging Face's viewer and to the <code>datasets</code> library, as the configuration
+    <code>scripts</code>.
+  </p>
+
+  <h2 id="browser">In a browser, one script at a time</h2>
+  <p>
+    The blocks are laid out so that one script can be read without the rest: a reader fetches the block's footer once,
+    then the one row group (64 rows) that holds the file — about 78 KB for a script shown — with HTTP range requests,
+    which Hugging Face answers with the CORS headers a page needs. <a href="/labs/#parquet">Labs</a> shows how, with
+    the <code>hyparquet</code> library.
+  </p>
+
+  <h2 id="licences">Licences of the data</h2>
+  <ul>
+    <li><strong>The scripts</strong> keep the licence of their repository, given in its manifest. The dataset itself adds
+      none. A file under a non-commercial licence (CC BY-NC and its variants) may be reused only non-commercially;
+      attribution goes to the authors, as their licence says.</li>
+    <li><strong>The catalogue's metadata</strong> (the records), when released, is under CC0-1.0.</li>
+    <li><strong>Tracing maps</strong> deposited on Zenodo are under CC0-1.0.</li>
+    <li><strong>A paper's abstract and statements</strong>, shown only under CC BY, CC0, CC BY-SA or CC BY-NC, keep the
+      paper's licence.</li>
+  </ul>
+
+  <h2 id="site">The site's own files</h2>
+  <p>
+    What the pages show comes from static JSON files anyone may fetch — the DOI lookup's 256 shards, the records of
+    authors, journals, institutions, tools, datasets and older papers. They change every night, their layout may change
+    with the site, and they are meant for the site's pages first: for bulk use, prefer the datasets. Their addresses and
+    fields are listed on <a href="/labs/#site-files">Labs</a>.
+  </p>
+
+  <h2 id="maps">Tracing maps</h2>
+  <p>
+    Each validated map is a Zenodo record with one file, <code>tracing-map.json</code>, found by its DOI or in the
+    registry's Zenodo community. <a href="/labs/#maps">Its format</a> is on Labs.
+  </p>
+
+  <h2 id="private">What stays private</h2>
+  <ul>
+    <li>The harvester's full database: the sentences of each paper that decided a link's verdict, the raw records of
+      Europe PMC and OpenAlex, the versions with who made each correction, the scripts whose licence does not allow
+      copying, and the off-topic papers.</li>
+    <li>The authors' contact details the papers publish (<a href="/privacy/#contacts">the privacy page</a>).</li>
+    <li>The catalogue's own dataset, until the operator opens it.</li>
+  </ul>
+
+  <h2 id="polite">Using the data politely</h2>
+  <p>
+    Hugging Face hosts public datasets for free on a best-effort basis: download what you need, once, rather than the
+    same blocks again and again. The site's JSON files are served by Cloudflare's free plan; please do not crawl them
+    faster than a person would read.
+  </p>
+</Info>

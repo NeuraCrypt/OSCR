@@ -1,0 +1,155 @@
+---
+// Help: a paper's page (src/pages/paper/[slug]/, its sections in src/components/paper/; the
+// statuses of oscr/harvest.py `conclude`, in words in src/lib/status.ts).
+import Info from "../../components/Info.astro";
+import { SITE_NAME } from "../../config";
+import { STATES, STATUSES } from "../../lib/catalog";
+import { STATIC_PAPERS } from "../../lib/shards";
+import { number } from "../../lib/format";
+
+const MEANING: Record<string, string> = {
+  code_verified: "At least one repository the paper cites as its authors' code answered when it was last checked, and holds code.",
+  code_found: "The paper cites its code, but no repository could be confirmed yet: not checked yet, unreachable at the last attempt, or a service that refuses robots.",
+  code_empty: "The repository answers, but holds no recognizable script yet (a README, a placeholder): the announced code is not there.",
+  code_dead: "Every repository the paper cites as its code is gone: the link answers with an error, or the repository is missing or private.",
+  on_request: "The paper cites no code repository, but says its code is available on request. That is a promise, not code.",
+  data_only: "The paper links to its data (a dataset, a data repository), but not to code of its own.",
+  none: "No code and no data link found in the paper. Such a paper has no page; the DOI lookup knows it.",
+  no_fulltext: "Only the paper's metadata could be read, not its full text: nothing can be said about its code. No page.",
+};
+const toc = [
+  { id: "sections", text: "The sections" },
+  { id: "status", text: "Statuses, in words" },
+  { id: "repositories", text: "A repository's state and evidence" },
+  { id: "texts", text: "Abstracts and availability statements" },
+  { id: "notices", text: "Retractions and corrections" },
+  { id: "older", text: "Older papers' pages" },
+  { id: "which", text: "Which papers have a page" },
+];
+---
+<Info
+  title="Reading a paper's page"
+  description={`What each section of a paper's page on ${SITE_NAME} shows, what its statuses and verdicts mean, and what the page of an older paper leaves out.`}
+  group="help"
+  path="/help/paper/"
+  parents={[{ text: "Help", href: "/help/" }]}
+  toc={toc}
+>
+  <p class="lead" slot="lead">
+    Each paper with a page has one address, <code>/paper/&lt;its identifier&gt;/</code>, and one page in sections. A
+    status is always said in words, with what was verified and when; a link always says where it was found.
+  </p>
+
+  <h2 id="sections">The sections</h2>
+  <p>
+    A bar under the title leads to each section of the same page (no section has an address of its own, so a link to
+    <code>…/#data</code> works as any other). A paper whose authors' code was read opens on the Code ↔ Paper reader;
+    another opens on its overview.
+  </p>
+  <dl class="terms">
+    <dt>Code</dt>
+    <dd>The <a href="/help/reader/">Code ↔ Paper reader</a>: the paper and its authors' code side by side, with their
+      matches. For a paper whose code was not read, the list of its code repositories instead.</dd>
+    <dt>Overview</dt>
+    <dd>The record: authors in order (their pages when they have an ORCID iD), affiliations and institutions, journal,
+      volume, issue, pages, dates, type, language, licence, identifiers, categories, keywords, MeSH terms, funding,
+      citation count, references, RRIDs, OpenAlex's topic, and the abstract when its licence allows it.</dd>
+    <dt>Repositories</dt>
+    <dd>Each repository of the code: its state, licence, commit and date, languages, size, whether Software Heritage has
+      archived it, where the paper cites it, what it holds (README, licence file, CITATION.cff, environment files,
+      tests, continuous integration, notebooks), the tools found in it, and the history of its availability checks.</dd>
+    <dt>Map</dt>
+    <dd>The paper's <a href="/help/maps/">tracing map</a>: proposed by the harvester or validated by an author, what it
+      holds, and its DOI once deposited.</dd>
+    <dt>Data</dt>
+    <dd>The datasets the paper cites (each with its page), its other data links and where each was found, and its data
+      availability statement.</dd>
+    <dt>Versions</dt>
+    <dd>The record's history, newest first: each date and what changed in its public facts, its links included. A
+      correction says by whom in role only: "a verified author", "a maintainer of its code".</dd>
+    <dt>Cite</dt>
+    <dd>The paper in an APA-like text, BibTeX, RIS and CSL-JSON, each with a Copy button; the map's citation too once it
+      has a DOI.</dd>
+    <dt>Similar</dt>
+    <dd>Up to ten papers with a page that share the most with this one — tools, categories, datasets, cited references,
+      authors — each shared thing weighed by its rarity, with the reasons in words.</dd>
+    <dt>Contribute</dt>
+    <dd>What a signed-in reader may do with this record, by their role: <a href="/help/claim/">claim it</a>,
+      <a href="/help/correct/">correct its links</a>, <a href="/help/validate/">validate its map</a>, add
+      <a href="/help/badge/">the badge</a>, or <a href="/help/removal/">ask for a removal</a>. It asks the site nothing
+      while you are signed out.</dd>
+    <dt>Discussion, Reproductions, Activity</dt>
+    <dd>Muted in the bar: they say what they will hold, and will open with sign-in once moderation is built.</dd>
+  </dl>
+  <p>The sidebar on the right (below, on a phone) gathers the essentials: the way into the reader and its number of matches, the paper at its publisher and on Europe PMC, the datasets, the map's state, the licences of the paper and of its code, and the removal request.</p>
+
+  <h2 id="status">Statuses, in words</h2>
+  <p>A paper's status sums up what was found for its code. It is never a coloured badge: words, in green when the code is verified, in brown when something is wrong or unconfirmed.</p>
+  <dl class="terms">
+    {Object.entries(MEANING).map(([k, v]) => (
+      <>
+        <dt>{STATUSES[k]?.tone ? <span class={STATUSES[k].tone}>{STATUSES[k].label}</span> : STATUSES[k]?.label ?? k}</dt>
+        <dd>{v}</dd>
+      </>
+    ))}
+  </dl>
+  <p>
+    A listing adds what can be counted: the files readable in the reader, the matches computed, the map validated by an
+    author (with its DOI), the datasets cited.
+  </p>
+
+  <h2 id="repositories">A repository's state and evidence</h2>
+  <p>Each repository says what its last check found:</p>
+  <dl class="terms">
+    {Object.entries(STATES).map(([k, v]) => (
+      <>
+        <dt>{k}</dt>
+        <dd>{v}</dd>
+      </>
+    ))}
+  </dl>
+  <p>And how far the evidence goes, level by level:</p>
+  <ol>
+    <li><strong>found</strong> — the paper cites the link;</li>
+    <li><strong>the link answers</strong> — it was visited and answered;</li>
+    <li><strong>files inventoried</strong> — its files are listed, its scripts counted, its commit recorded;</li>
+    <li><strong>copy kept</strong> — the text of its scripts is kept, because its licence allows it.</li>
+  </ol>
+  <p>
+    "Where it was found" names the place in the paper — the availability statement, a section of the text, the
+    references, a table of resources, the supplementary material — or the metadata (DataCite, Crossref), or an archive
+    record that points back to the paper. The sentence itself is never shown.
+  </p>
+
+  <h2 id="texts">Abstracts and availability statements</h2>
+  <p>
+    A paper's abstract and its code and data availability statements are shown in full only when the paper's licence
+    is CC BY, CC0, CC BY-SA or CC BY-NC. Under any other licence the page says, from facts alone, what the statements
+    point to (datasets, repositories) and whether they say "on request", and links to the paper
+    (<a href="/policies/licences/">the licence policy</a>).
+  </p>
+
+  <h2 id="notices">Retractions and corrections</h2>
+  <p>
+    A retraction, an expression of concern, a correction or a reinstatement is said first, under the title, with a link
+    to the notice (from Europe PMC's record and the Retraction Watch data). The reasons a database gives for a
+    retraction are not repeated: the notice is.
+  </p>
+
+  <h2 id="older">Older papers' pages</h2>
+  <p>
+    The {number(STATIC_PAPERS)} most recent papers with a page have a page built ahead of time. An older one's page is
+    made when it is asked for, from its record: it shows the record — title, notices, authors, journal, date, type,
+    status, DOI, licence, institutions, categories, each code repository with its licence and state, tools, datasets,
+    the links to the paper — and the Contribute section, and says at its top what it leaves out: the Code ↔ Paper
+    reader, the tracing map and its validation, the versions, the citation formats, the similar papers and the badge.
+    This keeps the site within the number of files its free host serves, whatever the catalogue's size.
+  </p>
+
+  <h2 id="which">Which papers have a page</h2>
+  <p>
+    Three kinds: those with their authors' code (whatever its state), those whose code is "on request", and those that
+    share data only. Every other paper read is found by the <a href="/lookup/">DOI lookup</a>. A paper outside the
+    scope — not neuroscience — has no page and is in no list or figure (<a href="/taxonomy/#scope">the scope</a>).
+  </p>
+</Info>

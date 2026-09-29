@@ -1,0 +1,160 @@
+---
+// Help: frequently asked questions. Every answer is true of the code and the docs; the longer
+// guides are linked.
+import Info from "../../components/Info.astro";
+import PageLink from "../../components/PageLink.astro";
+import { SITE_NAME } from "../../config";
+import { number } from "../../lib/format";
+import { STATIC_PAPERS } from "../../lib/shards";
+
+const toc = [
+  { id: "readers", text: "For readers" },
+  { id: "authors", text: "For authors and maintainers" },
+  { id: "data", text: "About the data" },
+  { id: "privacy", text: "About privacy" },
+  { id: "project", text: "About the project" },
+];
+---
+<Info
+  title="Frequently asked questions"
+  description={`Short answers about ${SITE_NAME}: what it covers, why a paper or its code is missing, authors' corrections, the data, privacy and the project.`}
+  group="help"
+  path="/help/faq/"
+  parents={[{ text: "Help", href: "/help/" }]}
+  toc={toc}
+>
+  <h2 id="readers">For readers</h2>
+  <dl class="terms">
+    <dt>Is {SITE_NAME} free? Do I need an account?</dt>
+    <dd>Free, with no account needed to read, search, browse or download anything. An account is only for contributing.</dd>
+
+    <dt>Which papers does it cover?</dt>
+    <dd>Open-access neuroscience papers whose full text Europe PMC holds, read continuously — new ones every hour, older
+      ones month by month back in time. The <a href="/taxonomy/#scope">scope</a> says exactly what counts as
+      neuroscience.</dd>
+
+    <dt>Why is a paper missing?</dt>
+    <dd>Either it is not open access in Europe PMC, or the harvest has not reached its month yet, or it is not
+      neuroscience, or it has no code and no data link (then it has no page, but the <a href="/lookup/">DOI lookup</a>
+      knows it). You can <a href="/submit/">submit it</a>.</dd>
+
+    <dt>The paper has code, but {SITE_NAME} says "no code". Why?</dt>
+    <dd>The link may be somewhere the harvester does not read (an image, a PDF-only supplement), written in a way it
+      does not recognize, or judged to be data or a tool. Its authors can <a href="/help/correct/">correct the record</a>;
+      anyone can <a href="/submit/">submit</a> the links.</dd>
+
+    <dt>What does "code verified" guarantee?</dt>
+    <dd>That a repository the paper cites as its authors' code answered at its last check and held code, at the commit
+      the page gives. Not that the code runs, nor that it reproduces the paper: that is for readers — and, one day, for
+      reproduction reports.</dd>
+
+    <dt>Why do I see "Read it at the source" instead of the code?</dt>
+    <dd>Because its repository's licence does not allow {SITE_NAME} to republish it (or it has no licence, which means all
+      rights reserved). The reader then links to the file, at the exact commit and lines
+      (<PageLink href="/policies/code/">the code policy</PageLink>).</dd>
+
+    <dt>Where does the paper's text in the reader come from?</dt>
+    <dd>From Europe PMC, fetched by your own browser when you open the reader; if Europe PMC fails, from PubMed Central's
+      copy. {SITE_NAME} never stores or serves it (<a href="/policies/full-text/">why</a>).</dd>
+
+    <dt>Are the matches between paragraphs and code reliable?</dt>
+    <dd>They are computed, not read by a person: a match is kept only when several rare technical terms agree on both
+      sides, and each shows its evidence and score. Treat them as pointers. Whole-file matches are marked weak.</dd>
+
+    <dt>The search says its daily quota is spent.</dt>
+    <dd>It runs on a free plan with a fixed number of requests a day for the whole site. Try again after midnight UTC;
+      meanwhile, Browse, the lists, every paper's page and the DOI lookup work as usual.</dd>
+
+    <dt>Why does an older paper's page have no reader?</dt>
+    <dd>The {number(STATIC_PAPERS)} most recent papers have pages built ahead of time; older ones are rendered on demand
+      from a shorter record, to keep the site within its free host's file limit. The page says what it leaves out.</dd>
+
+    <dt>Can I use the site without JavaScript?</dt>
+    <dd>Reading records and lists, yes. The search, the DOI lookup, the entity pages (an author, a journal…), the
+      reader's paper pane and the forms need it.</dd>
+  </dl>
+
+  <h2 id="authors">For authors and maintainers</h2>
+  <dl class="terms">
+    <dt>My paper is here. Did I agree to anything?</dt>
+    <dd>No: {SITE_NAME} records what your paper publishes and what your repository's licence allows. You can correct the
+      record, validate its map, or <a href="/help/removal/">ask for a removal</a>.</dd>
+
+    <dt>How do I correct a wrong or missing link?</dt>
+    <dd>Sign in with ORCID; if your iD is on the paper, its page's Contribute section lets you
+      <a href="/help/correct/">correct its links</a>. Otherwise, <a href="/help/claim/">claim the paper</a> first.</dd>
+
+    <dt>Why should I validate my paper's map?</dt>
+    <dd>A validated map receives a DOI on Zenodo, with you as its creator, linking your paper to your code at a fixed
+      commit: a citable, permanent statement of where the code of your paper is. It costs nothing
+      (<a href="/help/validate/">how</a>).</dd>
+
+    <dt>Does {SITE_NAME} redeposit my code?</dt>
+    <dd>No. The DOI is on the map (links and metadata), never on your code. Copies of scripts are kept only when your
+      licence allows redistribution, each with its licence, and the source always prevails.</dd>
+
+    <dt>Can I stop {SITE_NAME} from copying my scripts?</dt>
+    <dd>Ask for the removal of the copies (all of a paper's, one repository's, or one file's): the text leaves the site and
+      the open dataset at the next nightly publication, while the files stay listed with links to your repository.</dd>
+
+    <dt>Will you email me?</dt>
+    <dd>No. {SITE_NAME} sends no email and has no mailing list; answers come back in the site. It does not mass-email
+      authors.</dd>
+
+    <dt>How do I add the badge?</dt>
+    <dd>From the paper's Contribute section, signed in as an author or a maintainer: copy a snippet into your README
+      (<a href="/help/badge/">the badge</a>).</dd>
+  </dl>
+
+  <h2 id="data">About the data</h2>
+  <dl class="terms">
+    <dt>Can I download everything?</dt>
+    <dd>The scripts under verified licences, from Hugging Face; every record the site shows, as JSON; validated maps from
+      Zenodo (<a href="/help/data/">accessing the data</a>). The catalogue's own tables are private for now.</dd>
+
+    <dt>Under which licence?</dt>
+    <dd>Each script keeps its repository's licence; the catalogue's metadata and the maps are CC0-1.0; the software is
+      Apache-2.0.</dd>
+
+    <dt>Is there an API?</dt>
+    <dd>The search answers in JSON and CSV (its export links), and the site's files are JSON. A public API with tokens is
+      in development (<a href="/labs/#development">Labs</a>).</dd>
+  </dl>
+
+  <h2 id="privacy">About privacy</h2>
+  <dl class="terms">
+    <dt>Why no email address?</dt>
+    <dd>Because the registry does not need one to work, and an address not collected cannot leak or be misused. Sign-in
+      uses your ORCID, GitHub or Google identity instead.</dd>
+
+    <dt>Does the site track me?</dt>
+    <dd>No analytics, no advertising, no third-party tracker. Cookies only when you sign in; your browser remembers the
+      reader's display choices locally. The reader's browser contacts Europe PMC or NCBI to fetch a paper
+      (<a href="/privacy/">the privacy page</a>).</dd>
+
+    <dt>Does {SITE_NAME} hold my email address anyway?</dt>
+    <dd>If you are an author, perhaps: when a paper publishes its authors' contact details, the operator keeps them
+      privately, never shows them and never uses them for mass email (<a href="/privacy/#contacts">what, where and
+      why</a>). You can ask for them to be erased.</dd>
+  </dl>
+
+  <h2 id="project">About the project</h2>
+  <dl class="terms">
+    <dt>Who is behind {SITE_NAME}?</dt>
+    <dd>One independent operator, with no institution or funder (<a href="/about/#who">who runs it</a>).</dd>
+
+    <dt>How is it paid for?</dt>
+    <dd>It runs on free plans, at no cost (<a href="/about/#funding">how</a>).</dd>
+
+    <dt>Why only neuroscience?</dt>
+    <dd>A registry is useful when it is complete for a field. The method is not specific to neuroscience; the scope is a
+      choice, made so the harvest can be thorough.</dd>
+
+    <dt>How do I report a bug or suggest something?</dt>
+    <dd>An issue on the project's GitHub, or privately, for a security problem, GitHub's security advisories
+      (<a href="/about/#contact">contact</a>).</dd>
+
+    <dt>How do I cite {SITE_NAME}?</dt>
+    <dd>See <a href="/about/#cite">how to cite it</a> and <a href="/policies/citation/">the citation policy</a>.</dd>
+  </dl>
+</Info>

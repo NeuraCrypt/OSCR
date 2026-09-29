@@ -1,0 +1,184 @@
+---
+// The taxonomy (2026-09-29), on the model of arXiv's category taxonomy: the registry's scope, then
+// the categories it classifies papers by — the harvester's own vocabulary (oscr/vocabulary/
+// categories.json, oscr/classify.py) with each value's definition and its count in the build's
+// export — then OpenAlex's topics and the papers' types, as counted. One page.
+import Info from "../components/Info.astro";
+import { SITE_NAME } from "../config";
+import { catalog, number, withCode, withPage } from "../lib/catalog";
+import { categories } from "../lib/entities";
+import { STATUSES } from "../lib/status";
+import { pageOf, typeLabel } from "../lib/paper";
+import { SCOPE, TAXONOMY, VOCABULARY } from "../lib/taxonomy";
+
+const f = catalog.figures;
+const statuses = (f.statuses ?? {}) as unknown as Record<string, number>;
+const byType = Object.entries((f.by_type ?? {}) as unknown as Record<string, number>).sort((x, y) => y[1] - x[1]);
+const yes = SCOPE.values.find((v) => v.value === "yes");
+const no = SCOPE.values.find((v) => v.value === "no");
+// OpenAlex's primary topic of each paper with a page: its domain, then its field.
+const domains = new Map<string, { papers: number; fields: Map<string, number> }>();
+let topics = 0;
+for (const a of withPage) {
+  const t = pageOf(a)?.overview?.topic;
+  if (!t?.domain) continue;
+  topics += 1;
+  const d = domains.get(t.domain) ?? { papers: 0, fields: new Map() };
+  d.papers += 1;
+  d.fields.set(t.field, (d.fields.get(t.field) ?? 0) + 1);
+  domains.set(t.domain, d);
+}
+const domainList = [...domains].sort((x, y) => y[1].papers - x[1].papers);
+const threshold = Math.round(categories.min_confidence * 100);
+const PAGE = ["code_verified", "code_found", "code_empty", "code_dead", "on_request", "data_only"];
+const toc = [
+  { id: "scope", text: "Scope" },
+  { id: "pages", text: "Which papers have a page" },
+  { id: "guide", text: "How to read the categories" },
+  ...TAXONOMY.map((t) => ({ id: t.facet, text: t.name })),
+  { id: "method", text: "How a paper gets its categories" },
+  { id: "openalex", text: "OpenAlex's topics" },
+  { id: "types", text: "Types of papers" },
+];
+---
+<Info
+  title="Taxonomy"
+  description={`What ${SITE_NAME} covers and how it classifies papers: its scope, its categories (modality, organism, population, subfield) with their definitions and counts, OpenAlex's topics and the papers' types.`}
+  group="about"
+  path="/taxonomy/"
+  toc={toc}
+>
+  <p class="lead" slot="lead">
+    {SITE_NAME} covers neuroscience, and classifies each paper it reads along four facets: the kind of data it collects
+    or analyses, the species studied, the condition studied, and its angle. The definitions below are the ones its
+    classifier and its annotators use; the counts are those of the catalogue this site was built from.
+  </p>
+
+  <h2 id="scope">Scope</h2>
+  <p>
+    <strong>Neuroscience</strong>, in the registry's sense: {SCOPE.definition}
+  </p>
+  <dl class="terms">
+    {yes && (<><dt>In scope</dt><dd>{yes.definition} For example: {(yes.examples ?? []).join("; ")}.</dd></>)}
+    {no && (<><dt>Out of scope</dt><dd>{no.definition} For example: {(no.examples ?? []).join("; ")}.</dd></>)}
+  </dl>
+  <p>
+    <strong>How papers come in.</strong> The harvester asks Europe PMC for the open-access papers whose full text it holds
+    and whose title or abstract names a neuroscience term — EEG, MEG, fMRI, intracranial recordings, spike sorting,
+    calcium imaging, electrophysiology, brain–computer interfaces, neuroimaging, fNIRS, transcranial magnetic or deep
+    brain stimulation, neural oscillations, the connectome, diffusion MRI, neurons, neural, cortex, cortical,
+    hippocampus, brain. The query is broad on purpose, and catches papers that are not neuroscience ("neural network",
+    "cortical bone"): the classification then decides.
+  </p>
+  <p>
+    <strong>Why off-topic papers stay out.</strong> A paper judged out of scope stays on the operator's computer: it has
+    no page, is in no list, search, lookup or dataset, and counts in no figure. Harvesting broadly and filtering after
+    keeps the registry complete for its field without letting unrelated papers dilute its rates — a decision of 27
+    September 2026. {number(f.articles)} papers read are in scope today.
+  </p>
+
+  <h2 id="pages">Which papers have a page</h2>
+  <p>Among the papers in scope, those with something to show about code or data have a page; every other one is known to the <a href="/lookup/">DOI lookup</a>.</p>
+  <div class="table-wrap">
+    <table class="facts">
+      <thead><tr><th>Status</th><th>Page</th><th class="n">Papers</th></tr></thead>
+      <tbody>
+        {Object.entries(STATUSES).map(([k, s]) => (
+          <tr><td>{s.tone ? <span class={s.tone}>{s.label}</span> : s.label}</td><td>{PAGE.includes(k) ? "yes" : "no: the lookup"}</td><td class="n">{number(statuses[k] ?? 0)}</td></tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+  <p>{number(withPage.length)} papers have a page, {number(withCode.length)} of them with their authors' code. <a href="/help/paper/#status">What each status means.</a></p>
+
+  <h2 id="guide">How to read the categories</h2>
+  <p>
+    Each facet has a fixed list of values. A value has a key (<code>modality.eeg</code>), a name, a definition and
+    examples, and the number of papers with a page it applies to (with, in brackets, those with their authors' code);
+    its name leads to its page on <a href="/browse/">Browse</a> when it has papers. Modality, organism and population
+    take several values per paper; the subfield takes one. The vocabulary's version: {VOCABULARY.version}.
+  </p>
+
+  {TAXONOMY.map((t) => (
+    <>
+      <h2 id={t.facet}>{t.name}</h2>
+      <p>{t.definition} {t.multi ? "A paper may have several." : "One per paper."}</p>
+      <div class="table-wrap">
+        <table class="facts">
+          <thead><tr><th>Category</th><th>Definition</th><th class="n">Papers</th></tr></thead>
+          <tbody>
+            {t.values.map((v) => (
+              <tr id={v.id}>
+                <td><strong>{v.url && v.papers > 0 ? <a href={v.url}>{v.name}</a> : v.name}</strong><br /><code>{v.id}</code></td>
+                <td>{v.definition}{(v.examples ?? []).length > 0 && <><br /><span class="muted">For example: {(v.examples ?? []).join("; ")}.</span></>}</td>
+                <td class="n">{number(v.papers)} ({number(v.withCode)})</td>
+              </tr>
+            ))}
+            {t.others.map((v) => (
+              <tr>
+                <td><strong>{v.url ? <a href={v.url}>{v.name}</a> : v.name}</strong></td>
+                <td class="muted">A value outside the current vocabulary, from an earlier label.</td>
+                <td class="n">{number(v.papers)} ({number(v.withCode)})</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </>
+  ))}
+
+  <h2 id="method">How a paper gets its categories</h2>
+  <ol class="steps">
+    <li><strong>Rules first.</strong> Weighted patterns run over the paper's title (strongest), keywords, MeSH terms,
+      subjects, abstract and journal; its type and methods add weak hints. Every value comes with its confidence and the
+      reasons that fired ("title: 'EEG'"). When the rules find nothing, or two values compete closely, the facet is
+      marked ambiguous rather than guessed.</li>
+    <li><strong>The operator's labels win.</strong> Where the operator has labelled a paper by hand, the label overrides
+      the rules; a sample of such labels serves to measure them.</li>
+    <li><strong>A local model for the ambiguous cases</strong> — once one has been compared with the operator's labels
+      and chosen. It runs on the operator's computer, and uses its graphics processor only between 01:00 and 07:00. None
+      is in use yet.</li>
+    <li><strong>What is shown.</strong> A category appears on the site when the operator or a model set it, or the rules
+      did with a confidence of at least {threshold}% and no ambiguity. Otherwise the paper is simply not in that
+      category: an unclassified paper is still in <a href="/list/">the list</a> and the search.</li>
+  </ol>
+
+  <h2 id="openalex">OpenAlex's topics</h2>
+  <p>
+    OpenAlex, an open index of research, gives each paper a primary topic within its own hierarchy — domain, field,
+    subfield, topic. {SITE_NAME} shows it on each paper's page as OpenAlex gives it; it is not the registry's
+    classification. {topics > 0
+      ? `Among the papers with a page, ${number(topics)} have one:`
+      : "No paper of this catalogue has one yet."}
+  </p>
+  {domainList.length > 0 && (
+    <div class="table-wrap">
+      <table class="facts">
+        <thead><tr><th>Domain</th><th>Fields, with their papers</th><th class="n">Papers</th></tr></thead>
+        <tbody>
+          {domainList.map(([domain, d]) => (
+            <tr>
+              <td>{domain}</td>
+              <td>{[...d.fields].sort((x, y) => y[1] - x[1]).map(([field, n]) => `${field} (${number(n)})`).join(", ")}</td>
+              <td class="n">{number(d.papers)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )}
+
+  <h2 id="types">Types of papers</h2>
+  <p>
+    The papers read in scope, by their type as the publisher declares it. The registry's rates — the share of papers
+    with their authors' code — are computed on research articles only (research articles, brief reports, methods
+    articles, data papers, rapid communications, short reports): reviews, conference abstracts, case reports and notices
+    rarely have code of their own.
+  </p>
+  <div class="table-wrap">
+    <table class="facts">
+      <thead><tr><th>Type</th><th class="n">Papers read</th></tr></thead>
+      <tbody>{byType.map(([t, n]) => <tr><td>{typeLabel(t) || t}</td><td class="n">{number(n)}</td></tr>)}</tbody>
+    </table>
+  </div>
+</Info>

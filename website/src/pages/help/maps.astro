@@ -1,0 +1,89 @@
+---
+// Help: the tracing map (oscr/zenodo.py `map_of`, `map_digest`, `deposit_payload`;
+// docs/ARCHITECTURE.md, "The tracing map").
+import Info from "../../components/Info.astro";
+import { SITE_NAME } from "../../config";
+
+const toc = [
+  { id: "what", text: "What a map is" },
+  { id: "holds", text: "What it holds" },
+  { id: "life", text: "Its life: proposed, validated, deposited, corrected" },
+  { id: "digest", text: "The digest" },
+  { id: "withheld", text: "A map withheld" },
+  { id: "format", text: "The format" },
+];
+---
+<Info
+  title="Tracing maps"
+  description={`What a tracing map records between a paper and its authors' code, how ${SITE_NAME} proposes it, and what changes when an author validates it.`}
+  group="help"
+  path="/help/maps/"
+  parents={[{ text: "Help", href: "/help/" }]}
+  toc={toc}
+>
+  <p class="lead" slot="lead">
+    A tracing map is the record of the links between a paper and the code its authors published: where the code is,
+    which version, under which licence, what it holds, how it was found, and which paragraphs match which lines. It is
+    the thing an author validates, and the only thing that can receive a DOI.
+  </p>
+
+  <h2 id="what">What a map is</h2>
+  <p>
+    Every paper with its authors' code has one, shown in its page's Map section. The harvester builds it from what it
+    verified; an author of the paper can confirm it. A map is small — a few kilobytes of links and metadata — and holds
+    <strong>neither the text of the paper nor the code</strong>: it points to them.
+  </p>
+
+  <h2 id="holds">What it holds</h2>
+  <ul>
+    <li><strong>The paper</strong>: its DOI, title, journal, date and authors.</li>
+    <li><strong>The code</strong>, for each repository the paper cites as its authors' code: its address, its state at
+      the last check, its licence, the commit recorded and its date, its type, whether Software Heritage archived it,
+      the level of evidence reached, where in the paper it was found, and its files — each file's path, language and
+      digest (a SHA-256 of its text), so that anyone can tell later whether a file is still the one that was there.</li>
+    <li><strong>The matches</strong>: for each, the paragraph's number (its position among the paragraphs of the paper's
+      open-access XML), its section's title, the file, the lines, the function or block, the score, the evidence terms
+      and the method.</li>
+    <li><strong>Its provenance</strong>: proposed by the harvester on a given day; validated by whom, once validated.</li>
+  </ul>
+
+  <h2 id="life">Its life: proposed, validated, deposited, corrected</h2>
+  <ol class="steps">
+    <li><strong>Proposed.</strong> The harvester makes it, and the paper's page shows it, marked "proposed by the
+      machine", without a DOI.</li>
+    <li><strong>Validated.</strong> An author of the paper, signed in with the ORCID iD the paper lists, reads it and
+      validates it — after correcting its links if needed (<a href="/help/validate/">how</a>).</li>
+    <li><strong>Deposited.</strong> The validated map is deposited on Zenodo, in the registry's community, and receives a
+      DOI, which the page and the author's account show. The record links it to the paper (<code>IsSupplementTo</code>)
+      and to the code at the validated commit (<code>References</code>); its creators are the author and the platform
+      (<a href="/policies/doi/">the DOI policy</a>).</li>
+    <li><strong>Corrected.</strong> A later correction, validated again, becomes a new version of the same Zenodo record,
+      under the same concept DOI: the first version stays citable.</li>
+  </ol>
+  <p class="note">
+    While the platform is being built, maps are deposited on Zenodo's sandbox, whose DOIs are not real, and a validation
+    made with ORCID's sandbox is recorded as a test and never published. The pages say "no DOI" until real deposits
+    begin.
+  </p>
+
+  <h2 id="digest">The digest</h2>
+  <p>
+    The page carries the digest of the map it shows: the SHA-256 of its content, leaving out the day it was proposed and
+    who validated it. A validation carries that digest back. If the harvester changed the map in the meantime — a new
+    commit, a new match — the validation is not deposited, and the author is asked to look again: the map that receives
+    a DOI is always the one the author saw.
+  </p>
+
+  <h2 id="withheld">A map withheld</h2>
+  <p>
+    A map may be withheld at an accepted <a href="/help/removal/">removal request</a>: its section then says so, with
+    neither digest, matches, validations nor DOI on the site, in the open data or in the search. A DOI already given
+    stays on Zenodo — a DOI is permanent — but the site no longer shows it.
+  </p>
+
+  <h2 id="format">The format</h2>
+  <p>
+    A map is a JSON file, <code>tracing-map.json</code>, format <code>tracing-map/0.1</code>. Its fields and an example
+    are on <a href="/labs/#maps">Labs</a>. Deposited maps are released under CC0-1.0: anyone may reuse them.
+  </p>
+</Info>

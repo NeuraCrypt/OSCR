@@ -1,0 +1,144 @@
+---
+// Help: the search (docs/SEARCH.md; src/lib/query.ts, src/components/Search.svelte) and the DOI
+// lookup (src/pages/lookup.astro).
+import Info from "../../components/Info.astro";
+import { SITE_NAME } from "../../config";
+
+const toc = [
+  { id: "box", text: "The search box on every page" },
+  { id: "page", text: "The search page" },
+  { id: "language", text: "The query language" },
+  { id: "advanced", text: "Advanced search" },
+  { id: "filters", text: "Filters, dates and sorting" },
+  { id: "results", text: "Results, pages and exports" },
+  { id: "quota", text: "The daily quota" },
+  { id: "lookup", text: "The DOI lookup" },
+  { id: "other", text: "Other ways to find a paper" },
+];
+---
+<Info
+  title="Searching and the DOI lookup"
+  description={`How to search ${SITE_NAME}'s catalogue — fields, query language, filters, exports, the daily quota — and how the DOI lookup answers for any paper read.`}
+  group="help"
+  path="/help/search/"
+  parents={[{ text: "Help", href: "/help/" }]}
+  toc={toc}
+>
+  <p class="lead" slot="lead">
+    Two tools find a paper: the <a href="/search/">search</a>, over the papers that have a page (those with their
+    authors' code, with code on request, or with data only), and the <a href="/lookup/">DOI lookup</a>, which answers
+    for every paper {SITE_NAME} has read, with or without a page.
+  </p>
+
+  <h2 id="box">The search box on every page</h2>
+  <p>
+    The box in the dark band at the top of every page searches the catalogue. Its menu chooses where: all fields, the
+    title, the DOI, the journal, or the code repository (an address such as <code>github.com/owner/name</code>, or a
+    part of it). Pressing Search opens the search page with your words; the menu's choice becomes a field of the query
+    language below (<code>title:(…)</code>, for example), which you can then refine.
+  </p>
+
+  <h2 id="page">The search page</h2>
+  <p>
+    <a href="/search/">The search page</a> runs a search only when you ask: when you submit the form, choose a filter,
+    change page or open a shared address. Typing never searches — every search counts against a daily quota shared by
+    every reader (<a href="#quota">below</a>). The address is the whole state of a search
+    (<code>/search/?q=eeg&amp;modality=eeg&amp;sort=newest</code>): copy it to share or keep a search; Back and Forward
+    replay the searches you made.
+  </p>
+
+  <h2 id="language">The query language</h2>
+  <p>Words are searched in the titles, keywords, MeSH terms, authors, journals, code repositories, tools, identifiers and, when the paper's licence allows it, abstracts. A result must contain every word.</p>
+  <div class="table-wrap">
+    <table class="facts">
+      <thead><tr><th>Write</th><th>To find</th></tr></thead>
+      <tbody>
+        <tr><td><code>eeg memory</code></td><td>papers with both words</td></tr>
+        <tr><td><code>"working memory"</code></td><td>the exact phrase</td></tr>
+        <tr><td><code>eeg OR meg</code></td><td>either word (OR in capitals)</td></tr>
+        <tr><td><code>eeg NOT meg</code>, <code>eeg -meg</code></td><td>the first word without the second</td></tr>
+        <tr><td><code>(eeg OR meg) sleep</code></td><td>groups, with parentheses</td></tr>
+        <tr><td><code>neuro*</code></td><td>words that start so (three letters at least before the star)</td></tr>
+        <tr><td><code>title:hippocampus</code></td><td>a word in one field: <code>title:</code>, <code>author:</code>, <code>journal:</code>, <code>keyword:</code>, <code>mesh:</code>, <code>tool:</code>, <code>repo:</code>, <code>id:</code> (a DOI, PMID, PMCID, dataset or RRID), <code>abstract:</code></td></tr>
+        <tr><td><code>author:"Lovelace"</code>, <code>tool:(mne OR eeglab)</code></td><td>a field before a phrase or a group</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>
+    A query holds at most 500 characters, 24 words or phrases and 4 prefixes. What cannot be read as written — an
+    unclosed quote, a prefix too short — is corrected, and the page says how. Words are matched whole, ranked with the
+    title first, then identifiers, keywords, MeSH terms, authors, repositories and tools, the journal, and the abstract
+    last.
+  </p>
+  <p class="note">
+    Abstracts are searched only when the paper's licence is CC BY, CC0, CC BY-SA or CC BY-NC, the same rule that decides
+    whether its page shows them (<a href="/policies/licences/">the licence policy</a>). A result never shows an abstract
+    or an excerpt: a title, a journal, a date, a status and links.
+  </p>
+
+  <h2 id="advanced">Advanced search</h2>
+  <p>
+    The page's "Advanced search" is a form — all of these words, this exact phrase, any of these words, none of these
+    words, in the title, an author, a journal, a tool used in the code, a keyword or MeSH term, a code repository, an
+    identifier, publication dates and a status — that writes the query in the language above and shows it before it
+    runs, so you can learn the language from it.
+  </p>
+
+  <h2 id="filters">Filters, dates and sorting</h2>
+  <p>
+    Beside the results (below them on a phone), the filters list the values found among them, with their counts: the
+    status, the year, the modality, organism, population and subfield (the <a href="/taxonomy/">taxonomy</a>'s
+    categories), the tools found in the code, the code's languages, the journal, where the datasets are, where the code
+    is (GitHub, Zenodo, OSF…), the code's licence family, the paper's type and licence family, whether matches were
+    computed, and whether the paper is open access. Choosing two values of one filter finds either; choosing values of
+    two filters finds papers with both.
+  </p>
+  <p>
+    Dates take a year, a month or a day (<code>2020</code>, <code>2020-03</code>, <code>2020-03-15</code>), both ends
+    included. Results are sorted by relevance when there are words, by date otherwise; you can choose newest, oldest or
+    most cited.
+  </p>
+
+  <h2 id="results">Results, pages and exports</h2>
+  <ul>
+    <li>Results come 20 to a page, as the catalogue lists papers: by day when sorted by date, ranked otherwise, with the
+      words you searched highlighted.</li>
+    <li>A search looks at its first 500 results. When more papers match, the total says "more than 500", the filters'
+      counts are those of the first 500, and the pages stop there: narrow the query, a filter or the dates.</li>
+    <li>The links under the results download the first 500 results as CSV or JSON: DOI, title, journal, date, status,
+      the paper's page, its code repositories and their licences, its datasets and its citation count.</li>
+  </ul>
+
+  <h2 id="quota">The daily quota</h2>
+  <p>
+    The search runs on Cloudflare's free plan, which allows a fixed number of dynamic requests a day for the whole site,
+    and a fixed number of database rows read. When they are spent, the page says it plainly: the search has used its
+    daily quota, try again tomorrow (the quota starts again at midnight UTC). Browse, the lists, every paper's page and
+    the DOI lookup keep working: they are static files, which cost no request. A search you repeat — Back, Forward, the
+    same link — is served by your browser for ten minutes without asking again.
+  </p>
+  <p>Other messages: "unavailable" when the database does not answer (try later), "not available yet" before it is set up.</p>
+
+  <h2 id="lookup">The DOI lookup</h2>
+  <p>
+    <a href="/lookup/">The lookup</a> answers for every paper {SITE_NAME} has read in its scope, including the many
+    without a page (no code, or only metadata read). Paste a DOI — with or without <code>https://doi.org/</code> — and
+    it says whether the paper was read, on which day, what was found, and links to its page when it has one. A DOI it
+    does not know was not read: either the paper is not open access in Europe PMC, or the harvest has not reached it
+    yet, or it is outside the scope. You can <a href="/submit/">submit</a> it.
+  </p>
+  <p>
+    The lookup runs in your browser: it fetches one small file among 256 (chosen by the DOI's SHA-1), costs no request
+    to the site's quota, and works when the search's quota is spent. It needs JavaScript.
+  </p>
+
+  <h2 id="other">Other ways to find a paper</h2>
+  <ul>
+    <li><a href="/list/">Every paper, by date</a>, a hundred to a page, and the home page's latest days.</li>
+    <li><a href="/browse/">Browse</a>: the categories, and the lists of <a href="/authors/">authors</a> with an ORCID iD,
+      <a href="/journals/">journals</a>, <a href="/institutions/">institutions</a>, <a href="/tools/">tools</a> found in
+      the code and <a href="/datasets/">datasets</a> cited. Each has its own page, listing its papers.</li>
+    <li>A paper's page lists up to ten similar papers, by the tools, categories, datasets, references and authors they
+      share.</li>
+  </ul>
+</Info>

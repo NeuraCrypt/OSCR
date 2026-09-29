@@ -1,0 +1,59 @@
+---
+// The layout of the information pages (About, Help, Policies, Privacy, Brand, Labs, Taxonomy), on
+// the model of arXiv's info site: the page's text, a table of contents when it is long, and the
+// menu of its group beside it (below it on a phone). Classes of science.css only.
+import Base from "../layouts/Base.astro";
+import { ABOUT, HELP, pageExists, POLICIES, type InfoLink } from "../lib/info";
+
+interface Props {
+  title: string;
+  description: string;
+  /** The group whose menu the page shows. */
+  group: "about" | "help" | "policies";
+  /** The page's address, to mark it in the menu. */
+  path: string;
+  /** The sections of the page, for its table of contents (none when it is short). */
+  toc?: { id: string; text: string }[];
+  /** The breadcrumb's items between the platform's name and the page (a guide's "Help"). */
+  parents?: { text: string; href: string }[];
+}
+const { title, description, group, path, toc = [], parents = [] } = Astro.props;
+const GROUPS: Record<Props["group"], { label: string; index: InfoLink; links: InfoLink[] }> = {
+  about: { label: "About", index: ABOUT[0], links: ABOUT.slice(1) },
+  help: { label: "Help", index: { href: "/help/", text: "Help", summary: "" }, links: HELP },
+  policies: { label: "Policies", index: { href: "/policies/", text: "Policies", summary: "" }, links: POLICIES },
+};
+const menu = GROUPS[group];
+const others = (Object.keys(GROUPS) as Props["group"][]).filter((g) => g !== group).map((g) => GROUPS[g].index);
+---
+<Base title={title} description={description} breadcrumb={[...parents, { text: title }]}>
+  <div class="info">
+    <article class="info-body">
+      <h1>{title}</h1>
+      <slot name="lead" />
+      {toc.length > 0 && (
+        <nav class="toc" aria-label="On this page">
+          <h2>On this page</h2>
+          <ol>{toc.map((t) => <li><a href={`#${t.id}`}>{t.text}</a></li>)}</ol>
+        </nav>
+      )}
+      <slot />
+    </article>
+    <nav class="info-menu" aria-label={menu.label}>
+      <h2>{menu.index.href === path ? <strong aria-current="page">{menu.label}</strong> : <a href={menu.index.href}>{menu.label}</a>}</h2>
+      <ul>
+        {menu.links.map((l) => (
+          <li>
+            {l.href === path ? <strong aria-current="page">{l.text}</strong> : pageExists(l.href) ? <a href={l.href}>{l.text}</a> : <span class="muted">{l.text}</span>}
+          </li>
+        ))}
+      </ul>
+      <h2>Elsewhere</h2>
+      <ul>
+        {others.map((l) => <li><a href={l.href}>{l.text}</a></li>)}
+        {group !== "policies" && <li><a href="/privacy/">Privacy</a></li>}
+        <li><a href="/list/">Every paper</a></li>
+      </ul>
+    </nav>
+  </div>
+</Base>

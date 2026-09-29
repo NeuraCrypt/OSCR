@@ -1,0 +1,80 @@
+---
+// Help: validating a tracing map, and its DOI (docs/CONTRIBUTIONS.md, "Validate the tracing map";
+// oscr/zenodo.py; oscr/jobs.py).
+import Info from "../../components/Info.astro";
+import { SITE_NAME } from "../../config";
+
+const toc = [
+  { id: "who", text: "Who can validate" },
+  { id: "check", text: "What to check first" },
+  { id: "how", text: "How" },
+  { id: "deposit", text: "The deposit on Zenodo" },
+  { id: "doi", text: "What the DOI covers" },
+  { id: "sandbox", text: "While the platform is built" },
+];
+---
+<Info
+  title="Validating a map and its DOI"
+  description={`How an author validates a paper's tracing map on ${SITE_NAME}, and how the map then receives a Zenodo DOI.`}
+  group="help"
+  path="/help/validate/"
+  parents={[{ text: "Help", href: "/help/" }]}
+  toc={toc}
+>
+  <p class="lead" slot="lead">
+    A validation is an author's statement that the <a href="/help/maps/">tracing map</a> of their paper is right: that
+    this is where the paper's code is, at this commit, under this licence. It is the only way a map receives a DOI.
+  </p>
+
+  <h2 id="who">Who can validate</h2>
+  <p>
+    A verified author of the paper, with an ORCID identity linked to their account — the DOI record names its creators
+    by their ORCID iD. The "Validate its tracing map" part of the paper's Contribute section appears only for them.
+  </p>
+
+  <h2 id="check">What to check first</h2>
+  <ul>
+    <li>the repositories listed as your code are yours, and none is missing (<a href="/help/correct/">correct</a> them
+      first otherwise, and wait for the correction to be applied);</li>
+    <li>the commit recorded for each is the one that goes with the paper, or an acceptable one;</li>
+    <li>the licence is right;</li>
+    <li>the matches in the reader look sensible — they are part of the map.</li>
+  </ul>
+
+  <h2 id="how">How</h2>
+  <p>
+    Press "Validate the map". The section says what you validate — so many repositories at their verified commits,
+    with their licences, so many scripts and matches — and shows the map's fingerprint (its SHA-256 digest). Your
+    validation carries that fingerprint: if the map changed after the page was built, the validation stops there and you
+    are asked to look again. Your account page shows its status.
+  </p>
+
+  <h2 id="deposit">The deposit on Zenodo</h2>
+  <p>
+    The operator's computer picks up the validation, checks the fingerprint, and deposits the map on Zenodo, the free
+    repository run by CERN, in the registry's community:
+  </p>
+  <ul>
+    <li>the record holds one file, <code>tracing-map.json</code>, and a description listing the repositories;</li>
+    <li>its creators are you, with your ORCID iD, and the platform;</li>
+    <li>it is related to the paper (<code>IsSupplementTo</code> its DOI) and to each repository (<code>References</code>,
+      at the validated commit, or the archive's own DOI);</li>
+    <li>it is released under CC0-1.0.</li>
+  </ul>
+  <p>The DOI comes back to your account page and to the paper's page, whose Map and Cite sections then give it.</p>
+
+  <h2 id="doi">What the DOI covers</h2>
+  <p>
+    The map: its links and metadata. Not your code, which is never deposited again and stays in your repository, nor the
+    paper. Cite the map's DOI for "the code of this paper, as its author validated it"; cite your repository's own DOI
+    (a Zenodo software release, for instance) for the code itself. A later correction, validated again, becomes a new
+    version under the same concept DOI (<a href="/policies/doi/">the DOI policy</a>).
+  </p>
+
+  <h2 id="sandbox">While the platform is built</h2>
+  <p class="note">
+    Deposits go to Zenodo's sandbox, whose DOIs are not real, until the operator switches to Zenodo itself. A validation
+    made through ORCID's sandbox sign-in is recorded as a test: it can reach only Zenodo's sandbox and is never shown in a
+    public output. At most 10 validations a day per account.
+  </p>
+</Info>

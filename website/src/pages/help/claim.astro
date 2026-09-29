@@ -1,0 +1,59 @@
+---
+// Help: claiming authorship (docs/ACCOUNTS.md, "Author verification"; docs/CONTRIBUTIONS.md,
+// "Claim").
+import Info from "../../components/Info.astro";
+import PageLink from "../../components/PageLink.astro";
+import { SITE_NAME } from "../../config";
+
+const toc = [
+  { id: "automatic", text: "When your ORCID iD is on the paper" },
+  { id: "claim", text: "When it is not: a claim" },
+  { id: "decided", text: "How a claim is decided" },
+  { id: "maintainer", text: "Maintainers of the code" },
+];
+---
+<Info
+  title="Claiming authorship"
+  description={`How an author of a paper becomes its verified author on ${SITE_NAME}: automatically with ORCID, or by a claim the operator reviews.`}
+  group="help"
+  path="/help/claim/"
+  parents={[{ text: "Help", href: "/help/" }]}
+  toc={toc}
+>
+  <p class="lead" slot="lead">
+    Being a paper's <strong>verified author</strong> on {SITE_NAME} lets you correct its links and validate its tracing
+    map. Most authors become one without asking anything.
+  </p>
+
+  <h2 id="automatic">When your ORCID iD is on the paper</h2>
+  <p>
+    Sign in with ORCID (or link your ORCID identity to your account). Every paper whose published metadata lists your
+    ORCID iD among its authors is then yours at once, and appears under "Your papers" on your
+    <a href="/account/">account page</a>. The check runs at each sign-in; "Check my papers again" runs it on request —
+    after {SITE_NAME} has read a new paper of yours, for instance. It relies on the iDs publishers deposit: an iD is
+    trusted only when it is on the paper itself, never guessed from a name.
+  </p>
+
+  <h2 id="claim">When it is not: a claim</h2>
+  <p>
+    If you are an author but the paper's metadata does not carry your iD — many papers list only some of them — open the
+    paper's page, signed in, and use "Claim this paper" in its Contribute section: say why you are one of its authors
+    (1,000 characters at most, no email address) and, if you can, give a page that shows it (your lab's page, your ORCID
+    record listing the paper). The claim waits for the operator; your account page shows it.
+  </p>
+
+  <h2 id="decided">How a claim is decided</h2>
+  <p>
+    The operator reads each claim and accepts it — you then become a verified author of the paper, a role the automatic
+    check never takes back — or refuses it, with a few words you read on your account page. Until moderation is part of
+    the site, claims are decided by hand, one by one; how they are reviewed is the
+    <PageLink href="/policies/moderation/">moderation policy</PageLink>'s subject. At most 20 claims may wait at once for an account, and 10 author claims may be
+    sent a day.
+  </p>
+
+  <h2 id="maintainer">Maintainers of the code</h2>
+  <p>
+    Maintaining a paper's code is a different role, proven with the forge rather than the paper: see
+    <a href="/help/accounts/#roles">roles</a>. A maintainer may correct what the record says of their repository.
+  </p>
+</Info>

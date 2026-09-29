@@ -1,0 +1,72 @@
+---
+// Help: correcting a record's links (docs/CONTRIBUTIONS.md, "Correct a record"; the Contribute
+// section, src/components/paper/Contribute.astro; oscr/jobs.py, link_edit).
+import Info from "../../components/Info.astro";
+import { SITE_NAME } from "../../config";
+
+const toc = [
+  { id: "who", text: "Who may correct" },
+  { id: "what", text: "What can be corrected" },
+  { id: "how", text: "How" },
+  { id: "after", text: "What happens next" },
+  { id: "else", text: "Anything else wrong" },
+];
+---
+<Info
+  title="Correcting a record's links"
+  description={`How a paper's authors and its code's maintainers correct its code and data links on ${SITE_NAME}, and how each correction becomes a new version.`}
+  group="help"
+  path="/help/correct/"
+  parents={[{ text: "Help", href: "/help/" }]}
+  toc={toc}
+>
+  <p class="lead" slot="lead">
+    The harvester can miss a repository, take data for code, or cite a tool the authors only used. The people who know
+    best — the paper's authors and its code's maintainers — can correct the record's links themselves.
+  </p>
+
+  <h2 id="who">Who may correct</h2>
+  <ul>
+    <li>A <strong>verified author</strong> of the paper (<a href="/help/accounts/#roles">how one becomes one</a>): any of
+      its links.</li>
+    <li>A <strong>maintainer</strong> of one of its code repositories: that repository — say what it is, or remove it —
+      and new links.</li>
+  </ul>
+
+  <h2 id="what">What can be corrected</h2>
+  <p>Links only, in well-defined changes — never free text or markup:</p>
+  <ul>
+    <li><strong>add</strong> a link, as the authors' code or as their data (checked like a submission's: a place the
+      registry knows, and answering);</li>
+    <li><strong>remove</strong> a link;</li>
+    <li><strong>say what a link is</strong>: the authors' code, their data, or a tool they used.</li>
+  </ul>
+  <p>
+    The bibliographic record — title, authors, journal — comes from the paper's own published metadata and is not
+    edited here: a mistake in it is the publisher's to correct.
+  </p>
+
+  <h2 id="how">How</h2>
+  <ol class="steps">
+    <li>Open the paper's page, signed in, and go to its <strong>Contribute</strong> section.</li>
+    <li>Under "Correct its record", choose the changes (up to ten at once) and, if you wish, a short note (500 characters, no address).</li>
+    <li>Send. The site checks each added link at once and records the correction.</li>
+  </ol>
+
+  <h2 id="after">What happens next</h2>
+  <p>
+    {SITE_NAME}'s harvester applies the correction: it verifies the added repositories (commit, licence, scripts),
+    concludes the paper's status again, and stores a <strong>new version</strong> of the record. A correction outlives
+    every later scan of the paper: the machine's own reading never overrules a person's. The page's Versions section
+    lists it as "a correction by a verified author" or "by a maintainer of its code" — never by name; who made it stays
+    on the operator's computer. Your account page shows its status (queued, applied or refused, with the reason).
+  </p>
+
+  <h2 id="else">Anything else wrong</h2>
+  <ul>
+    <li>A match that pairs the wrong paragraph and lines: say it in a correction's note.</li>
+    <li>You are an author but not recognized: <a href="/help/claim/">claim the paper</a>.</li>
+    <li>Something should not be on the site at all: <a href="/help/removal/">request its removal</a>.</li>
+  </ul>
+  <p>At most 20 corrections a day per account.</p>
+</Info>

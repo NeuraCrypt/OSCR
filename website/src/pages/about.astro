@@ -1,78 +1,415 @@
 ---
-import Base from "../layouts/Base.astro";
-import { SITE_FULL_NAME, SITE_NAME } from "../config";
+// About the registry (2026-09-29, the launch): its mission, how it works step by step, why it is
+// built this way, who runs it, how it is paid for, its open data, how to cite it, its limits and
+// its history. Every figure comes from the build's export; every statement is true of the code and
+// the docs (docs/ARCHITECTURE.md, CLAUDE.md); nothing names the platform but SITE_NAME.
+import Info from "../components/Info.astro";
+import PageLink from "../components/PageLink.astro";
+import { OPERATOR_NAME, SITE_FULL_NAME, SITE_NAME, SITE_TAGLINE, SOURCE_URL } from "../config";
+import { catalog, generatedInWords, number, plural, withCode, withPage } from "../lib/catalog";
+import { authors, datasets, institutions, journals, tools } from "../lib/entities";
+import { dateInWords } from "../lib/format";
+
+const f = catalog.figures;
+const days = withPage.map((a) => a.published).filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d)).sort();
+const matched = withCode.filter((a) => (a.alignment?.pairs ?? 0) > 0).length;
+const year = catalog.generated_at.slice(0, 4);
+const key = `${SITE_NAME.toLowerCase().replace(/[^a-z0-9]+/g, "")}${year}`;
+const siteUrl = new URL("/", Astro.site).href;
+const bibtex = [
+  `@misc{${key},`,
+  `  title        = {{${SITE_NAME}}: ${SITE_TAGLINE === SITE_NAME ? "" : SITE_TAGLINE}},`,
+  `  author       = {{The ${SITE_NAME} contributors}},`,
+  `  year         = {${year}},`,
+  `  howpublished = {\\url{${siteUrl}}},`,
+  `  note         = {Catalogue of ${generatedInWords(catalog.generated_at)}; source code: \\url{${SOURCE_URL}}}`,
+  `}`,
+].join("\n");
+const toc = [
+  { id: "mission", text: "The mission" },
+  { id: "problem", text: "The problem" },
+  { id: "how", text: "How it works, step by step" },
+  { id: "why", text: "Why it is built this way" },
+  { id: "figures", text: "In figures" },
+  { id: "who", text: "Who runs it" },
+  { id: "funding", text: "How it is paid for" },
+  { id: "open-data", text: "Open data" },
+  { id: "cite", text: "How to cite it" },
+  { id: "limits", text: "Limits" },
+  { id: "history", text: "History" },
+  { id: "contact", text: "Feedback and contact" },
+];
 ---
-<Base title="About" breadcrumb={[{ text: "About" }]}>
-  <h1>About</h1>
-  <p class="summary">
-    {SITE_FULL_NAME}: the code published by the authors of open-access neuroscience papers, found in the paper and
-    verified at the source.
-  </p>
-  <p>
-    For every open-access neuroscience paper, a harvester looks for where its authors published their code: in the
-    text of the paper, in its metadata, on forges and archives. It then verifies that code at the source: does the
-    link answer, what is in it, under which license?
-  </p>
+<Info
+  title="About"
+  description={`What ${SITE_NAME} is, how it finds and verifies the code behind neuroscience papers, why it is built this way, who runs it, and its history.`}
+  group="about"
+  path="/about/"
+  toc={toc}
+>
+  <Fragment slot="lead">
+    <img class="wordmark" src="/brand/logo-wordmark-600.png" width="600" height="174" alt={SITE_NAME} />
+    <p class="lead">
+      {SITE_FULL_NAME} is a registry of the code that the authors of open-access neuroscience papers publish with their
+      work. It finds that code from the paper's own text, checks it where it lives, records exactly what was found
+      and under which licence, and shows it beside the paper, paragraph by paragraph. It is free, it asks nobody for an
+      email address, and it never claims more than it has verified: the source always prevails.
+    </p>
+  </Fragment>
 
-  <h2>The tracing map</h2>
+  <h2 id="mission">The mission</h2>
   <p>
-    Every paper of the catalogue has a tracing map: the links between the paper and the repository of its code
-    (commit, license, files). The harvester proposes it; an author of the paper can validate or correct it by
-    signing in with their ORCID.
+    A paper's results come from code as much as from its methods section. {SITE_NAME} exists so that anyone who reads
+    a neuroscience paper can find the code its authors used, know whether that code is really there, read it next to
+    the text it implements, and cite both. It does that at a scale no reader can: every open-access neuroscience paper
+    it can read, every day.
   </p>
+  <p>Three commitments follow from that aim, and every other choice on this page serves them:</p>
   <ul>
-    <li>Only a map validated by an author receives a DOI, on Zenodo. A map proposed by the machine never receives one.</li>
-    <li>
-      The DOI is on the map (its links and metadata), never on the code: the code stays in its authors' repository,
-      which the map references. {SITE_NAME} never deposits the code again.
-    </li>
-    <li>
-      The map is linked to the paper (<code>IsSupplementTo</code>) and to the repository of the code
-      (<code>References</code>). Its creators are the author who validated it and the platform.
-    </li>
+    <li><strong>Find</strong> the code the authors themselves point to, not code that merely resembles theirs.</li>
+    <li><strong>Verify</strong> it at the source, and say in words what was verified, when, and what was not.</li>
+    <li><strong>Respect</strong> the authors, their licences and the readers: copy only what a licence allows, collect
+      no reader's email address, and never republish a paper's text.</li>
   </ul>
 
-  <h2>What is published, and what is not</h2>
-  <ul>
-    <li>
-      Neither the text nor the PDF of a paper: a DOI link. Only its abstract and its code and data availability
-      statements are shown, and only when the paper's license allows it (CC BY, CC0, CC BY-SA, CC BY-NC); otherwise the
-      page says what the statements point to, in a few facts, and links to the paper.
-    </li>
-    <li>
-      The text of a script only when the license of its repository allows republishing it. Otherwise, the list of
-      files links each of them to the source, at the verified commit.
-    </li>
-    <li>The source always prevails.</li>
-  </ul>
-
-  <h2>Levels of evidence</h2>
-  <dl>
-    <dt>found</dt><dd>the paper cites the link</dd>
-    <dt>alive</dt><dd>the link answers</dd>
-    <dt>inventoried</dt><dd>the files are listed, the scripts counted, the commit recorded</dd>
-    <dt>imported</dt><dd>a copy is kept, when the license allows it</dd>
+  <h2 id="problem">The problem</h2>
+  <p>
+    Code behind papers is hard to find, hard to verify and hard to trust. The reasons are practical, and each one
+    shaped the registry:
+  </p>
+  <dl class="terms">
+    <dt>It is hard to find.</dt>
+    <dd>
+      A paper says where its code is in many places: a data and code availability statement, the methods, a table of
+      resources, a reference to a software record, a supplementary archive, a footnote. Some of those places are not in
+      any search index. A search engine for papers sees a paper's metadata; the link to the code is often only in its
+      full text.
+    </dd>
+    <dt>It is hard to verify.</dt>
+    <dd>
+      A link can be dead, point to an empty repository, to a lab's home page, to a tool the authors merely used, or to
+      data rather than code. "Available on request" is a promise, not code. Only a visit to each link, and a look at
+      what it holds, tells these cases apart.
+    </dd>
+    <dt>It is hard to trust.</dt>
+    <dd>
+      A repository changes after publication. Without the commit that was there, its licence and the list of its files,
+      nobody can say later what the paper's code was. And without the authors' own word, a link found by a machine
+      stays a proposal.
+    </dd>
+    <dt>It is hard to read.</dt>
+    <dd>
+      Even when the code is there, the reader has to guess which function implements which paragraph of the methods.
+    </dd>
   </dl>
 
-  <h2>How Code ↔ Paper works</h2>
+  <h2 id="how">How it works, step by step</h2>
+  <p>
+    A harvester runs without pause on the operator's own computer. Each paper goes through the steps below, each
+    written to its private database before the next, so that an interruption loses nothing. Every night at 04:17 (the
+    computer's local time) the public part is exported and the site is rebuilt.
+  </p>
+  <ol class="steps">
+    <li>
+      <h3>Harvest</h3>
+      <p>
+        {SITE_NAME} asks Europe PMC for the open-access papers whose full text Europe PMC holds and whose title or
+        abstract matches a broad neuroscience query (EEG, MEG, fMRI, intracranial recordings, calcium imaging,
+        electrophysiology, neuroimaging, brain stimulation, neurons, cortex, the hippocampus, the brain, and more). It
+        takes the papers published since its last look every hour, and, in between, goes back through the stock month
+        by month. For each paper it reads the full text (the publisher's JATS XML, as Europe PMC gives it), its
+        DataCite metadata, and Crossref's when there is no text. It then enriches the record: Europe PMC's own record
+        (MeSH terms, grants, corrections), OpenAlex (institutions with their ROR identifiers, the paper's topic, its
+        open-access status, a preprint), and the Retraction Watch data (retractions, corrections, expressions of concern).
+      </p>
+    </li>
+    <li>
+      <h3>Classification in scope</h3>
+      <p>
+        The query is broad on purpose: "neural" also matches artificial neural networks, "cortical" cortical bone. So
+        each paper is classified, first by rules over its title, keywords, MeSH terms, subjects, abstract and journal,
+        each rule saying which term fired. A paper judged off-topic stays on the operator's computer: out of the site,
+        the search, the open data and every figure (<a href="/taxonomy/#scope">the scope</a>). The same rules place a
+        paper in categories — modality, organism, population, subfield — that the <a href="/browse/">Browse</a> pages
+        and the <a href="/taxonomy/">taxonomy</a> list. The operator's own labels win over the rules; the cases the rules
+        find ambiguous are meant for a local model, run only between 01:00 and 07:00, once it has been compared with
+        those labels.
+      </p>
+    </li>
+    <li>
+      <h3>Finding code links in the paper's own text</h3>
+      <p>
+        Every link in the full text is collected with where it was seen: the availability statement, the methods, a
+        table, the references, the supplementary material, the notes. Each mention is judged on its own — the authors'
+        code, their data, or a third-party tool they used — with the reasons for the verdict, and the verdicts for the
+        same repository are merged. A sentence saying the code is "available on request" is recorded as such. The
+        sentences that decided a verdict stay in the private database: the site shows where a link was found, never the
+        paper's words.
+      </p>
+    </li>
+    <li>
+      <h3>Checking that the links answer</h3>
+      <p>
+        Each repository that may hold code is visited where it lives. A git repository (GitHub, GitLab, Codeberg,
+        Bitbucket, GIN and others) is asked for its current commit, then cloned without its history to list its files
+        and read its scripts; the commit and its date are recorded. A Zenodo, OSF, figshare or Dryad record is read
+        through its service's interface; supplementary files through the publisher's. Software Heritage is asked whether
+        it has archived the repository. A service that refuses robots (Code Ocean) is said to be one that "cannot be
+        verified", never guessed. Repositories are checked again every 30 days, and every check is kept: a paper's page
+        shows the history of its code's availability.
+      </p>
+    </li>
+    <li>
+      <h3>The licence check</h3>
+      <p>
+        The licence is read from the repository's own licence file, at its root (for an archive, a licence file in it or
+        else its record's licence). Licences name each other in passing — the GPL mentions the Affero GPL — so the
+        licence whose text comes first wins. A licence mentioned only in a README sentence is recorded, but it is not
+        enough for the open dataset's copies. A repository without a licence is "all rights reserved": its files are
+        listed and linked at the source, never copied.
+      </p>
+    </li>
+    <li>
+      <h3>Copies of scripts, only under verified licences</h3>
+      <p>
+        When a repository's licence allows redistribution and its own licence file (or its record) confirms it, the text
+        of its scripts goes to the open dataset. The copies are deduplicated (a file present in
+        several repositories is stored once, under the SHA-256 of its text), compressed with zstd and stored as Parquet
+        blocks in the public Hugging Face dataset <a href="https://huggingface.co/datasets/OpenScientificCodeRegistry/Database">OpenScientificCodeRegistry/Database</a>,
+        with one manifest per repository (its commit, its licence, and where each file lies). A published block never
+        changes. The blocks are cut so that a browser can read a single script with HTTP range requests — about 78 KB
+        for one script shown. The site's pages hide any email address written in the code. Which copy a page shows, and
+        when it sends you to the source instead, is the <PageLink href="/policies/code/">code policy</PageLink>'s
+        subject.
+      </p>
+    </li>
+    <li>
+      <h3>The Code ↔ Paper reader and its tracing maps</h3>
+      <p>
+        For a paper whose code was read, the harvester pairs paragraphs of the paper with lines of the code (method
+        <code>lexical-v1</code>): both are reduced to technical terms — word stems, identifiers, constants, tool names,
+        figure numbers — and a pair is kept only when several rare terms agree, so that a shared common word counts for
+        nothing. A wrong highlight costs the reader more than a missing one. The <a href="/help/reader/">reader</a> puts
+        the paper and the code side by side, each pair in one colour on both sides. The paper's text is fetched by your
+        browser from Europe PMC (or PubMed Central's copy) when you open the reader; {SITE_NAME} never stores it. All of it
+        — where the code is, the commit, the licence, the files and their digests, how the links were found, the
+        matches — makes the paper's <a href="/help/maps/">tracing map</a>.
+      </p>
+    </li>
+    <li>
+      <h3>An author's validation</h3>
+      <p>
+        A map made by the machine is a proposal. An author of the paper, signed in with the ORCID iD the paper lists,
+        can validate it — or first correct its links. The page carries a digest of the map it shows; the validation
+        carries it back, so the map kept is exactly the one the author saw. If it changed in between, the author is
+        asked to look again.
+      </p>
+    </li>
+    <li>
+      <h3>A DOI, for validated maps only</h3>
+      <p>
+        A validated map is deposited on Zenodo, the free repository run by CERN, and receives a DOI. The DOI is on the
+        map — its links and metadata — never on the authors' code, which stays in their repository. The record is
+        <code>IsSupplementTo</code> the paper and <code>References</code> the code at the validated commit; its creators
+        are the validating author, with their ORCID iD, and the platform. A map the machine proposed never receives a
+        DOI (<a href="/policies/doi/">the DOI policy</a>).
+      </p>
+    </li>
+  </ol>
+
+  <h2 id="why">Why it is built this way</h2>
+  <dl class="terms">
+    <dt>Zero cost.</dt>
+    <dd>
+      A registry that depends on a budget disappears with it. {SITE_NAME} uses only free services and free plans, and
+      is designed around their limits: the site is static files, which Cloudflare serves without limit; the few
+      dynamic answers (the search, sign-in, requests) share a daily quota; the heavy work runs on the operator's
+      computer. When a feature does not fit a free plan, it waits or takes another form.
+    </dd>
+    <dt>No email address.</dt>
+    <dd>
+      Sign-in asks ORCID, GitHub or Google for an identity, never for an address. No form accepts one: the texts you
+      type lose any address before they are stored. Notifications stay in the site. The site shows no author's email
+      address, even inside their code. This keeps readers and authors out of mailing lists, and keeps a whole class of
+      personal data — and of mistakes — out of the registry. (The operator does keep, privately, the contact details
+      that papers themselves publish for their authors: <a href="/privacy/#contacts">the privacy page</a> says what,
+      where and why.)
+    </dd>
+    <dt>Licences respected.</dt>
+    <dd>
+      A script's text is copied only when its licence allows it and the repository's own licence file confirms it.
+      Everything else is listed and linked at the source, at the verified commit. Abstracts and availability
+      statements are shown in full only under the licences that allow it (<a href="/policies/licences/">the
+      licence policy</a>).
+    </dd>
+    <dt>The paper's full text is never redistributed.</dt>
+    <dd>
+      Neither the text nor the PDF of a paper leaves the operator's computer: the site links to the paper by its DOI,
+      and the reader's browser fetches the text from Europe PMC itself. Evidence for a match is a handful of short
+      technical terms, never a sentence (<a href="/policies/full-text/">the full-text policy</a>).
+    </dd>
+    <dt>GitHub only as a last resort.</dt>
+    <dd>
+      The code is read here, beside the paper: a paper's page opens on the reader, and the listing's code links lead
+      to it. The forge is the source of truth and is always linked, but last — for what {SITE_NAME} may not copy, and
+      to check the original. Nothing depends on one forge: GitLab, Codeberg, Zenodo, OSF and the others are read the
+      same way. And the registry asks GitHub for no permission: sign-in with GitHub requests no scope, and the badge is
+      added by the author in GitHub's own editor.
+    </dd>
+    <dt>The machine proposes; the authors decide.</dt>
+    <dd>
+      Every verdict is labelled with how it was reached. Matches are proposals with their evidence and score. A
+      correction by an author becomes a new version of the record and survives every later scan. Only an author's
+      validation earns a DOI.
+    </dd>
+    <dt>Static first, the source prevails.</dt>
+    <dd>
+      Pages are built ahead of time, so the site works without JavaScript for reading records, costs nothing to visit,
+      and cannot be overloaded by readers. When the registry and the source disagree, the source is right.
+    </dd>
+  </dl>
+
+  <h2 id="figures">In figures</h2>
+  <p>From the catalogue of {generatedInWords(catalog.generated_at)}, the one this site was built from:</p>
+  <div class="table-wrap">
+    <table class="facts">
+      <tbody>
+        <tr><th scope="row">Open-access neuroscience papers read (in scope)</th><td class="n">{number(f.articles)}</td></tr>
+        <tr><th scope="row">… of them research articles</th><td class="n">{number(f.research_articles)}</td></tr>
+        <tr><th scope="row">Papers with a page: the authors' code, code on request or data only</th><td class="n">{number(withPage.length)}</td></tr>
+        <tr><th scope="row">Papers with their authors' code</th><td class="n">{number(withCode.length)}</td></tr>
+        <tr><th scope="row">Code repositories cited as the authors' code</th><td class="n">{number(f.repos_code)}</td></tr>
+        <tr><th scope="row">… answering at their last check</th><td class="n">{number(f.repos_code_alive)}</td></tr>
+        <tr><th scope="row">… archived by Software Heritage</th><td class="n">{number(f.repos_archived)}</td></tr>
+        <tr><th scope="row">Scripts read at the source</th><td class="n">{number(f.scripts_read)}</td></tr>
+        <tr><th scope="row">Papers with Code ↔ Paper matches</th><td class="n">{number(matched)}</td></tr>
+        <tr><th scope="row">Matches between a paragraph and lines of code</th><td class="n">{number(f.alignments)}</td></tr>
+        <tr><th scope="row">Authors with an ORCID iD, journals, institutions</th><td class="n">{number(authors.length)}, {number(journals.length)}, {number(institutions.length)}</td></tr>
+        <tr><th scope="row">Tools found in the code, datasets cited</th><td class="n">{number(tools.length)}, {number(datasets.length)}</td></tr>
+        {days.length > 0 && <tr><th scope="row">Publication dates covered</th><td class="n">{dateInWords(days[0])} to {dateInWords(days.at(-1)!)}</td></tr>}
+      </tbody>
+    </table>
+  </div>
+  <p>
+    Rates are computed on research articles only: reviews, conference abstracts, case reports and notices rarely have
+    code of their own and would dilute them. {f.research_articles > 0 &&
+      `${Math.round((100 * f.research_with_code) / f.research_articles)}% of the research articles read have their authors' code.`}
+  </p>
+
+  <h2 id="who">Who runs it</h2>
+  <p>
+    {SITE_NAME} is run by one independent operator{OPERATOR_NAME ? `, ${OPERATOR_NAME}` : ""}, who writes its code,
+    runs its harvester and decides what a machine cannot. No institution, company, publisher or funder is behind it,
+    and it is affiliated with none of the services it reads or publishes to (Europe PMC, Crossref, DataCite, OpenAlex,
+    Zenodo, Hugging Face, Cloudflare, ORCID, GitHub, Google). Its source code is public under the Apache-2.0 licence:
+    <a href={SOURCE_URL}>{SOURCE_URL.replace(/^https:\/\//, "")}</a>. The operator's name and address are given on the
+    <a href="/privacy/#controller">privacy page</a>.
+  </p>
+
+  <h2 id="funding">How it is paid for</h2>
+  <p>
+    It is not: {SITE_NAME} costs nothing to run beyond the operator's own computer and connection, has no advertising,
+    no tracker and no paid service. It lives on free plans:
+  </p>
   <ul>
-    <li>
-      The paper is loaded from Europe PMC (open access) by your browser, when you open the reader. {SITE_NAME} never stores
-      it and never serves it: without Europe PMC, the reader only offers links to the paper.
-    </li>
-    <li>
-      Its paragraphs are numbered in the order of its XML full text. The matches between a paragraph and lines of
-      code are computed by the harvester beforehand, from that same numbering; each shows its evidence (a few
-      short technical terms, never sentences of the paper), its score, and the method that produced it. They are
-      proposals, not statements validated by the authors.
-    </li>
-    <li>
-      The code shown is the text of the repository at the verified commit, when its license allows republishing it;
-      otherwise the reader links to the file, and to the exact lines, at the source.
-    </li>
-    <li>
-      A pair has one color on both sides. Click a highlighted paragraph to see its lines of code, or highlighted lines
-      to see their paragraph; the list of matches above the panes does both.
-    </li>
+    <li>Cloudflare Workers, free plan: the site's files, served without limit, and 100,000 dynamic requests a day for
+      the search, sign-in, requests and the pages of older papers; D1 databases for the search and the accounts.</li>
+    <li>Hugging Face: the public datasets, free.</li>
+    <li>Zenodo: the tracing maps' DOIs, free.</li>
+    <li>ORCID's public API and sign-in, free for non-commercial use, which {SITE_NAME} is; GitHub's and Google's
+      sign-in, free.</li>
+    <li>Europe PMC, Crossref, DataCite, OpenAlex (single lookups, within its free daily allowance), Software Heritage,
+      the forges and archives: read politely, within their published limits.</li>
   </ul>
-</Base>
+  <p>Should a free plan end, the site's static pages would keep working; the feature that depended on it would wait.</p>
+
+  <h2 id="open-data">Open data</h2>
+  <dl class="terms">
+    <dt>Public</dt>
+    <dd>
+      <a href="https://huggingface.co/datasets/OpenScientificCodeRegistry/Database">OpenScientificCodeRegistry/Database</a>
+      on Hugging Face: the authors' scripts under verified licences, each file under its repository's licence, as Parquet
+      blocks with one manifest per repository. The <a href={SOURCE_URL}>source code</a>, Apache-2.0. The tracing maps
+      deposited on Zenodo, CC0-1.0. And the site itself: every record it shows is a public JSON file
+      (<a href="/labs/#site-files">Labs</a> lists them).
+    </dd>
+    <dt>Private for now</dt>
+    <dd>
+      The full catalogue as tables (papers, repositories, scripts, matches, and a public SQLite database without any
+      paper's sentence), prepared under CC0-1.0 for Hugging Face: it stays private until the operator decides to open
+      it.
+    </dd>
+    <dt>Private, always</dt>
+    <dd>
+      The authors' contact details that papers publish, kept on the operator's computer and in a private Hugging Face
+      dataset (<a href="/privacy/#contacts">why and how</a>); the harvester's full database, with the sentences that
+      decided each verdict; off-topic papers.
+    </dd>
+  </dl>
+  <p><a href="/help/data/">Accessing the data</a> explains how to use each of them.</p>
+
+  <h2 id="cite">How to cite it</h2>
+  <p>To cite the registry as a whole (its catalogue changes every night: give the date you used):</p>
+  <pre>The {SITE_NAME} contributors ({year}). {SITE_NAME}{SITE_TAGLINE === SITE_NAME ? "" : `: ${SITE_TAGLINE}`}. Catalogue of {generatedInWords(catalog.generated_at)}. {siteUrl}</pre>
+  <pre>{bibtex}</pre>
+  <p>
+    A paper's page gives its own citation formats (APA-like text, BibTeX, RIS, CSL-JSON), and a validated map's DOI is
+    the way to cite a map. <a href="/policies/citation/">The citation policy</a> covers each case, the datasets included.
+  </p>
+
+  <h2 id="limits">Limits</h2>
+  <p>What {SITE_NAME} does not do, or not yet — said plainly, since a registry is only as useful as its honesty:</p>
+  <ul>
+    <li><strong>Coverage.</strong> Only open-access papers whose full text Europe PMC holds, matched by its neuroscience
+      query; papers without a full text there are read from their metadata only. The harvest goes back in time month
+      by month: older years are still being read.</li>
+    <li><strong>Accuracy.</strong> Measured on 25 September 2026: 10 of 11 "authors' code" verdicts right on papers
+      never seen while tuning; the text alone finds the authors' exact repository for 72% of the papers of an
+      independent benchmark (73 of 102). Some links are missed, a few misjudged: authors can correct them.</li>
+    <li><strong>Matches</strong> are computed by a lexical method, not read by a person: proposals, with their evidence.</li>
+    <li><strong>Classification</strong> is by rules; the model meant for the ambiguous cases is not chosen yet.</li>
+    <li><strong>Quotas.</strong> The search and the other dynamic answers share Cloudflare's daily free quota; when it is
+      spent, they say so until midnight UTC, while every static page keeps working.</li>
+    <li><strong>Test services.</strong> While the platform is built, sign-in with ORCID may use ORCID's sandbox and map
+      deposits go to Zenodo's sandbox, whose DOIs are not real; such validations are recorded as tests and never
+      published.</li>
+    <li><strong>Not built yet:</strong> deleting one's account from the site, discussions, reproduction reports, moderation
+      in the site (the operator decides requests meanwhile), and notifications beyond the account page.</li>
+    <li><strong>Address.</strong> The site lives at its free <code>workers.dev</code> address until a domain of its own,
+      before the public launch.</li>
+  </ul>
+
+  <h2 id="history">History</h2>
+  <dl class="terms">
+    <dt>25 September 2026</dt>
+    <dd>The harvester's first measured results: precision on unseen papers, recall on an independent benchmark of
+      papers linked to Zenodo software records.</dd>
+    <dt>26 September 2026</dt>
+    <dd>The project's first public commit, in English; the website deployed on Cloudflare; the decision to store the
+      scripts' copies as deduplicated Parquet blocks; the Zenodo sandbox community for the maps.</dd>
+    <dt>27 September 2026</dt>
+    <dd>The operator's founding decisions (licences of statements, which papers get a page, the search, sign-in,
+      notifications in the site only, classification, scope, hosting on Cloudflare Workers). The enriched record, the
+      navigation by category, author, journal, institution, tool and dataset; the search; the full paper page;
+      accounts with ORCID, GitHub and Google; the licence audit, and the first block of scripts published on Hugging
+      Face.</dd>
+    <dt>28 September 2026</dt>
+    <dd>Contributions live: submission, author claims, corrections, map validation, the badge, removal requests.
+      OpenAlex enrichment; a fixed budget of files whatever the catalogue's size; each paper's page opens on the
+      Code ↔ Paper reader, with PubMed Central as a second source of the paper's text.</dd>
+    <dt>29 September 2026</dt>
+    <dd>The removal request page; these information pages, the logo, and the preparation of the public launch.</dd>
+  </dl>
+
+  <h2 id="contact">Feedback and contact</h2>
+  <p>{SITE_NAME} has no email address, on purpose. To reach the operator:</p>
+  <ul>
+    <li>about a paper's record — a missing or wrong link, authorship, a map — use the paper's
+      <a href="/help/correct/">Contribute section</a>, signed in;</li>
+    <li>to ask for something to be removed, the <a href="/help/removal/">removal request</a>;</li>
+    <li>to add a paper, <a href="/submit/">submit it</a>;</li>
+    <li>about the software, an idea or a bug, an issue on the <a href={`${SOURCE_URL}/issues`}>project's GitHub</a>
+      (public); a security problem, privately through <a href={`${SOURCE_URL}/security/advisories/new`}>GitHub's
+      security advisories</a>.</li>
+  </ul>
+</Info>

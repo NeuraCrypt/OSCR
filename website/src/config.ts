@@ -16,3 +16,13 @@ export const SITE_TAGLINE: string =
 
 /** "OSCR (Open Scientific Code Registry)", or the name alone when there is no long form. */
 export const SITE_FULL_NAME = SITE_TAGLINE === SITE_NAME ? SITE_NAME : `${SITE_NAME} (${SITE_TAGLINE})`;
+
+/** Who operates the platform, as the privacy page and the terms name them: the operator's name
+ *  and postal address (the data controller's, under the GDPR). Empty until the owner fills them,
+ *  here or at build time (OPERATOR_NAME=… OPERATOR_ADDRESS=… npm run build): the pages then say
+ *  that they are published before the public launch, and `npm run check` prints a launch warning. */
+export const OPERATOR_NAME: string = import.meta.env.OPERATOR_NAME || "";
+export const OPERATOR_ADDRESS: string = import.meta.env.OPERATOR_ADDRESS || "";
+
+/** The platform's source code, public (Apache-2.0): the About page, the footer, the policies. */
+export const SOURCE_URL = "https://github.com/yannbellec/Open-Scientific-Code-Registry-OSCR-";

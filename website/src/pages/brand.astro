@@ -1,0 +1,177 @@
+---
+// The brand (2026-09-29), on the model of arXiv's: the name (SITE_NAME), the owner's logo and its
+// files (public/brand/, made by tools/make_logo_assets.py), their rules and colours, the badge, and
+// how to cite and link. The file sizes are read when the site is built. The rules await the owner's
+// review.
+import { statSync } from "node:fs";
+import Info from "../components/Info.astro";
+import { SITE_FULL_NAME, SITE_NAME, SITE_TAGLINE } from "../config";
+
+const kb = (path: string) => {
+  try {
+    return `${Math.max(1, Math.round(statSync(`public${path}`).size / 1024))} KB`;
+  } catch {
+    return "";
+  }
+};
+const FILES = [
+  { path: "/brand/logo-wordmark.png", what: "The wordmark, blue on transparent", size: "1720 × 500", use: "on white or a light ground" },
+  { path: "/brand/logo-wordmark-white.png", what: "The wordmark, white on transparent", size: "1720 × 500", use: "on the masthead's colour, a dark or a photographic ground" },
+  { path: "/brand/logo-wordmark-600.png", what: "The wordmark, blue, for screens", size: "600 × 174", use: "a web page, a slide" },
+  { path: "/icon-512.png", what: "The square icon", size: "512 × 512", use: "an avatar, an app's icon" },
+  { path: "/apple-touch-icon.png", what: "The square icon", size: "180 × 180", use: "a phone's home screen" },
+  { path: "/favicon-32.png", what: "The favicon", size: "32 × 32", use: "a browser's tab (also /favicon.ico)" },
+  { path: "/og-image.png", what: "The preview image", size: "1200 × 630", use: "a link's preview on social networks and chats" },
+  { path: "/brand/logo-original.png", what: "The owner's original file", size: "2000 × 2000", use: "reference; prefer the cropped files" },
+];
+const COLOURS = [
+  { cls: "swatch-logo", name: "Logo blue", hex: "#04408F", rgb: "4, 64, 143", use: "the wordmark, the icons' ground" },
+  { cls: "swatch-masthead", name: "Masthead", hex: "#1F3B4D", rgb: "31, 59, 77", use: "the site's masthead, the badge's right half" },
+  { cls: "swatch-link", name: "Link", hex: "#0645AD", rgb: "6, 69, 173", use: "links in the site's text" },
+  { cls: "swatch-text", name: "Text", hex: "#000000", rgb: "0, 0, 0", use: "the site's text" },
+  { cls: "swatch-white", name: "White", hex: "#FFFFFF", rgb: "255, 255, 255", use: "the ground, the white wordmark" },
+];
+const site = new URL("/", Astro.site).href;
+const toc = [
+  { id: "name", text: "The name" },
+  { id: "logo", text: "The logo" },
+  { id: "files", text: "Files to download" },
+  { id: "space", text: "Clear space and minimum size" },
+  { id: "dont", text: "What not to do" },
+  { id: "colours", text: "Colours" },
+  { id: "type", text: "Typography" },
+  { id: "badge", text: "The badge" },
+  { id: "link", text: "Citing and linking" },
+  { id: "use", text: "Permission to use" },
+];
+---
+<Info
+  title="Brand"
+  description={`${SITE_NAME}'s name and logo: the files to download, their clear space, minimum size and colours, the badge, and how to cite and link.`}
+  group="about"
+  path="/brand/"
+  toc={toc}
+>
+  <p class="lead" slot="lead">
+    How to write {SITE_NAME}'s name, use its logo and badge, and link to it — for an article, a slide, a README or a
+    poster.
+  </p>
+
+  <h2 id="name">The name</h2>
+  <dl class="terms">
+    <dt>{SITE_NAME}</dt>
+    <dd>The short name, written exactly so, letter for letter: the masthead, the badge, a sentence after the first
+      mention.</dd>
+    {SITE_TAGLINE !== SITE_NAME && (
+      <>
+        <dt>{SITE_TAGLINE}</dt>
+        <dd>The long form, for a title or where the short one would not be understood.</dd>
+        <dt>{SITE_FULL_NAME}</dt>
+        <dd>At the first mention in a text: the short name, then the long one in brackets.</dd>
+      </>
+    )}
+  </dl>
+  <p>
+    It is a proper name: no article before it ("{SITE_NAME} records…", not "the {SITE_NAME}"), not translated, not
+    abbreviated otherwise. Refer to it as "the registry" in running text.
+  </p>
+
+  <h2 id="logo">The logo</h2>
+  <p>
+    The logo is the name as a wordmark, in a serif face and the logo's blue. It is the operator's own work, and the site
+    uses it in two versions: blue on light grounds, white on the masthead's dark colour.
+  </p>
+  <div class="logo-samples">
+    <figure>
+      <div><img src="/brand/logo-wordmark-600.png" width="600" height="174" alt={`${SITE_NAME}, blue`} /></div>
+      <figcaption>Blue, on white or a light ground</figcaption>
+    </figure>
+    <figure>
+      <div class="on-dark"><img src="/brand/logo-masthead.png" width="320" height="93" alt={`${SITE_NAME}, white`} /></div>
+      <figcaption>White, on the masthead's colour or a dark ground</figcaption>
+    </figure>
+  </div>
+
+  <h2 id="files">Files to download</h2>
+  <p>PNG files; the wordmarks are cropped to the letters, on a transparent ground, so leave the clear space below around them.</p>
+  <div class="table-wrap">
+    <table class="facts">
+      <thead><tr><th>File</th><th>Pixels</th><th>Weight</th><th>For</th></tr></thead>
+      <tbody>
+        {FILES.map((x) => (
+          <tr><td><a href={x.path} download>{x.what}</a><br /><code>{x.path}</code></td><td>{x.size}</td><td>{kb(x.path)}</td><td>{x.use}</td></tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+
+  <h2 id="space">Clear space and minimum size</h2>
+  <ul>
+    <li><strong>Clear space</strong>: keep around the wordmark, on every side, an empty margin at least half its height —
+      no text, edge or other logo inside it.</li>
+    <li><strong>Minimum size</strong>: 80 pixels wide on a screen, 20 millimetres wide in print. Smaller, use the square
+      icon, or the name in text.</li>
+    <li><strong>The square icons</strong> carry their own margin: use them whole.</li>
+  </ul>
+
+  <h2 id="dont">What not to do</h2>
+  <ul>
+    <li>Do not change its colours beyond the two versions, add a gradient, a shadow, an outline or any effect.</li>
+    <li>Do not stretch, squeeze, slant or rotate it; resize it only with its proportions.</li>
+    <li>Do not set it again in another typeface, nor rearrange, add to or take from its letters.</li>
+    <li>Do not put the blue wordmark on a dark or busy ground, nor the white one on a light ground.</li>
+    <li>Do not place it inside a shape, a badge or a pill of your own.</li>
+    <li>Do not use it to suggest that {SITE_NAME} endorses, certifies or is affiliated with a product, a paper or a
+      person.</li>
+  </ul>
+
+  <h2 id="colours">Colours</h2>
+  <div class="table-wrap">
+    <table class="facts">
+      <thead><tr><th></th><th>Colour</th><th>Hex</th><th>RGB</th><th>Used for</th></tr></thead>
+      <tbody>
+        {COLOURS.map((c) => (
+          <tr><td><span class={`swatch ${c.cls}`}></span></td><td>{c.name}</td><td><code>{c.hex}</code></td><td>{c.rgb}</td><td>{c.use}</td></tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+  <p>The site's statuses are said in words, with two tones only: green (#1A6B1A) for what is verified, brown (#8A5A00) for what is wrong or unconfirmed.</p>
+
+  <h2 id="type">Typography</h2>
+  <p>
+    The wordmark is drawn in a serif face; it is an image, not a font to reproduce. The site's text uses the reader's
+    system sans-serif (Lucida Grande, Helvetica Neue, Helvetica, Arial), and its code a monospaced face (Menlo, Consolas,
+    DejaVu Sans Mono): no web font is downloaded.
+  </p>
+
+  <h2 id="badge">The badge</h2>
+  <p><img src="/badge.svg" alt={`${SITE_NAME}: paper ↔ code`} /></p>
+  <p>
+    <a href="/badge.svg"><code>/badge.svg</code></a> is one image for every paper, a flat rectangle — never a rounded
+    pill — with the platform's name and "paper ↔ code". It belongs in the README of a paper's code, linked to that paper's
+    page on {SITE_NAME}:
+  </p>
+  <pre>{`[![${SITE_NAME}](${new URL("/badge.svg", Astro.site).href})](${site}paper/<your paper>/)`}</pre>
+  <p>
+    Use it only for a paper {SITE_NAME} lists, linked to that paper's page; do not change its image or words. A paper's
+    authors and its code's maintainers find the three snippets ready on its page (<a href="/help/badge/">the badge's
+    guide</a>).
+  </p>
+
+  <h2 id="link">Citing and linking</h2>
+  <ul>
+    <li>Link to the home page, <a href="/">{site}</a>, or to a paper's page, <code>{site}paper/&lt;identifier&gt;/</code>,
+      whose address does not change.</li>
+    <li>Cite the registry, a record, a map or a dataset as the <a href="/policies/citation/">citation policy</a> says.</li>
+    <li>In a slide or a poster, the wordmark and the address together are enough.</li>
+  </ul>
+
+  <h2 id="use">Permission to use</h2>
+  <p>
+    You may use the name and these files, unchanged, to refer to {SITE_NAME}: to link to it, cite it, write or speak about
+    it, or show that a paper's code is listed there. Any other use — a product's name, merchandise, a modified logo — needs
+    the operator's permission. The registry's software is under the Apache-2.0 licence, which grants no right to its name
+    or logo.
+  </p>
+</Info>
