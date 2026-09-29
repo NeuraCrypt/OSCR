@@ -380,14 +380,16 @@ def _data_links(links: list[sqlite3.Row]) -> list[dict[str, str]]:
 # The tracing map.
 
 def _map(article: dict[str, Any], validations: list[sqlite3.Row], deposit: sqlite3.Row | None,
-         files: int, pairs: int, method: str, digest: str = "") -> dict[str, Any]:
+         files: int, pairs: int, method: str, digest: str = "", *, withheld: bool = False) -> dict[str, Any]:
     """What the map holds, and where it stands: proposed by the harvester, or validated by
     an author with their ORCID (the only proof that leaves, as in catalog.json) and, once
     deposited on Zenodo (never the sandbox), its DOI and its JSON. `digest`: the map's
-    (zenodo.map_digest), which a validation from the page carries back."""
+    (zenodo.map_digest), which a validation from the page carries back. `withheld`: the map was
+    withheld at a removal request (status "withheld"; the caller passes neither its validations,
+    nor its deposit, nor its matches, nor its digest)."""
     record = str(deposit["record_id"]) if deposit is not None else ""
     return {
-        "status": "validated" if validations else "proposed" if article["code"] else "none",
+        "status": "withheld" if withheld else "validated" if validations else "proposed" if article["code"] else "none",
         "repositories": len(article["code"]), "files": files, "pairs": pairs, "method": method,
         "digest": digest,
         "validated_by": [{"name": _clean(v["name"]), "orcid": entities.orcid(v["orcid"]),
@@ -816,13 +818,19 @@ def generate(con: sqlite3.Connection, folder: Path, articles: list[dict[str, Any
              for aid, a in pages.items()}
     close = similar(feats, names, order)
 
+    # A tracing map withheld at a removal request (catalog.withheld): its section says so, with neither
+    # its digest (nothing to validate), nor its validations, nor its DOI, nor its matches.
+    maps_withheld = catalog.withheld(con).maps
+
     lots: dict[int, dict[str, Any]] = defaultdict(dict)
     counts = {"papers": 0, "versions": 0, "similar": 0}
     for aid, a in pages.items():
         r = rows[aid]
-        n_pairs, method = pairs.get(aid, (0, ""))
+        held = aid in maps_withheld
+        n_pairs, method = pairs.get(aid, (0, "")) if not held else (0, "")
         code_links = [link for link in links.get(aid, []) if link["role"] == "code"]
-        deposit = deposits.get(aid) if validations.get(aid) else None
+        deposit = deposits.get(aid) if validations.get(aid) and not held else None
+        validated = validations.get(aid, []) if not held else []
         entry = {
             "overview": _overview(r, authors.get(aid, []), grants.get(aid, []), funders, subjects.get(aid, []),
                                   rrids.get(aid, []), notices.get(aid, []), institutions=institutions,
@@ -832,13 +840,13 @@ def generate(con: sqlite3.Connection, folder: Path, articles: list[dict[str, Any
                                                scripts.get(link["repo"], 0)) for link in code_links},
             "availability": _availability(r, statements.get(aid, []), links.get(aid, [])),
             "data": _data_links(links.get(aid, [])),
-            "map": _map(a, validations.get(aid, []), deposit,
+            "map": _map(a, validated, deposit,
                         sum(scripts.get(link["repo"], 0) for link in code_links), n_pairs, method,
-                        zenodo.map_digest(zenodo.map_of(con, aid)) if code_links else ""),
+                        zenodo.map_digest(zenodo.map_of(con, aid)) if code_links and not held else "", withheld=held),
             "versions": history(versions.get(aid, [])),
             "cite": {"paper": cite_paper(r, authors.get(aid, []), journals.get(r["journal_id"] or ""),
                                          [x["name"] for x in a.get("authors") or []]),
-                     "map": cite_map(r["title"], validations[aid], deposit)
+                     "map": cite_map(r["title"], validated, deposit)
                      if deposit is not None and deposit["doi"] else None},
             "similar": [{"slug": catalog.slug(s["id"]), "score": s["score"], "reasons": s["reasons"]}
                         for s in close.get(aid, [])],

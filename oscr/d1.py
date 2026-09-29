@@ -368,8 +368,12 @@ def project(con: sqlite3.Connection, state: sqlite3.Connection) -> Projection:
     categories: dict[tuple[str, str], list[sqlite3.Row]] = defaultdict(list)
     for r in con.execute(f"SELECT * FROM paper_category WHERE article_id IN ({pages}) AND facet IN ({marks})"):
         categories[(r["article_id"], r["facet"])].append(r)
-    pairs = {r[0]: r[1] for r in con.execute("SELECT article_id, COUNT(*) FROM alignment GROUP BY article_id")}
-    maps = {r[0]: r[1] for r in con.execute("SELECT article_id, doi FROM card_doi WHERE instance = 'zenodo' AND doi != ''")}
+    # A tracing map withheld at a removal request (catalog.withheld): neither its matches nor its DOI.
+    maps_withheld = catalog.withheld(con).maps
+    pairs = {r[0]: r[1] for r in con.execute("SELECT article_id, COUNT(*) FROM alignment GROUP BY article_id")
+             if r[0] not in maps_withheld}
+    maps = {r[0]: r[1] for r in con.execute("SELECT article_id, doi FROM card_doi WHERE instance = 'zenodo' AND doi != ''")
+            if r[0] not in maps_withheld}
     rrids: dict[str, list[str]] = defaultdict(list)
     for r in con.execute(f"SELECT article_id, rrid FROM paper_rrid WHERE article_id IN ({pages})"):
         rrids[r[0]].append(r[1])

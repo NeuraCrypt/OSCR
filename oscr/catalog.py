@@ -30,6 +30,7 @@ import shutil
 import sqlite3
 import time
 from collections import Counter, defaultdict
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 from urllib.parse import quote
@@ -57,8 +58,39 @@ PUBLISHABLE: frozenset[str] = frozenset({"yes", "with_conditions"})
 
 NOTE_LICENSE = "This repository's license does not allow republishing its text: read it at the source."
 NOTE_NO_LICENSE = "This repository has no license: its authors keep all rights. Read it at the source."
+NOTE_WITHHELD = "Withheld from this site at a removal request, after a moderator's review: read it at the source."
 
 _CODE_STATUSES = ("code_verified", "code_found", "code_empty", "code_dead")
+
+
+@dataclass(frozen=True)
+class Withheld:
+    """What accepted removal requests withhold from the public outputs while the records stay
+    (oscr/migrations/0008_withheld.sql, `oscr reports accept`): the repositories whose copies leave,
+    single files, and the papers whose tracing map leaves."""
+    repos: frozenset[str] = frozenset()
+    files: frozenset[tuple[str, str]] = frozenset()
+    maps: frozenset[str] = frozenset()
+
+    def text_withheld(self, repo: str, path: str) -> bool:
+        return repo in self.repos or (repo, path) in self.files
+
+
+def withheld(con: sqlite3.Connection) -> Withheld:
+    """The copies and maps withheld: 'scripts' names every code repository of its paper (those linked
+    later included), 'repository' one repository, 'file' one file, 'map' a paper's tracing map."""
+    try:
+        rows = con.execute("SELECT scope, article_id, repo, path FROM withheld").fetchall()
+    except sqlite3.OperationalError:          # a database before migration 8
+        return Withheld()
+    repos = {r[2] for r in rows if r[0] == "repository"}
+    papers = [r[1] for r in rows if r[0] == "scripts"]
+    if papers:
+        marks = ",".join("?" * len(papers))
+        repos |= {r[0] for r in con.execute(f"SELECT DISTINCT repo FROM link WHERE role = 'code' AND article_id IN ({marks})",
+                                             papers)}
+    return Withheld(repos=frozenset(repos), files=frozenset((r[2], r[3]) for r in rows if r[0] == "file"),
+                    maps=frozenset(r[1] for r in rows if r[0] == "map"))
 
 
 def lot_of(key: str) -> int:
@@ -204,6 +236,9 @@ def catalog_data(con: sqlite3.Connection) -> dict[str, Any]:
         validators[v["article_id"]].append({"name": v["name"], "orcid": v["orcid"]})
     card_dois = {r["article_id"]: {"doi": r["doi"], "concept_doi": r["concept_doi"]}
                  for r in con.execute("SELECT * FROM card_doi WHERE instance = 'zenodo'")}
+    # A tracing map withheld at a removal request: neither its validation, nor its DOI, nor its
+    # matches (the paper's record stays).
+    maps_withheld = withheld(con).maps
 
     articles = []
     for a in con.execute(f"SELECT * FROM article WHERE {IN_SCOPE} ORDER BY published DESC"):
@@ -232,15 +267,17 @@ def catalog_data(con: sqlite3.Connection) -> dict[str, Any]:
                 "commit": (d["commit_id"] if d else "") or "",
                 "where": _where(l["found_by"], l["section"]),
             })
-        n_pairs, method = aligned.get(a["id"], (0, ""))
+        n_pairs, method = aligned.get(a["id"], (0, "")) if a["id"] not in maps_withheld else (0, "")
         articles.append({
             "id": a["id"], "slug": slug(a["id"]), "doi": a["doi"], "pmcid": a["pmcid"],
             "fulltext_id": a["fulltext_id"] or a["pmcid"], "title": a["title"], "journal": a["journal"],
             "published": a["published"], "status": a["status"], "families": json.loads(a["families"]),
             "data_links": n_data, "code": code,
             "card": ({"validated_by": validators.get(a["id"], []), **card_dois.get(a["id"], {})}
-                     if a["id"] in validators or a["id"] in card_dois else None),
+                     if (a["id"] in validators or a["id"] in card_dois) and a["id"] not in maps_withheld else None),
             "alignment": ({"lot": lot_of(a["id"]), "pairs": n_pairs, "method": method} if n_pairs else None),
+            # Said only when true: the pages then say the map is withheld, not missing.
+            **({"map_withheld": True} if a["id"] in maps_withheld else {}),
         })
 
     families = _families(con, articles)
@@ -361,17 +398,21 @@ def script_lots(con: sqlite3.Connection, public: bool) -> dict[int, dict[str, An
     lots: dict[int, dict[str, Any]] = defaultdict(dict)
     lot_shown: dict[int, int] = defaultdict(int)
     repos = {r["repo"]: r for r in con.execute("SELECT * FROM repository")}
+    # The copies withheld at a removal request leave the public outputs, like an unlicensed text.
+    held = withheld(con) if public else Withheld()
     for repo in [r["repo"] for r in con.execute(f"SELECT DISTINCT repo FROM file WHERE repo IN ({PUBLIC_REPOS})")]:
         d = repos.get(repo)
         if d is None:
             continue
-        published = (not public) or d["redistributable"] in PUBLISHABLE
-        withdrawn_note = NOTE_NO_LICENSE if not d["license"] else NOTE_LICENSE
+        published = (not public) or (d["redistributable"] in PUBLISHABLE and repo not in held.repos)
+        withdrawn_note = NOTE_WITHHELD if repo in held.repos else NOTE_NO_LICENSE if not d["license"] else NOTE_LICENSE
         files = []
         shown = 0
         lot = lot_of(repo)
         for f in con.execute("SELECT * FROM file WHERE repo = ? ORDER BY kind DESC, path", (repo,)):
             text, note = (f["text"], f["note"]) if published else (None, withdrawn_note)
+            if published and (repo, f["path"]) in held.files:
+                text, note = None, NOTE_WITHHELD
             if public and text:
                 shown += len(text)
                 if shown > MAX_SITE_TEXT_PER_REPO:
@@ -404,7 +445,10 @@ def alignment_lots(con: sqlite3.Connection) -> dict[int, dict[str, Any]]:
     lots: dict[int, dict[str, Any]] = defaultdict(dict)
     fulltext = {r["id"]: (r["fulltext_id"] or r["pmcid"]) for r in con.execute(
         "SELECT id, fulltext_id, pmcid FROM article WHERE id IN (SELECT article_id FROM alignment)")}
+    maps_withheld = withheld(con).maps
     for r in con.execute(f"SELECT * FROM alignment WHERE article_id IN ({IN_SCOPE_IDS}) ORDER BY article_id, pair"):
+        if r["article_id"] in maps_withheld:
+            continue            # a tracing map withheld at a removal request: its matches too
         entry = lots[lot_of(r["article_id"])].setdefault(
             r["article_id"], {"method": r["method"], "fulltext_id": fulltext.get(r["article_id"], ""), "pairs": []})
         entry["pairs"].append({
@@ -559,6 +603,16 @@ def public_db(con: sqlite3.Connection, path: Path) -> None:
     target.execute(f"DELETE FROM field_provenance WHERE entity = 'article' AND entity_id IN ({off})")
     target.execute(f"DELETE FROM log WHERE json_valid(details) AND json_extract(details, '$.article') IN ({off})")
     target.execute(f"DELETE FROM article WHERE id IN ({off})")
+    # What accepted removal requests withhold while the record stays (0008): the copies of a
+    # paper's scripts, of a repository or of a file (their text, as an unlicensed one), and a
+    # paper's tracing map (its matches, its validations, its DOI). The table itself stays on the Mac.
+    held = withheld(target)
+    target.executemany("UPDATE file SET text = NULL, note = ? WHERE repo = ?", [(NOTE_WITHHELD, r) for r in held.repos])
+    target.executemany("UPDATE file SET text = NULL, note = ? WHERE repo = ? AND path = ?",
+                       [(NOTE_WITHHELD, r, p) for r, p in held.files])
+    for table in ("alignment", "validation", "card_doi"):
+        target.executemany(f"DELETE FROM {table} WHERE article_id = ?", [(a,) for a in held.maps])
+    target.execute("DROP TABLE IF EXISTS withheld")
     # What only off-topic papers (or nothing) pointed at goes too: repositories, their files
     # and facts, datasets, people and funders no paper in scope names.
     target.execute("DELETE FROM repository WHERE repo NOT IN (SELECT repo FROM link)")

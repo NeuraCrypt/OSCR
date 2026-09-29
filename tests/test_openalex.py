@@ -418,7 +418,7 @@ def test_a_version_6_database_is_migrated_to_openalex_and_keeps_its_rows(tmp_pat
     old.close()
     monkeypatch.undo()
     con = db.open_db(tmp_path / "six.db")
-    assert int(con.execute("SELECT value FROM meta WHERE name = 'schema_version'").fetchone()[0]) == 7
+    assert int(con.execute("SELECT value FROM meta WHERE name = 'schema_version'").fetchone()[0]) == db.SCHEMA_VERSION >= 7
     assert con.execute("SELECT openalex_id, oa_status, preprint_id FROM article").fetchone()[:] == ("", "", "")
     assert con.execute("SELECT name, ror, openalex_id FROM paper_author").fetchone()[:] == ("A", '["0abcdef23"]', "")
     tables = {r[0] for r in con.execute("SELECT name FROM sqlite_master WHERE type = 'table'")}
