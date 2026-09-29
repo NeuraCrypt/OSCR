@@ -37,6 +37,7 @@ import { failure, json, problem, problemAnswer, redact } from "./http.ts";
 import { requireIdentity } from "./identity.ts";
 import { loadRepo, unknownRepo } from "./start.ts";
 import { actionEventWrites, eventsOfAction } from "./events.ts";
+import { queueHooks } from "./hooks.ts";
 import { actionRow, first, newNonce, repoByKey, rowsOf, statements } from "./store.ts";
 import { ForgeProblem, isProblem, type ActionContext, type ActionTarget, type AnyActionSpec, type ForgeRequest, type RepoRow } from "./types.ts";
 
@@ -288,5 +289,7 @@ async function asThePerson(r: ForgeRequest, a: Acting): Promise<Response> {
       ),
     );
   }
+  // Phase 10: the outgoing webhooks of the events just written, in waitUntil (hooks.ts).
+  queueHooks(r, social.events.map((e) => ({ subject: e.subject, at: e.at, nonce: e.nonce })));
   return json({ result: out.result, sentence: a.spec.describe(a.parsed), outcome: out.outcome ?? "done", back: a.flow.rt }, 200, a.cookies);
 }

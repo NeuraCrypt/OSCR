@@ -24,6 +24,10 @@
 //   GET  /api/forge/social/activity   signed in   a person's calendar, timeline and milestones    inbox.ts
 //   GET  /api/forge/tokens            signed in   phase 10: the reader's personal tokens           tokens.ts
 //   POST /api/forge/tokens/write      signed in   make one (answered once) or revoke one           tokens.ts
+//   GET  /api/forge/hooks             signed in   phase 10: the reader's outgoing webhooks          hooks.ts
+//   GET  /api/forge/hooks/deliveries  signed in   one hook's deliveries of the last 7 days          hooks.ts
+//   POST /api/forge/hooks/write       signed in   make (pinged), change, ping, redeliver, rotate,   hooks.ts
+//                                                 delete a webhook
 //
 // What every route gets here, in order: its path (another is 404), its method (405), the FORGE
 // binding (503 not_configured without it), and for the signed-in routes the accounts (COMMUNITY and
@@ -50,6 +54,7 @@ import { handleActivity, handleFeed, handleInbox, handleNotices } from "./inbox.
 import { handleSocialFollow, handleSocialList, handleSocialMine, handleSocialPerson, handleSocialProfile, handleSocialStar, handleSocialState } from "./social.ts";
 import { handleStart } from "./start.ts";
 import { handleTokens, handleTokenWrite } from "./tokens.ts";
+import { handleHookDeliveries, handleHooks, handleHookWrite } from "./hooks.ts";
 import type { Context, D1Database, ForgeDeps, ForgeRequest, ForgeServiceEnv, RouteHandler } from "./types.ts";
 import { handleWebhook } from "./webhook.ts";
 
@@ -88,6 +93,10 @@ export const FORGE_ROUTES: Readonly<Record<string, Route>> = {
   // Phase 10: the registry's personal tokens, for its public API (tokens.ts; the API: api.ts).
   "/api/forge/tokens": { method: "GET", signedIn: true, handle: (r) => handleTokens(r) },
   "/api/forge/tokens/write": { method: "POST", signedIn: true, handle: (r) => handleTokenWrite(r) },
+  // Phase 10: outgoing webhooks (hooks.ts), the same on the API.
+  "/api/forge/hooks": { method: "GET", signedIn: true, handle: (r) => handleHooks(r) },
+  "/api/forge/hooks/deliveries": { method: "GET", signedIn: true, handle: (r) => handleHookDeliveries(r) },
+  "/api/forge/hooks/write": { method: "POST", signedIn: true, handle: (r) => handleHookWrite(r) },
 };
 
 const PREFIX = "/api/forge/";

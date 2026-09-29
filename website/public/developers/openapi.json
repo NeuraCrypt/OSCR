@@ -1620,6 +1620,198 @@
           }
         }
       }
+    },
+    "/api/v1/hooks": {
+      "get": {
+        "summary": "Your outgoing webhooks, and the events a repository's or a paper's offer.",
+        "operationId": "getHooks",
+        "x-scope": "hooks:read",
+        "security": [
+          {
+            "token": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ApiVersion"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The answer, JSON.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "Not modified: the ETag sent in If-None-Match still holds (not counted against the rate limit)."
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/hooks/deliveries": {
+      "get": {
+        "summary": "One webhook's deliveries of the last 7 days: event, status, time, attempts.",
+        "operationId": "getHooksDeliveries",
+        "x-scope": "hooks:read",
+        "security": [
+          {
+            "token": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ApiVersion"
+          },
+          {
+            "name": "id",
+            "in": "query",
+            "required": true,
+            "description": "The hook's id.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The answer, JSON.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "Not modified: the ETag sent in If-None-Match still holds (not counted against the rate limit)."
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/hooks/write": {
+      "post": {
+        "summary": "Make a webhook (pinged first; its secret answered once), change its events, pause it, ping it, redeliver a delivery, rotate its secret, delete it.",
+        "operationId": "postHooksWrite",
+        "x-scope": "hooks:write",
+        "security": [
+          {
+            "token": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ApiVersion"
+          }
+        ],
+        "responses": {
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error"
+          },
+          "2XX": {
+            "description": "The answer, JSON.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "op": {
+                    "description": "create, update, ping, redeliver, rotate or delete (required)."
+                  },
+                  "subject": {
+                    "description": "create: repo:<forge>:<id> or paper:doi:10.…."
+                  },
+                  "url": {
+                    "description": "create: the https address it posts to."
+                  },
+                  "events": {
+                    "description": "create, update: the events, or \"*\" for all."
+                  },
+                  "id": {
+                    "description": "The hook's id (every op but create)."
+                  },
+                  "active": {
+                    "description": "update: false pauses it (a ping makes it active again)."
+                  },
+                  "guid": {
+                    "description": "redeliver: the delivery's id."
+                  }
+                },
+                "required": [
+                  "op"
+                ]
+              }
+            }
+          }
+        }
+      }
     }
   }
 }

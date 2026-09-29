@@ -32,6 +32,7 @@ import { randomToken, sha256Hex } from "../../account/crypto.ts";
 import { handleSearch } from "../../api.ts";
 import type { Env } from "../../env.ts";
 import { API_RATE, bearer, giveBack, peekRate, rateHeaders, sharedLimit, takeRequest, type Principal, type RateState } from "./bearer.ts";
+import { handleHookDeliveries, handleHooks, handleHookWrite } from "./hooks.ts";
 import { handleActivity, handleFeed, handleInbox, handleNotices } from "./inbox.ts";
 import { runRoute } from "./index.ts";
 import { handleMine, handleRepo } from "./read.ts";
@@ -291,6 +292,29 @@ export const API_ROUTES: Record<string, ApiRoute> = {
     handle: handleNotices,
     words: "Mark threads read, unread, done, undone, saved or unsaved; unsubscribe or subscribe; all read; your settings.",
     body: { op: "read, unread, done, undone, save, unsave, unsubscribe, subscribe, all_read or settings (required).", threads: "Up to 25 {key, title, url}.", settings: "Your notification settings (op settings)." },
+  },
+  [`${API_PREFIX}/hooks`]: { method: "GET", scope: "hooks:read", handle: handleHooks, words: "Your outgoing webhooks, and the events a repository's or a paper's offer." },
+  [`${API_PREFIX}/hooks/deliveries`]: {
+    method: "GET",
+    scope: "hooks:read",
+    handle: handleHookDeliveries,
+    words: "One webhook's deliveries of the last 7 days: event, status, time, attempts.",
+    params: [{ name: "id", words: "The hook's id.", required: true }],
+  },
+  [`${API_PREFIX}/hooks/write`]: {
+    method: "POST",
+    scope: "hooks:write",
+    handle: handleHookWrite,
+    words: "Make a webhook (pinged first; its secret answered once), change its events, pause it, ping it, redeliver a delivery, rotate its secret, delete it.",
+    body: {
+      op: "create, update, ping, redeliver, rotate or delete (required).",
+      subject: "create: repo:<forge>:<id> or paper:doi:10.….",
+      url: "create: the https address it posts to.",
+      events: "create, update: the events, or \"*\" for all.",
+      id: "The hook's id (every op but create).",
+      active: "update: false pauses it (a ping makes it active again).",
+      guid: "redeliver: the delivery's id.",
+    },
   },
 };
 

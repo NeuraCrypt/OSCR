@@ -3,6 +3,7 @@
 
 import type { SignedIn } from "../../account/guard.ts";
 import { who as whoAsks } from "./who.ts";
+import { queueHooks } from "./hooks.ts";
 import { FORGE_ROWS_PER_DAY } from "./caps.ts";
 import { readCapped } from "./flow.ts";
 import { closed, dailyCaps, globalCap, mayWrite, overCap } from "./gate.ts";
@@ -140,7 +141,11 @@ async function commit(r: ForgeRequest, s: SignedIn, kind: ResearchKind, github: 
     rows: 1 + rowsOf(writes),
     subject,
   });
-  return r.db.batch([...statements(writes), action.stmt]);
+  const out = await r.db.batch([...statements(writes), action.stmt]);
+  // Phase 10: a write that made an event (its subject is the paper's) delivers its outgoing webhooks,
+  // in waitUntil (hooks.ts). The event shares the action's nonce and time.
+  if (subject.startsWith("paper:")) queueHooks(r, [{ subject, at: r.t, nonce }]);
+  return out;
 }
 
 /** Phase 08: the event of a research write, under its paper's subject, with the actor's words. */

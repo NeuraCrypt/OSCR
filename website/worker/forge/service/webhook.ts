@@ -39,6 +39,7 @@ import { GitBackendError } from "../errors.ts";
 import type { ForgeEvent, RepoStub } from "../types.ts";
 import { WEBHOOK_BYTES } from "./caps.ts";
 import { eventOfDelivery, eventWrite } from "./events.ts";
+import { queueHooks } from "./hooks.ts";
 import { json, problem } from "./http.ts";
 import { all, deleteInstallation, deliveryRow, deliverySeen, installationById, repoByKey, rowsOf, statements, tracedCount, updateRepo, upsertInstallation } from "./store.ts";
 import type { D1Database, D1PreparedStatement, ForgeRequest, InstallationRow, RepoRow, RepoState, Write } from "./types.ts";
@@ -131,6 +132,8 @@ const ALIVE: RepoState[] = ["active", "archived"];
 /** The changes one event makes, and whether its delivery row is written with them. */
 interface Plan {
   writes: Write[];
+  /** Phase 10: the event it writes, whose outgoing webhooks are delivered after the batch. */
+  event?: { subject: string; at: number; nonce: string };
   /** Why nothing is written, for the answer (and the logs). */
   dropped?: string;
 }
@@ -250,7 +253,7 @@ async function plan(r: ForgeRequest, event: ForgeEvent, seen: Seen): Promise<Pla
       if (event.repo.visibility !== "public" || !ALIVE.includes(repo.state) || !repo.name) return { writes: [], dropped: "not followed" };
       const e = eventOfDelivery(event, repo, t);
       // Once (its ref): the registry's own authorized action may have written the same act already.
-      return e ? { writes: [eventWrite(db, e)] } : { writes: [], dropped: "not an event the inbox shows" };
+      return e ? { writes: [eventWrite(db, e)], event: { subject: e.subject, at: e.at, nonce: e.nonce } } : { writes: [], dropped: "not an event the inbox shows" };
     }
     default:
       return { writes: [], dropped: "acknowledged" };
@@ -304,5 +307,8 @@ export async function handleWebhook(r: ForgeRequest): Promise<Response> {
   const writes = rows <= 1 ? [...p.writes, deliveryRow(r.db, { delivery: event.delivery, t: r.t, event: event.kind, rows: rows + 1 })] : p.writes;
   const out = await r.db.batch(statements(writes));
   const written = out.reduce((n, res) => n + Number((res?.meta as { rows_written?: number } | undefined)?.rows_written ?? 0), 0);
+  // Phase 10: the event's outgoing webhooks, in waitUntil (hooks.ts): only an event this delivery
+  // wrote is found by its key (the same act written first by an authorized action is not twice).
+  if (p.event) queueHooks(r, [p.event]);
   return acknowledged({ stored: written });
 }

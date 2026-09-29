@@ -46,6 +46,9 @@ export type ForgeServiceEnv = AccountEnv &
      *  it (not in wrangler.toml: its price on the free plan is the owner's to confirm). Without it, the
      *  isolate's own count limits each token. */
     API_LIMITER?: { limit(options: { key: string }): Promise<{ success: boolean }> };
+    /** Development only (hooks-core.ts): "1" lets outgoing webhooks post over http to localhost and
+     *  127.0.0.1 (the local end-to-end run's receiver). Never in wrangler.toml, never in production. */
+    HOOKS_ALLOW_LOCAL?: string;
   };
 
 /** What the tests (and only they) inject. The Worker passes nothing: service/backend.ts builds
@@ -59,6 +62,9 @@ export interface ForgeDeps {
   now?: () => number;
   /** The action kinds, in place of ACTIONS (actions.ts): a test registers a fake action. */
   actions?: ActionRegistry;
+  /** Phase 10: the fetch outgoing webhooks are delivered with (a receiver in tests; no waits between
+   *  attempts then). */
+  hookFetch?: typeof fetch;
 }
 
 /** One request to a forge route, as index.ts hands it to its handler: FORGE is bound, the method is
