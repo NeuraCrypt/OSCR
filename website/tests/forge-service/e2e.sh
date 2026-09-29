@@ -14,7 +14,11 @@
 #    FORGE_OPEN closed to another account, with D1's count of rows written; phase 03's web commits:
 #    an edit committed through the fake GitHub, a branch that moved refused, a new branch, a move;
 #    phase 04's pull requests: one opened, a line comment with a suggestion, the suggestion applied,
-#    a merge at a head that moved refused, the merge, and a second one refused on its conflict.
+#    a merge at a head that moved refused, the merge, and a second one refused on its conflict;
+#    phase 05's issues: a GitHub issue opened with its type, labelled, commented, closed as not
+#    planned; a research issue (a code–paper mismatch) opened, labelled, commented, closed with a
+#    resolution; a second one closed by the merge of a pull request that says it fixes it; a copy on
+#    GitHub; Bob's issue and research issue refused (FORGE_OPEN).
 #
 #   cd website && SITE_PORT=8791 MOCK_PORT=9491 FAKE_PORT=9490 sh tests/forge-service/e2e.sh
 #   (KEEP=1 leaves the three servers running, for screenshots; kill them after.)

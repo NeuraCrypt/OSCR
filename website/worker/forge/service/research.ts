@@ -81,7 +81,20 @@ function roleOn(roles: Roles, i: { paper_id: string; forge: string; repo_path: s
   return key && roles.repos.has(key) ? "maintainer" : "";
 }
 
-const triages = (roles: Roles, i: { paper_id: string; forge: string; repo_path: string }): boolean => roles.moderator || roleOn(roles, i) !== "";
+/** Whether the reader manages the issue's repository in the registry, as the pull request pages
+ *  count it (D04-10): the person who linked or created it through the registry, or its owner (the
+ *  repository is in the reader's GitHub account). One read by the repository's key. */
+async function managesRepo(db: D1Database, user: SignedIn["user"], i: { forge: string; repo_id: string }): Promise<boolean> {
+  if (!i.repo_id || (i.forge !== "github" && i.forge !== "memory")) return false;
+  const row = await first<RepoRow>(repoByKey(db, i.forge, i.repo_id));
+  if (!row || row.state === "hidden" || row.state === "deleted") return false;
+  return row.linked_by === user.id || (!!user.github_login && row.owner_login === user.github_login.toLowerCase());
+}
+
+/** Who triages a research issue: a verified author of its paper, a maintainer of its code (the
+ *  registry's roles), the person who manages its repository in the registry, a moderator. */
+const triages = async (db: D1Database, user: SignedIn["user"], roles: Roles, i: { paper_id: string; forge: string; repo_id: string; repo_path: string }): Promise<boolean> =>
+  roles.moderator || roleOn(roles, i) !== "" || (await managesRepo(db, user, i));
 
 // ─── the routes ──────────────────────────────────────────────────────────────
 
@@ -149,7 +162,7 @@ export async function handleResearchRead(r: ForgeRequest): Promise<Response> {
     const row = await first<IssueRow>(issueById(r.db, id));
     if (!row) return problemAnswer(new ForgeProblem(404, "not_found", "The registry has no research issue of this number."));
     const comments = (await all<CommentRow>(commentsOf(r.db, id))).map((c) => ({ ...commentViewOf(c), mine: c.author_id === s.user.id }));
-    const triage = triages(roles, row);
+    const triage = await triages(r.db, s.user, roles, row);
     return json({
       issue: { ...viewOf(row), mine: row.author_id === s.user.id },
       comments,
@@ -214,7 +227,7 @@ export async function handleResearchComment(r: ForgeRequest): Promise<Response> 
   const issue = await first<IssueRow>(issueById(r.db, p.id));
   if (!issue) return say(new ForgeProblem(404, "not_found", "The registry has no research issue of this number."));
   const roles = await rolesOf(s.db, s.user.id);
-  const triage = triages(roles, issue);
+  const triage = await triages(r.db, s.user, roles, issue);
   const who = personOf(s.user);
   let writes: Write[];
   if (p.n === null) {
@@ -253,7 +266,7 @@ export async function handleResearchEdit(r: ForgeRequest): Promise<Response> {
   const issue = await first<IssueRow>(issueById(r.db, p.id));
   if (!issue) return say(new ForgeProblem(404, "not_found", "The registry has no research issue of this number."));
   const roles = await rolesOf(s.db, s.user.id);
-  const triage = triages(roles, issue);
+  const triage = await triages(r.db, s.user, roles, issue);
   const mine = issue.author_id === s.user.id;
   if (!triage && !mine) return say(new ForgeProblem(403, "forbidden", "Only the issue's author, the paper's verified authors and the code's maintainers change it."));
   if (!triage && (p.labels || p.locked !== null || p.pinned !== null)) {

@@ -193,7 +193,11 @@ describe("reading, commenting, changing", () => {
     assert.equal(got.issue.title, "The filter's order is 4, the paper says 2");
     assert.equal(got.issue.mine, true);
     assert.equal(got.can.edit, true);
-    assert.equal(got.can.triage, false);
+    // Ada owns the repository on GitHub, as the registry knows it: she triages its research issues.
+    assert.equal(got.can.triage, true);
+    const bob = await signIn(w, "bob-fixture");
+    const theirs = await body(await bob.fetch("/api/forge/research?id=1"));
+    assert.deepEqual([theirs.issue.mine, theirs.can.edit, theirs.can.triage, theirs.can.comment], [false, false, false, true]);
     assert.ok(!("author_id" in got.issue));
     assert.equal((await b.fetch("/api/forge/research?id=99")).status, 404);
     assert.equal((await b.fetch("/api/forge/research?paper=not-a-doi")).status, 400);
@@ -253,18 +257,36 @@ describe("reading, commenting, changing", () => {
     got = (await body(await b.fetch("/api/forge/research?id=1"))).issue;
     assert.equal(got.state, "open");
     assert.equal(got.resolution, "");
-    // Not a triager: no labels.
-    assert.equal((await b.post("/api/forge/research/edit", { id: 1, labels: { add: ["numerical difference"] } })).status, 403);
-    role(await userId(), "maintainer", "repo", "github.com/ada-fixture/eeg");
-    assert.equal((await b.post("/api/forge/research/edit", { id: 1, labels: { add: ["numerical difference"] }, pinned: true })).status, 200);
+    // Bob, neither the issue's author nor a triager: no labels, no change.
+    const bob = await signIn(w, "bob-fixture");
+    assert.equal((await bob.post("/api/forge/research/edit", { id: 1, labels: { add: ["numerical difference"] } })).status, 403);
+    // Ada manages the repository (it is in her GitHub account): she labels and pins.
+    const ada2 = await signIn(w);
+    assert.equal((await ada2.post("/api/forge/research/edit", { id: 1, labels: { add: ["numerical difference"] }, pinned: true })).status, 200);
     got = (await body(await b.fetch("/api/forge/research?id=1"))).issue;
     assert.deepEqual(got.labels, ["numerical difference"]);
     assert.equal(got.pinned, true);
     assert.deepEqual(got.events.map((e: Json) => e.k), ["closed", "reopened", "labeled", "pinned"]);
-    // Bob may not change Ada's issue.
-    const bob = await signIn(w, "bob-fixture");
-    assert.equal((await bob.post("/api/forge/research/edit", { id: 1, title: "Mine" })).status, 403);
+    // Bob may not change Ada's issue; a maintainer role lets him triage it.
+    const bob2 = await signIn(w, "bob-fixture");
+    assert.equal((await bob2.post("/api/forge/research/edit", { id: 1, title: "Mine" })).status, 403);
+    role(await userId(), "maintainer", "repo", "github.com/ada-fixture/eeg");
+    assert.equal((await bob2.post("/api/forge/research/edit", { id: 1, labels: { add: ["data"] } })).status, 200);
     assert.deepEqual(w.forge.scans, []);
+  });
+
+  test("the person who linked a repository in the registry triages its research issues (D04-10's managers)", async () => {
+    const b = await signIn(w);
+    const uid = await userId();
+    await seed.repo(w.forge, { repoId: "555", ownerLogin: "oscr-lab", name: "pipeline", linkedBy: uid }, T0 - 86_400, { papers: [{ paperId: PAPER, status: "linked" }] });
+    await seed.repo(w.forge, { repoId: "556", ownerLogin: "oscr-lab", name: "other", linkedBy: "u_someone" }, T0 - 86_400, { papers: [{ paperId: PAPER, status: "linked" }] });
+    const bob = await signIn(w, "bob-fixture");
+    assert.equal((await bob.post("/api/forge/research/open", { ...mismatch("555"), repo: { forge: "memory", id: "555", path: "oscr-lab/pipeline" } })).status, 201);
+    assert.equal((await bob.post("/api/forge/research/open", { ...mismatch("556"), repo: { forge: "memory", id: "556", path: "oscr-lab/other" } })).status, 201);
+    const ada2 = await signIn(w);
+    assert.equal((await ada2.post("/api/forge/research/edit", { id: 1, labels: { add: ["data"] } })).status, 200);
+    assert.equal((await ada2.post("/api/forge/research/edit", { id: 2, labels: { add: ["data"] } })).status, 403);
+    void b;
   });
 
   test("the timeline keeps the last 100 events", async () => {

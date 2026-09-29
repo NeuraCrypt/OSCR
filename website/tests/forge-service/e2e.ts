@@ -257,6 +257,73 @@ for (const page of [
   check("pull_merge: the conflicting one still open", pr.state === "open" && pr.merged !== true, [pr.state, pr.merged]);
 }
 
+// 4d. Phase 05: issues. The pages are the /r/ shell and the /research/ shell; a GitHub issue opened,
+// labelled, commented and closed with a reason through the fake GitHub; a research issue (a
+// code–paper mismatch) opened, labelled, commented and closed with a resolution, in the registry's
+// own D1 (3, 2 and 2 rows); a second one closed by the merge of a pull request that says it fixes it.
+for (const page of [
+  "/r/oscr-fixture/eeg-analysis/issues/",
+  "/r/oscr-fixture/eeg-analysis/issues/3",
+  "/r/oscr-fixture/eeg-analysis/issues/new/choose",
+  "/r/oscr-fixture/eeg-analysis/labels/",
+  "/r/oscr-fixture/eeg-analysis/milestones/",
+  "/r/oscr-fixture/eeg-analysis/milestone/1",
+  "/research/1",
+  "/research/new?type=mismatch&doi=10.5555/oscr.fixture.1",
+]) {
+  const res = await anon.request(`${SITE}${page}`);
+  check(`GET ${page}: 200, a shell`, res.status === 200 && /text\/html/.test(res.headers.get("Content-Type") ?? ""), res.status);
+}
+{
+  const researchCsp = (await anon.request(`${SITE}/research/1`)).headers.get("Content-Security-Policy") ?? "";
+  check("the /research/ shell's CSP: this site only", /connect-src 'self';/.test(researchCsp) && /script-src 'self'/.test(researchCsp), researchCsp);
+  const fakeIssue = async (n: number) => (await (await fetch(`${FAKE}/api/repos/oscr-fixture/eeg-analysis/issues/${n}`)).json()) as Json;
+  // A GitHub issue, typed (the organization's types), labelled, commented, closed with a reason.
+  const opened = await ada.act("issue_open", { forge: "github", id }, { title: "The epoch length is not the paper's (e2e)", body: "The Methods say 2 s epochs; the code cuts 1 s ones.", labels: ["bug"], type: "Bug" }, "/r/oscr-fixture/eeg-analysis/issues");
+  const n = Number(opened.data.result?.number);
+  check("issue_open: opened as Ada with its type and label, the action row only", opened.status === 200 && opened.written === 1 && (await fakeIssue(n)).type?.name === "Bug", [opened.status, opened.data, opened.written]);
+  const labelled = await ada.act("issue_edit", { forge: "github", id }, { number: n, labels: { add: ["numerical difference"] } }, `/r/oscr-fixture/eeg-analysis/issues/${n}`);
+  check("issue_edit: labelled", labelled.status === 200 && (await fakeIssue(n)).labels?.map((l: Json) => l.name).sort().join(",") === "bug,numerical difference", labelled.data);
+  const commented = await ada.act("issue_comment", { forge: "github", id }, { number: n, body: "Confirmed with the paper's data." }, `/r/oscr-fixture/eeg-analysis/issues/${n}`);
+  check("issue_comment: a comment, the action row only", commented.status === 200 && commented.written === 1, [commented.status, commented.data]);
+  const closedIssue = await ada.act("issue_edit", { forge: "github", id }, { number: n, state: "closed", reason: "not_planned" }, `/r/oscr-fixture/eeg-analysis/issues/${n}`);
+  const afterClose = await fakeIssue(n);
+  check("issue_edit: closed as not planned", closedIssue.status === 200 && afterClose.state === "closed" && afterClose.state_reason === "not_planned", [closedIssue.data, afterClose.state, afterClose.state_reason]);
+  // A research issue: the registry's own, in D1.
+  const mismatch = { paper: "10.5555/oscr.fixture.1", repo: { forge: "github", id, path: "oscr-fixture/eeg-analysis" }, type: "mismatch", title: "band_power: SciPy's default window, the Methods say Hann (e2e)", body: "Contact: someone@example.org", path: "analysis.py", lines: { start: 4, end: 6 }, paragraph: 3 };
+  const research = await ada.post("/api/forge/research/open", mismatch);
+  const rid = Number(research.data.id);
+  check("research open: a code–paper mismatch, 3 rows (the row, its index, the action row)", research.status === 201 && rid > 0 && ada.written === 3, [research.status, research.data, ada.written]);
+  const read = (await (await ada.request(`${SITE}/api/forge/research?id=${rid}`)).json()) as Json;
+  check("research read: live, its tracing-map link, the address hidden", read.issue?.type === "mismatch" && read.issue?.anchor?.paragraph === 3 && !JSON.stringify(read).includes("someone@example.org") && !("author_id" in (read.issue ?? {})), read.issue);
+  check("research read: Ada, who linked the repository, triages it", read.can?.triage === true, read.can);
+  const rlabel = await ada.post("/api/forge/research/edit", { id: rid, labels: { add: ["numerical difference"] } });
+  check("research edit: labelled, 2 rows", rlabel.status === 200 && ada.written === 2, [rlabel.status, rlabel.data, ada.written]);
+  const rcomment = await ada.post("/api/forge/research/comment", { id: rid, body: "The window changes the alpha ratio of Figure 2." });
+  check("research comment: 3 rows (the comment, the issue's count, the action row)", rcomment.status === 200 && ada.written === 3, [rcomment.status, rcomment.data, ada.written]);
+  const rclose = await ada.post("/api/forge/research/edit", { id: rid, state: "closed", resolution: "paper_corrected", ref: "10.5555/oscr.fixture.correction.1" });
+  const closedRead = (await (await ada.request(`${SITE}/api/forge/research?id=${rid}`)).json()) as Json;
+  check("research edit: closed with a resolution, 2 rows", rclose.status === 200 && closedRead.issue?.state === "closed" && closedRead.issue?.resolution === "paper_corrected" && closedRead.issue?.close_reason === "completed", [rclose.data, closedRead.issue?.state, closedRead.issue?.resolution]);
+  // A second one, closed by a pull request that says "Fixes research#N".
+  const second = await ada.post("/api/forge/research/open", { ...mismatch, title: "The band edges differ from Table 1 (e2e)", type: "code_error", paragraph: undefined });
+  const rid2 = Number(second.data.id);
+  check("research open: a code error", second.status === 201 && rid2 > rid, second.data);
+  const base = await headOf();
+  const text = `${await rawAt(base, "analysis.py")}\n# The band edges of Table 1.\n`;
+  const branched2 = await ada.act("commit", { forge: "github", id }, { branch: "main", base, newBranch: "e2e-bands", message: "Take the band edges from Table 1", propose: false, changes: [{ op: "put", path: "analysis.py", text }] }, "/r/oscr-fixture/eeg-analysis/", { branch: "main", expectedHead: base });
+  const pull = await ada.act("pull_open", { forge: "github", id }, { base: "main", head: "e2e-bands", title: "Band edges from Table 1", body: `Fixes research#${rid2}.` }, "/r/oscr-fixture/eeg-analysis/pulls", { branch: "main" });
+  const np = Number(pull.data.result?.number);
+  const pullHead = String(((await (await fetch(`${FAKE}/api/repos/oscr-fixture/eeg-analysis/pulls/${np}`)).json()) as Json).head?.sha ?? "");
+  const merge = await ada.act("pull_merge", { forge: "github", id }, { number: np, method: "merge", head: pullHead, closes: [rid2] }, `/r/oscr-fixture/eeg-analysis/pull/${np}`, { expectedHead: pullHead });
+  const fixed = (await (await ada.request(`${SITE}/api/forge/research?id=${rid2}`)).json()) as Json;
+  check("pull_merge: the pull request that says “Fixes research#N” closes it, fixed in the code at the merge commit (2 rows)", branched2.status === 200 && merge.status === 200 && merge.data.result?.closed?.[0] === rid2 && merge.written === 2 && fixed.issue?.state === "closed" && fixed.issue?.resolution === "fixed_in_code" && fixed.issue?.resolution_ref === merge.data.result?.sha, [merge.status, merge.data, merge.written, fixed.issue?.state, fixed.issue?.resolution]);
+  // The copy of a research issue on GitHub, by its author (a new one: the first is closed, it may
+  // still be copied).
+  const copy = await ada.act("research_copy", { forge: "github", id }, { id: rid }, `/research/${rid}`);
+  const copied = await fakeIssue(Number(copy.data.result?.number));
+  check("research_copy: an ordinary issue with the type's label, its number named back (2 rows)", copy.status === 200 && copy.written === 2 && copied.labels?.some((l: Json) => l.name === "code–paper mismatch") && /research#/.test(String(copied.body)), [copy.status, copy.data, copy.written]);
+}
+
 // 5. Webhooks: GitHub's signature, an installation, a push.
 async function deliver(event: string, payload: Json, secret = WEBHOOK_SECRET): Promise<{ status: number; data: Json; written: number }> {
   const body = JSON.stringify(payload);
@@ -308,6 +375,13 @@ const bobFork = await bob.act("fork", { forge: "github", id }, {}, "/r/oscr-fixt
 check("FORGE_OPEN unset: Bob's fork is refused at start (403 forge_closed)", bobFork.start === 403 && bobFork.data.error?.code === "forge_closed", bobFork.data);
 const bobPull = await bob.act("pull_comment", { forge: "github", id }, { number: 2, body: "Bob's comment" }, "/r/oscr-fixture/eeg-analysis/pull/2");
 check("FORGE_OPEN unset: Bob's comment is refused at start (403 forge_closed)", bobPull.start === 403 && bobPull.data.error?.code === "forge_closed", bobPull.data);
+// Phase 05: Bob's issue and research writes are refused too (FORGE_OPEN unset); he may read.
+const bobIssue = await bob.act("issue_open", { forge: "github", id }, { title: "Bob's issue" }, "/r/oscr-fixture/eeg-analysis/issues");
+check("FORGE_OPEN unset: Bob's issue is refused at start (403 forge_closed)", bobIssue.start === 403 && bobIssue.data.error?.code === "forge_closed", bobIssue.data);
+const bobResearch = await bob.post("/api/forge/research/open", { paper: "10.5555/oscr.fixture.1", repo: { forge: "github", id, path: "oscr-fixture/eeg-analysis" }, type: "code_error", title: "Bob's" });
+check("FORGE_OPEN unset: Bob's research issue is refused (403 forge_closed), nothing written", bobResearch.status === 403 && bobResearch.data.error?.code === "forge_closed" && bob.written === 0, [bobResearch.status, bobResearch.data]);
+const bobReads = await bob.request(`${SITE}/api/forge/research?id=1`);
+check("Bob may read a research issue", bobReads.status === 200, bobReads.status);
 const bobMine = await bob.request(`${SITE}/api/forge/mine`);
 check("Bob may still read his dashboard", bobMine.status === 200, bobMine.status);
 await post(`${FAKE}/control`, { login: "ada-fixture" });
