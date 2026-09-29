@@ -683,6 +683,7 @@ async function mountNewIssue(slot: HTMLElement, env: CodeEnv): Promise<void> {
     if (as.length) payload.assignees = as;
     if (milestone.value) payload.milestone = Number(milestone.value);
     if (template?.type) payload.type = template.type;
+    if (prefill.parent) payload.parent = prefill.parent;
     const back = more.checked ? `${location.pathname}${location.search}` : issuesPath(env.repo);
     void confirmAction(said, declare(env, "issue_open", payload, back));
   };
@@ -696,6 +697,7 @@ async function mountNewIssue(slot: HTMLElement, env: CodeEnv): Promise<void> {
     el("h2", {}, heading),
     t.community.length && !research ? el("p", { class: "explain" }, "Helpful resources: ", ...t.community.flatMap((c, i) => [i ? " · " : "", el("a", { href: c.href }, c.label)])) : null,
     template?.about ? el("p", { class: "explain" }, template.about) : null,
+    prefill.parent && !research ? el("p", { class: "explain" }, `It will be a sub-issue of #${prefill.parent}.`) : null,
     research ? el("p", {}, el("label", { for: "issue-paper" }, "The paper "), paperPick) : null,
     el("p", {}, el("label", { for: "issue-title" }, "Title"), el("br"), title),
     similar,

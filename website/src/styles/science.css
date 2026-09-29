@@ -850,6 +850,25 @@ fieldset.issue-labels label.label { display: inline-block; margin: .1em .8em .1e
 p.similar-title { margin: .3em 0 .1em; color: var(--muted); }
 p.rule-suggestion { margin: .3em 0; padding: .2em .6em; border-left: 3px solid var(--rule); background: var(--bg-sidebar); }
 section.template-problems { margin: 1em 0; }
+/* An issue's page (night phase 05, E5): a comment's actions in a quiet line, the reactions as their
+   characters and names, the task list as boxes in a ruled section, the sub-issues as a short list */
+p.comment-actions { margin: .4em 0 0; font-size: .88em; color: var(--muted); }
+p.comment-actions select { font: inherit; border-radius: 0; }
+p.reactions { margin: .4em 0 0; font-size: .9em; }
+.reaction { white-space: nowrap; }
+.edit-box { margin: .5em 0; }
+.edit-box input[type="text"] { font: inherit; width: min(40em, 100%); padding: .15em .35em; border: 1px solid #777; border-radius: 0; box-sizing: border-box; }
+section.task-panel { margin: 1em 0; padding: .2em .8em .5em; border: 1px solid var(--rule); background: var(--bg); }
+section.task-panel h3 { margin: .3em 0; font-size: 1em; }
+ul.task-list { list-style: none; margin: .2em 0; padding: 0; }
+ul.task-list li { margin: .15em 0; overflow-wrap: anywhere; }
+.completions { font-size: .9em; }
+.completions button { margin: .1em .5em .1em 0; }
+ul.sub-issues { margin: .1em 0 .4em; padding-left: 1.2em; font-size: .9em; }
+ul.sub-issues li { margin: .1em 0; overflow-wrap: anywhere; }
+#issue-actions p { margin: .35em 0; font-size: .9em; }
+#issue-actions input[type="text"], #issue-actions select { font: inherit; border-radius: 0; max-width: 100%; }
+#issue-actions input[type="text"] { padding: .1em .3em; border: 1px solid #777; }
 
 footer {
   max-width: var(--width); margin: 0 auto; padding: 1em;

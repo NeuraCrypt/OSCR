@@ -784,6 +784,8 @@ export interface IssuePrefill {
   assignees: string[];
   milestone: number | null;
   type: string | null;
+  /** A sub-issue of this issue ("Create sub-issue"). */
+  parent: number | null;
   /** Research: the paper, the code, where. */
   doi: string | null;
   repo: string | null;
@@ -811,6 +813,7 @@ export function issuePrefillOf(search: string): IssuePrefill {
   const path = text("path", 500);
   const milestone = text("milestone", 12);
   const paragraph = text("paragraph", 7);
+  const parent = text("parent", 12);
   return {
     title: text("title", 256)?.replace(/[\r\n]+/g, " ") ?? null,
     body: text("body", 65_536),
@@ -819,6 +822,7 @@ export function issuePrefillOf(search: string): IssuePrefill {
     assignees: (q.get("assignees") ?? "").split(",").map((s) => s.trim()).filter((s) => /^[A-Za-z0-9][A-Za-z0-9-]{0,38}$/.test(s)).slice(0, 10),
     milestone: milestone && /^[1-9]\d{0,9}$/.test(milestone) ? Number(milestone) : null,
     type: text("type", 50),
+    parent: parent && /^[1-9]\d{0,9}$/.test(parent) ? Number(parent) : null,
     doi: doi && /^10\.\d{4,9}\/\S+$/.test(doi) ? doi.toLowerCase() : null,
     repo: text("repo", 140),
     commit: commit && /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/.test(commit) ? commit : null,
