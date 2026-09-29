@@ -7,7 +7,9 @@ search) are described in [CODE_NAVIGATION.md](CODE_NAVIGATION.md), phase 03's ed
 action kinds, the pull request pages, conflicts resolved in the browser) in
 [PULL_REQUESTS.md](PULL_REQUESTS.md), phase 05's issues (eleven action kinds on GitHub's issues, the
 registry's own research issues and their routes, the issue pages, the `/research/` shell) in
-[ISSUES.md](ISSUES.md). This
+[ISSUES.md](ISSUES.md), phase 07's releases, packages and environments (ten action kinds, the file
+route, the tie of a release to a paper's version, the Mac's `release` and `deposit` jobs, the release
+pages) in [RELEASES.md](RELEASES.md). This
 page is the contract the parts of phase 01 build on: the routes, the authorized actions and their
 payloads, the rows each writes, the caps, the switch `FORGE_OPEN`, the pages, the static layer,
 the Mac's jobs and the budget. The decisions behind it: [DECISIONS.md](DECISIONS.md) D00-1 to
@@ -47,8 +49,9 @@ the accounts set up (`COMMUNITY` and `SESSION_KEY`, else 503 `not_configured`).
 |---|---|---|---|---|
 | `POST /api/forge/start` | signed in; Origin and CSRF (`account/guard.ts` `signedIn`) | `{kind, repo, branch, expectedHead, digest, back, install?}` (≤ 8 KiB) → `{location}` | reads only (caps) | E1 |
 | `POST /api/forge/act` | signed in; Origin and CSRF | `{code, state, payload}` (payload ≤ 1 MiB) → `{result, sentence}` | the action row + the spec's rows, one batch | E1 |
+| `POST /api/forge/asset` | signed in; Origin and CSRF; `FORGE_OPEN` | phase 07: the completion of `asset_upload` in headers (`X-Forge-Code`, `X-Forge-State`, `X-Forge-Payload` base64url), the file as the body (`Content-Length` ≤ 25 MiB, required, held; streamed, never parsed) → `{result, sentence}` | the action row | phase 07 |
 | `POST /api/forge/webhook` | GitHub (HMAC-SHA-256, `GITHUB_APP_WEBHOOK_SECRET`); not gated by `FORGE_OPEN` | the delivery (≤ 1 MiB, else 413 before hashing) → `{ok, stored}` | ≤ 2 rows: a one-row change with its delivery row, a two-row change without it (D01-24) | E3 |
-| `GET /api/forge/repo?id=<forge>:<id>` or `?path=<owner>/<name>` | signed in | OSCR's layer for one repository; phase 04: `reviewers`, the linked papers' verified authors by GitHub login, to the people who manage the repository or authored a paper (D04-10) | ~10 read, 0 written | E6 |
+| `GET /api/forge/repo?id=<forge>:<id>` or `?path=<owner>/<name>` | signed in | OSCR's layer for one repository; phase 04: `reviewers`, the linked papers' verified authors by GitHub login, to the people who manage the repository or authored a paper (D04-10); phase 07: `releaseTies` (the releases tied to a paper's version), `answered` (the Mac's words for its releases), `packages` (confirmed or declined) | ~10 read (+ the ties and the jobs' tail), 0 written | E6 |
 | `GET /api/forge/mine` | signed in | "Your repositories", paged by name, `?mode=`, `?template=` | the account's repositories | E6 |
 | `GET /api/forge/research` | signed in | phase 05: one research issue (`?id=`: the issue, its comments, what the reader may do), or the research issues of 1–10 papers (`?paper=`, `&repo=<forge>:<id>`) | ≤ ~1,000 read, 0 written | phase 05 |
 | `POST /api/forge/research/open` | signed in; Origin and CSRF; `FORGE_OPEN` | a new research issue (`{paper, repo \| code, type, title, …}`) → `{id, page}` (201) | 3 rows: the row, its index entry, the action row | phase 05 |
@@ -161,6 +164,13 @@ The rules every spec keeps:
 | `research_copy` (phase 05) | act-research.ts | the research issue's repository | `{id}` (its author, once) | research issue 1 + action 1 | – |
 | `pull_merge` + `closes` (phase 05) | act-pulls.ts | the base repository | `…, closes?: research numbers (≤ 5)`: those the pull request's text says it fixes, about this repository, into the default branch | 1 per research issue + action 1 | – |
 | `research_open`, `research_comment`, `research_edit` (phase 05) | research.ts | — | not authorized actions: the registry's own routes above, logged in `actions` so that the caps count them | 3, 3 or 2 with the action row | research issues opened: 20 |
+| `release_create` (phase 07) | act-releases.ts | the repository | `{tag, target (full commit id), name?, body?, draft?, prerelease?, latest?: "true" \| "false" \| "legacy", generateNotes?, paper?: {doi, version, label?}, map?, archive?, deposit?}` | action 1 + tie 1 + a job each (`release` when published and tied, `archive`, `deposit`): ≤ 5 | – |
+| `release_edit` (phase 07) | act-releases.ts | the repository | `{id, tag?, target? (a draft's), name?, body?, draft?, prerelease?, latest?}` | action 1 + a `release` job per tie when it publishes | – |
+| `release_delete`, `release_drafts` (phase 07) | act-releases.ts | the repository | `{id, confirm: its tag}`; `{}` | action 1 | – |
+| `release_research` (phase 07) | act-releases.ts | the repository | `{tag, paper?: {doi, version, label?} \| untie?: doi, map?, archive?, deposit?: doi}` | action 1 + the tie + the jobs asked | – |
+| `tag_create`, `tag_delete` (phase 07) | act-releases.ts | the repository | `{name, target, message?}`; `{name, confirm}` | action 1 | – |
+| `asset_upload`, `asset_delete` (phase 07) | act-releases.ts | the repository | `{release, name, label?, size, sha256, contentType}` + the file (`POST /api/forge/asset` only); `{release, id, confirm: its name}` | action 1 | – |
+| `package_confirm` (phase 07) | act-packages.ts | the repository | `{registry, name, version?, source?, confirm}` | package 1 + action 1 | – |
 
 A paper is a DOI (`10.…`), stored as `doi:10.…` in lower case, as `oscr_community`'s paper ids.
 Its status is `linked` when the person is a verified author of the paper or a maintainer of the
@@ -170,9 +180,11 @@ authorized actions an account may make in 24 hours.
 ## The rows of `oscr_forge`
 
 `migrations/d1-forge/0001_forge.sql` (and `0002_commit.sql`, phase 03, `0003_pulls.sql`, phase
-04, `0004_issues.sql` and `0005_research.sql`, phase 05: `actions` rebuilt with the kinds `commit`,
-then `fork` … `pull_revert`, then `issue_open` … `issue_milestone`, then `research_copy` and the
-research writes): WITHOUT ROWID where the key is text, two indexes in the whole database (`repos_path`,
+04, `0004_issues.sql` and `0005_research.sql`, phase 05, `0006_releases.sql` and
+`0007_packages.sql`, phase 07: `actions` rebuilt with the kinds `commit`, then `fork` … `pull_revert`,
+then `issue_open` … `issue_milestone`, then `research_copy`, then `release_create` … `asset_delete`
+and `package_confirm`, then the research writes; `jobs` rebuilt with `release`, `deposit`, `paper_id`
+and `proof`): WITHOUT ROWID where the key is text, two indexes in the whole database (`repos_path`,
 and phase 05's `research_paper`), Unix seconds, no email, token or Git object column, public
 repositories only.
 
@@ -184,9 +196,11 @@ repositories only.
 | `traced_paths` | (forge, repo_id, path, paper_id) | the files tracing maps point to, the pinned commit, the number of line ranges | the Mac |
 | `actions` | (day, user_id, at, nonce) | one row per authorized action: kind, repository, the GitHub account's numeric id, outcome, rows written | the Worker |
 | `deliveries` | (day, delivery) | one row per webhook delivery handled: event, rows written | the Worker |
-| `jobs` | id (the rowid) | the Mac's work: `link`, `push`, `archive`, `delete_due` (`not_before`), `reconcile`; the Mac's answer in the row (`done_at`, `outcome`, `message`) | the Worker; the Mac answers |
+| `jobs` | id (the rowid) | the Mac's work: `link`, `push`, `archive` (phase 07: a release's tag in `ref`), `delete_due` (`not_before`), `reconcile`; phase 07's `release` (the map versioned with a release) and `deposit` (its validated map on Zenodo), each naming its paper (`paper_id`), a deposit the ORCID the author signed in with (`proof`); the Mac's answer in the row (`done_at`, `outcome`, `message`) | the Worker; the Mac answers |
 | `research_issues` | id (the rowid: `research#<id>`); index `research_paper` (paper_id, id) | phase 05: a research issue — the paper, the repository (by id and path) or the code's address elsewhere, the type, title and text (masked), the tracing-map link (commit, path, lines, paragraph, section), the reproduction report (JSON), labels, state, GitHub's close reason and the research resolution, lock, pin, the GitHub copy's number, the author as named (and their user id, never answered), the comments' count, the last 100 events | the Worker |
 | `research_comments` | (issue_id, n) | phase 05: a research issue's comments in order; a deleted one keeps its row, empty; a hidden one its reason | the Worker |
+| `release_papers` | (forge, repo_id, tag, paper_id) | phase 07: a release tied to a version of a paper: the release's id, the repository's path, the version and its label, the commit the tag named, the digest of the map the person saw (the Mac answers the version's), `linked` or `proposed`, who (never answered) | the Worker; the Mac answers the digest |
+| `repo_packages` | (forge, repo_id, registry, name) | phase 07: a package the manifests declare, confirmed or declined by a person who may push: the version and the manifest they said | the Worker |
 
 - A repository made private on GitHub leaves OSCR: state `hidden`, its owner and name blanked
   (D00-14); nothing finds it by path.
@@ -276,6 +290,7 @@ Static pages (the Worker's assets), `science.css` only, the platform's name from
 | `/forge/authorized/` | the callback of one authorized action (`Referrer-Policy: no-referrer`) | E1 |
 | `/r/<owner>/<name>/edit/…`, `new/…`, `upload/…`, `delete/…` | phase 03's editing views (the same shell; [WEB_EDITING.md](WEB_EDITING.md)) | phase 03 |
 | `/research/<n>`, `/research/new`, `/research/?paper=` | phase 05: the research issues, ONE shell (`/research/* /research/ 200`), its CSP this site only ([ISSUES.md](ISSUES.md)) | phase 05 |
+| `/r/<owner>/<name>/releases/…`, `…/tags/`, `…/environment/…` | phase 07: the releases, a release, the form, the latest, the changelog, a file, the tags, the environment ([RELEASES.md](RELEASES.md)); the same shell | phase 07 |
 | `/r/<owner>/<name>/`, `…/settings/`, `…/branches/` | the repository pages: ONE shell, `/r/index.html`, serves them all (`public/_redirects`: `/r/* /r/ 200`); it reads GitHub's anonymous API and raw files on the reader's quota (its CSP allows `api.github.com` and `raw.githubusercontent.com`) | E7, E8 |
 | `/hosting/`, `/hosting/limits/`, `/hosting/large-files/`, `/hosting/git/`, `/hosting/history/`, `/hosting/tokens/` | the guides | E11 |
 | `/hosting/import/`, `/hosting/leave/` | importing, and the exit path | E12 |
@@ -309,6 +324,9 @@ Static pages (the Worker's assets), `science.css` only, the platform's name from
 - Phase 05: an entry's `research` lists its research issues' summaries (the newest 200), and 64 more
   shards, `/forge/research/NN.json` (NN = the issue's number mod 64), hold each research issue whole
   (`{"<n>": {"issue", "comments"}}`), as of last night, for signed-out readers.
+- Phase 07: an entry's `releases` lists its releases tied to papers (the paper, the version, the commit,
+  the map the Mac versioned with it, a real Zenodo's DOI — never a sandbox's), its `packages` the
+  confirmed ones, and each listed paper with code its map's digest (`map`).
 
 ## The Mac's jobs
 
@@ -319,7 +337,9 @@ never the App's key, never users' code.
 |---|---|---|
 | `link` | a creation or a link | verifies the repository, adds it to its papers' records through the Phase 6 path (license, script copies for verified licenses only, alignment) |
 | `push` | a webhook's push to a repository with traced paths | re-verifies the head; marks the maps' commits still reachable or not |
-| `archive` | `software_heritage` (on a person's demand only, D00-15) | asks Software Heritage to archive the repository |
+| `archive` | `software_heritage` (on a person's demand only, D00-15); phase 07: a release's (`ref` its tag) | asks Software Heritage to archive the repository |
+| `release` | phase 07: a release tied to a paper's version, published | freezes the paper's tracing map for the release (`forge_map_version` in its state), answers its digest into the tie |
+| `deposit` | phase 07: the author's request (a verified author with an ORCID iD) | checks the role, the ORCID iD and the map's digest again, then deposits the map with the release on Zenodo (the sandbox unless `OSCR_ZENODO_INSTANCE=zenodo`; `oscr forge poll --instance`) |
 | `delete_due` | `delete_request`, from `not_before` | after the grace period, a repository still waiting is hidden; the deletion on GitHub stays the researcher's own act (D00-10) |
 | `reconcile` | the Mac itself, or a webhook | follows renames and transfers by id; a vanished repository becomes `gone` |
 
@@ -380,7 +400,14 @@ typed GitHub issue opened, labelled, commented and closed as not planned; a rese
 labelled, commented and closed with a resolution (3, 2, 3 and 2 rows); a second one closed by the
 merge of a pull request that says "Fixes research#N"; a copy on GitHub; another account's issue and
 research issue refused. The fake also starts with labels, a milestone and issues
-(`seedIssues`). The fake starts with a CODEOWNERS file, an issue, and Bob's pull request from
+(`seedIssues`). Phase 07's checks: the release pages are the shell; Ada's ORCID iD linked; a release
+published with her notes and GitHub's, tied to the accepted manuscript with its map, Software Heritage
+and Zenodo asked (5 rows); the same tag refused; a tag a release uses kept, a scratch tag made and
+deleted; the seeded draft read as Ada; a package confirmed; Bob's release and file refused; then the
+Mac's `oscr forge poll --local --instance sandbox`, offline, its Zenodo the mock sandbox
+(`OSCR_ZENODO_SANDBOX_URL`), and the checks of its answers (the map versioned with the release, the
+deposit made on the mock: a new version of the map's record, the tag as its version, the code not
+deposited). The fake also starts with releases (`seedReleases`). The fake starts with a CODEOWNERS file, an issue, and Bob's pull request from
 his fork, reviewed with a suggestion (`tests/forge/fake-github-seed.ts` `seedPulls`). A test browser that shows the
 `/r/` pages against the fake needs the Content-Security-Policy bypassed for them (it allows
 GitHub's own hosts, not the fake's): the screenshots in `docs/night-screenshots/phase-01/` were

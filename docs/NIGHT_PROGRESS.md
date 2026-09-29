@@ -38,7 +38,8 @@ from "Next step".
 | 03 Web editing | night/phase-03-web-editing | **done** 2026-09-29, pushed (6 commits: E1 to E5, the close) |
 | 04 Forks and pull requests | night/phase-04-pull-requests | **done** 2026-09-29, pushed (7 commits: E1 to E6, the close) |
 | 05 Issues | night/phase-05-issues | **done** 2026-09-29, pushed (8 commits: E1 to E6, the close in two parts) |
-| 07 Releases, packages and environments | night/phase-07-releases | next: branch created from night/phase-05-issues |
+| 07 Releases, packages and environments | night/phase-07-releases | **done** 2026-09-29, pushed (10 commits: E1 to E6, E4's fixes after the browser, the close in three parts) |
+| 16 Content, abuse and rules | night/phase-16-content-rules | next: branch created from night/phase-07-releases |
 
 ## Phase 00: what it produced
 
@@ -203,13 +204,54 @@ from "Next step".
   22; build 46 pages, 233 files (one new page: `/research/`); `check --every-route` ok; strict `tsc`
   clean (worker and tests; page scripts); the end-to-end run: every check passed (102).
 
+## Phase 07: what it produced
+
+- GitHub's releases, tags and files as nine authorized actions (E1, `act-releases.ts`): a release made
+  (a draft, or published at the exact commit the page showed), edited, published, deleted (its tag
+  kept), the drafts read as the person, the research extension (`release_research`), tags made and
+  deleted, files attached and deleted; `migrations/d1-forge/0006_releases.sql`: `release_papers` (a
+  release tied to a version of a paper, with the map the person saw), `jobs` with `release` and
+  `deposit`, `paper_id`, `proof`; GitBackend's file SHA-256 and the double's immutable releases. The
+  rules that keep a citation's code: a published release keeps its tag, a tied release stays
+  published, a tag a release or a tie uses is not deleted.
+- The Mac (E2): the `release` job versions the paper's tracing map with the release (frozen in its
+  state, the digest answered into the tie), `deposit` puts the author-validated map on Zenodo (the
+  sandbox by default, a test from ORCID's sandbox, never the code; a new version of the map's record,
+  the tag as its version, References the release's commit), `archive` names the tag; the static layer
+  carries the ties, the maps' digests, the confirmed packages.
+- The pure library (E3): `src/lib/semver.ts` (semver 2.0's precedence, the next version and why),
+  `releases.ts` (GitHub's addresses and form parameters, the qualifiers, the order and GitHub's latest
+  rule, notes written as GitHub writes them with `.github/release.yml` and the paper's section, the
+  changelog, export-ignore, a file's digest).
+- The pages (E4): the list (drafts kept in the tab), a release (notes, files with GitHub's SHA-256, a
+  file checked in the browser, the archives and what they leave out, the comparison, the paper's
+  version and its map, Software Heritage, Zenodo, edit, delete), the form (the next version, the exact
+  commit, notes from what was merged, the research fields), the latest, the changelog, a file, the
+  tags; the Releases tab; the paper's page lists the versions of its code.
+- Files (E5): `POST /api/forge/asset` completes `asset_upload` with the file as the body (≤ 25 MiB,
+  streamed, never parsed, its length held, GitHub's SHA-256 against the page's); the file kept in the
+  tab's IndexedDB across GitHub's authorization; larger files at the source, said.
+- Environments and packages (E6): the environment files read as text and never executed (pins, lock
+  files, image digests, network fetches, what a development container runs, in words), Binder and
+  Codespaces saying who runs them, the packages the manifests declare confirmed by a person who may
+  push (`package_confirm`, `repo_packages`, `migrations/d1-forge/0007_packages.sql`).
+- The close: the end-to-end run's phase 07 checks and the Mac's forge poll against a MOCK Zenodo sandbox
+  (`oscr forge poll --instance sandbox`; 131 checks, every one passed); the security review (the asset
+  route's Origin, CSRF and sign-in refusals tested); docs `docs/RELEASES.md`, `FORGE.md`,
+  `ARCHITECTURE.md` ("Releases, packages and environments (phase 07)"), decisions D07-1 to D07-20;
+  screenshots `docs/night-screenshots/phase-07/` (36: desktop and phone).
+- Tests at the close: pytest 482 passed; ruff clean; `npm test` 1,178 passed under Node 26 and Node
+  22; build 46 pages, 235 files (no file per release); `check --every-route` ok; strict `tsc` clean
+  (worker and tests; page scripts); the end-to-end run: every check passed (131).
+
 ## Next step
 
-Phase 07, releases, packages and environments, on branch `night/phase-07-releases` (created from
-`night/phase-05-issues`): follow `docs/PLATFORM_PLAN.md` §15.6 "Phase 07" (the execution order of
-§15.5: 01 → 02 → 03 → 04 → 05 → 07 → 16 …). Phase 05's hooks for it: an issue's Development section
-(`src/lib/issue-page.ts` `sidebarFacts`: "the first release containing a fix" is phase 07's), the
-milestones (a version of the paper), the research resolutions ("fixed in the code" at a commit a
-release may carry), GitBackend's `ReleaseOps` (built in phase 00, untouched so far), and the action
-registry's pattern (`act-issues.ts`). The owner's actions are in `docs/NIGHT_REPORT.md` §2; until the
-App exists, everything runs against the fake GitHub and the in-memory double.
+Phase 16, content, abuse and rules, on branch `night/phase-16-content-rules` (created from
+`night/phase-07-releases`): follow `docs/PLATFORM_PLAN.md` §15.6 "Phase 16" (the execution order of
+§15.5: 01 → 02 → 03 → 04 → 05 → 07 → 16 → 08 …). It is the gate: without it, nothing written in OSCR
+opens to the public (`FORGE_OPEN` stays unset until it is merged and the owner says so). What it covers
+of the phases before it: the research issues' texts and comments (phase 05), the releases' notes and
+files (phase 07: files are GitHub's, the registry passes them through `POST /api/forge/asset`, up to
+25 MiB; phase 16's known-malware checks and moderation apply to what the registry shows), the
+per-account limits of every write route. The owner's actions are in `docs/NIGHT_REPORT.md` §2; until
+the App exists, everything runs against the fake GitHub and the in-memory double.

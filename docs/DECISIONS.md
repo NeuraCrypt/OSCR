@@ -1688,3 +1688,191 @@ checks another account refused (`FORGE_OPEN`). The screenshots' browser blocks e
 
 **Why.** The pages and the run need GitHub's semantics where the contract depends on them; nothing
 leaves the machine.
+
+## Phase 07: releases, packages and environments (2026-09-29)
+
+Taken while building releases in the registry ([RELEASES.md](RELEASES.md)), under the owner's directive
+of 2026-09-29 (GitHub is OSCR's competitor: releases are read, compared and made in OSCR) and D00-4,
+D00-6, D00-9, D00-15 (every write the person's own, one authorization each; releases and tags are
+GitHub's objects, the tie of a release to a paper's version the registry's; large data to release
+files, Zenodo or Hugging Face; Software Heritage on request), with CLAUDE.md's DOI rules.
+
+### D07-1. Nine action kinds for GitHub's releases, tags and files, each one act as the person; no release in D1
+
+**Decision.** `release_create`, `release_edit`, `release_delete`, `release_drafts`, `release_research`,
+`tag_create`, `tag_delete`, `asset_upload`, `asset_delete` (`act-releases.ts`), in the registry of phase
+01; `migrations/d1-forge/0006_releases.sql` rebuilds `actions` with them. None needs the repository to
+be one the registry follows: GitHub decides who may; its refusals are said in words. No title, note or
+file reaches D1 or a log.
+
+**Why.** D00-6: one source of truth; one write path to secure, audit and cap.
+
+### D07-2. The tie of a release to a paper's version is the registry's own
+
+**Decision.** `release_papers` (forge, repo, tag, paper): the version (`preprint`, `submitted`,
+`accepted`, `published`, `correction`), its label (no at sign), the commit the tag named, the digest of
+the map the person saw, `linked` or `proposed` by D01-22's roles. The repository must be known as the
+paper's code (`repo_papers`, or the Mac's `paper_repo` fact). A person who may push, or a verified
+author of the paper, ties and unties, at creation or later (`release_research`). 1 row.
+
+**Why.** GitHub has no link between a release and a paper; the plan's research extension of the form.
+
+### D07-3. A cited release keeps its code
+
+**Decision.** A release names the full commit id the page showed (an existing tag must name it: 409
+`tag_moved`); a published release keeps its tag and its commit; a release a paper's version is tied to
+stays published and is not deleted (untie first); a tag a published release or a tie uses is not
+deleted. GitHub's immutable releases (locked tag and files, editable text, a deleted one's tag never
+reused) are respected and said ("Immutable", in words).
+
+**Why.** A citation of `v1.0` must always mean the same code; the tracing map's lines are at a commit.
+
+### D07-4. The tracing map versioned with the release is the Mac's job
+
+**Decision.** A tied release, when published, asks the Mac for a `release` job: it freezes the paper's
+map (`zenodo.map_of`, links and metadata only) for (repository, tag, paper), with the release's commit
+and the commit the map's lines are at (`forge_map_version` in its state), answers the digest into the
+tie (1 row), and says when the map changed since the page showed it. The static layer shows it.
+
+**Why.** The map is the Mac's (the harvester's alignment); the Worker records what the person saw.
+
+### D07-5. The Zenodo deposit of a release's map: the author's request, the sandbox, never the code
+
+**Decision.** `deposit` (in `release_create` or `release_research`): a verified author of the paper
+with an ORCID iD linked (checked by the Worker, again by the Mac), the map's digest still the one the
+author saw, then Phase 6's `zenodo.validate` and `zenodo.deposit_map` with the release: the tag as the
+record's version, IsSupplementTo the paper, References the release's code at its commit, a new version
+of the map's record when it has one. The sandbox unless `OSCR_ZENODO_INSTANCE=zenodo`; the job carries
+the ORCID the author signed in with (`jobs.proof`): from ORCID's sandbox, a test, which only Zenodo's
+sandbox takes. The static layer shows a real Zenodo's DOI only. A DOI for the code itself is Zenodo's
+own GitHub integration, the author's act outside the registry.
+
+**Why.** CLAUDE.md: a DOI only for a map an author validated; the code is never redeposited; the
+sandbox for all development; a test never in a public output.
+
+### D07-6. Software Heritage for a release: a person who may push asks
+
+**Decision.** An `archive` job whose `ref` is the tag, asked by a person who may push (D01-27's rule),
+at publication or later; Save Code Now takes the repository's tags with it.
+
+**Why.** D00-15: on a person's request only.
+
+### D07-7. Drafts are read as the person and kept in the tab
+
+**Decision.** The pages never read drafts anonymously (GitHub hides them). "Show my drafts" is one
+authorization (`release_drafts`, 1 row); the callback page keeps the answer — masked texts, never a
+token — in the tab's sessionStorage by repository (`release-stash.ts`), with a draft just saved; the
+list says "as GitHub showed them to you", and forgets them with the tab.
+
+**Why.** D00-4: no stored token; the registry keeps no draft.
+
+**What would change it.** The owner accepting session-held user tokens (D00-4's alternative).
+
+### D07-8. Files through the Worker, up to 25 MiB, on a route of their own
+
+**Decision.** `POST /api/forge/asset` completes `asset_upload` with the file as the body: the completion
+in headers, `Content-Length` required (≤ 25 MiB, else 413 before anything is read) and held; the Worker
+streams the body to GitHub without parsing, buffering or hashing it, then compares GitHub's own SHA-256
+with the one the page computed, and removes a different file again, as the person. The file waits in
+the tab's IndexedDB across GitHub's authorization (ten minutes, taken once). `act` never carries a file;
+the file route completes that one kind. Larger files: GitHub's own release page, or Zenodo or Hugging
+Face, said with the reason. The registry never downloads an asset.
+
+**Options compared.** The file in act's JSON (base64: 33 % more, parsed, 1 MiB); a presigned upload
+(GitHub has none); hashing in the Worker (≈ 50 ms of CPU for 25 MiB, over the free plan's 10 ms).
+
+**Why.** D00-9's 25 MiB, the Worker's CPU, and the person's own authorization for the file they chose.
+
+### D07-9. Release notes written in the browser, as GitHub writes them, with the paper's section
+
+**Decision.** From GitHub's comparison and closed pull requests (a pull request in the range by its
+merge commit), grouped by `.github/release.yml` as GitHub groups them (exclusions, categories, the
+catch-all, "Other Changes"), co-authors credited by their GitHub no-reply address only; then "For the
+paper": the tracing-map links on the files the range changed, and the research issues fixed at its
+commits; the full changelog's comparison in the registry. GitHub's generator stays an option. A
+research `release.yml` is offered through the editor.
+
+**Why.** The reader's quota, no model, and what a paper's reader needs first.
+
+### D07-10. Semantic versions order the releases; GitHub says which is latest
+
+**Decision.** Semver 2.0's precedence (`src/lib/semver.ts`); "v1" and "1.2" read loosely, a bare number
+or a date is no version; the list shows drafts, then versions (highest first), then the rest by date;
+the next version is suggested from the highest version tagged and what was merged, with its reason.
+GitHub's `releases/latest` is the latest; its legacy rule is explained, never recomputed as GitHub's.
+
+### D07-11. GitHub's release addresses, in the one /r/ shell
+
+**Decision.** `releases`, `releases/tag/<tag>`, `releases/new`, `releases/edit/<tag>`, `releases/latest`,
+`releases/latest/download/<file>`, `releases/download/<tag>/<file>`, the registry's
+`releases/changelog`, `tags`, and `environment/<ref>`; a Releases tab. No file per release.
+
+**Why.** D02-1; the file budget.
+
+### D07-12. What stays at the source, said
+
+**Decision.** The files' bytes (download links are GitHub's), the source archives (GitHub builds them on
+request: their checksum may change; what `export-ignore` leaves out is shown), the Atom feeds (a feed
+read through the registry would spend its daily requests), the attestations' verification, files over
+25 MiB: each behind an "at the source" link after a sentence that says why.
+
+### D07-13. Environments are read as text in the reader's browser, never executed
+
+**Decision.** `src/lib/environments.ts` parses the environment files as data and says in words what
+they pin (exact versions, lock files, a base image by digest), what fetches from the network at build,
+what a development container runs on the machine that opens it; scripts are named, never read as code.
+Nothing is built, installed or run anywhere; the Mac reads no environment file.
+
+**Why.** D00-11 and the mission's rule; zero cost (the reader's quota, raw reads not counted).
+
+### D07-14. "Where it can run again": plain links that say who runs them
+
+**Decision.** Binder (when the repository has a file Binder reads) and GitHub Codespaces, at the
+release's tag, each saying who runs it and under whose account and quota.
+
+### D07-15. Packages: none hosted; declared by the manifests, confirmed by a person who may push
+
+**Decision.** The pages propose what the manifests declare (PyPI, CRAN, conda-forge, Julia's General
+registry, npm), with the registry's page and an install line at the declared version;
+`package_confirm` records a writer's word (`repo_packages`, `migrations/d1-forge/0007_packages.sql`,
+2 rows); the Mac publishes the confirmed ones. The plan's Mac-side reading of the manifests at each
+synced commit, and the registries' own metadata, are deferred: the browser proposes, at no cost.
+
+### D07-16. The layers: the ties, the maps, the packages
+
+**Decision.** The static layer's entry gains `releases` (the ties, the frozen maps, a real Zenodo's DOI)
+and `packages` (confirmed); each listed paper with code its map's `map` digest (as its page shows it:
+the form ties a release to the map the person saw). The signed-in layer adds `releaseTies`, `answered`
+(the Mac's words for the releases, from the jobs' tail) and `packages` (confirmed and declined). The
+paper's page lists the versions of its code from the static layer.
+
+### D07-17. What an action costs
+
+**Decision.** 4 Worker requests (the CSRF read and start, then the CSRF read and act or the file route)
+and 1 to 5 rows (`release_create` with a tie and three jobs: 5; `package_confirm`: 2; the others: 1,
+plus a job or a tie each). `ACT_ROWS_RESERVED` (6) covers the largest. Within §15.4's ~150 requests and
+~100 rows a day.
+
+### D07-18. GitBackend: a file's SHA-256; the double's immutable releases
+
+**Decision.** `ReleaseAsset.digest` (GitHub's `digest`, "sha256:…", as hex; null for an older file) in
+the adapter, the double, the fake and the contract; the double models GitHub's release immutability
+(a repository setting; published releases lock their tag and files; a deleted one's tag burned).
+
+### D07-19. `oscr forge poll --instance`: the Zenodo of a release's deposit on the command line
+
+**Decision.** The forge poll takes `--instance sandbox|zenodo` (the settings' `OSCR_ZENODO_INSTANCE`, else
+the sandbox); the end-to-end run passes `sandbox` with `OSCR_ZENODO_SANDBOX_URL` at a local mock and a
+token that is none.
+
+**Why.** No run of the tests may reach a real Zenodo, whatever the Mac's settings say.
+
+### D07-20. The test world: releases on the fake GitHub; the end-to-end run's release checks
+
+**Decision.** The fake GitHub starts with the paper's version on the tag `v1.0` (published, a file:
+the source data of Figure 2), the environment files and a `pyproject.toml` committed, a pre-release for
+the journal's revision and a draft (`seedReleases`). The end-to-end run links Ada's ORCID iD, publishes
+a release with her notes and GitHub's, tied to the accepted manuscript with its map, asking for Software
+Heritage and Zenodo; checks tags, drafts and a package; refuses Bob's release and file; then runs the
+Mac's forge poll offline against the mock sandbox and checks the map versioned and the deposit made.
+The screenshots' browser blocks every outside address.

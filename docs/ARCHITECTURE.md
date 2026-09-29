@@ -705,3 +705,36 @@ error, a code–paper mismatch, a reproduction failure — are the registry's ow
   most 64 research shards: a fixed number whatever the number of issues.
 - **The screenshots**: `docs/night-screenshots/phase-05/` (desktop 1280×860, phone 390×844, against
   the fake GitHub and `wrangler dev`, signed out and signed in).
+
+### Releases, packages and environments (phase 07): read, compared and made in the registry
+
+Built on the night of 2026-09-29; the details are [RELEASES.md](RELEASES.md), the decisions D07-1 to
+D07-20 in [DECISIONS.md](DECISIONS.md). Releases, tags and their files stay GitHub's objects, read on
+the reader's quota and written as the person (D00-6); the registry's own is the tie of a release to a
+version of a paper, the tracing map versioned with it, and the Mac's work for it.
+
+- **The views** are GitHub's shapes in the `/r/*` shell (D07-11): `releases` (the list, a release,
+  the form, the latest, the changelog, a file), `tags`, `environment/<ref>`, and the Releases tab
+  (`repo-releases.ts`, `repo-release-assets.ts`, `repo-environment.ts`); their pure parts —
+  `src/lib/semver.ts`, `releases.ts`, `release-view.ts`, `release-stash.ts`, `environments.ts` — are
+  tested in Node. The paper's page lists the versions of its code (`Later.astro`, `paper-research.ts`).
+- **The actions** (D07-1, D07-15): nine kinds in `act-releases.ts` and `package_confirm` in
+  `act-packages.ts`, each one act as the person, 1 to 5 D1 rows (`migrations/d1-forge/0006_releases.sql`,
+  `0007_packages.sql`); a file up to 25 MiB through `POST /api/forge/asset` (`asset.ts`, sharing
+  `act.ts`'s `runAction`), streamed, never parsed, GitHub's SHA-256 against the page's (D07-8).
+  GitBackend gains a file's SHA-256 (D07-18).
+- **The research layer** (D07-2 to D07-6): `release_papers` (the tie: the version, the commit, the map
+  the person saw); the Mac's `release` job versions the map with the release, `deposit` puts the
+  author-validated map on Zenodo (the sandbox by default, never the code), `archive` asks Software
+  Heritage for the tag, each on a person's request (`oscr/forgejobs.py`, `oscr/zenodo.py`); the static
+  layer carries the ties, the maps' digests and the confirmed packages (`oscr/forgelayer.py`).
+- **Environments** (D07-13, D07-14): read as text in the reader's browser, never executed; their pins,
+  lock files and container digests said in words; Binder and Codespaces as plain links that say who
+  runs them.
+- **Safety**: every action declared with the Worker's own rules and sentence (D01-28); `FORGE_OPEN` on
+  every kind and the file route; the drafts read as the person and kept in the tab (D07-7); no token
+  stored; the callback's links `/r/` only; the files and archives GitHub's links; nothing of a
+  repository run.
+- **Files added to the site**: none (the same shell; the layer's shards grow a few fields).
+- **The screenshots**: `docs/night-screenshots/phase-07/` (desktop 1280×860, phone 390×844, against
+  the fake GitHub and `wrangler dev`, every outside address blocked, signed out and signed in).
