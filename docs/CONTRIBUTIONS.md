@@ -266,7 +266,10 @@ it is there: **a signed-out reader's page view costs no Worker request.**
 
 **The pages' headers** (`website/public/_headers`): `/submit/` and `/paper/:slug/` (one segment: the
 Code ↔ Paper reader keeps its own rules) get the account page's `Content-Security-Policy`
-(`script-src 'self'`, `connect-src 'self'`, `frame-ancestors 'none'`…) and `X-Frame-Options: DENY`.
+(`script-src 'self'`, `connect-src 'self'`, `frame-ancestors 'none'`…) and `X-Frame-Options: DENY`; a
+paper's page also connects to Europe PMC and NCBI (the paper's text) and, since 2026-09-29, to the
+places a file of the authors' code is shown from (`src/lib/source.ts`, SOURCE_ORIGINS:
+docs/SCRIPT_STORAGE.md, "Shown from the source").
 Astro writes every page script as a file (`vite.build.assetsInlineLimit: 0`), and `npm run check`
 fails on an inline script in those pages.
 
@@ -313,7 +316,8 @@ oscr community push --remote           # the facts, paper_repo included (nightly
 | correction of a record | 3 | 6 |
 | validation of a map | 3 | 13 |
 | manual author claim: new / asked again | 3 / 2 | 4 / 7 |
-| removal request (the page /removal/): new / completed while open | 3 / 2 | 8 / 10 |
+| removal request (the page /removal/): new / completed while open (the requester's roles read once, 2026-09-29) | 3 / 2 | 9 / 11 |
+| removal request asked again after a refusal (reopened; not measured, by construction) | 2 | — |
 | publication of a draft (the row, the job) | 2 | 8 |
 | revision of a draft (the row, the job; not measured, by construction) | 2 | — |
 | the account page's lists (`GET /api/contributions`) | 0 | 7 |

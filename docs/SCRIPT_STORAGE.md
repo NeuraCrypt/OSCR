@@ -114,7 +114,8 @@ per repository, whether copies are kept, withheld, or not kept for its license (
 
 **The file budget** does not move: the facts ride in the existing `scripts/NN.json` lots (about 90
 bytes per file) and in each static page's reader data; no file per repository is added
-(`npm run check -- --every-route` and `npm run check:growth`: 112 → 2,673 files, unchanged).
+(`npm run check -- --every-route` and `npm run check:growth`: 113 → 2,674 files, the two policy pages
+included; only the shards differ between the two builds).
 
 **The licence audit.** The copy filter is unchanged: showing from the source copies nothing, so no new
 audit is needed (`tests/test_scriptstore.py`, the audit's own tests, and
