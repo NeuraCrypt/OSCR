@@ -1,6 +1,7 @@
 // The account page, in the reader's browser: who is signed in (GET /api/account/me), and the
 // actions of the account (POST, with the session's CSRF token). Everything is written with DOM
 // text nodes, never as HTML. Like every browser script, it never names the platform: "the registry".
+import { REASON_WORDS, SCOPE_WORDS } from "../lib/removal";
 
 type Provider = { name: string; label: string; linked: boolean; start: string };
 type Identity = { provider: string; label: string; handle: string; url: string; linked_at: string };
@@ -263,7 +264,23 @@ type Submission = {
   draft: Draft;
   message: string;
 };
-type Asked = { id: number; paper_id: string; url: string; status: string; message: string; doi?: string; record_url?: string; instance?: string; reason?: string; version?: number | null };
+type Asked = {
+  id: number;
+  paper_id: string;
+  url: string;
+  status: string;
+  message: string;
+  doi?: string;
+  record_url?: string;
+  instance?: string;
+  reason?: string;
+  version?: number | null;
+  /** A removal request's (src/lib/removal.ts): what it asks to remove, and its own page. */
+  scope?: string;
+  repo?: string;
+  path?: string;
+  removal_url?: string;
+};
 type Lists = { submissions?: Submission[]; edits?: Asked[]; validations?: Asked[]; reports?: Asked[]; error?: { message: string } };
 
 const SUBMISSION: Record<string, [string, "ok" | "warning"]> = {
@@ -375,13 +392,23 @@ const VALIDATION: Record<string, [string, "ok" | "warning"]> = {
   failed: ["could not be deposited", "warning"],
 };
 const REPORT: Record<string, [string, "ok" | "warning"]> = { open: ["waits for a moderator", "warning"], accepted: ["accepted", "ok"], rejected: ["refused", "warning"] };
-const REASONS: Record<string, string> = {
-  author_request: "an author's request",
-  copyright: "copyright",
-  personal_data: "personal data",
-  incorrect: "a wrong record",
-  other: "another reason",
-};
+
+/** A removal request: its number and its page (/removal/), what it asks to remove, of which
+ *  paper, why, and where it stands. */
+function reportItem(r: Asked): HTMLLIElement {
+  const [w, tone] = REPORT[r.status] ?? [r.status, "warning"];
+  const scope = r.scope ?? "record";
+  const target = scope === "file" ? ` (${r.repo}: ${r.path})` : scope === "repository" ? ` (${r.repo})` : "";
+  const li = item(
+    { href: r.removal_url || `/removal/?paper=${encodeURIComponent(r.paper_id)}`, text: `Request No. ${r.id}` },
+    `: ${SCOPE_WORDS[scope] ?? scope}${target} of `,
+    { href: r.url, text: r.paper_id },
+    ` (${REASON_WORDS[r.reason ?? ""] ?? r.reason}): `,
+  );
+  li.append(statusWords(w, tone));
+  if (r.message) li.append(document.createTextNode(` — ${r.message}`));
+  return li;
+}
 
 function askedItem(what: string, a: Asked, words: Record<string, [string, "ok" | "warning"]>, extra: Part[] = [], quiet = false): HTMLLIElement {
   const [w, tone] = words[a.status] ?? [a.status, "warning"];
@@ -422,7 +449,7 @@ async function loadContributions() {
       ),
     ),
   );
-  list("reports", "reports-none", (lists.reports ?? []).map((r) => askedItem("Of ", r, REPORT, [` (${REASONS[r.reason ?? ""] ?? r.reason})`])));
+  list("reports", "reports-none", (lists.reports ?? []).map(reportItem));
 }
 
 byId("submissions-list")?.addEventListener("submit", async (ev) => {

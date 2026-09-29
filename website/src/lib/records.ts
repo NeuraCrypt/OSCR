@@ -2,13 +2,14 @@
 // is built, from the same export as the static pages: an entity's record for its page in the
 // browser, a paper's record for its page rendered by the Worker. Written into
 // /records/<type>/NN.json by src/pages/records/[type]/[shard].json.ts.
-import { europePmcUrl, onDemand, rowOf, shortName, withPage, type Article } from "./catalog";
+import { europePmcUrl, lotEntry, onDemand, rowOf, shortName, withPage, type Article } from "./catalog";
 import {
   authorOf, authors, authorUrl, categoriesOf, datasetName, datasetOf, datasets, datasetUrl, institutionOf, institutions,
   institutionUrl, journals, journalUrl, rridUrl, toolOf, tools, toolUrl,
 } from "./entities";
 import { countryName } from "./format";
 import { licenseLabel, pageOf, PROMINENT, typeLabel } from "./paper";
+import { factsOfRecord, FILES_LISTED, type PaperFacts } from "./removal.ts";
 import { storedRow, type EntityShard, type Link, type PaperRecord, type RecordOf, type StoredRow } from "./render.ts";
 import { ENTITY_ROWS_MAX, groupShards, keyOf, LINKS_MAX, packEntities, SHARDS, type EntityType } from "./shards.ts";
 
@@ -160,7 +161,18 @@ export function paperRecord(a: Article): PaperRecord {
       href: institutionUrl(x.ror),
     })),
     categories: categoriesOf(a).map((c) => ({ text: `${c.name} (${c.facet})`, href: c.url })),
-    code: a.code.map((r) => ({ repo: r.repo, name: shortName(r), url: r.url, license: r.license, state: r.state })),
+    // Each repository's files, for a removal request's choice (src/lib/removal.ts): their paths,
+    // and whether the site holds copies of their text.
+    code: a.code.map((r) => {
+      const e = lotEntry(r);
+      const paths = (e?.files ?? []).filter((f) => f.kind !== "note").map((f) => f.path);
+      return {
+        repo: r.repo, name: shortName(r), url: r.url, license: r.license, state: r.state,
+        copies: !!e?.published && (e?.files ?? []).some((f) => f.text !== null),
+        files: paths.slice(0, FILES_LISTED),
+        files_more: Math.max(0, paths.length - FILES_LISTED),
+      };
+    }),
     files: a.code.reduce((n, d) => n + (d.files_read || 0), 0),
     pairs: a.alignment?.pairs ?? 0,
     map: a.card?.doi ?? "",
@@ -172,6 +184,13 @@ export function paperRecord(a: Article): PaperRecord {
     tools: (a.tools ?? []).map((id) => ({ text: toolOf(id)?.name ?? id, href: toolUrl(id) })),
     europepmc: europePmcUrl(a),
   };
+}
+
+/** The facts a removal request needs of a paper (src/lib/removal.ts): what its record says. A static
+ *  page carries them at the top of its <main> (src/pages/paper/[slug]/index.astro), the record of a
+ *  paper rendered on demand holds them already: no file of their own. */
+export function paperFacts(a: Article): PaperFacts {
+  return factsOfRecord(paperRecord(a));
 }
 
 /** The shards of the papers rendered on demand: at most SHARDS.paper files. */

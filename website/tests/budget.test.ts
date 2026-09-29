@@ -211,9 +211,13 @@ describe("the markup", () => {
     assert.ok(v.html.includes(`<section id="contribute" data-paper="doi:10.5555/oscr.fixture.2" data-doi="10.5555/oscr.fixture.2" data-digest="" data-back="/paper/doi_10.5555_oscr.fixture.2/">`));
     for (const id of ["contribute-status", "contribute-signed-out", "contribute-signed-in", "contribute-who", "claim-block", "claim-state",
       "claim-form", "claim-statement", "edit-block", "edit-form", "edit-links", "edit-add", "edit-add-role", "edit-note", "edit-state",
-      "removal", "removal-signed-out", "removal-state", "removal-form", "removal-reason", "removal-details"]) {
+      "removal", "removal-state"]) {
       assert.ok(v.html.includes(` id="${id}"`), id);
     }
+    // A removal is asked on its own page, linked from the section and the sidebar.
+    assert.ok(v.html.includes(`<a href="/removal/?paper=doi%3A10.5555%2Foscr.fixture.2">the removal request page</a>`));
+    assert.ok(v.html.includes(`<li><a href="/removal/?paper=doi%3A10.5555%2Foscr.fixture.2">Request removal</a></li>`));
+    assert.ok(!v.html.includes(`id="removal-form"`));
     assert.ok(v.html.includes(`<li data-repo="github.com/oscr-fixture/unlicensed" data-role="code">`));
     assert.ok(v.html.includes(`<li data-repo="osf:abcde" data-role="data">`));
     assert.ok(v.html.includes(`<option value="code" selected>the authors&#39; code</option>`));

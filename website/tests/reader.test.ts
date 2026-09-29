@@ -324,6 +324,17 @@ describe("the reader's files and pairs", () => {
     assert.deepEqual(rs.map((r) => [r.read, r.published]), [[true, true], [true, false], [false, false]]);
   });
 
+  it("says when a copy was withheld at a removal request, a repository's or one file's", () => {
+    const WITHHELD = "Withheld from this site at a removal request, after a moderator's review: read it at the source.";
+    const held: RepoIn[] = [
+      { ...repos[0], entry: { ...repos[0].entry!, files: [file("a.py", null, { note: WITHHELD }), file("b.py", "b = 1\n")] } },
+      { ...repos[0], repo: "github.com/lab/y", entry: { ...repos[0].entry!, published: false, files: [file("c.py", null, { note: WITHHELD })] } },
+    ];
+    const { files } = readerFiles(held);
+    assert.deepEqual(files.map((f) => f.why), ["withheld", "", "withheld"]);
+    assert.equal(whyNotShown(files[0], { license: "MIT" }), "This file is not shown here: its copy was withheld at a removal request, after a moderator's review.");
+  });
+
   it("writes a file's address at the source once per repository when it can", () => {
     const { repos: rs, files } = readerFiles(repos);
     assert.equal(rs[0].sourcePrefix, "https://github.com/lab/x/blob/abc/");

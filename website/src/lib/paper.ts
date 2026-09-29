@@ -82,7 +82,9 @@ export type Availability = {
 };
 export type DataLink = { repo: string; url: string; dataset: string; repository: string; where: string };
 export type MapFacts = {
-  status: "validated" | "proposed" | "none";
+  /** "withheld": at a removal request (oscr reports accept), with neither digest, nor
+   *  validations, nor DOI, nor matches. */
+  status: "validated" | "proposed" | "none" | "withheld";
   repositories: number;
   files: number;
   pairs: number;

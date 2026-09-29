@@ -52,6 +52,9 @@ export type Article = {
   code: Repo[];
   card: Card | null;
   alignment: { lot: number; pairs: number; method: string } | null;
+  /** Its tracing map withheld at a removal request (oscr reports accept): its card, its matches
+   *  and its map's digest are then absent, and the pages say why. Only said when true. */
+  map_withheld?: boolean;
   // Since Phase 2 (oscr/entities.py): whether the paper has a page (D2, D7) and, when it
   // has one, what its page links to. Absent from an older export.
   page?: boolean;

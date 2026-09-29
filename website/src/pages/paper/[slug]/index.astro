@@ -27,6 +27,8 @@ import {
 } from "../../../lib/catalog";
 import { datasetOf } from "../../../lib/entities";
 import { licenseLabel, pageOf, PROMINENT } from "../../../lib/paper";
+import { paperFacts } from "../../../lib/records";
+import { FACTS_ID, removalUrl } from "../../../lib/removal";
 
 // The STATIC_PAPERS most recent papers (lib/shards.ts); the others' pages are rendered on demand
 // by the Worker (worker/pages.ts), from src/pages/records/.
@@ -69,12 +71,16 @@ const LATER = new Set(["discussion", "reproductions", "activity"]);
 const sections = SECTIONS.map((x) => ({ ...x, later: LATER.has(x.id) }));
 /** A repository in the reader: this page, its first file shown. */
 const inReader = (repo: string) => (multi ? `/paper/${a.slug}/?${new URLSearchParams({ repo })}#code` : "#code");
+// What a removal request may name (src/lib/removal.ts: the paper, its repositories, their files),
+// at the very top of <main>: the page /removal/ and the Worker read it there, and stop reading.
+const facts = JSON.stringify(paperFacts(a)).replace(/</g, "\\u003c");
 ---
 <Base
   title={a.title}
   description={hasCode ? `The code published by the authors of “${a.title}”.` : `“${a.title}”: ${s.label}.`}
   breadcrumb={[{ text: "Catalogue", href: "/" }, { text: `doi:${a.doi}` }]}
 >
+  <script is:inline type="application/json" id={FACTS_ID} set:html={facts}></script>
   {reader && <Head title={a.title} notices={notices} sections={sections} />}
   {reader && <Reader a={a} />}
   <div class="record">
@@ -118,10 +124,14 @@ const inReader = (repo: string) => (multi ? `/paper/${a.slug}/?${new URLSearchPa
       {hasCode && (
         <>
           <h3>Tracing map</h3>
-          <ul>
-            <li>{validated ? "validated by an author" : "proposed by the machine"}</li>
-            <li>{validated?.doi ? <a href={`https://doi.org/${validated.doi}`}>its DOI</a> : "no DOI before an author validates it"}</li>
-          </ul>
+          {a.map_withheld ? (
+            <ul><li>withheld at a removal request</li></ul>
+          ) : (
+            <ul>
+              <li>{validated ? "validated by an author" : "proposed by the machine"}</li>
+              <li>{validated?.doi ? <a href={`https://doi.org/${validated.doi}`}>its DOI</a> : "no DOI before an author validates it"}</li>
+            </ul>
+          )}
           <h3>Licenses</h3>
           <ul>
             {p && <li>the paper: {licenseLabel(p.overview.license) || "none stated"}</li>}
@@ -137,8 +147,8 @@ const inReader = (repo: string) => (multi ? `/paper/${a.slug}/?${new URLSearchPa
       )}
       <h3>This record</h3>
       <ul>
-        <li><a href="#contribute">Claim it, correct it{hasCode ? ", validate its map" : ""}</a></li>
-        <li><a href="#removal">Request its removal</a></li>
+        <li><a href="#contribute">Claim it, correct it{hasCode && !a.map_withheld ? ", validate its map" : ""}</a></li>
+        <li><a href={removalUrl(a.id)}>Request removal</a></li>
       </ul>
     </aside>
   </div>

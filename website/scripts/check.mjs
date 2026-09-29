@@ -45,7 +45,7 @@ const json = (f) => JSON.parse(readFileSync(join(DIST, f), "utf8"));
 // 1. The fixed pages, the shells of the pages rendered on demand, and the rewrites that serve
 // an entity's shell for its address (public/_redirects).
 const FIXED = ["/", "/about/", "/browse/", "/authors/", "/journals/", "/institutions/", "/tools/", "/datasets/",
-  "/lookup/", "/search/", "/404.html", "/account/", "/submit/", "/badge.svg", "/paper/404.html",
+  "/lookup/", "/search/", "/404.html", "/account/", "/submit/", "/removal/", "/badge.svg", "/paper/404.html",
   ...ENTITY_TYPES.map((t) => `/${t}/`)];
 for (const route of FIXED) if (!exists(route)) problems.push(`missing page ${route}`);
 
@@ -121,6 +121,21 @@ for (const a of catalog.articles) {
   if (file === record) problems.push(`${a.doi}: ${file ? "both a static page and a record" : "no page"}`);
   (file ? staticPapers : onDemand).push(a);
   if (exists(`/paper/${a.slug}/code/`)) problems.push(`${a.doi}: a file at /paper/${a.slug}/code/, the reader's former address`);
+  // A static page carries what a removal request may name (src/lib/removal.ts), first in its <main>:
+  // the page /removal/ and the Worker read it there, and stop reading.
+  if (file) {
+    const html = readFileSync(join(DIST, `paper/${a.slug}/index.html`), "utf8");
+    const m = html.match(/<main><script type="application\/json" id="paper-facts">([^<]*)<\/script>/);
+    let facts = null;
+    try {
+      facts = m ? JSON.parse(m[1]) : null;
+    } catch {
+      // said below
+    }
+    if (!facts || facts.id !== a.id || !Array.isArray(facts.repos) || facts.repos.length !== a.code.length) {
+      problems.push(`${a.doi}: its page does not carry its facts first in <main> (the removal request reads them there)`);
+    }
+  }
   if (file && a.code.length > 0) {
     const html = readFileSync(join(DIST, `paper/${a.slug}/index.html`), "utf8");
     const read = a.code.some((r) => r.files_read > 0);
@@ -189,7 +204,7 @@ for (const page of pages) {
     if (missing.length) problems.push(`${page}: no section ${missing.map((id) => `#${id}`).join(", ")}`);
   }
   // (The reader's data, a <script type="application/json">, is not run: it is allowed.)
-  if (/^\/(paper\/[^/]+|account|submit)\/index\.html$/.test(page) && /<script(?![^>]*\s(?:src=|type="application\/json"))[^>]*>/.test(html)) {
+  if (/^\/(paper\/[^/]+|account|submit|removal)\/index\.html$/.test(page) && /<script(?![^>]*\s(?:src=|type="application\/json"))[^>]*>/.test(html)) {
     problems.push(`${page}: an inline script, which its Content-Security-Policy forbids`);
   }
 }

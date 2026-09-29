@@ -72,7 +72,9 @@ const json = JSON.stringify(data).replace(/</g, "\\u003c");
     <p class="reader-summary">
       {pairs.length > 0
         ? `${plural(pairs.length, "match", "matches")} between paragraphs of the paper and lines of its authors' code, computed by the harvester (${alignment!.method}). Click a colored paragraph or line to see its counterpart.`
-        : "The paper beside its authors' code: matches between them have not been computed for this paper yet."}
+        : a.map_withheld
+          ? "The paper beside its authors' code: their matches are withheld at a removal request, with the paper's tracing map."
+          : "The paper beside its authors' code: matches between them have not been computed for this paper yet."}
     </p>
     <div class="reader-tools">
       {pairs.length > 0 && (

@@ -4,7 +4,8 @@
 //
 // Every file of the authors' code is one entry, whether its text is here or not: `why` says
 // why it is not ("license": the repository's license does not allow republishing it; "binary":
-// the harvester could not read it as text; "missing": not in the lot). A pair joins a paragraph
+// the harvester could not read it as text; "missing": not in the lot; "withheld": its copy was
+// withheld at a removal request). A pair joins a paragraph
 // of the paper and lines of one of these files (`file`, -1 when the file is not among them).
 // Never any text of the paper: only paragraph numbers, section titles and short terms.
 import { sourceLines, splitLines, wholeFile } from "./lines.ts";
@@ -42,7 +43,7 @@ export type PairIn = {
   evidence: string[];
 };
 
-export type Why = "" | "license" | "binary" | "missing";
+export type Why = "" | "license" | "binary" | "missing" | "withheld";
 export type ReaderRepo = {
   repo: string;
   name: string;
@@ -133,6 +134,8 @@ function sourceRule(files: LotFileIn[]): { prefix: string; same: string } {
 
 /** Why a file's text is not here. */
 function whyOf(published: boolean, f: LotFileIn): Why {
+  // A copy withheld at a removal request (catalog.NOTE_WITHHELD), a repository's or one file's.
+  if (f.text === null && /removal request/i.test(f.note)) return "withheld";
   if (!published) return "license";
   if (f.text !== null) return "";
   return /binary/i.test(f.note) ? "binary" : "missing";
@@ -239,6 +242,7 @@ export function fileHref(base: string, repo: string, path: string, multi: boolea
 /** Why a file's text is not shown here, in a sentence (`failure`: why it could not be loaded). */
 export function whyNotShown(f: Pick<ReaderFile, "why" | "note" | "path">, r: Pick<ReaderRepo, "license">, failure = ""): string {
   if (failure) return `This file could not be loaded here (${failure}).`;
+  if (f.why === "withheld") return "This file is not shown here: its copy was withheld at a removal request, after a moderator's review.";
   if (f.why === "license") {
     return r.license
       ? `This file is not shown here: the license of its repository (${r.license}) does not allow republishing it.`

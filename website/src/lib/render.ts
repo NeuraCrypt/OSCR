@@ -8,6 +8,7 @@
 // is checked (`href`): only a web address or a path of this site becomes a link. Nothing here
 // names the platform: the page's shell does (SITE_NAME, src/config.ts).
 import { dateInWords, dayInWords, number, plural } from "./format.ts";
+import { removalUrl } from "./removal.ts";
 import { STATIC_PAPERS, type EntityType } from "./shards.ts";
 import { status } from "./status.ts";
 
@@ -392,8 +393,10 @@ export type PaperRecord = {
   authors: Link[];
   institutions: Link[];
   categories: Link[];
-  /** `repo`: the registry's key of the repository (github.com/owner/name), which a correction names. */
-  code: { repo: string; name: string; url: string; license: string; state: string }[];
+  /** `repo`: the registry's key of the repository (github.com/owner/name), which a correction names;
+   *  `files`: its files' paths (at most removal.FILES_LISTED, `files_more` others) and `copies`,
+   *  whether the site holds copies of their text: what a removal request may name. */
+  code: { repo: string; name: string; url: string; license: string; state: string; copies?: boolean; files?: string[]; files_more?: number }[];
   files: number;
   pairs: number;
   map: string;
@@ -432,21 +435,13 @@ const ROLES: readonly [string, string][] = [
   ["tool", "a tool they used"],
   ["remove", "not this paper's: remove it"],
 ];
-/** Why a record's removal is asked (the same as Contribute.astro's). */
-const REASONS: readonly [string, string][] = [
-  ["author_request", "I am an author of this paper, and ask for its removal"],
-  ["copyright", "It infringes a copyright"],
-  ["personal_data", "It shows personal data"],
-  ["incorrect", "It is wrong, and cannot be corrected"],
-  ["other", "Another reason (say which)"],
-];
 const options = (list: readonly [string, string][], selected = "") =>
   list.map(([value, text]) => `<option value="${esc(value)}"${value === selected ? " selected" : ""}>${esc(text)}</option>`).join("");
 
 /** The Contribute section of a paper rendered on demand: the same ids and forms as the static
  *  pages' (Contribute.astro), so that the same script (src/scripts/paper-actions.ts) runs them —
- *  claim the paper, correct its links, request its removal. The tracing map's validation and the
- *  badge stay on the static pages, which show the map. */
+ *  claim the paper, correct its links — and the same link to the removal request page (/removal/).
+ *  The tracing map's validation and the badge stay on the static pages, which show the map. */
 function contribute(p: PaperRecord): string {
   const back = `/paper/${p.slug}/`;
   const links = [
@@ -496,14 +491,10 @@ function contribute(p: PaperRecord): string {
     `<p><button type="submit">Send the correction</button></p></form>` +
     `<p id="edit-state" role="status" aria-live="polite"></p></div></div>` +
     `<h3 id="removal">Request its removal</h3>` +
-    `<p id="removal-signed-out">To ask for this record to be removed from the registry, ${a("sign in", "/account/")} ` +
-    `(ORCID, GitHub or Google), then come back here: a moderator reads every request. Removal without an account comes later.</p>` +
+    `<p>To ask for this record, the copies of its authors' scripts or its tracing map to be removed, use ` +
+    `${a("the removal request page", removalUrl(p.id))}: signed in, you say who you are, what to remove and why, then review ` +
+    `and confirm the request. A moderator reviews every request.</p>` +
     `<p id="removal-state"></p>` +
-    `<form id="removal-form" method="post" action="/api/reports" hidden>` +
-    `<p><label for="removal-reason">Why</label><br><select id="removal-reason" name="reason">${options(REASONS)}</select></p>` +
-    `<p><label for="removal-details">What a moderator should know</label><br>` +
-    `<textarea id="removal-details" name="details" rows="3" maxlength="2000"></textarea></p>` +
-    `<p><button type="submit">Send the request</button></p></form>` +
     `</section>`
   );
 }
@@ -609,6 +600,7 @@ export function paperView(p: PaperRecord): View {
     `<aside class="sidebar"><h3>Access</h3><ul>${access}</ul>` +
     (p.datasets.length ? `<h3>Data</h3><ul>${p.datasets.map((d) => `<li>${a(d.text, d.href)}</li>`).join("")}</ul>` : "") +
     (p.license ? `<h3>License</h3><ul><li>the paper: ${esc(p.license)}</li></ul>` : "") +
+    `<h3>This record</h3><ul><li><a href="#contribute">Claim it, correct it</a></li><li>${a("Request removal", removalUrl(p.id))}</li></ul>` +
     `</aside>`;
   const s = status(p.status);
   return {
