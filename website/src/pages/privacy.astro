@@ -56,8 +56,8 @@ const toc = [
       a telephone number.</li>
     <li><strong>The operator does keep, privately, the contact details that papers publish for their authors</strong> —
       email addresses included — to cite the authors of the code and to reach an author about their own work. They are
-      never shown, never published, never used for mass email, and can be erased on request
-      (<a href="#contacts">below</a>).</li>
+      never shown, never published, never used for mass email, and an author signed in with their ORCID iD sees them and
+      has them erased at once on <a href="/data-rights/">your data and your rights</a> (<a href="#contacts">below</a>).</li>
     <li>When you open a paper's Code ↔ Paper reader, your browser fetches the paper from Europe PMC or NCBI directly, and
       a file of code that {SITE_NAME} does not copy from where its authors published it.</li>
   </ul>
@@ -176,6 +176,10 @@ const toc = [
     <dd>the paper, who you are (author, rights holder, named person, other), whether you are a verified author, what to
       remove, why, your justification, your evidence link, your confirmations, its status and the words of its decision
       (the rules' or the operator's).</dd>
+    <dt>A data-rights request</dt>
+    <dd>the right you asked for, your words, the ORCID iD of your account's ORCID identity and whether orcid.org or its
+      sandbox proved it, its status, its legal deadline (one month), and the answer — for access, what is held, field by
+      field, every email address masked (<a href="#rights">below</a>).</dd>
   </dl>
   <p>
     Every free text loses any email address before it is stored, and the database refuses an at sign. Requests are
@@ -186,12 +190,14 @@ const toc = [
     <li><strong>Each request's state</strong>: its status and attempts, and, for a request that waits for the operator,
       what the operator needs to decide — its texts (note, statement, justification, evidence link) and your account's
       name, ORCID iD and GitHub login.</li>
-    <li><strong>The moderator's log</strong>: every decision on a removal request, a submission or a claim, by the rules
-      or by the operator — when, the request's number, your account's identifier, the paper (or the repository), the
+    <li><strong>The moderator's log</strong>: every decision on a removal request, a submission, a claim or a data-rights
+      request, by the rules or by the operator — when, the request's number, your account's identifier, the paper (or the repository), the
       rule that decided and what it decided, with what the rule weighed: for a removal request, what it names, why, who
       you said you are, whether you are a verified author, the repositories you maintain, and a fingerprint of your
       justification (so that the same words sent again are recognized), never its text; for a submission, what proved
-      each link or did not; for a claim, what verified it. While a request waits, the file also notes since when and until when.</li>
+      each link or did not; for a claim, what verified it; for a data-rights request, the right and how many rows it
+      touched, never their content. While a request waits, the file also notes since when and until when. Entries older
+      than 12 months are deleted.</li>
   </ul>
   <p>
     To decide a claim, the rules read the works of your public ORCID record, by your iD; to decide a submission, the web
@@ -235,44 +241,50 @@ const toc = [
       it — never the address — on a list of people whose contact details it never collects again; the private copy on
       Hugging Face is published again without you at the next nightly publication, and its history rewritten so that no
       earlier version keeps you.</li>
-    <li><strong>Your rights</strong>: an author may ask what is kept about them, have it corrected, or have it erased, and
-      may object to it (<a href="#rights">how</a>).</li>
+    <li><strong>Your rights</strong>: an author may see what is kept about them, have it corrected, have it erased, and
+      object to it, on <a href="/data-rights/">your data and your rights</a> (<a href="#rights">how</a>).</li>
   </ul>
 
   <h2 id="operator">On the operator's computer</h2>
   <p>
     The harvester's database, on the operator's own computer, holds everything above that comes from papers — their
     public metadata, their authors, the contact details — along with the full texts it read (never published), the
-    history of every record with who corrected it, and the state of the requests it answered with the moderator's log
-    (<a href="#requests">above</a>). Backups stay on that
-    computer's disks. Nothing listens on the network there: requests reach it only as rows the computer reads from the
-    site's database.
+    history of every record with who corrected it, the state of the requests it answered with the moderator's log
+    (<a href="#requests">above</a>), and the list of authors who asked not to be kept. Copies of the database that the
+    operator makes by hand before a change of its structure stay on that computer's disks; an erasure does not edit them
+    by itself, and the registry's software can apply the list of erasures to such a copy. Nothing listens on the network
+    there: requests reach it only as rows the computer reads from the site's database.
   </p>
 
   <h2 id="services">The services involved</h2>
+  <p>
+    Each of these services receives the personal data in its row, and processes it under its own privacy policy, linked
+    here (each address checked on {UPDATED}).
+  </p>
   <div class="table-wrap">
     <table class="facts">
-      <thead><tr><th>Service</th><th>Role</th><th>Personal data it receives</th><th>Based in</th></tr></thead>
+      <thead><tr><th>Service</th><th>Role</th><th>Personal data it receives</th><th>Its privacy policy</th></tr></thead>
       <tbody>
-        <tr><td><a href="https://www.cloudflare.com/privacypolicy/">Cloudflare</a></td><td>hosts the site, runs its code, holds the D1 databases (search, accounts, requests)</td><td>visitors' requests; accounts, sessions, requests; the published records</td><td>United States; the databases in Western Europe</td></tr>
-        <tr><td><a href="https://huggingface.co/privacy">Hugging Face</a></td><td>holds the open scripts' dataset, the private catalogue and the private contact details; hosts code the reader may show from its source</td><td>the contact details (private); authors' files and names in the public data; your IP address, when your browser fetches a file of code it hosts</td><td>United States</td></tr>
-        <tr><td><a href="https://info.orcid.org/privacy-policy/">ORCID</a></td><td>sign-in; the moderator's checks of claims and submissions</td><td>that you sign in; ORCID gives back your iD and public name. The operator's computer reads public ORCID records by iD: the works in a claimant's, the web links in those of a paper's authors</td><td>United States</td></tr>
-        <tr><td><a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement">GitHub</a></td><td>sign-in; maintainer checks; hosts the source code and its issues; the reader's source of a file hosted there</td><td>that you sign in; for a maintainer check, the repository and your login; your IP address, when your browser fetches a file from it</td><td>United States</td></tr>
-        <tr><td><a href="https://policies.google.com/privacy">Google</a></td><td>sign-in</td><td>that you sign in; Google gives back an opaque identifier</td><td>United States</td></tr>
-        <tr><td><a href="https://about.zenodo.org/privacy-policy/">Zenodo</a> (CERN)</td><td>DOIs of validated maps; the reader's source of a file of a record</td><td>the validating author's name and ORCID iD, public; your IP address, when your browser fetches a file from it</td><td>Switzerland</td></tr>
-        <tr><td><a href="https://about.gitlab.com/">GitLab</a>, <a href="https://bitbucket.org/">Bitbucket</a>, <a href="https://codeberg.org/">Codeberg</a></td><td>host authors' code; the reader's source of a file hosted there</td><td>your IP address, when your browser fetches a file from one of them</td><td>GitLab: United States; Bitbucket (Atlassian): Australia and the United States; Codeberg: Germany</td></tr>
-        <tr><td><a href="https://www.softwareheritage.org/">Software Heritage</a> (Inria)</td><td>archive of public code; the reader's source of a file from another forge, by its fingerprint</td><td>your IP address, when your browser fetches a file from it</td><td>France</td></tr>
-        <tr><td><a href="https://europepmc.org/">Europe PMC</a> (EMBL-EBI)</td><td>source of the papers; the reader's paper text</td><td>your IP address, when your browser fetches a paper</td><td>United Kingdom</td></tr>
-        <tr><td><a href="https://www.nlm.nih.gov/web_policies.html">NCBI</a> (US National Library of Medicine)</td><td>second source of the reader's paper text</td><td>your IP address, when your browser fetches a paper from it</td><td>United States</td></tr>
-        <tr><td><a href="https://openalex.org/">OpenAlex</a></td><td>enriches the records (institutions, topics)</td><td>none from visitors: it is asked about papers, by DOI</td><td>United States</td></tr>
+        <tr><td>Cloudflare</td><td>hosts the site, runs its code, holds the D1 databases (search, accounts, requests)</td><td>visitors' requests; accounts, sessions, requests; the published records</td><td><a href="https://www.cloudflare.com/privacypolicy/">cloudflare.com/privacypolicy</a></td></tr>
+        <tr><td>Hugging Face</td><td>holds the open scripts' dataset, the private catalogue and the private contact details; hosts code the reader may show from its source</td><td>the contact details (private); authors' files and names in the public data; your IP address, when your browser fetches a file of code it hosts</td><td><a href="https://huggingface.co/privacy">huggingface.co/privacy</a></td></tr>
+        <tr><td>ORCID</td><td>sign-in; the moderator's checks of claims and submissions</td><td>that you sign in; ORCID gives back your iD and public name. The operator's computer reads public ORCID records by iD: the works in a claimant's, the web links in those of a paper's authors</td><td><a href="https://info.orcid.org/privacy-policy/">info.orcid.org/privacy-policy</a></td></tr>
+        <tr><td>GitHub</td><td>sign-in; maintainer checks; hosts the source code and its issues; the reader's source of a file hosted there</td><td>that you sign in; for a maintainer check, the repository and your login; your IP address, when your browser fetches a file from it</td><td><a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement">GitHub General Privacy Statement</a></td></tr>
+        <tr><td>Google</td><td>sign-in</td><td>that you sign in; Google gives back an opaque identifier</td><td><a href="https://policies.google.com/privacy">policies.google.com/privacy</a></td></tr>
+        <tr><td>Zenodo (CERN)</td><td>DOIs of validated maps; the reader's source of a file of a record</td><td>the validating author's name and ORCID iD, public; your IP address, when your browser fetches a file from it</td><td><a href="https://about.zenodo.org/privacy-policy/">about.zenodo.org/privacy-policy</a></td></tr>
+        <tr><td>GitLab.com</td><td>hosts authors' code; the reader's source of a file hosted there</td><td>your IP address, when your browser fetches a file from it</td><td><a href="https://about.gitlab.com/privacy/">about.gitlab.com/privacy</a></td></tr>
+        <tr><td>Bitbucket (Atlassian)</td><td>hosts authors' code; the reader's source of a file hosted there</td><td>your IP address, when your browser fetches a file from it</td><td><a href="https://www.atlassian.com/legal/privacy-policy">Atlassian's privacy policy</a></td></tr>
+        <tr><td>Codeberg</td><td>hosts authors' code; the reader's source of a file hosted there</td><td>your IP address, when your browser fetches a file from it</td><td><a href="https://codeberg.org/codeberg/org/src/branch/main/PrivacyPolicy.md">Codeberg's privacy policy</a></td></tr>
+        <tr><td>Software Heritage (Inria)</td><td>archive of public code; the reader's source of a file from another forge, by its fingerprint</td><td>your IP address, when your browser fetches a file from it</td><td><a href="https://www.softwareheritage.org/legal/content-policy/">its content and privacy policy</a></td></tr>
+        <tr><td>Europe PMC (EMBL-EBI)</td><td>source of the papers; the reader's paper text, from <code>www.ebi.ac.uk</code></td><td>your IP address, when your browser fetches a paper</td><td><a href="https://www.ebi.ac.uk/data-protection/privacy-notice/embl-ebi-public-website/">EMBL-EBI's privacy notice</a></td></tr>
+        <tr><td>NCBI (US National Library of Medicine)</td><td>second source of the reader's paper text</td><td>your IP address, when your browser fetches a paper from it</td><td><a href="https://www.nlm.nih.gov/web_policies.html">NLM's web policies</a></td></tr>
       </tbody>
     </table>
   </div>
   <p>
-    The harvester also reads, about papers and code, Crossref, DataCite, doi.org, the Retraction Watch data, Software
-    Heritage and the forges and archives the papers cite; the site asks doi.org and the cited forges whether a submitted
-    DOI and links exist. They receive identifiers of papers and repositories, not data about visitors — except the
-    hosts your browser fetches a file from, above.
+    The harvester also reads, about papers and code, OpenAlex, Crossref, DataCite, doi.org, the Retraction Watch data,
+    Software Heritage and the forges and archives the papers cite; the site asks doi.org and the cited forges whether a
+    submitted DOI and links exist. They receive identifiers of papers and repositories, not data about visitors — except
+    the hosts your browser fetches a file from, above.
   </p>
 
   <h2 id="retention">How long</h2>
@@ -283,8 +295,8 @@ const toc = [
         <tr><td>A session</td><td>until you sign out, or 30 days without a visit; an expired session's row is deleted at your next sign-in</td></tr>
         <tr><td>The sign-in flow cookie</td><td>10 minutes</td></tr>
         <tr><td>The reader's display choices</td><td>in your browser, until you clear its storage</td></tr>
-        <tr><td>Your account, identities and roles</td><td>while the account exists; deleted on request (deletion from the site itself is not built yet)</td></tr>
-        <tr><td>Your requests and their answers</td><td>as long as your account, as the record of what was decided</td></tr>
+        <tr><td>Your account, identities and roles</td><td>while the account exists; deleted within about ten minutes when you ask on <a href="/data-rights/">your data and your rights</a> (Cloudflare's point-in-time recovery of the database keeps its earlier states 7 days)</td></tr>
+        <tr><td>Your requests and their answers, your data-rights requests included</td><td>as long as your account, as the record of what was decided; deleted with it</td></tr>
         <tr><td>The moderator's log, on the operator's computer</td><td>12 months: each reading of the requests deletes the older entries</td></tr>
         <tr><td>The requests' state on the operator's computer (their texts, your account's name and handles, for a request that waited for the operator)</td><td>while the request waits; once it is settled, 12 months, then deleted with the log</td></tr>
         <tr><td>Published records of papers and authors</td><td>as long as the paper is in the catalogue; a removal takes them out at the next nightly publication</td></tr>
@@ -312,6 +324,10 @@ const toc = [
       operator's legitimate interest (article 6(1)(f)), balanced by keeping them private, never mass-emailing, and
       erasing them on request. This page is the information the GDPR requires when data is not obtained from the person
       (article 14).</dd>
+    <dt>Answering your data-rights requests</dt>
+    <dd>Access, erasure, objection, rectification, the deletion of your account, and the list of authors who asked not to
+      be kept, which is what keeps their contact details from being collected again: the operator's legal obligation
+      under the GDPR (article 6(1)(c), with articles 12 to 21).</dd>
   </dl>
 
   <h2 id="rights">Your rights, and how to use them</h2>
@@ -361,11 +377,11 @@ const toc = [
 
   <h2 id="transfers">Where the data is</h2>
   <p>
-    The site's databases are held by Cloudflare in Western Europe, and its pages are delivered from Cloudflare's servers
-    nearest to you. The harvester's database is on the operator's computer. Several services named above are based
-    outside the European Economic Area — in the United States, the United Kingdom, Switzerland and Australia — and
-    receive the data listed in their row when you use them or when the operator publishes; each describes, in its policy linked above (or
-    on its site), how it protects the personal data it receives from the European Union.
+    The site's databases were created in Cloudflare's Western Europe location, and its pages are delivered by
+    Cloudflare's network. The harvester's database is on the operator's computer. Several of the services named above
+    are run by organisations outside the European Economic Area, and receive the data listed in their row when you use
+    them or when the operator publishes; each says in its privacy policy, linked above, where it processes personal data
+    and how it protects the data it receives from the European Union.
   </p>
 
   <h2 id="security">Security</h2>

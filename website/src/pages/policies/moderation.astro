@@ -23,7 +23,8 @@ const ISSUES = "https://github.com/yannbellec/Open-Scientific-Code-Registry-OSCR
     to add a paper's code, to be recognized as a paper's author — is decided by the published rules below, applied by
     {" "}{SITE_NAME}'s own machine. The rules lean the safe way: hiding is automatic when in doubt, and publishing needs a
     verified identity or checks that pass. The operator, who runs {SITE_NAME}, reviews what the rules cannot decide when
-    available, and can reverse what they did; nothing waits more than {REVIEW_DAYS} days.
+    available, and can reverse what they did; nothing waits more than {REVIEW_DAYS} days — except a request about
+    personal data, which the operator must answer within one month (the GDPR) and which is never closed unanswered.
   </p>
 
   <h2 id="when">When requests are decided</h2>
@@ -67,7 +68,24 @@ const ISSUES = "https://github.com/yannbellec/Open-Scientific-Code-Registry-OSCR
       built from the paper's own public metadata and links: removing it on anyone's word would let anyone erase anyone's
       work, so it takes a verified identity or the operator's decision.
     </dd>
+    <dt>The same, asked for personal data</dt>
+    <dd>
+      Nothing is hidden either, and the request waits for the operator — but it is a request under the GDPR: the operator
+      answers it within one month, and the rules <strong>never close it</strong> unanswered. It stays at the top of the
+      operator's list, with its deadline.
+    </dd>
   </dl>
+
+  <h2 id="data-rights">Requests about your own data</h2>
+  <p>
+    Access to your data, the erasure of your contact details, an objection to their keeping, their rectification and the
+    deletion of your account are asked on <a href="/data-rights/">your data and your rights</a>, signed in, and decided the
+    same way, within about {POLL_MINUTES} minutes: the registry answers by itself what it can prove — access, erasure and
+    objection for an account signed in with its ORCID iD (the iD is what ties an author's contact details to them), the
+    deletion of an account. The rest — a rectification, or contact details asked for by an account without an ORCID iD,
+    which a name, a GitHub login or a Google account cannot prove — waits for the operator, who answers within one month,
+    and is never closed unanswered.
+  </p>
 
   <h2 id="submissions">Submissions of a paper and its code</h2>
   <dl class="review">
@@ -143,7 +161,8 @@ const ISSUES = "https://github.com/yannbellec/Open-Scientific-Code-Registry-OSCR
     </li>
     <li>
       <strong>Anything else</strong>: the project's <a href={ISSUES}>public issue tracker</a> — public, so put no personal
-      data there; for personal data, use the removal request page of the record, whose justification only the operator reads.
+      data there; for your own data, use <a href="/data-rights/">your data and your rights</a>, and for personal data in a
+      record, the removal request page of the record, whose justification only the operator reads.
     </li>
   </ul>
 </Info>
