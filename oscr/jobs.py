@@ -19,10 +19,12 @@ outcome into the request's own row, which the reader's pages show:
   (zenodo.validate: proof `orcid`, or `test` when the site signs in with ORCID's sandbox), then
   deposited on Zenodo — the sandbox unless the settings say `OSCR_ZENODO_INSTANCE=zenodo`
   (zenodo.deposit_map) — and its DOI written back;
-- `claim` and `report`: listed for the owner, who decides with `oscr claims` and `oscr reports`.
-  A claim accepted writes the role into D1; a removal accepted withdraws from every public output
-  what it names: the whole record (`article.withdrawn`), or only the copies of its scripts, of one
-  repository, of one file, or its tracing map (`withheld`, catalog.withheld).
+- `claim` and `report`: decided by the automatic moderator's rules (oscr/moderation.py, since
+  2026-09-29: no human moderator is on duty), or left for the owner, 30 days at most, who decides
+  with `oscr claims` and `oscr reports` and may reverse what the rules did. A claim accepted writes
+  the role into D1; a removal accepted withdraws from every public output what it names: the whole
+  record (`article.withdrawn`), or only the copies of its scripts, of one repository, of one file, or
+  its tracing map (`withheld`, catalog.withheld).
 
 **State.** `data/community/state.db`, with the facts push's: each job's status, attempts and what
 the owner needs to see (`job`), the last job seen per target (`job_cursor`). The rows written
@@ -49,7 +51,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any, Protocol
 
-from . import catalog, community, db, entities, links, zenodo
+from . import catalog, community, db, entities, links, moderation, zenodo
 from .community import D1, literal
 
 #: A job that failed this many times is given up, and the reader told.
@@ -85,9 +87,10 @@ CREATE TABLE IF NOT EXISTS job_cursor (
 
 
 def open_state(path: Any) -> sqlite3.Connection:
-    """The facts push's state file, with the jobs' tables."""
+    """The facts push's state file, with the jobs' tables and the moderator's (oscr/moderation.py)."""
     state = community.open_state(path)
     state.executescript(STATE_SCHEMA)
+    moderation.ensure_schema(state)
     return state
 
 
@@ -203,6 +206,8 @@ class Runner:
     budget: int = community.DAILY_BUDGET
     report: Callable[[str], None] = print
     now: Callable[[], float] = time.time
+    #: What the moderator's rules may look up (ORCID records, forge owners): nothing by default.
+    evidence: Any = field(default_factory=moderation.NoEvidence)
 
     @property
     def target(self) -> str:
@@ -407,6 +412,9 @@ def run_submission(runner: Runner, job: dict[str, Any], row: dict[str, Any] | No
     pairs = runner.harvester.align(con, article_id, sorted(set(code) | {x.repo for x in submitted}), save=False)
     draft = draft_of(con, article_id, submitted, pairs)
     author = _is_author(runner, article_id, user)
+    # A draft the submitter does not publish is closed after moderation.REVIEW_DAYS: nothing waits forever.
+    moderation.unwait(runner.state, runner.target, "submission", int(row["id"]))
+    moderation.wait(runner.state, runner.target, "submission", int(row["id"]), float(t), "submission.draft_expired")
     return Outcome("done", [
         f"UPDATE submissions SET status = 'draft', paper_id = {literal(article_id)}, author = {int(author)}, "
         f"draft = {literal(json.dumps(draft, ensure_ascii=False, separators=(',', ':')))}, message = '', "
@@ -439,11 +447,10 @@ def apply_submission(runner: Runner, row: dict[str, Any], user: dict[str, Any] |
 def run_publish(runner: Runner, job: dict[str, Any], row: dict[str, Any] | None, user: dict[str, Any] | None) -> Outcome:
     if row is None or row["status"] not in ("publishing", "moderation"):
         return Outcome("done", message="nothing to do: the submission is not being published")
+    moderation.unwait(runner.state, runner.target, "submission", int(row["id"]))
     if row["status"] == "moderation":
-        return Outcome("owner", message="waits for the owner: the submitter is not among the paper's authors",
-                       detail={"submission": row["id"], "doi": row["doi"], "paper_id": row["paper_id"],
-                               "code_urls": json.loads(row["code_urls"] or "[]"), "note": row["note"],
-                               "user": _handles(user)})
+        # The submitter is not among the paper's authors: the moderator's rules decide.
+        return moderation.decide_submission(runner, job, row, user)
     status, message = apply_submission(runner, row, user)
     return Outcome("done", [f"UPDATE submissions SET status = {literal(status)}, message = {literal(words(message))}, "
                             f"updated_at = {_stamp(runner)} WHERE id = {literal(row['id'])} AND status = 'publishing'"],
@@ -521,7 +528,8 @@ def run_validation(runner: Runner, job: dict[str, Any], row: dict[str, Any] | No
     # The proof: the ORCID iD the author signed in with. From ORCID's sandbox, a test, which only
     # Zenodo's sandbox accepts and no public output shows (CLAUDE.md).
     proof = "orcid" if row["proof"] == "orcid" else "test"
-    name = author_name(con, article_id, row["orcid"], (user or {}).get("display_name") or "")
+    # The paper's own list of authors names them; failing that, the account's name, as it may be public.
+    name = author_name(con, article_id, row["orcid"], moderation.public_name((user or {}).get("display_name") or ""))
     inv = runner.invenio(runner.instance)
     try:
         if not inv.can_write:
@@ -545,19 +553,14 @@ def run_validation(runner: Runner, job: dict[str, Any], row: dict[str, Any] | No
 
 
 # ---------------------------------------------------------------------------------------
-# Claims and removal requests: for the owner.
+# Claims and removal requests: the moderator's rules (oscr/moderation.py), and the owner.
 
 def run_claim(runner: Runner, job: dict[str, Any], row: dict[str, Any] | None, user: dict[str, Any] | None) -> Outcome:
     if row is None or row["status"] != "pending":
+        if row is not None:
+            moderation.unwait(runner.state, runner.target, "claim", int(row["id"]))
         return Outcome("done", message="nothing to do: the claim is not pending")
-    try:
-        evidence = json.loads(row.get("evidence") or "{}")
-    except ValueError:
-        evidence = {}
-    return Outcome("owner", message=f"{'an author' if row['kind'] == 'author' else 'a maintainer'} claim waits for the owner",
-                   detail={"claim": row["id"], "kind": row["kind"], "paper_id": row["paper_id"], "repo": row["repo"],
-                           "statement": evidence.get("statement", ""), "link": evidence.get("link", ""),
-                           "via": evidence.get("via") or evidence.get("reason") or "", "user": _handles(user)})
+    return moderation.decide_claim(runner, job, row, user)
 
 
 #: What a removal request asks to remove (the page /removal/; D1 migration 0003), in the owner's words.
@@ -571,14 +574,10 @@ REQUESTERS: dict[str, str] = {"author": "an author of the paper", "rights_holder
 
 def run_report(runner: Runner, job: dict[str, Any], row: dict[str, Any] | None, user: dict[str, Any] | None) -> Outcome:
     if row is None or row["status"] != "open":
+        if row is not None:
+            moderation.unwait(runner.state, runner.target, "report", int(row["id"]))
         return Outcome("done", message="nothing to do: the request is not open")
-    return Outcome("owner", message="a removal request waits for the owner",
-                   detail={"report": row["id"], "paper_id": row["target_id"], "reason": row["reason"],
-                           "details": row["details"], "role": row.get("requester_role") or "",
-                           "author_verified": bool(row.get("author_verified")), "scope": row.get("scope") or "record",
-                           "repo": row.get("scope_repo") or "", "path": row.get("scope_path") or "",
-                           "evidence_url": row.get("evidence_url") or "", "confirmed": bool(row.get("confirmed")),
-                           "user": _handles(user)})
+    return moderation.decide_report(runner, job, row, user)
 
 
 HANDLERS: dict[str, Callable[[Runner, dict[str, Any], dict[str, Any] | None, dict[str, Any] | None], Outcome]] = {
@@ -600,10 +599,15 @@ class Poll:
     written: int = 0
     #: Jobs left for the next poll: the day's budget is spent.
     deferred: int = 0
+    #: Closed by the rules at their deadline, and claims verified when checked again (moderation.sweep).
+    closed: int = 0
+    verified: int = 0
 
     def describe(self, target: str) -> str:
         return (f"{target}: {self.new} new request(s); {self.done} answered, {self.owner} for the owner, {self.retry} to "
                 f"try again, {self.failed} given up; {self.written} rows written"
+                + (f"; {self.closed} closed at their deadline" if self.closed else "")
+                + (f"; {self.verified} claim(s) verified on a new check" if self.verified else "")
                 + (f"; {self.deferred} wait for tomorrow's budget" if self.deferred else ""))
 
 
@@ -663,6 +667,8 @@ def poll(runner: Runner) -> Poll:
                       "last_id = excluded.last_id", (target, max(int(j["id"]) for j in fresh)))
     state.commit()
     out.new = len(fresh)
+    # What waited for the owner before the moderator's rules existed goes to the rules once.
+    moderation.requeue_undecided(runner)
     waiting = [dict(r) for r in state.execute("SELECT * FROM job WHERE target = ? AND status = 'new' ORDER BY id", (target,))]
     groups: dict[tuple[str, int], list[dict[str, Any]]] = {}
     for j in waiting:
@@ -693,6 +699,14 @@ def poll(runner: Runner) -> Poll:
         setattr(out, outcome.status, getattr(out, outcome.status) + len(jobs))
         runner.report(f"  job {latest['id']} ({kind} {ref}): {outcome.status}"
                       + (f" — {outcome.message}" if outcome.message else ""))
+    # What reached its deadline is closed, the waiting author claims are checked again.
+    try:
+        swept = moderation.sweep(runner)
+    except community.D1Error as e:
+        runner.report(f"  the rules' deadlines wait for the next poll (D1: {e})"[:300])
+        swept = {"closed": 0, "verified": 0, "written": 0}
+    out.closed, out.verified = swept["closed"], swept["verified"]
+    out.written += swept["written"]
     return out
 
 
@@ -751,6 +765,9 @@ def decide_claim(runner: Runner, claim_id: int, accept: bool, message: str = "")
                    f"({literal(c['user_id'])}, {literal(role)}, {literal(kind)}, {literal(scope)}, 'owner', {t})")
     _write(runner, sql)
     _settled(runner, ("claim",), claim_id, "accepted" if accept else "refused")
+    moderation.unwait(runner.state, runner.target, "claim", int(claim_id))
+    moderation.log(runner.state, runner.target, "claim", int(claim_id), "owner", "verified" if accept else "rejected",
+                   user_id=c["user_id"], paper=c["paper_id"] or c["repo"], detail={"message": message}, now=runner.now())
     target = c["paper_id"] or c["repo"]
     return f"claim {claim_id} ({c['kind']} of {target}): {'accepted' if accept else 'refused'}"
 
@@ -791,20 +808,15 @@ def decide_report(runner: Runner, report_id: int, accept: bool, message: str = "
     scope = r.get("scope") or "record"
     if accept:
         known = _paper(runner.con, r["target_id"]) is not None
-        if scope == "record":
-            day = time.strftime("%Y-%m-%d", time.gmtime(t))
-            runner.con.execute("UPDATE article SET withdrawn = ? WHERE id = ?",
-                               (f"{day}: request {report_id} ({r['reason']})", r["target_id"]))
-            db.log_event(runner.con, "withdrawn", article=r["target_id"], request=report_id, reason=r["reason"])
-            runner.con.commit()
-        else:
-            withhold(runner.con, scope, r["target_id"], repo=r.get("scope_repo") or "", path=r.get("scope_path") or "",
-                     request=f"{runner.target}:{report_id}", reason=r["reason"], now=runner.now())
+        moderation.apply_removal(runner, r)
         if not known:
             runner.report(f"  {r['target_id']} is not in this database: nothing to withdraw on the Mac")
     _write(runner, [f"UPDATE reports SET status = {literal('accepted' if accept else 'rejected')}, "
                     f"message = {literal(words(message))}, decided_at = {t} WHERE id = {int(report_id)} AND status = 'open'"])
     _settled(runner, ("report",), report_id, "accepted" if accept else "rejected")
+    moderation.unwait(runner.state, runner.target, "report", int(report_id))
+    moderation.log(runner.state, runner.target, "report", int(report_id), "owner", "accepted" if accept else "rejected",
+                   user_id=r["user_id"], paper=r["target_id"], detail={"scope": scope, "message": message}, now=runner.now())
     what = SCOPES.get(scope, scope) + (f" ({_target(r)})" if scope in ("repository", "file") else "")
     return (f"request {report_id} on {r['target_id']}: "
             + (f"accepted — {what} leaves the site at the next nightly" if accept else "rejected"))
@@ -837,6 +849,8 @@ def decide_submission(runner: Runner, submission_id: int, accept: bool, message:
     _write(runner, [f"UPDATE submissions SET status = {literal(status)}, message = {literal(words(said))}, "
                     f"updated_at = {t} WHERE id = {int(submission_id)} AND status = 'moderation'"])
     _settled(runner, ("publish",), submission_id, status)
+    moderation.log(runner.state, runner.target, "submission", int(submission_id), "owner", status, user_id=s["user_id"],
+                   paper=s["paper_id"], detail={"message": message}, now=runner.now())
     return f"submission {submission_id} ({s['doi']}): {status}"
 
 
@@ -848,6 +862,12 @@ def status(state: sqlite3.Connection) -> str:
         lines.append(f"{r['target']}: {r['kind']} {r['status']}: {r['n']}")
     for r in state.execute("SELECT target, day, rows FROM community_budget ORDER BY day DESC, target LIMIT 4"):
         lines.append(f"{r['target']}: {r['rows']} rows written on {r['day']} (UTC), jobs and facts together")
+    moderation.ensure_schema(state)
+    for r in state.execute("SELECT target, rule, decision, COUNT(*) AS n FROM moderation_log WHERE at > ? GROUP BY 1, 2, 3 "
+                           "ORDER BY 1, 2, 3", (time.time() - moderation.DAY,)):
+        lines.append(f"{r['target']}: the moderator's rules in the last 24 hours: {r['rule']} → {r['decision']}: {r['n']}")
+    for r in state.execute("SELECT target, kind, COUNT(*) AS n, MIN(due) AS due FROM waits GROUP BY 1, 2 ORDER BY 1, 2"):
+        lines.append(f"{r['target']}: {r['n']} {r['kind']}(s) waiting, the first closes on {moderation.deadline_words(r['due'])}")
     return "\n".join(lines) or "no job read yet"
 
 
@@ -872,9 +892,14 @@ def describe_waiting(items: list[dict[str, Any]]) -> str:
             what = (f"request {d['report']}: remove {SCOPES.get(scope, scope)}{target} of {d['paper_id']} ({d['reason']}), "
                     f"from {person}{role}{verified}")
             said = [d.get("details", ""), d.get("evidence_url") and f"evidence: {d['evidence_url']}",
-                    "confirmed: the information is accurate; a moderator reviews it" if d.get("confirmed") else ""]
+                    "confirmed: the information is accurate, and they read how requests are decided" if d.get("confirmed") else ""]
         else:
             what = f"submission {d['submission']}: {d['doi']} ({d.get('paper_id') or 'not read'}), from {person}"
             said = [", ".join(d.get("code_urls", [])), d.get("note", "")]
+        due = d.get("due")
+        rule = d.get("rule")
+        said.append(f"the rules ({rule}) close it by themselves on {moderation.deadline_words(due)}" if due else "")
+        if d.get("guard"):
+            said.append(f"not hidden at once: {d['guard']}")
         out.append(f"{what} — {when} UTC\n" + "".join(f"    {x}\n" for x in said if x))
     return "\n".join(out).rstrip()

@@ -227,15 +227,20 @@ def test_a_published_submission_puts_its_links_on_the_record_as_a_new_version(w)
     assert ("align", paper, True) in w.harvester.calls
 
 
-def test_a_draft_published_by_someone_else_waits_for_the_owner(w, capsys, tmp_path, monkeypatch):
+def test_a_draft_published_by_someone_else_is_decided_by_the_rules_and_the_owner_may_still_decide(w):
+    """The moderator's rules decide a draft published by someone who is not among the paper's
+    authors (tests/test_moderation.py has each rule): nothing ties this link to the paper, so it is
+    refused, in words. One the rules did not see (its job lost) can still be decided by the owner."""
     sid = _submit(w, user="u_ben")
     w.poll()
     assert w.row("submissions", sid)["author"] == 0
     w.d1con.execute("UPDATE submissions SET status = 'moderation' WHERE id = ?", (sid,))
     w.job("publish", sid, "u_ben")
-    assert w.poll().owner == 1
-    listed = jobs.describe_waiting(jobs.waiting(w.state, "local", ("publish",)))
-    assert f"submission {sid}: 10.5555/oscr.fixture.7" in listed and "GitHub ben-example" in listed
+    assert w.poll().owner == 0
+    assert w.row("submissions", sid)["status"] == "refused" and "could not tie" in w.row("submissions", sid)["message"]
+    assert jobs.waiting(w.state, "local", ("publish",)) == []
+    w.d1con.execute("UPDATE submissions SET status = 'moderation' WHERE id = ?", (sid,))
+    w.d1con.commit()
     assert jobs.decide_submission(w.runner, sid, True, "Thank you.").endswith("published")
     row = w.row("submissions", sid)
     assert row["status"] == "published" and "Thank you." in row["message"]
@@ -244,8 +249,7 @@ def test_a_draft_published_by_someone_else_waits_for_the_owner(w, capsys, tmp_pa
     other = _submit(w, user="u_ben", doi="10.5555/oscr.fixture.8")
     w.poll()
     w.d1con.execute("UPDATE submissions SET status = 'moderation' WHERE id = ?", (other,))
-    w.job("publish", other, "u_ben")
-    w.poll()
+    w.d1con.commit()
     jobs.decide_submission(w.runner, other, False, "Not the authors' code.")
     assert (w.row("submissions", other)["status"], w.row("submissions", other)["message"]) == ("refused", "Not the authors' code.")
 
@@ -437,6 +441,8 @@ def _claim(w, user="u_ben", kind="author", paper=P2, repo=""):
 
 
 def test_a_claim_waits_for_the_owner_who_grants_the_role(w):
+    """Nothing proves it (no ORCID iD): it waits, 30 days at most (tests/test_moderation.py), and the
+    owner may decide it meanwhile."""
     cid = _claim(w)
     w.job("claim", cid, "u_ben")                      # asked twice: answered once
     out = w.poll()
@@ -444,6 +450,7 @@ def test_a_claim_waits_for_the_owner_who_grants_the_role(w):
     listed = jobs.describe_waiting(jobs.waiting(w.state, "local", ("claim",)))
     assert listed.count(f"claim {cid}: Ben Example, GitHub ben-example as author of {P2}") == 1
     assert "I am the second author." in listed and "https://lab.example/ben" in listed
+    assert "the rules (claim.review) close it by themselves on 26 October 2026" in listed
     assert jobs.decide_claim(w.runner, cid, True, "Welcome.") == f"claim {cid} (author of {P2}): accepted"
     row = w.row("claims", cid)
     assert (row["status"], row["decided_by"], row["message"]) == ("verified", "owner", "Welcome.")
@@ -463,13 +470,12 @@ def test_a_maintainer_claim_refused_says_why(w):
 
 
 def test_a_removal_accepted_withdraws_the_record_from_every_public_output(w, tmp_path):
+    # Ada's ORCID iD is among the paper's authors: the rules apply her request at once.
     rid = w.request("reports", "report", {"user_id": "u_ada", "target_kind": "paper", "target_id": P1,
                                            "reason": "author_request", "details": "Please remove it.", "created_at": T})
-    assert w.poll().owner == 1
-    assert "remove the whole record of doi:10.5555/oscr.fixture.1 (author_request), from Ada Fixture" in jobs.describe_waiting(
-        jobs.waiting(w.state, "local", ("report",)))
-    jobs.decide_report(w.runner, rid, True, "Removed.")
+    assert (w.poll().done, jobs.waiting(w.state, "local", ("report",))) == (1, [])
     assert w.row("reports", rid)["status"] == "accepted"
+    assert w.row("reports", rid)["message"].startswith("Applied at once, as a request from a verified author")
     assert w.mac.execute("SELECT withdrawn FROM article WHERE id = ?", (P1,)).fetchone()[0].endswith(
         f"request {rid} (author_request)")
     assert P1 not in {a["id"] for a in catalog.catalog_data(w.mac)["articles"]}

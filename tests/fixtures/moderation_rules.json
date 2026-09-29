@@ -1,0 +1,1125 @@
+{
+ "about": "What the automatic moderator does with a removal request, before its guards (a limit of hides a day, a repeated justification, the operator's earlier no): oscr/moderation.py report_path, and its TypeScript twin website/src/lib/moderation.ts, which tells the requester. Read by tests/test_moderation.py and website/tests/contributions/moderation.test.ts.",
+ "cases": [
+  {
+   "scope": "record",
+   "reason": "copyright",
+   "author_verified": false,
+   "maintainer": false,
+   "rule": "report.review",
+   "outcome": "review"
+  },
+  {
+   "scope": "record",
+   "reason": "copyright",
+   "author_verified": false,
+   "maintainer": true,
+   "rule": "report.review",
+   "outcome": "review"
+  },
+  {
+   "scope": "record",
+   "reason": "copyright",
+   "author_verified": true,
+   "maintainer": false,
+   "rule": "report.verified_author",
+   "outcome": "apply"
+  },
+  {
+   "scope": "record",
+   "reason": "copyright",
+   "author_verified": true,
+   "maintainer": true,
+   "rule": "report.verified_author",
+   "outcome": "apply"
+  },
+  {
+   "scope": "record",
+   "reason": "personal_data",
+   "author_verified": false,
+   "maintainer": false,
+   "rule": "report.review",
+   "outcome": "review"
+  },
+  {
+   "scope": "record",
+   "reason": "personal_data",
+   "author_verified": false,
+   "maintainer": true,
+   "rule": "report.review",
+   "outcome": "review"
+  },
+  {
+   "scope": "record",
+   "reason": "personal_data",
+   "author_verified": true,
+   "maintainer": false,
+   "rule": "report.verified_author",
+   "outcome": "apply"
+  },
+  {
+   "scope": "record",
+   "reason": "personal_data",
+   "author_verified": true,
+   "maintainer": true,
+   "rule": "report.verified_author",
+   "outcome": "apply"
+  },
+  {
+   "scope": "record",
+   "reason": "not_my_work",
+   "author_verified": false,
+   "maintainer": false,
+   "rule": "report.review",
+   "outcome": "review"
+  },
+  {
+   "scope": "record",
+   "reason": "not_my_work",
+   "author_verified": false,
+   "maintainer": true,
+   "rule": "report.review",
+   "outcome": "review"
+  },
+  {
+   "scope": "record",
+   "reason": "not_my_work",
+   "author_verified": true,
+   "maintainer": false,
+   "rule": "report.verified_author",
+   "outcome": "apply"
+  },
+  {
+   "scope": "record",
+   "reason": "not_my_work",
+   "author_verified": true,
+   "maintainer": true,
+   "rule": "report.verified_author",
+   "outcome": "apply"
+  },
+  {
+   "scope": "record",
+   "reason": "retracted",
+   "author_verified": false,
+   "maintainer": false,
+   "rule": "report.review",
+   "outcome": "review"
+  },
+  {
+   "scope": "record",
+   "reason": "retracted",
+   "author_verified": false,
+   "maintainer": true,
+   "rule": "report.review",
+   "outcome": "review"
+  },
+  {
+   "scope": "record",
+   "reason": "retracted",
+   "author_verified": true,
+   "maintainer": false,
+   "rule": "report.verified_author",
+   "outcome": "apply"
+  },
+  {
+   "scope": "record",
+   "reason": "retracted",
+   "author_verified": true,
+   "maintainer": true,
+   "rule": "report.verified_author",
+   "outcome": "apply"
+  },
+  {
+   "scope": "record",
+   "reason": "incorrect",
+   "author_verified": false,
+   "maintainer": false,
+   "rule": "report.review",
+   "outcome": "review"
+  },
+  {
+   "scope": "record",
+   "reason": "incorrect",
+   "author_verified": false,
+   "maintainer": true,
+   "rule": "report.review",
+   "outcome": "review"
+  },
+  {
+   "scope": "record",
+   "reason": "incorrect",
+   "author_verified": true,
+   "maintainer": false,
+   "rule": "report.verified_author",
+   "outcome": "apply"
+  },
+  {
+   "scope": "record",
+   "reason": "incorrect",
+   "author_verified": true,
+   "maintainer": true,
+   "rule": "report.verified_author",
+   "outcome": "apply"
+  },
+  {
+   "scope": "record",
+   "reason": "other",
+   "author_verified": false,
+   "maintainer": false,
+   "rule": "report.review",
+   "outcome": "review"
+  },
+  {
+   "scope": "record",
+   "reason": "other",
+   "author_verified": false,
+   "maintainer": true,
+   "rule": "report.review",
+   "outcome": "review"
+  },
+  {
+   "scope": "record",
+   "reason": "other",
+   "author_verified": true,
+   "maintainer": false,
+   "rule": "report.verified_author",
+   "outcome": "apply"
+  },
+  {
+   "scope": "record",
+   "reason": "other",
+   "author_verified": true,
+   "maintainer": true,
+   "rule": "report.verified_author",
+   "outcome": "apply"
+  },
+  {
+   "scope": "record",
+   "reason": "author_request",
+   "author_verified": false,
+   "maintainer": false,
+   "rule": "report.review",
+   "outcome": "review"
+  },
+  {
+   "scope": "record",
+   "reason": "author_request",
+   "author_verified": false,
+   "maintainer": true,
+   "rule": "report.review",
+   "outcome": "review"
+  },
+  {
+   "scope": "record",
+   "reason": "author_request",
+   "author_verified": true,
+   "maintainer": false,
+   "rule": "report.verified_author",
+   "outcome": "apply"
+  },
+  {
+   "scope": "record",
+   "reason": "author_request",
+   "author_verified": true,
+   "maintainer": true,
+   "rule": "report.verified_author",
+   "outcome": "apply"
+  },
+  {
+   "scope": "scripts",
+   "reason": "copyright",
+   "author_verified": false,
+   "maintainer": false,
+   "rule": "report.hide_at_once",
+   "outcome": "hide"
+  },
+  {
+   "scope": "scripts",
+   "reason": "copyright",
+   "author_verified": false,
+   "maintainer": true,
+   "rule": "report.maintainer",
+   "outcome": "apply"
+  },
+  {
+   "scope": "scripts",
+   "reason": "copyright",
+   "author_verified": true,
+   "maintainer": false,
+   "rule": "report.verified_author",
+   "outcome": "apply"
+  },
+  {
+   "scope": "scripts",
+   "reason": "copyright",
+   "author_verified": true,
+   "maintainer": true,
+   "rule": "report.verified_author",
+   "outcome": "apply"
+  },
+  {
+   "scope": "scripts",
+   "reason": "personal_data",
+   "author_verified": false,
+   "maintainer": false,
+   "rule": "report.hide_at_once",
+   "outcome": "hide"
+  },
+  {
+   "scope": "scripts",
+   "reason": "personal_data",
+   "author_verified": false,
+   "maintainer": true,
+   "rule": "report.maintainer",
+   "outcome": "apply"
+  },
+  {
+   "scope": "scripts",
+   "reason": "personal_data",
+   "author_verified": true,
+   "maintainer": false,
+   "rule": "report.verified_author",
+   "outcome": "apply"
+  },
+  {
+   "scope": "scripts",
+   "reason": "personal_data",
+   "author_verified": true,
+   "maintainer": true,
+   "rule": "report.verified_author",
+   "outcome": "apply"
+  },
+  {
+   "scope": "scripts",
+   "reason": "not_my_work",
+   "author_verified": false,
+   "maintainer": false,
+   "rule": "report.review",
+   "outcome": "review"
+  },
+  {
+   "scope": "scripts",
+   "reason": "not_my_work",
+   "author_verified": false,
+   "maintainer": true,
+   "rule": "report.maintainer",
+   "outcome": "apply"
+  },
+  {
+   "scope": "scripts",
+   "reason": "not_my_work",
+   "author_verified": true,
+   "maintainer": false,
+   "rule": "report.verified_author",
+   "outcome": "apply"
+  },
+  {
+   "scope": "scripts",
+   "reason": "not_my_work",
+   "author_verified": true,
+   "maintainer": true,
+   "rule": "report.verified_author",
+   "outcome": "apply"
+  },
+  {
+   "scope": "scripts",
+   "reason": "retracted",
+   "author_verified": false,
+   "maintainer": false,
+   "rule": "report.review",
+   "outcome": "review"
+  },
+  {
+   "scope": "scripts",
+   "reason": "retracted",
+   "author_verified": false,
+   "maintainer": true,
+   "rule": "report.maintainer",
+   "outcome": "apply"
+  },
+  {
+   "scope": "scripts",
+   "reason": "retracted",
+   "author_verified": true,
+   "maintainer": false,
+   "rule": "report.verified_author",
+   "outcome": "apply"
+  },
+  {
+   "scope": "scripts",
+   "reason": "retracted",
+   "author_verified": true,
+   "maintainer": true,
+   "rule": "report.verified_author",
+   "outcome": "apply"
+  },
+  {
+   "scope": "scripts",
+   "reason": "incorrect",
+   "author_verified": false,
+   "maintainer": false,
+   "rule": "report.review",
+   "outcome": "review"
+  },
+  {
+   "scope": "scripts",
+   "reason": "incorrect",
+   "author_verified": false,
+   "maintainer": true,
+   "rule": "report.maintainer",
+   "outcome": "apply"
+  },
+  {
+   "scope": "scripts",
+   "reason": "incorrect",
+   "author_verified": true,
+   "maintainer": false,
+   "rule": "report.verified_author",
+   "outcome": "apply"
+  },
+  {
+   "scope": "scripts",
+   "reason": "incorrect",
+   "author_verified": true,
+   "maintainer": true,
+   "rule": "report.verified_author",
+   "outcome": "apply"
+  },
+  {
+   "scope": "scripts",
+   "reason": "other",
+   "author_verified": false,
+   "maintainer": false,
+   "rule": "report.review",
+   "outcome": "review"
+  },
+  {
+   "scope": "scripts",
+   "reason": "other",
+   "author_verified": false,
+   "maintainer": true,
+   "rule": "report.maintainer",
+   "outcome": "apply"
+  },
+  {
+   "scope": "scripts",
+   "reason": "other",
+   "author_verified": true,
+   "maintainer": false,
+   "rule": "report.verified_author",
+   "outcome": "apply"
+  },
+  {
+   "scope": "scripts",
+   "reason": "other",
+   "author_verified": true,
+   "maintainer": true,
+   "rule": "report.verified_author",
+   "outcome": "apply"
+  },
+  {
+   "scope": "scripts",
+   "reason": "author_request",
+   "author_verified": false,
+   "maintainer": false,
+   "rule": "report.review",
+   "outcome": "review"
+  },
+  {
+   "scope": "scripts",
+   "reason": "author_request",
+   "author_verified": false,
+   "maintainer": true,
+   "rule": "report.maintainer",
+   "outcome": "apply"
+  },
+  {
+   "scope": "scripts",
+   "reason": "author_request",
+   "author_verified": true,
+   "maintainer": false,
+   "rule": "report.verified_author",
+   "outcome": "apply"
+  },
+  {
+   "scope": "scripts",
+   "reason": "author_request",
+   "author_verified": true,
+   "maintainer": true,
+   "rule": "report.verified_author",
+   "outcome": "apply"
+  },
+  {
+   "scope": "repository",
+   "reason": "copyright",
+   "author_verified": false,
+   "maintainer": false,
+   "rule": "report.hide_at_once",
+   "outcome": "hide"
+  },
+  {
+   "scope": "repository",
+   "reason": "copyright",
+   "author_verified": false,
+   "maintainer": true,
+   "rule": "report.maintainer",
+   "outcome": "apply"
+  },
+  {
+   "scope": "repository",
+   "reason": "copyright",
+   "author_verified": true,
+   "maintainer": false,
+   "rule": "report.verified_author",
+   "outcome": "apply"
+  },
+  {
+   "scope": "repository",
+   "reason": "copyright",
+   "author_verified": true,
+   "maintainer": true,
+   "rule": "report.verified_author",
+   "outcome": "apply"
+  },
+  {
+   "scope": "repository",
+   "reason": "personal_data",
+   "author_verified": false,
+   "maintainer": false,
+   "rule": "report.hide_at_once",
+   "outcome": "hide"
+  },
+  {
+   "scope": "repository",
+   "reason": "personal_data",
+   "author_verified": false,
+   "maintainer": true,
+   "rule": "report.maintainer",
+   "outcome": "apply"
+  },
+  {
+   "scope": "repository",
+   "reason": "personal_data",
+   "author_verified": true,
+   "maintainer": false,
+   "rule": "report.verified_author",
+   "outcome": "apply"
+  },
+  {
+   "scope": "repository",
+   "reason": "personal_data",
+   "author_verified": true,
+   "maintainer": true,
+   "rule": "report.verified_author",
+   "outcome": "apply"
+  },
+  {
+   "scope": "repository",
+   "reason": "not_my_work",
+   "author_verified": false,
+   "maintainer": false,
+   "rule": "report.review",
+   "outcome": "review"
+  },
+  {
+   "scope": "repository",
+   "reason": "not_my_work",
+   "author_verified": false,
+   "maintainer": true,
+   "rule": "report.maintainer",
+   "outcome": "apply"
+  },
+  {
+   "scope": "repository",
+   "reason": "not_my_work",
+   "author_verified": true,
+   "maintainer": false,
+   "rule": "report.verified_author",
+   "outcome": "apply"
+  },
+  {
+   "scope": "repository",
+   "reason": "not_my_work",
+   "author_verified": true,
+   "maintainer": true,
+   "rule": "report.verified_author",
+   "outcome": "apply"
+  },
+  {
+   "scope": "repository",
+   "reason": "retracted",
+   "author_verified": false,
+   "maintainer": false,
+   "rule": "report.review",
+   "outcome": "review"
+  },
+  {
+   "scope": "repository",
+   "reason": "retracted",
+   "author_verified": false,
+   "maintainer": true,
+   "rule": "report.maintainer",
+   "outcome": "apply"
+  },
+  {
+   "scope": "repository",
+   "reason": "retracted",
+   "author_verified": true,
+   "maintainer": false,
+   "rule": "report.verified_author",
+   "outcome": "apply"
+  },
+  {
+   "scope": "repository",
+   "reason": "retracted",
+   "author_verified": true,
+   "maintainer": true,
+   "rule": "report.verified_author",
+   "outcome": "apply"
+  },
+  {
+   "scope": "repository",
+   "reason": "incorrect",
+   "author_verified": false,
+   "maintainer": false,
+   "rule": "report.review",
+   "outcome": "review"
+  },
+  {
+   "scope": "repository",
+   "reason": "incorrect",
+   "author_verified": false,
+   "maintainer": true,
+   "rule": "report.maintainer",
+   "outcome": "apply"
+  },
+  {
+   "scope": "repository",
+   "reason": "incorrect",
+   "author_verified": true,
+   "maintainer": false,
+   "rule": "report.verified_author",
+   "outcome": "apply"
+  },
+  {
+   "scope": "repository",
+   "reason": "incorrect",
+   "author_verified": true,
+   "maintainer": true,
+   "rule": "report.verified_author",
+   "outcome": "apply"
+  },
+  {
+   "scope": "repository",
+   "reason": "other",
+   "author_verified": false,
+   "maintainer": false,
+   "rule": "report.review",
+   "outcome": "review"
+  },
+  {
+   "scope": "repository",
+   "reason": "other",
+   "author_verified": false,
+   "maintainer": true,
+   "rule": "report.maintainer",
+   "outcome": "apply"
+  },
+  {
+   "scope": "repository",
+   "reason": "other",
+   "author_verified": true,
+   "maintainer": false,
+   "rule": "report.verified_author",
+   "outcome": "apply"
+  },
+  {
+   "scope": "repository",
+   "reason": "other",
+   "author_verified": true,
+   "maintainer": true,
+   "rule": "report.verified_author",
+   "outcome": "apply"
+  },
+  {
+   "scope": "repository",
+   "reason": "author_request",
+   "author_verified": false,
+   "maintainer": false,
+   "rule": "report.review",
+   "outcome": "review"
+  },
+  {
+   "scope": "repository",
+   "reason": "author_request",
+   "author_verified": false,
+   "maintainer": true,
+   "rule": "report.maintainer",
+   "outcome": "apply"
+  },
+  {
+   "scope": "repository",
+   "reason": "author_request",
+   "author_verified": true,
+   "maintainer": false,
+   "rule": "report.verified_author",
+   "outcome": "apply"
+  },
+  {
+   "scope": "repository",
+   "reason": "author_request",
+   "author_verified": true,
+   "maintainer": true,
+   "rule": "report.verified_author",
+   "outcome": "apply"
+  },
+  {
+   "scope": "file",
+   "reason": "copyright",
+   "author_verified": false,
+   "maintainer": false,
+   "rule": "report.hide_at_once",
+   "outcome": "hide"
+  },
+  {
+   "scope": "file",
+   "reason": "copyright",
+   "author_verified": false,
+   "maintainer": true,
+   "rule": "report.maintainer",
+   "outcome": "apply"
+  },
+  {
+   "scope": "file",
+   "reason": "copyright",
+   "author_verified": true,
+   "maintainer": false,
+   "rule": "report.verified_author",
+   "outcome": "apply"
+  },
+  {
+   "scope": "file",
+   "reason": "copyright",
+   "author_verified": true,
+   "maintainer": true,
+   "rule": "report.verified_author",
+   "outcome": "apply"
+  },
+  {
+   "scope": "file",
+   "reason": "personal_data",
+   "author_verified": false,
+   "maintainer": false,
+   "rule": "report.hide_at_once",
+   "outcome": "hide"
+  },
+  {
+   "scope": "file",
+   "reason": "personal_data",
+   "author_verified": false,
+   "maintainer": true,
+   "rule": "report.maintainer",
+   "outcome": "apply"
+  },
+  {
+   "scope": "file",
+   "reason": "personal_data",
+   "author_verified": true,
+   "maintainer": false,
+   "rule": "report.verified_author",
+   "outcome": "apply"
+  },
+  {
+   "scope": "file",
+   "reason": "personal_data",
+   "author_verified": true,
+   "maintainer": true,
+   "rule": "report.verified_author",
+   "outcome": "apply"
+  },
+  {
+   "scope": "file",
+   "reason": "not_my_work",
+   "author_verified": false,
+   "maintainer": false,
+   "rule": "report.review",
+   "outcome": "review"
+  },
+  {
+   "scope": "file",
+   "reason": "not_my_work",
+   "author_verified": false,
+   "maintainer": true,
+   "rule": "report.maintainer",
+   "outcome": "apply"
+  },
+  {
+   "scope": "file",
+   "reason": "not_my_work",
+   "author_verified": true,
+   "maintainer": false,
+   "rule": "report.verified_author",
+   "outcome": "apply"
+  },
+  {
+   "scope": "file",
+   "reason": "not_my_work",
+   "author_verified": true,
+   "maintainer": true,
+   "rule": "report.verified_author",
+   "outcome": "apply"
+  },
+  {
+   "scope": "file",
+   "reason": "retracted",
+   "author_verified": false,
+   "maintainer": false,
+   "rule": "report.review",
+   "outcome": "review"
+  },
+  {
+   "scope": "file",
+   "reason": "retracted",
+   "author_verified": false,
+   "maintainer": true,
+   "rule": "report.maintainer",
+   "outcome": "apply"
+  },
+  {
+   "scope": "file",
+   "reason": "retracted",
+   "author_verified": true,
+   "maintainer": false,
+   "rule": "report.verified_author",
+   "outcome": "apply"
+  },
+  {
+   "scope": "file",
+   "reason": "retracted",
+   "author_verified": true,
+   "maintainer": true,
+   "rule": "report.verified_author",
+   "outcome": "apply"
+  },
+  {
+   "scope": "file",
+   "reason": "incorrect",
+   "author_verified": false,
+   "maintainer": false,
+   "rule": "report.review",
+   "outcome": "review"
+  },
+  {
+   "scope": "file",
+   "reason": "incorrect",
+   "author_verified": false,
+   "maintainer": true,
+   "rule": "report.maintainer",
+   "outcome": "apply"
+  },
+  {
+   "scope": "file",
+   "reason": "incorrect",
+   "author_verified": true,
+   "maintainer": false,
+   "rule": "report.verified_author",
+   "outcome": "apply"
+  },
+  {
+   "scope": "file",
+   "reason": "incorrect",
+   "author_verified": true,
+   "maintainer": true,
+   "rule": "report.verified_author",
+   "outcome": "apply"
+  },
+  {
+   "scope": "file",
+   "reason": "other",
+   "author_verified": false,
+   "maintainer": false,
+   "rule": "report.review",
+   "outcome": "review"
+  },
+  {
+   "scope": "file",
+   "reason": "other",
+   "author_verified": false,
+   "maintainer": true,
+   "rule": "report.maintainer",
+   "outcome": "apply"
+  },
+  {
+   "scope": "file",
+   "reason": "other",
+   "author_verified": true,
+   "maintainer": false,
+   "rule": "report.verified_author",
+   "outcome": "apply"
+  },
+  {
+   "scope": "file",
+   "reason": "other",
+   "author_verified": true,
+   "maintainer": true,
+   "rule": "report.verified_author",
+   "outcome": "apply"
+  },
+  {
+   "scope": "file",
+   "reason": "author_request",
+   "author_verified": false,
+   "maintainer": false,
+   "rule": "report.review",
+   "outcome": "review"
+  },
+  {
+   "scope": "file",
+   "reason": "author_request",
+   "author_verified": false,
+   "maintainer": true,
+   "rule": "report.maintainer",
+   "outcome": "apply"
+  },
+  {
+   "scope": "file",
+   "reason": "author_request",
+   "author_verified": true,
+   "maintainer": false,
+   "rule": "report.verified_author",
+   "outcome": "apply"
+  },
+  {
+   "scope": "file",
+   "reason": "author_request",
+   "author_verified": true,
+   "maintainer": true,
+   "rule": "report.verified_author",
+   "outcome": "apply"
+  },
+  {
+   "scope": "map",
+   "reason": "copyright",
+   "author_verified": false,
+   "maintainer": false,
+   "rule": "report.review",
+   "outcome": "review"
+  },
+  {
+   "scope": "map",
+   "reason": "copyright",
+   "author_verified": false,
+   "maintainer": true,
+   "rule": "report.review",
+   "outcome": "review"
+  },
+  {
+   "scope": "map",
+   "reason": "copyright",
+   "author_verified": true,
+   "maintainer": false,
+   "rule": "report.verified_author",
+   "outcome": "apply"
+  },
+  {
+   "scope": "map",
+   "reason": "copyright",
+   "author_verified": true,
+   "maintainer": true,
+   "rule": "report.verified_author",
+   "outcome": "apply"
+  },
+  {
+   "scope": "map",
+   "reason": "personal_data",
+   "author_verified": false,
+   "maintainer": false,
+   "rule": "report.review",
+   "outcome": "review"
+  },
+  {
+   "scope": "map",
+   "reason": "personal_data",
+   "author_verified": false,
+   "maintainer": true,
+   "rule": "report.review",
+   "outcome": "review"
+  },
+  {
+   "scope": "map",
+   "reason": "personal_data",
+   "author_verified": true,
+   "maintainer": false,
+   "rule": "report.verified_author",
+   "outcome": "apply"
+  },
+  {
+   "scope": "map",
+   "reason": "personal_data",
+   "author_verified": true,
+   "maintainer": true,
+   "rule": "report.verified_author",
+   "outcome": "apply"
+  },
+  {
+   "scope": "map",
+   "reason": "not_my_work",
+   "author_verified": false,
+   "maintainer": false,
+   "rule": "report.review",
+   "outcome": "review"
+  },
+  {
+   "scope": "map",
+   "reason": "not_my_work",
+   "author_verified": false,
+   "maintainer": true,
+   "rule": "report.review",
+   "outcome": "review"
+  },
+  {
+   "scope": "map",
+   "reason": "not_my_work",
+   "author_verified": true,
+   "maintainer": false,
+   "rule": "report.verified_author",
+   "outcome": "apply"
+  },
+  {
+   "scope": "map",
+   "reason": "not_my_work",
+   "author_verified": true,
+   "maintainer": true,
+   "rule": "report.verified_author",
+   "outcome": "apply"
+  },
+  {
+   "scope": "map",
+   "reason": "retracted",
+   "author_verified": false,
+   "maintainer": false,
+   "rule": "report.review",
+   "outcome": "review"
+  },
+  {
+   "scope": "map",
+   "reason": "retracted",
+   "author_verified": false,
+   "maintainer": true,
+   "rule": "report.review",
+   "outcome": "review"
+  },
+  {
+   "scope": "map",
+   "reason": "retracted",
+   "author_verified": true,
+   "maintainer": false,
+   "rule": "report.verified_author",
+   "outcome": "apply"
+  },
+  {
+   "scope": "map",
+   "reason": "retracted",
+   "author_verified": true,
+   "maintainer": true,
+   "rule": "report.verified_author",
+   "outcome": "apply"
+  },
+  {
+   "scope": "map",
+   "reason": "incorrect",
+   "author_verified": false,
+   "maintainer": false,
+   "rule": "report.review",
+   "outcome": "review"
+  },
+  {
+   "scope": "map",
+   "reason": "incorrect",
+   "author_verified": false,
+   "maintainer": true,
+   "rule": "report.review",
+   "outcome": "review"
+  },
+  {
+   "scope": "map",
+   "reason": "incorrect",
+   "author_verified": true,
+   "maintainer": false,
+   "rule": "report.verified_author",
+   "outcome": "apply"
+  },
+  {
+   "scope": "map",
+   "reason": "incorrect",
+   "author_verified": true,
+   "maintainer": true,
+   "rule": "report.verified_author",
+   "outcome": "apply"
+  },
+  {
+   "scope": "map",
+   "reason": "other",
+   "author_verified": false,
+   "maintainer": false,
+   "rule": "report.review",
+   "outcome": "review"
+  },
+  {
+   "scope": "map",
+   "reason": "other",
+   "author_verified": false,
+   "maintainer": true,
+   "rule": "report.review",
+   "outcome": "review"
+  },
+  {
+   "scope": "map",
+   "reason": "other",
+   "author_verified": true,
+   "maintainer": false,
+   "rule": "report.verified_author",
+   "outcome": "apply"
+  },
+  {
+   "scope": "map",
+   "reason": "other",
+   "author_verified": true,
+   "maintainer": true,
+   "rule": "report.verified_author",
+   "outcome": "apply"
+  },
+  {
+   "scope": "map",
+   "reason": "author_request",
+   "author_verified": false,
+   "maintainer": false,
+   "rule": "report.review",
+   "outcome": "review"
+  },
+  {
+   "scope": "map",
+   "reason": "author_request",
+   "author_verified": false,
+   "maintainer": true,
+   "rule": "report.review",
+   "outcome": "review"
+  },
+  {
+   "scope": "map",
+   "reason": "author_request",
+   "author_verified": true,
+   "maintainer": false,
+   "rule": "report.verified_author",
+   "outcome": "apply"
+  },
+  {
+   "scope": "map",
+   "reason": "author_request",
+   "author_verified": true,
+   "maintainer": true,
+   "rule": "report.verified_author",
+   "outcome": "apply"
+  }
+ ]
+}
