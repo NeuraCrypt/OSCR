@@ -41,7 +41,8 @@ from "Next step".
 | 07 Releases, packages and environments | night/phase-07-releases | **done** 2026-09-29, pushed (10 commits: E1 to E6, E4's fixes after the browser, the close in three parts) |
 | 08 Social, discovery, notifications and search | night/phase-08-social | **done** 2026-09-29, pushed (7 commits: E1 to E5, the close in two parts) |
 | 10 Automation and integrations | night/phase-10-automation | **done** 2026-09-29, pushed (7 commits: E1 to E5, the close in two parts) |
-| 16 Content, abuse and rules | night/phase-16-rules | **next, awaiting the owner's go**: branch created from night/phase-10-automation, nothing built on it. (The older `night/phase-16-content-rules`, made from phase 07 and empty, is superseded.) |
+| 16 Content, abuse and rules | night/phase-16-rules | **done** 2026-09-29, pushed (9 commits: the merge of `main`, E1 to E5, the close in three parts) |
+| 14 The `oscr` command line | night/phase-14-command-line | **next, awaiting the owner's go**: branch created from night/phase-16-rules, nothing built on it. |
 
 ## Phase 00: what it produced
 
@@ -315,10 +316,40 @@ from "Next step".
   `check --every-route` ok; strict `tsc` clean (worker and tests; page scripts, but for `src/config.ts`'s
   `import.meta.env`, as before); the end-to-end run: every check passed (186).
 
+## Phase 16: what it produced
+
+- **`main` merged in first** (57b3bff; D16-1 to D16-3): its removal request page, its static file budget
+  (the per-entity pages deleted: an author's Follow and profile link moved into the entity renderer;
+  the old reader page deleted: "Report a mismatch" moved into the reader's legend, every link to
+  `/paper/<slug>/code/` repointed), its code-first reader, OpenAlex, the nightly fixes. The community
+  migration `0003_roles_by_paper.sql` renumbered **0004** (main's 0003 is `0003_removal_requests.sql`).
+  The import page reads main's 2-character lookup shards. The budget with the GitHub side:
+  **`STATIC_PAPERS` 5,700, `FIXED_FILES_MAX` 3,600** (the same 15,000; CLAUDE.md updated).
+- Reports and the owner's queue (E1): `migrations/d1-forge/0010_moderation.sql` (`content_reports`,
+  `moderation`, `blocks`, `interaction_limits`, `rights_requests`; `actions` with six kinds;
+  `research_comments` with "low-quality"; one index at most per table), `moderation-core.ts`,
+  `moderation.ts`, `hidden.ts`, `turnstile.ts`; `/report/`, `/moderation/`, `/account/moderation/`,
+  `/notices/`; the Mac's `oscr/moderation.py` (layer, research, social, Explore, `forge/moderation.json`,
+  the paper page's line).
+- Blocks and interaction limits (E2): `blocks.ts`, `/settings/blocked/`, Block buttons.
+- The human check on every public form, the switch, abuse limits, retention (E3): `requireHuman`,
+  `forgeOpen`, the setup script's step 9, the bad-token limit, `oscr/retention.py`.
+- The rules and privacy pages (E4): `/terms/`, `/acceptable-use/`, `/guidelines/`, `/privacy/`,
+  `/limits/`, `/copyright/`, `/data-rights/` (drafts), `rights.ts`.
+- Takedowns and known malware (E5): copyright notices need an account; `oscr/malware.py`
+  (`oscr malware scan|status`).
+- The close: the end-to-end run's phase 16 checks (216 in all, every one passed; the Worker started
+  again for FORGE_OPEN and the always-failing Turnstile key); the security review and its fixes; docs
+  `docs/MODERATION.md`, `docs/POLICIES.md`, `FORGE.md`, `ARCHITECTURE.md`, CLAUDE.md "Content rules",
+  decisions D16-1 to D16-21; screenshots `docs/night-screenshots/phase-16/` (30: desktop and phone).
+- Tests at the close: pytest 535 passed; ruff clean; `npm test` 1,401 passed under Node 26 and Node 22;
+  build 65 pages, 400 files with the fixture; `check --every-route` ok, within the file budget;
+  `check:growth` ok; strict `tsc` clean (worker and tests; page scripts but for `src/config.ts`'s
+  `import.meta.env`, as before); the end-to-end run: every check passed (216).
+
 ## Next step
 
-Phase 16, content, abuse and rules, on branch `night/phase-16-rules` (created from
-`night/phase-10-automation`, nothing built on it): **it awaits the owner's go**. It must cover what
-phases 08 and 10 added (DECISIONS.md D08-17 and D10-14) before `FORGE_OPEN` opens anything. The owner's
-actions are in `docs/NIGHT_REPORT.md` §2; until the App exists, everything runs against the fake GitHub
-and the in-memory double.
+Phase 14, the `oscr` command line, on branch `night/phase-14-command-line` (created from
+`night/phase-16-rules`, nothing built on it): **it awaits the owner's go**. Before any public opening,
+the owner's steps are in `docs/NIGHT_REPORT.md` (the Turnstile widget, the migrations, the policy
+drafts, then `FORGE_OPEN`).
