@@ -16,6 +16,9 @@
 //   forge/layer/NN.json → public/forge/layer/NN.json (fetched by the repository pages, /r/*:
 //                                                     OSCR's layer for signed-out readers,
 //                                                     oscr/forgelayer.py; absent: none)
+//   social/NN.json, social/explore.json → public/social/… (night phase 08: stars, follows and
+//                                                     public profiles as of last night, the Explore
+//                                                     page; oscr/social.py; absent: none)
 import { createHash } from "node:crypto";
 import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 
@@ -236,6 +239,34 @@ if (existsSync(`${source}/forge/research`)) {
   }
 }
 
+// The social layer for signed-out readers (night phase 08): at most 64 shards, social/NN.json, NN =
+// the first byte of the key's SHA-256 mod 64 (src/lib/social.ts socialShard), each an object keyed by
+// "repo:…", "paper:doi:10.…", "topic:…", "person:<handle>" or "owner:<forge>:<login>"; and the Explore
+// page's social/explore.json (oscr/social.py). Only well-formed keys in their own shard, and no email
+// address.
+const SOCIAL_KEY = /^(?:repo:(?:github|memory):\d{1,20}|paper:doi:10\.\S{1,200}|topic:[a-z0-9][a-z0-9-]{0,49}|person:(?:[a-z0-9][a-z0-9-]{0,38}|\d{4}-\d{4}-\d{4}-\d{3}[\dX])|owner:(?:github|memory):[a-z0-9][a-z0-9-]{0,38})$/;
+rmSync("public/social", { recursive: true, force: true });
+let socialShards = 0;
+let socialKeys = 0;
+if (existsSync(`${source}/social`)) {
+  mkdirSync("public/social", { recursive: true });
+  for (const name of readdirSync(`${source}/social`).filter((n) => /^\d{2}\.json$/.test(n) && Number(n.slice(0, 2)) < 64)) {
+    const clean = {};
+    for (const [key, e] of Object.entries(JSON.parse(readFileSync(`${source}/social/${name}`, "utf8")))) {
+      const shard = String(createHash("sha256").update(key).digest()[0] % 64).padStart(2, "0");
+      if (!SOCIAL_KEY.test(key) || `${shard}.json` !== name || !e || typeof e !== "object" || Array.isArray(e)) continue;
+      clean[key] = scrub(e);
+      socialKeys += 1;
+    }
+    writeFileSync(`public/social/${name}`, JSON.stringify(clean));
+    socialShards += 1;
+  }
+  if (existsSync(`${source}/social/explore.json`)) {
+    const explore = JSON.parse(readFileSync(`${source}/social/explore.json`, "utf8"));
+    if (explore && typeof explore === "object" && !Array.isArray(explore)) writeFileSync("public/social/explore.json", JSON.stringify(scrub(explore)));
+  }
+}
+
 const withCode = catalog.articles.filter((a) => a.code.length > 0).length;
 const withPage = catalog.articles.filter((a) => a.page === true || a.code.length > 0).length;
 const aligned = catalog.articles.filter((a) => a.alignment?.pairs > 0).length;
@@ -246,5 +277,6 @@ console.log(
 console.log(
   `entities: ${Object.entries(entities).map(([k, n]) => `${n} ${k}`).join(", ")}; ` +
     `DOI lookup: ${looked} papers in ${shards} shards; ${detailed} full paper pages; ` +
-    `forge layer: ${layered} repositories in ${layerShards} shards; research issues: ${researched} in ${researchShards} shards`,
+    `forge layer: ${layered} repositories in ${layerShards} shards; research issues: ${researched} in ${researchShards} shards; ` +
+    `social layer: ${socialKeys} entries in ${socialShards} shards`,
 );

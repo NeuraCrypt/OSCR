@@ -16,6 +16,7 @@
 // the tracing maps, exactly 64 shards /forge/traced/NN.json.
 //
 // It prints the number of files: a Worker's static assets stop at 20,000 per version.
+import { createHash } from "node:crypto";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
@@ -107,6 +108,32 @@ for (const name of research) {
   }
   if (!entries || typeof entries !== "object" || Array.isArray(entries)) problems.push(`public/forge/research/${name}: not an object`);
   else for (const key of Object.keys(entries)) if (!/^[1-9]\d{0,9}$/.test(key) || Number(key) % 64 !== Number(m[1])) problems.push(`public/forge/research/${name}: key ${key}`);
+}
+
+// The social layer for signed-out readers (night phase 08; scripts/data.mjs copies it when the export
+// has it): at most 64 shards, 00.json to 63.json, each an object whose keys sit in the shard the first
+// byte of their SHA-256 names, mod 64; the Explore page's explore.json; no email address anywhere.
+const social = existsSync("public/social") ? readdirSync("public/social") : [];
+if (social.filter((n) => n !== "explore.json").length > 64) problems.push(`${social.length} social shards: 64 at most`);
+for (const name of social) {
+  const m = /^(\d{2})\.json$/.exec(name);
+  if (name !== "explore.json" && (!m || Number(m[1]) > 63)) {
+    problems.push(`public/social/${name}: not a shard (00.json to 63.json) nor explore.json`);
+    continue;
+  }
+  const text = readFileSync(`public/social/${name}`, "utf8");
+  if (/[\w.+-]+@[\w-]+(?:\.[\w-]+)*\.[A-Za-z]{2,}/.test(text)) problems.push(`public/social/${name}: an email address`);
+  let entries;
+  try {
+    entries = JSON.parse(text);
+  } catch {
+    problems.push(`public/social/${name}: not JSON`);
+    continue;
+  }
+  if (!entries || typeof entries !== "object" || Array.isArray(entries)) problems.push(`public/social/${name}: not an object`);
+  else if (m) {
+    for (const key of Object.keys(entries)) if (createHash("sha256").update(key).digest()[0] % 64 !== Number(m[1])) problems.push(`public/social/${name}: key ${key} out of its shard`);
+  }
 }
 
 // The tracing maps of the repository pages (night phase 02, E4): exactly 64 shards built from the

@@ -379,6 +379,17 @@ def main(argv: list[str] | None = None) -> int:
     fg.add_argument("--instance", choices=["sandbox", "zenodo"], default=cfg.get("OSCR_ZENODO_INSTANCE", "sandbox"),
                     help="poll: the Zenodo of a release map's deposit (night phase 07; the sandbox by default)")
 
+    so = sp.add_parser("social", help="the social layer (night phase 08): the static shards of stars, follows and "
+                                      "profiles, the Explore page, the collections (docs/SOCIAL.md)")
+    so.add_argument("action", choices=["layer", "collections", "accept", "decline"])
+    so_where = so.add_mutually_exclusive_group()
+    so_where.add_argument("--local", action="store_true", help="the local D1s of `wrangler dev --env local`")
+    so_where.add_argument("--remote", action="store_true", help="the Cloudflare databases oscr_forge and oscr_community")
+    so.add_argument("--persist-to", default="", help="the local D1's state folder, when not website/.wrangler/state")
+    so.add_argument("--export", default="data/public", help="layer: the public export, whose social/ the files go to")
+    so.add_argument("--handle", default="", help="accept, decline: the person who proposed the list (GitHub login or ORCID iD)")
+    so.add_argument("--list", type=int, default=0, help="accept, decline: the list's number")
+
     n = sp.add_parser("nightly", help="the publication: public catalogue, then Hugging Face and the website")
     n.add_argument("--out", default="data/public", help="a separate folder, only ever generated in public mode")
     n.add_argument("--dataset", default=cfg.get("OSCR_HF_DATASET", ""), help="Hugging Face user/dataset (empty: send nothing)")
@@ -470,6 +481,14 @@ def main(argv: list[str] | None = None) -> int:
                     print(f"{now()} forge layer: " + forgelayer.write(con, forge_d1, out), flush=True)
                 except (Exception, SystemExit) as e:
                     errors.append(f"Forge layer: {e}")
+                # Night phase 08: the social layer's shards and the Explore page (docs/SOCIAL.md).
+                from . import social
+                try:
+                    print(f"{now()} social layer: " + social.write(
+                        community.open_d1("remote", settings=cfg, database="oscr_forge"),
+                        community.open_d1("remote", settings=cfg), out, con=con), flush=True)
+                except (Exception, SystemExit) as e:
+                    errors.append(f"Social layer: {e}")
             if a.dataset:
                 try:
                     print(f"{now()} {publish.publish_hf(out, a.dataset)}", flush=True)
@@ -540,6 +559,11 @@ def main(argv: list[str] | None = None) -> int:
             print(_jobs(con, a, cfg, client, opts))
         elif a.command == "forge":
             print(_forge(con, a, cfg, client))
+        elif a.command == "social":
+            from . import social
+            print(social.command(con, a.action, target="remote" if a.remote else "local" if a.local else None,
+                                 out=Path(a.export), settings=cfg, persist_to=Path(a.persist_to) if a.persist_to else None,
+                                 handle=a.handle, list_id=a.list))
         elif a.command == "zenodo":
             _zenodo(con, a)
         elif a.command == "d1":
