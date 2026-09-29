@@ -362,7 +362,9 @@ account page says that signing in is not set up yet; the rest of the site deploy
 
 ## Limits and what comes next
 
-- No account deletion, no unlinking, no "sign out everywhere" yet (the index is there).
+- No unlinking, no "sign out everywhere" yet (the index is there). An account is deleted on request, on
+  the page `/data-rights/` (2026-09-29): the Mac deletes its rows (sessions, identities, roles, claims and
+  requests, the account last) at its next poll (`oscr/rights.py`; docs/CONTRIBUTIONS.md "Data rights").
 - Maintainer claims only for forge repositories (Zenodo, OSF… have no owner in their address).
   Author claims by hand (a paper whose metadata lacks the iD) are built (Phase 6); pending claims
   are decided by the owner (`oscr claims`) until the moderation of Phase 7.

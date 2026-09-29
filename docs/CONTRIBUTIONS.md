@@ -1,17 +1,18 @@
 # Contributions (Phase 6)
 
 What a signed-in reader asks of the registry — submit a paper and its code, claim a paper, correct a
-record, validate a tracing map, add the badge, request a removal — and how the Mac answers. Live since
-2026-09-28.
+record, validate a tracing map, add the badge, request a removal, use their data rights — and how the
+Mac answers: by the automatic moderator's published rules (there is no human moderator on duty), the
+owner deciding only what the rules leave. Live since 2026-09-28; the data rights since 2026-09-29.
 The steps marked **[owner]** are at the end.
 
 | piece | where |
 |---|---|
-| the tables (D1 `oscr_community`, migrations 2 and 3) | `migrations/d1-community/0002_contributions.sql`; `0003_removal_requests.sql` (the removal request made whole, 2026-09-29) |
-| the routes (the Worker's code) | `website/worker/contributions/` (`handleContributions`), `website/worker/account/guard.ts` (session, CSRF, Origin: shared with the accounts) |
-| the pages | `/submit/` (`src/pages/submit.astro`, `src/scripts/submit.ts`); `/removal/` (`src/pages/removal.astro`, `src/scripts/removal.ts`; its rules, shared with the Worker: `src/lib/removal.ts`); a paper's Contribute section (`src/components/paper/Contribute.astro`, `src/scripts/paper-actions.ts`); the account page (`src/pages/account.astro`, `src/scripts/account.ts`); the badge (`src/pages/badge.svg.ts`) |
-| the Mac's side | `oscr/jobs.py` (`oscr jobs`, `oscr claims`, `oscr reports`, `oscr submissions`); `oscr/migrations/0006_contributions.sql` (`link_edit`, `article.withdrawn`); `oscr/migrations/0008_withheld.sql` (`withheld`: a removal narrower than a record) and `catalog.withheld`; `oscr/community.py` (the `paper_repo` facts, the remote push, D1 read and written) |
-| the tests | `tests/test_jobs.py`, `tests/test_removals.py`, `tests/test_community.py`; `website/tests/contributions/` (`removal.test.ts`); the local end-to-end run `website/tests/account/e2e.sh`, with the removal page in a headless Chrome (`tests/contributions/removal-e2e.ts`) |
+| the tables (D1 `oscr_community`, migrations 2, 3 and 4) | `migrations/d1-community/0002_contributions.sql`; `0003_removal_requests.sql` (the removal request made whole, 2026-09-29); `0004_data_rights.sql` (the data-rights requests, and `jobs` taking their kind, 2026-09-29) |
+| the routes (the Worker's code) | `website/worker/contributions/` (`handleContributions`), `website/worker/rights/` (`handleRights`: the data rights), `website/worker/account/guard.ts` (session, CSRF, Origin: shared with the accounts) |
+| the pages | `/submit/` (`src/pages/submit.astro`, `src/scripts/submit.ts`); `/removal/` (`src/pages/removal.astro`, `src/scripts/removal.ts`; its rules, shared with the Worker: `src/lib/removal.ts`); a paper's Contribute section (`src/components/paper/Contribute.astro`, `src/scripts/paper-actions.ts`); the account page (`src/pages/account.astro`, `src/scripts/account.ts`); the badge (`src/pages/badge.svg.ts`); `/data-rights/` (`src/pages/data-rights.astro`, `src/scripts/data-rights.ts`; its rules, shared with the Worker: `src/lib/rights.ts`) |
+| the Mac's side | `oscr/jobs.py` (`oscr jobs`, `oscr claims`, `oscr reports`, `oscr submissions`); `oscr/migrations/0006_contributions.sql` (`link_edit`, `article.withdrawn`); `oscr/migrations/0008_withheld.sql` (`withheld`: a removal narrower than a record) and `catalog.withheld`; `oscr/moderation.py` (the automatic moderator); `oscr/rights.py` (`oscr rights`: the data rights) and `oscr/contacts.py` with `oscr/migrations/0009_contact_suppressed.sql` (the suppression list); `oscr/community.py` (the `paper_repo` facts, the remote push, D1 read and written) |
+| the tests | `tests/test_jobs.py`, `tests/test_removals.py`, `tests/test_moderation.py`, `tests/test_rights.py`, `tests/test_community.py`; `website/tests/contributions/` (`removal.test.ts`, `moderation.test.ts`, `rights.test.ts`); the local end-to-end run `website/tests/account/e2e.sh`, with the removal page in a headless Chrome (`tests/contributions/removal-e2e.ts`) |
 
 Cost: **zero**. Everything runs on Cloudflare's free plan (figures below), the Mac, and Zenodo's
 sandbox; no paid service, no email.
@@ -30,16 +31,19 @@ doi`: `harvest.scan_article`), verifies the submitter's links (commit, license, 
 the matches with the paper's paragraphs, and writes a **draft** back: the record as it would be
 published. The submitter reviews it on the account page, corrects the links (up to ten times: the
 Mac reads them again) and publishes it. When the submitter's ORCID iD is among the paper's authors
-(or the owner made them one), publication is immediate; otherwise the owner decides (`oscr
-submissions`). Published, the links become the submitter's corrections of the record, and a new
+(or the owner made them one), publication is immediate; otherwise the moderator's rules decide
+("Moderation", below): published when each link is proven the paper's, else it waits for the owner
+(`oscr submissions`), 30 days at most. Published, the links become the submitter's corrections of the record, and a new
 version. An off-topic paper (D7) is refused, in words.
 
 **Claim** (a paper's Contribute section). Phase 5 already makes a verified author of anyone whose
 ORCID iD the paper's metadata lists. Anyone else says why they are an author (a statement, an
-optional web page): a pending claim, which the owner accepts (`oscr claims accept`: the
-`verified_author` role, granted by the owner, which the automatic verification never takes back) or
-refuses, with a word the claimant reads. Phase 5's maintainer claims that GitHub cannot settle join
-the same queue.
+optional web page): a pending claim, which the moderator's rules verify when Crossref's automatic
+update put the paper in the claimant's ORCID record ("Moderation", below); otherwise it waits for the
+owner, who accepts it (`oscr claims accept`: the `verified_author` role, granted by the owner, which
+the automatic verification never takes back) or refuses it, with a word the claimant reads — 30 days
+at most, then the rules close it. Phase 5's maintainer claims that GitHub cannot settle join the same
+queue.
 
 **Correct a record** (a verified author of the paper, or a maintainer of one of its code
 repositories). Well-defined changes of its links, never markup: add a link (code or data; checked
@@ -100,28 +104,35 @@ demand; the account page lists the reader's requests with links to them.
   work, a retracted paper, an incorrect record (the page suggests the correction flow first, and links
   to it, but allows the request), another reason. A **justification** of 30 to 2,000 characters,
   refused with a clear message when it holds an email address (or an at sign). An optional **evidence
-  link**, https only. **Two confirmations**: the information is accurate; a moderator reviews every
-  request, and what can follow.
+  link**, https only. **Two confirmations**: the information is accurate; the requester understands how
+  requests are decided (the moderation policy, `/policies/moderation/`) and what can follow.
 - **Review, then send.** The page checks the request with the Worker's own rules (`src/lib/removal.ts`),
   then shows a summary of everything; **nothing is sent before "Confirm and send"**. The receipt gives
-  the request's number, its status (open) and when a decision takes effect.
+  the request's number, its status (open), what the rules will do with it (`report.expected`) and when a
+  decision takes effect.
 - **Revisited**, the page shows the request: open (it may be completed: what is sent replaces it, and
-  it keeps its number), accepted or refused, with the moderator's words. One request per account and
-  record; a decided one is not asked again.
-- **The owner decides** (`oscr reports list`, `oscr reports accept|reject <n> [--message "…"]`). Accepted,
-  what the request names leaves every public output **at the next nightly publication** (04:17, the
-  Mac's local time), while the Mac keeps everything:
+  it keeps its number), accepted or refused, with the decision's words (the rules' or the owner's). One
+  request per account and record; a refused one is asked again only in a way the rules decide at once.
+- **The rules decide** ("Moderation", below): a verified author's request is applied at once, a trusted
+  maintainer's for their own code too, copies are hidden at once for copyright or personal data; the
+  rest waits for the owner (`oscr reports list`, `oscr reports accept|reject <n> [--message "…"]`), 30
+  days at most — or, asked for personal data, until the owner answers it, within one month (never closed
+  unanswered). Accepted, what the request names leaves every public output **at the next nightly
+  publication** (04:17, the Mac's local time), while the Mac keeps everything:
   - the whole record: `article.withdrawn` says when and why; the record leaves the site, the lookup,
     the search's D1, the community facts and the open data, like an off-topic paper;
   - the copies of the paper's scripts, of one repository or of one file (`withheld`, migration 8): their
     text leaves the site's lots of scripts, the public database and the Hugging Face scripts dataset
-    (at its next build, a repository withheld loses its manifest, a file its entry); the files stay listed with their link
-    to the source, at the verified commit, and the reader says "withheld at a removal request";
+    (at its next build, a repository withheld loses its manifest, a file its entry). Unlike a file held back
+    for its license, which the reader's browser shows from its source, a withheld file is **neither copied nor
+    shown from its source**: it stays listed, with its link to the source at the verified commit and the note
+    "Withheld from this site at a removal request: read it at the source", and nothing fetches it;
   - the tracing map: its Map section says it is withheld, with neither digest (nothing to validate: a
     validation that comes anyway is refused, in words), nor matches, nor validations, nor DOI on the
     site, in the open data and in the search's rows.
 
-  Rejected, nothing changes; the requester reads the owner's words either way.
+  Rejected, nothing changes; the requester reads the decision's words either way. The owner may reverse
+  what the rules applied (`oscr reports reverse <n>`): what was withheld or withdrawn comes back.
 
 ## Moderation: the automatic moderator (decided 2026-09-29)
 
@@ -158,6 +169,7 @@ same kind of filter first, and hold the text when unsure.
 | removal of copies (a repository, a file, "the scripts") by a trusted maintainer of that code (owner or public organization member on GitHub, as the maintainer claim's `via` keeps it, or made one by the owner) | `report.maintainer` | applied at once, to the repositories they maintain; a contributor's request follows the rules for anyone | 1 |
 | removal of copies for copyright or personal data, by anyone else | `report.hide_at_once` | hidden at once (`withheld`), the request accepted with words that say the operator may restore it. **Guards**: at most 3 an account and 30 in all per 24 hours; not when the same justification (case, accents and punctuation aside) came with 3 requests in 7 days; not when the owner refused or reversed this request before. A guard sends it to the review | 1 |
 | any other removal (a whole record, a map, another reason, a guard) | `report.review` → `report.expired` | waits for the owner, nothing hidden; after 30 days, closed without removal (`rejected`), with how to ask again | 0, then 1 |
+| the same, asked for personal data | `report.personal_data` | waits for the owner, nothing hidden, **never closed by the rules**: a request under the GDPR, which the owner answers within one month (`moderation.one_month_after`); the owner's list and `oscr jobs status` flag it with its deadline, and OVERDUE past it. A request recorded before this rule, found by the sweep, gets it instead of being closed | 0, then 1 |
 | a submission published by a non-author (`moderation`) | `submission.corroborated` / `submission.review` → `submission.expired` | published when each link is proven the paper's by what the submitter cannot forge: the paper itself cites it (a `link` whose `found_by` is the text, `text:…`, or the publisher's Crossref metadata, `crossref:…`; or the source repository an archive the paper cites names, `zenodo:source`), or its owner is proven an author (an author's public ORCID record links to the GitHub account: `MacEvidence`; or an account that is a verified author of the paper and a trusted maintainer of the repository: `owner_role_proof`). **Not proof**, since the submitter can write them: a README citing the paper (`repository.cites_article`), a GitHub display name, a DataCite record declaring the paper (anyone can deposit one). Otherwise it waits for the owner (the submitter told why, in its row's message), and 30 days later is refused with how to ask again | 1, and 1 |
 | a draft not published | `submission.draft_expired` | refused after 30 days; correcting it makes a new draft (and a new deadline) | 1 |
 | an author claim | `claim.paper_metadata`, `claim.crossref_orcid`; else `claim.review` → `claim.expired` | verified when the paper lists the ORCID iD, or the ORCID record holds the paper as Crossref's automatic update added it (client `0000-0001-9884-1913`, on no one's behalf: `crossref_listed`) — not a work the claimant added, nor one a search wizard added (Crossref Metadata Search, Scopus, Europe PMC: they carry an assertion origin); the role granted by `rules`, which the sign-in's sync never revokes; else checked again each day, and closed after 30 days (`rejected`, `decided_by = 'rules'`) | 2 (claim and role), or 1 |
@@ -193,7 +205,9 @@ closes what reached its deadline and checks the waiting author claims again (one
 id). The state is the job runner's (`data/community/state.db`): `moderation_log` (every automatic and
 owner decision: when, which request, which rule, what, the details the guards need) and `waits`
 (what waits, since when, until when, when to check again). The Worker decides nothing: it checks and
-records as before, and tells the requester what the rules will do.
+records as before, and tells the requester what the rules will do. **Retention**: each sweep deletes
+the log's entries older than 12 months (`LOG_RETENTION_DAYS`) and the job runner's requests settled that
+long ago, with their texts (`moderation.purge`); what still waits is kept, however old.
 
 **The owner's commands.**
 
@@ -213,7 +227,57 @@ stay, and a reopened request counts in them. The lookups (`MacEvidence`: ORCID's
 with the Mac's read-only token) cost a few requests per decision, cached a day; a failed lookup is
 no evidence, never a failed job.
 
-## The tables (`migrations/d1-community/0002_contributions.sql`, `0003_removal_requests.sql`)
+## Data rights (2026-09-29)
+
+A signed-in person uses their rights under the GDPR on one page, `/data-rights/`, reached from `/privacy/`,
+the account page and the removal page. It says what the registry may hold about them (their account,
+their requests, the contact details kept privately when they are a paper's author, their name in the
+published records), shows what the site's database holds about the account (`GET /api/rights`, with a
+JSON copy made in the browser), and takes one right at a time — access, erasure, objection,
+rectification, the account's deletion — with optional words (no email address: refused, and the Worker
+strips any), one confirmation and a receipt that says what happens and by when. The Worker records it
+(`rights`, migration 4: 3 rows with its job) with the account's own ORCID iD and which ORCID proved it,
+never an iD the form names, and its legal deadline (`due_at`, one month: `src/lib/moderation.ts`
+`oneMonthAfter`, the same as `moderation.one_month_after`, both tested on `tests/fixtures/one_month.json`).
+
+The Mac answers it in `oscr jobs poll` (`oscr/rights.py`), in the safe direction:
+
+| right | who asks | what happens | written |
+|---|---|---|---|
+| access | an account with an ORCID iD proved by orcid.org | answered at once (`rights.access`): the contact rows under that iD (and the rows without an iD that carry one of its addresses under the same family name), field by field, each address masked; the papers whose metadata list the iD; what the operator's computer keeps about the account (the log's entries, the requests' state, the corrections attributed to it). At most 80 rows listed, the answer at most 55,000 characters | 1 |
+| access | an iD from ORCID's sandbox | the account's part only: the sandbox's iDs are tests, so no contact detail is shown to them | 1 |
+| access | no ORCID iD (GitHub, Google) | the account's part at once; the contact details cannot be matched (a name, a login or a display name proves nothing): the request **waits for the owner**, flagged with its deadline | 1 |
+| erasure, objection | an account with an ORCID iD (either ORCID) | `contacts.forget`: the rows are deleted (as above; another author's row that shares one of the addresses loses the address only); the iD and the SHA-256 of each address join `contact_suppressed` (Mac migration 9), which `contacts.write` honours when a paper is read again and `contacts.table` when the private dataset is built; that dataset's next publication rewrites its history (below). Erasure and objection have the same effect | 1 |
+| erasure, objection | no ORCID iD | waits for the owner (`oscr rights erase <n> --row <paper>:<position>` for the rows found, or `--orcid`) | 1 |
+| rectification | anyone | waits for the owner (`oscr rights done <n> --message "…"` once corrected by hand, or `refuse` with the reasons) | 1 |
+| account | anyone | the account's rows deleted from D1, the account last (sessions, identities, roles, claims, submissions, edits, validations, reports, rights); on the Mac, its ORCID iD or GitHub login in `link_edit`, `field_provenance` and `version` replaced by `user:<its random id>`, the texts of its requests dropped from the job runner's state. What stays: the log (pseudonymous, 12 months), the `jobs` rows (a kind, a number, the random id, a time), what its requests changed in the public records, a validated map's DOI on Zenodo; D1's point-in-time recovery keeps 7 days of earlier states | its rows, about 2 each |
+| any | an iD that is not the account's own ORCID identity | refused (`rights.identity`), with nothing answered | 1 |
+
+**Never closed unanswered.** What waits for the owner is never put among the `waits` the sweep closes: it
+stays `waiting`, in the owner's list (`oscr rights list`: the deadline, the days left, OVERDUE past it;
+`oscr jobs status` counts them), until the owner answers (`done`, `refuse` — which adds the right to
+complain to a data protection authority —, `erase`). A request the Mac failed to answer after its five
+attempts goes to the owner the same way (`rights.hand_over`), never refused. A removal request asked for
+personal data that the rules cannot decide follows the same rule (`report.personal_data`).
+
+**The email address, shown to its owner?** Decided: **masked** (`rights.mask_email`: `j…e at domain`).
+The GDPR gives the person their own data, and CLAUDE.md's rule is about public display, but the only way
+from the Mac to the person's page is the site's D1 database, which holds no email address anywhere (every
+text column refuses an at sign), keeps 7 days of earlier states, and is Cloudflare's to host. The address
+is the one the paper publishes: the answer names the paper and where it was read (its full text, its
+Europe PMC record), where the person reads it in full. The same answer holds every other field in full.
+
+**The private dataset.** A Hugging Face dataset is a git repository: every earlier `contacts.parquet`
+stays in its history. So `contacts.publish`, when an erasure or an objection came since its last
+publication (`contact_suppressed.published_at` empty), uploads the new file, then squashes the history
+(`HfApi.super_squash_history`: the earlier commits cannot be retrieved), then deletes for good every
+stored file that is not the current one (`list_lfs_files`, `permanently_delete_lfs_files`); it refuses to
+delete anything when it cannot recognize the current file among them (the next publication tries again),
+and only then marks the entries published. The other private dataset, `opsecsystems/oscr-catalog`, is the
+public export (`catalog.public_db`, generated in public mode): it holds neither the contact rows nor the
+suppression list (both dropped), so there is nothing to rewrite there.
+
+## The tables (`migrations/d1-community/0002_contributions.sql`, `0003_removal_requests.sql`, `0004_data_rights.sql`)
 
 Times are Unix seconds. No email address anywhere: the free texts lose theirs in the Worker
 (`contributions/text.ts`) and the CHECKs refuse an at sign. The tables keyed by a number use their
@@ -228,6 +292,7 @@ query that needs it** — each one costs a row written per insert.
 | `validations` | the paper, the ORCID iD, the proof (`orcid`, `orcid-sandbox`), the map's digest, status (`queued`, `deposited`, `map_changed`, `refused`, `failed`), the Zenodo instance, DOI and record | `validations_user` (user, created_at): the same three reads |
 | `reports` | a removal request: the paper, the reason (`copyright`, `personal_data`, `not_my_work`, `retracted`, `incorrect`, `other`; `author_request` for a request made before migration 3), the justification (`details`), who asks (`requester_role`: `author`, `rights_holder`, `named_person`, `other`; '' before migration 3) and `author_verified`, the scope (`record`, `scripts`, `repository`, `file`, `map`) with `scope_repo` and `scope_path`, `evidence_url` (https only), `confirmed`, status (`open`, `accepted`, `rejected`), the owner's words, `updated_at` (completed while open) | `reports_user_target` UNIQUE (user, kind, paper): one request per account and record; the list; the limit. Migration 3 makes the table again (a CHECK cannot change in place), the rows copied as they are |
 | `claims` (Phase 5) | + `message`: the owner's words on a decided claim | Phase 5's `claims_user_target` serves the author claims too |
+| `rights` (migration 4) | a data-rights request: the right (`access`, `erasure`, `objection`, `rectification`, `account`), the person's words (`details`, no at sign), the ORCID iD of the account's ORCID identity and which ORCID proved it (`proof`: `orcid`, `orcid-sandbox`, ''), status (`open`, `waiting`, `done`, `refused`), the Mac's `answer` (JSON, at most 60,000 characters, no at sign), its words, `due_at` (the legal deadline: one month) | `rights_user` (user, created_at): the page's list, the one open request per right, the daily limit. Migration 4 also makes `jobs` again, so that it takes the kind `rights` (a CHECK cannot change in place), its rows and ids kept |
 | `paper_repo` | a fact pushed by the Mac: which forge repository is the code of which paper (a maintainer may then correct that record) | its key (repo, paper), WITHOUT ROWID: the Worker reads it by the whole key |
 
 No index on `roles (scope_kind, scope_id)` ("the verified authors of a paper"): every query of this
@@ -252,6 +317,8 @@ All under `/api/`, in the `ROUTES` table of `website/worker/index.ts`; every ans
 | `POST /api/claims` `{paper_id, statement, link}` | signed in | 202 `{status: "pending", claim}`; 200 `{status: "verified", already: true}` or a decided claim as it is; 400 `bad_paper`, `no_statement`, `bad_link`; 429 `too_many_claims` (20 pending), `too_many` |
 | `POST /api/edits` `{paper_id, as, repo, changes, note}` | a verified author, or a maintainer of the paper's code (`as: "maintainer"`) | 202 `{status: "queued", edit}`; 400 `bad_paper`, `no_changes`, `too_many_changes`, `bad_change`, `unknown_place`; 403 `not_author`, `not_allowed`; 422 `dead_links`; 429 |
 | `POST /api/validations` `{paper_id, map_digest}` | a verified author with an ORCID iD | 202 `{status: "queued", validation}`; 400 `bad_paper`, `bad_map`; 403 `not_author`; 409 `no_orcid`, `already_queued`, `already_validated`; 429 |
+| `GET /api/rights` | anyone | 200 `{signed_in: false, available}`; or `{signed_in: true, user, handles, orcid: {orcid, proof}, held: {identities, sessions, roles, requests}, requests, limits, csrf}`: what the site's database holds about the account, and its data-rights requests with their answers (20, newest first) |
+| `POST /api/rights` `{kind, details, confirm}` | signed in | 202 `{status: "open", request}` (with `expected`: what happens, by when); 400 `bad_kind`, `email_in_text`, `long_details`, `short_details` (a rectification says what), `not_confirmed` (each with `field`); 409 `already_open` (one open request per right, with it); 429 `too_many` (5 a day) |
 | `POST /api/reports` `{paper_id, role, scope, repo, path, reason, details, evidence_url, confirm_accurate, confirm_review}` | signed in | 202 `{status: "open", report}`; 200 `{status: "open", updated: true, report}` (completed while open); 400 `bad_paper`, `bad_role`, `bad_scope`, `no_code` (a scope but the record on a paper without code), `unknown_repo`, `unknown_file`, `bad_file`, `bad_reason`, `email_in_text`, `short_details`, `long_details`, `bad_evidence`, `not_confirmed` (each with `field`, the form's field); 404 `unknown_paper` (no page); 409 `already_decided`; 429; 503 `unavailable` (the Worker without its assets) |
 
 A removal request's `report` is `{id, paper_id, url, removal_url, role, author_verified, scope, repo,
@@ -270,7 +337,8 @@ Mac's to say.
 
 **Daily limits per account** (24 hours, counted from the account's rows through the indexes above:
 no counter, no write of their own): 10 submissions, 20 corrections, 10 validations, 10 removal
-requests, 10 author claims (and 20 claims pending at once, Phase 5's).
+requests, 10 author claims (and 20 claims pending at once, Phase 5's), 5 data-rights requests (and one
+open request per right).
 
 **The hint cookie.** `__Host-oscr_signed_in=1` (no `HttpOnly`, readable by the pages; set, extended
 and cleared with the session cookie; it grants nothing). A paper's page asks the Worker only when
@@ -294,6 +362,10 @@ oscr claims list                       # the claims that wait for you
 oscr claims accept|refuse <n> [--message "…"] --local|--remote
 oscr reports list | accept|reject <n> [--message "…"] --local|--remote   # who asks, what, why, the evidence
 oscr submissions list | accept|refuse <n> [--message "…"] --local|--remote
+oscr rights list [--auto-log]          # the data-rights requests that wait for you, each with its legal deadline
+oscr rights done|refuse <n> --message "…" --local|--remote        # your answer (a refusal says why)
+oscr rights erase <n> --orcid <iD> | --row <paper>:<position> … --local|--remote   # the rows you found, then done
+oscr contacts suppress-in --file <backup.db>   # the suppression list applied to a backup copy of the database
 oscr community push --remote           # the facts, paper_repo included (nightly with OSCR_COMMUNITY_PUSH=remote)
 ```
 
@@ -330,6 +402,9 @@ oscr community push --remote           # the facts, paper_repo included (nightly
 | manual author claim: new / asked again | 3 / 2 | 4 / 7 |
 | removal request (the page /removal/): new / completed while open (the requester's roles read once, 2026-09-29) | 3 / 2 | 9 / 11 |
 | removal request asked again after a refusal (reopened; not measured, by construction) | 2 | — |
+| data-rights request (the row, its index entry, the job; not measured, by construction) | 3 | — |
+| the page `/data-rights/`, signed in (`GET /api/rights`; not measured) | 0 | — |
+| the Mac's answer to a data-rights request / an account deleted | 1 / its rows and their index entries (about 2 per row) | — |
 | publication of a draft (the row, the job) | 2 | 8 |
 | revision of a draft (the row, the job; not measured, by construction) | 2 | — |
 | the account page's lists (`GET /api/contributions`) | 0 | 7 |
@@ -347,7 +422,7 @@ forge, once, then deltas.
 (`/api/contributions/paper`), a signed-out reader's 0; `/submit/` 1 (`/me`) and 1 per submission;
 `/removal/` 0 signed out (the lookup, a record or the top of a static page: static files), 1 signed in
 (`/api/contributions/paper`) and 1 per request sent; the account page 2 (`/me`, `/api/contributions`);
-each form 1.
+`/data-rights/` 0 signed out, 1 signed in (`/api/rights`) and 1 per request; each form 1.
 
 **CPU** (10 ms a request): measured in V8 (Node) with the test database and the mocked places
 included — a submission with five links 0.47 ms, a correction with ten changes 0.30 ms, a validation
@@ -366,6 +441,9 @@ CPU); a correction at most 20 (ten links added); nothing else asks outside.
   reference. The public database drops `link_edit`, blanks those references, and has no `version`
   table; the pages say "a correction by a verified author".
 - A validation from ORCID's sandbox is a test: never in a public output.
+- A data-rights request keeps no email address either: its answer masks every address (`j…e at
+  domain`), and the D1 CHECKs refuse an at sign in it. After an erasure, the Mac keeps the ORCID iD and
+  the SHA-256 of each address found with it (`contact_suppressed`), never the address.
 
 ## The owner's steps [owner]
 
@@ -389,6 +467,13 @@ request comes. They stay here for a reinstallation:
    that writes its columns: `cd website && npx wrangler d1 migrations apply oscr_community --remote`
    (it makes the `reports` table again, its rows kept; `sh tools/setup_cloudflare.sh` does the same).
    The Mac's migration 8 (`withheld`) applies itself when `oscr` next opens the database.
+7. **The data rights (2026-09-29)**: the database's migration 4, **before** deploying the Worker that
+   serves `/api/rights`: `cd website && npx wrangler d1 migrations apply oscr_community --remote` (it
+   makes `jobs` again with its rows and ids, and adds `rights`). The Mac's migration 9
+   (`contact_suppressed`) applies itself when `oscr` next opens the database. Then, whenever the list
+   waits for you: `oscr rights list`. The copies of the database made by hand before a migration
+   (`data/backups/`) are not edited by an erasure: `oscr contacts suppress-in --file <copy>` applies the
+   list to one, or delete the copies you no longer need.
 
 ## Local development and tests
 
@@ -411,9 +496,9 @@ request comes. They stay here for a reinstallation:
   (`CDP_PORT`, 9397 by default; `CHROME`, its binary; skipped, and said, without it), every address
   outside the machine blocked (a resolver that finds no other host, a proxy that answers nothing), opens
   `/removal/` without a paper and with a paper that has no page, then signed out, signs in with ORCID
-  and comes back, is refused an email address, reviews, goes back, confirms; the owner accepts (`oscr
-  reports accept --local`); the Mac withholds the file's copy and only it; the page and the account page
-  show the request accepted with the owner's words. `SCREENS=<folder>` saves the pages at 1280×860 and
+  and comes back, is refused an email address, reviews, goes back, confirms; the Mac's poll applies it (a
+  verified author's request: `report.verified_author`) and withholds the file's copy and only it; the page
+  and the account page show the request accepted with the rules' words. `SCREENS=<folder>` saves the pages at 1280×860 and
   390×844.
 
 ## Limits and what comes next
@@ -426,8 +511,8 @@ request comes. They stay here for a reinstallation:
   paper's own metadata.
 - A draft's matches need the paper's full text (Europe PMC): without it, they come after
   publication, when the harvester aligns the paper.
-- A record withdrawn by a removal request comes back only by hand (`article.withdrawn = ''`); so does
-  a copy or a map withheld (`DELETE FROM withheld WHERE …`).
+- A record withdrawn, or a copy or a map withheld, by a removal request comes back when the owner
+  reverses the request (`oscr reports reverse <n>`).
 - A removal request is one per account and record: completed while it is open; once refused, asked
   again only in a way the rules decide at once (above); the owner may still act by hand. A request names at most one repository or one
   file; a file past the 5,000 listed per repository is named in the justification, with its repository.
