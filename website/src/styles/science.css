@@ -681,6 +681,43 @@ p.editor-extra { margin: .3em 0; font-size: .9em; color: var(--muted); }
 p.metadata-check { margin: .3em 0; font-size: .9em; overflow-wrap: anywhere; }
 p.community-missing { font-size: .9em; color: var(--muted); }
 
+/* Pull requests and forks (night phase 04, E3): the list as ruled rows, the state said in a word
+   (Open, Draft, Merged, Closed) before the title, never a pill; the creation form as a ruled
+   section like the commit dialog; a fork's standing as a status line */
+form.pull-filter input[type="search"] { width: min(34em, 100%); }
+p.pull-quick { margin: .2em 0 .8em; font-size: .92em; }
+ul.pull-list { list-style: none; margin: 0 0 1em; padding: 0; }
+ul.pull-list li.pull-row { display: flex; gap: .6em; align-items: baseline; padding: .45em 0; border-bottom: 1px solid var(--rule); }
+ul.pull-list li.pull-row > div { min-width: 0; }
+ul.pull-list .title { margin: 0; overflow-wrap: anywhere; }
+ul.pull-list .line { margin: .1em 0 0; color: var(--muted); font-size: .9em; overflow-wrap: anywhere; }
+.pull-state { font-weight: bold; }
+.pull-state.ok { color: var(--ok); }
+.pull-state.muted { color: var(--muted); }
+p.pull-bulk { font-size: .92em; }
+section.pull-form { margin: 1em 0; padding: .4em .9em .6em; border: 1px solid var(--masthead); background: var(--bg-sidebar); }
+section.pull-form h2 { margin: .3em 0 .5em; font-size: 1.15em; overflow-wrap: anywhere; }
+section.pull-form input[type="text"], section.pull-form textarea, textarea.pull-text {
+  font: inherit; width: min(48em, 100%); padding: .15em .35em; border: 1px solid #777; border-radius: 0; box-sizing: border-box; background: var(--bg);
+}
+section.pull-form textarea, textarea.pull-text { min-height: 8em; resize: vertical; font-family: var(--font-code); font-size: .9em; }
+section.pull-form select { font: inherit; border-radius: 0; }
+section.pull-form p.explain { color: var(--muted); font-size: .92em; }
+section.pull-form fieldset.choices legend { font-weight: bold; }
+.pull-preview { margin: .4em 0; padding: .4em .8em; border: 1px solid var(--rule); background: var(--bg); }
+ul.pull-suggested { margin: .2em 0 .6em; padding-left: 1.3em; font-size: .92em; }
+.pull-summary { margin: .6em 0; padding: .2em .7em; border-left: 3px solid var(--rule); background: var(--bg); }
+.pull-summary p { margin: .25em 0; font-size: .92em; }
+.pull-summary p.traced-title { font-weight: bold; }
+p.closing { margin: .3em 0; font-size: .92em; }
+ul.fork-list { margin: .3em 0 1em; padding-left: 1.3em; }
+ul.fork-list li { margin: .2em 0; overflow-wrap: anywhere; }
+ul.fork-list .line { color: var(--muted); font-size: .92em; }
+p.fork-links { margin: .3em 0; font-size: .92em; }
+p.fork-status { margin: .3em 0; }
+form.fork-form p { margin: .5em 0; }
+form.fork-form .explain { color: var(--muted); font-size: .92em; }
+
 footer {
   max-width: var(--width); margin: 0 auto; padding: 1em;
   border-top: 1px solid var(--rule); font-size: .85em; color: var(--muted);
@@ -722,4 +759,7 @@ footer a { margin-right: 1em; }
   nav.docs-nav { position: static; flex-basis: auto; max-height: 16em; }
   section.readme h2.readme-name { margin-left: -.6em; margin-right: -.6em; padding-left: .6em; }
   .markdown-body img.align-right, .markdown-body img.align-left { float: none; margin: 0; }
+  /* Phase 04: the pull request forms take the column */
+  section.pull-form { padding-left: .6em; padding-right: .6em; }
+  form.pull-filter input[type="search"] { width: 100%; }
 }

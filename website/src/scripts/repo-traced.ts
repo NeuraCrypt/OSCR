@@ -108,13 +108,13 @@ lineMenuExtras.push(({ opened, path, selection }) => explainLines(settled.get(ke
 
 // ─── a commit's page ─────────────────────────────────────────────────────────
 
-/** The map links on the files a commit changed, and whether it changed their lines. */
-commitExtras.push(async (env: CodeEnv, commit: T.CommitDetail) => {
+/** The map links on the files a change touches (a commit against its parent, a pull request against
+ *  its merge base: `parent`), and whether it changed their lines. */
+export async function changeTouches(env: CodeEnv, files: readonly T.FileChangeSummary[], parent: string): Promise<Touched[]> {
   const all = await mapsOf(env);
-  const parent = commit.parents[0];
-  if (!all.length || !parent) return null;
+  if (!all.length) return [];
   const touched: Touched[] = [];
-  for (const f of commit.files.items) {
+  for (const f of files) {
     const oldPath = f.previousPath ?? f.path;
     const onFile = all.filter((m) => m.pairs.some((p) => p.path === oldPath));
     if (!onFile.length || f.status === "added") continue;
@@ -137,5 +137,15 @@ commitExtras.push(async (env: CodeEnv, commit: T.CommitDetail) => {
       }
     }
   }
-  return commitTouches(touched);
+  return touched;
+}
+
+/** The maps of the repository the page shows (phase 04: a pull request's files). */
+export const tracedMaps = (env: Pick<CodeEnv, "repo">): Promise<TracedMap[]> => mapsOf(env);
+
+/** The map links on the files a commit changed, and whether it changed their lines. */
+commitExtras.push(async (env: CodeEnv, commit: T.CommitDetail) => {
+  const parent = commit.parents[0];
+  if (!parent) return null;
+  return commitTouches(await changeTouches(env, commit.files.items, parent));
 });

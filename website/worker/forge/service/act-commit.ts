@@ -361,9 +361,12 @@ export const commitSpec: ActionSpec<CommitParsed, CommitDone> = {
         ? viewerPath(base, `tree/${branchSegments}/${segments(deleted.path.slice(0, deleted.path.lastIndexOf("/")))}/`)
         : viewerPath(base, `tree/${branchSegments}/`);
     const commitPage = viewerPath(base, `commit/${done.sha}/`) ?? base;
+    // Phase 04: the new branch's pull request, opened from the comparison's form in the registry.
+    const openPull = compare ? `${compare}?expand=1` : null;
     const links = [
       view ? { href: view, text: written ? (p.changes.length > 1 ? "The first file, as committed" : "The file, as committed") : "The folder, after the deletion" } : null,
       { href: commitPage, text: "The commit" },
+      openPull ? { href: openPull, text: `Open a pull request into ${p.branch}` } : null,
       compare ? { href: compare, text: `The comparison with ${p.branch}` } : null,
     ].filter((l): l is { href: string; text: string } => l !== null);
     return {

@@ -353,8 +353,8 @@ export interface Touched {
 }
 
 /** "Ask about a commit": the map links on the files a commit changed, and whether it changed
- *  their lines. */
-export function commitTouches(touched: readonly Touched[]): El | null {
+ *  their lines. `what`: who changes them ("This commit"; phase 04: "This pull request", "changes"). */
+export function commitTouches(touched: readonly Touched[], what: { subject: string; verb: string } = { subject: "This commit", verb: "changed" }): El | null {
   if (!touched.length) return null;
   const changed = touched.filter((t) => t.state === "changed");
   const unknown = touched.filter((t) => t.state === "unknown");
@@ -365,10 +365,10 @@ export function commitTouches(touched: readonly Touched[]): El | null {
     { class: "traced-note", role: "note" },
     h("p", { class: "traced-title" }, "Tracing maps"),
     changed.length
-      ? h("p", null, `This commit changed lines that ${changed.length === 1 ? "a tracing map links" : "tracing maps link"} to a paper:`)
-      : h("p", null, `This commit changed ${touched.length === 1 ? "a file" : "files"} a tracing map links, not the linked lines${unknown.length ? " as far as they can be found" : ""}.`),
+      ? h("p", null, `${what.subject} ${what.verb} lines that ${changed.length === 1 ? "a tracing map links" : "tracing maps link"} to a paper:`)
+      : h("p", null, `${what.subject} ${what.verb} ${touched.length === 1 ? "a file" : "files"} a tracing map links, not the linked lines${unknown.length ? " as far as they can be found" : ""}.`),
     changed.length ? h("ul", null, ...changed.map(item)) : null,
-    unknown.length ? h("p", null, `${unknown.length === 1 ? "One link" : `${unknown.length} links`} could not be found in the commit's parent (the file changed too much since the map's commit):`) : null,
+    unknown.length ? h("p", null, `${unknown.length === 1 ? "One link" : `${unknown.length} links`} could not be found in the ${what.subject === "This commit" ? "commit's parent" : "version it starts from"} (the file changed too much since the map's commit):`) : null,
     unknown.length ? h("ul", null, ...unknown.map(item)) : null,
   );
 }

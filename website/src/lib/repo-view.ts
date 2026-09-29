@@ -358,11 +358,12 @@ export function repoHead({ owner, name, info }: HeadFacts): El {
 
 /** The bar of the shell's views, under the heading (nav.tabs, never pills). */
 export function repoTabs(repo: RepoCoords, view: RepoView): El {
-  // Every code view (tree, blob, commits, commit, compare, find, search) is under Code.
-  const shown: RepoView = view === "settings" || view === "branches" ? view : "home";
+  // Every code view (tree, blob, commits, commit, compare, find, search) is under Code; a pull
+  // request and the list under Pull requests (phase 04).
+  const shown: RepoView = view === "settings" || view === "branches" ? view : view === "pulls" || view === "pull" ? "pulls" : "home";
   const tab = (v: RepoView, label: string) =>
     h("li", null, h("a", { href: repoPath(repo, v), "aria-current": v === shown ? "page" : null }, label));
-  return h("nav", { class: "tabs", "aria-label": "Repository" }, h("ul", null, tab("home", "Code"), tab("branches", "Branches"), tab("settings", "Settings")));
+  return h("nav", { class: "tabs", "aria-label": "Repository" }, h("ul", null, tab("home", "Code"), tab("pulls", "Pull requests"), tab("branches", "Branches"), tab("settings", "Settings")));
 }
 
 // ─── the papers, the Pages site, the archive ─────────────────────────────────

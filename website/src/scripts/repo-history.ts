@@ -68,6 +68,18 @@ interface DiffContext {
 /** Extra blocks under a commit's header (E4: the tracing-map links the commit changed). */
 export const commitExtras: ((env: CodeEnv, commit: T.CommitDetail) => Promise<El | null>)[] = [];
 
+/** What a comparison (three dots) hands its extras: the spec, the two sides' commits, GitHub's
+ *  comparison. */
+export interface CompareContext {
+  spec: CompareSpec;
+  base: string;
+  head: string;
+  cmp: T.Comparison;
+}
+
+/** Extra parts of a comparison, above its commits (phase 04: "Create a pull request"). */
+export const compareExtras: ((into: HTMLElement, env: CodeEnv, c: CompareContext) => Promise<void>)[] = [];
+
 // ─── the options bar ─────────────────────────────────────────────────────────
 
 function optionsBar(env: CodeEnv, mode: DiffMode, hide: boolean): El {
@@ -599,11 +611,14 @@ async function mountCompare(slot: HTMLElement, env: CodeEnv): Promise<void> {
     slot,
     ...head2,
     h("p", { class: "status-line" }, comparisonInWords(cmp, baseText, headText), ` Their common ancestor is ${shortSha(cmp.mergeBase)}.`),
+    h("div", { id: "compare-extras" }),
     cmp.commits.length ? h("section", { class: "compare-commits" }, h("h2", null, `${plural(cmp.commits.length, "commit")}`), ...commitList(env.repo, [...cmp.commits].reverse())) : null,
     h("h2", null, "Files changed"),
     h("div", { id: "compare-files" }),
   );
   wireCompareForm(slot, env, spec.dots);
+  const extras = slot.querySelector<HTMLElement>("#compare-extras");
+  if (extras) for (const extra of compareExtras) void extra(extras, env, { spec, base, head, cmp }).catch(() => undefined);
   const into = slot.querySelector<HTMLElement>("#compare-files");
   if (into) {
     if (cmp.files.items.length) await mountFiles(into, { env, oldRev: cmp.mergeBase, newRev: head, mode, hideWhitespace }, cmp.files.items, cmp.files.next);

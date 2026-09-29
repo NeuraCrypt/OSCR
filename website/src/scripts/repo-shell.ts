@@ -57,6 +57,8 @@ import "./repo-find.ts";
 import "./repo-edit.ts";
 import "./repo-upload.ts";
 import "./repo-templates.ts";
+import "./repo-pulls.ts";
+import { mountForkStatus } from "./repo-forks.ts";
 import { codePanel, quickSetup, useTemplate, wireCopy } from "./repo-code-panel.ts";
 import { mountBranches } from "./repo-branches.ts";
 import { mountSettings } from "./repo-settings.ts";
@@ -74,6 +76,8 @@ function home(loaded: Loaded, site: string): El {
     body.push(quickSetup(repo, options));
   } else {
     body.push(codePanel(repo, options));
+    // Phase 04: Fork, the forks, the pull requests; a fork's standing against its upstream.
+    if (info) body.push(h("div", { id: "fork-status", "aria-live": "polite" }));
     if (info?.isTemplate) body.push(useTemplate(repo));
     if (loaded.latest) body.push(latestCommit(repo, loaded.latest));
     if (info) body.push(h("div", { id: "repo-files", "aria-live": "polite" }));
@@ -189,6 +193,8 @@ async function main(): Promise<void> {
     else if (view === "branches") mountBranches(slot, repo, { session });
     else if (env && (CODE_VIEWS as readonly string[]).includes(view)) await mountCode(slot, env);
   }
+  const forkSlot = document.getElementById("fork-status");
+  if (forkSlot && env) void mountForkStatus(forkSlot, env);
   const files = document.getElementById("repo-files");
   if (files && env && !loaded.empty && loaded.info?.defaultBranch) {
     wireKeys(env);

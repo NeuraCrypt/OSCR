@@ -153,7 +153,9 @@ describe("a web commit", () => {
     assert.equal(r.branch, "fix/units");
     assert.equal(r.newBranch, true);
     assert.equal(r.compare, "/r/ada-fixture/eeg/compare/main...fix/units/");
-    assert.deepEqual(r.links.map((l: { text: string }) => l.text), ["The file, as committed", "The commit", "The comparison with main"]);
+    assert.deepEqual(r.links.map((l: { text: string }) => l.text), ["The file, as committed", "The commit", "Open a pull request into main", "The comparison with main"]);
+    // Phase 04: the pull request is opened from the comparison's form in the registry.
+    assert.equal(r.links[2].href, `${r.compare}?expand=1`);
     assert.deepEqual(r.pullRequest, { repo: "ada-fixture/eeg", base: "main", head: "fix/units" });
     assert.equal(await ada().git.resolve(REF, "main"), head);
     assert.deepEqual((await ada().git.commit(REF, r.sha)).parents, [head]);
