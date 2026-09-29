@@ -878,3 +878,38 @@ and the researcher's tests run on their own GitHub Actions, which the registry s
 - **Files added to the site**: 3 pages and the OpenAPI file: none per token, webhook or status.
 - **The screenshots**: `docs/night-screenshots/phase-10/` (15 desktop 1280×860, 15 phone 390×844,
   against the fake GitHub and `wrangler dev`, every outside address blocked, signed out and signed in).
+
+### Content, abuse and rules (phase 16): the lock before the GitHub side opens
+
+Built on the night of 2026-09-29 on `night/phase-10-automation`, with `main` merged in first (D16-1 to
+D16-3: its file budget, its code-first reader, its removal page); the contract is
+[MODERATION.md](MODERATION.md), the pages [POLICIES.md](POLICIES.md), the decisions D16-1 to D16-21.
+
+- **Reports** (D16-4): anyone reports anything the GitHub side shows, with or without an account, behind
+  Turnstile verified server-side (`turnstile.ts`); 3 rows; no reporter kept without an account.
+- **The owner's queue** (`/moderation/`, the owner only, D16-4): dismiss, hide (a repository, a research
+  issue or comment, a GitHub issue, pull request or release, a list, a status, a profile's words),
+  suspend an account (its writes refused, tokens revoked, hooks paused, D16-6), restore, answer an appeal
+  (D16-7). One table, `moderation` (`migrations/d1-forge/0010_moderation.sql`).
+- **What hiding removes** (D16-5): the Worker's every answer at once (`hidden.ts`: research, people,
+  activity, inbox, feed, webhooks, statuses, the repository's layer, the search); the Mac's static files
+  at the next nightly (`oscr/moderation.py`); public redacted notices (`/notices/`) and a line on the
+  paper of a hidden repository, from `forge/moderation.json`.
+- **Blocks and interaction limits** (D16-10, D16-11): silent blocks from a profile or a comment;
+  limits on a repository or an account's repositories, with durations; checked at `start` for
+  opening, commenting, reacting and reviewing, and in the research routes (`blocks.ts`).
+- **The human check** (D16-14): Turnstile on every public write form of the site; the widget in
+  Cloudflare's frame, allowed by the CSP of those pages only; the API carries its token instead.
+- **The switch** (D16-13): `FORGE_OPEN="true"` opens the writes only with Turnstile's secret set
+  (`forgeOpen`); the owner's steps are in NIGHT_REPORT.md.
+- **Abuse limits and retention** (D16-15, D16-16): new caps; wrong API tokens limited per address in
+  memory; `oscr/retention.py` each night within a budget.
+- **Known malware** (D16-19): the harvester never copies a listed file; `oscr malware scan` hides the
+  repository holding one; nothing run, nothing fetched (the list is the owner's local file).
+- **The rules and privacy pages** (D16-17, D16-18): seven static drafts marked for the owner's review,
+  and data-rights requests answered in the site.
+- **Files added to the site**: 12 pages (`/report/`, `/moderation/`, `/account/moderation/`,
+  `/notices/`, `/settings/blocked/`, `/terms/`, `/acceptable-use/`, `/guidelines/`, `/privacy/`,
+  `/limits/`, `/copyright/`, `/data-rights/`) and their scripts: none per report, block or decision.
+- **The screenshots**: `docs/night-screenshots/phase-16/` (15 desktop 1280×860, 15 phone 390×844,
+  against the fake GitHub and `wrangler dev`, every outside address refused).

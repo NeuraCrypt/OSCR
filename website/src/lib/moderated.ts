@@ -27,7 +27,8 @@ interface Moderation {
   repos: Record<string, { words: string; since: number; papers: string[] }>;
 }
 
-const FILE = new URL("../data/moderation.json", import.meta.url);
+/** Relative to website/, where the build runs (as lib/catalog.ts reads src/data/). */
+const FILE = "src/data/moderation.json";
 
 function load(): Moderation {
   try {

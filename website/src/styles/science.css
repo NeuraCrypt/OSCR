@@ -1344,6 +1344,9 @@ table.queue th, table.queue td { text-align: left; vertical-align: top; padding:
 table.queue th { font-weight: bold; border-bottom-color: var(--text); }
 table.queue td.text { white-space: pre-wrap; overflow-wrap: anywhere; }
 table.queue td code { font-size: .85em; overflow-wrap: anywhere; }
+table.queue td:first-child { white-space: nowrap; }
+/* The footer's links, more of them since the rules' pages: a link's words stay together on a phone */
+footer a { white-space: nowrap; }
 form.lookup input[type="text"] { width: min(28em, 100%); }
 @media (max-width: 640px) {
   table.queue { display: block; overflow-x: auto; }

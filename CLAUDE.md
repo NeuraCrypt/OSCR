@@ -186,6 +186,32 @@ The GitHub side (`website/worker/forge/`, D1 `oscr_forge`, `oscr/forgejobs.py`,
   `fieldset.choices`, `.limits`, `section.danger`, `table.branches`, `dl.settings`, `.panel`,
   `.confirm`.
 
+## Content rules (night phase 16)
+
+The lock before the GitHub side opens (`docs/MODERATION.md`, `docs/POLICIES.md`, D16-*):
+
+- **Anyone reports** what the GitHub side shows (`/report/`), with or without an account, always
+  behind **Turnstile verified server-side**; a copyright notice needs an account. **The owner alone
+  decides** (`/moderation/`, the account whose linked GitHub id is `FORGE_OWNER_GITHUB_ID`): hide,
+  suspend, restore, answer an appeal; a public notice without the hidden words (`/notices/`).
+- **Hidden means absent** from every Worker answer at once (`hidden.ts`) and from every static file
+  at the next nightly (`oscr/moderation.py`). A suspended account's writes stop, its tokens are
+  revoked, its webhooks paused.
+- **Blocks are silent**; interaction limits end by themselves; both are checked at `start` and in the
+  registry's own writes.
+- **`FORGE_OPEN` opens nothing without Turnstile's secret** (`gate.ts` `forgeOpen`). Never set it,
+  nor `TURNSTILE_SECRET_KEY`, in wrangler.toml or a committed file; tests use Cloudflare's documented
+  test keys only, against a local stand-in (`TURNSTILE_VERIFY_URL`, this machine only).
+- **Known malware**: a file whose SHA-256 is on the owner's local list is never copied; the Mac
+  hashes and compares, never runs, never fetches (`oscr/malware.py`).
+- **The rules and privacy pages are drafts** until the owner reviews them; the privacy statement must
+  stay true to what the code holds (the private contact details included). Data-rights requests are
+  answered in the site, never by email.
+- Each phase that adds an object brings its report target, its hiding in `hidden.ts` and the Mac,
+  and its line in the privacy statement.
+- Their styles are in `science.css`: `.human-check`, `p.moderated`, `table.queue`, `form.lookup`,
+  `.draft-notice`, `.policy`.
+
 ## The website's style (website/)
 
 - `website/src/styles/science.css` is the **only** source of style of the site. It is

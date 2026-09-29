@@ -16,7 +16,7 @@ async function load(): Promise<void> {
   if (!r.ok) return void status.replaceChildren(problemOf(r.body));
   const blocks = (r.body.blocks ?? []) as Json[];
   const limit = r.body.limit as Json | null;
-  status.textContent = `${blocks.length ? `${blocks.length} ${blocks.length === 1 ? "person" : "people"} blocked` : "Nobody blocked"}; ${limit ? `your repositories are limited to ${limit.words} until ${day(Number(limit.until))}` : "no limit on your repositories"}.`;
+  status.textContent = `${blocks.length ? `${blocks.length} ${blocks.length === 1 ? "person" : "people"} blocked` : "Nobody blocked"}; ${limit ? `every repository you manage is limited to ${limit.words} until ${day(Number(limit.until))}` : "no limit on every repository you manage at once (a repository may have its own)"}.`;
   const box = document.getElementById("blocked-list") as HTMLElement;
   if (!blocks.length) return void box.replaceChildren(el("p", {}, "Nobody."));
   const table = el("table", { class: "queue" }, el("thead", {}, el("tr", {}, el("th", {}, "Who"), el("th", {}, "Since"), el("th", {}, "Your note"), el("th", {}, ""))));

@@ -2379,7 +2379,8 @@ repositories at once, people at the next push). The Mac drops the same from the 
 (oscr/moderation.py: layer, research shards, social shards, Explore, hence the search index), so a
 signed-out reader sees the change after the next nightly publication, as with main's removal requests.
 A hidden repository's layer entry says only why; the paper pages say it in one line
-(`forge/moderation.json` → `src/data/moderation.json`).
+(`forge/moderation.json` → `src/data/moderation.json`). The research issues about a hidden repository
+stay (they are its paper's conversation) unless they are hidden themselves.
 
 **Why.** Signed-out pages ask the Worker nothing (the budget): the static files are the night's.
 

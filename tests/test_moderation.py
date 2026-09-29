@@ -54,8 +54,8 @@ def test_a_hidden_repository_says_only_why_and_its_papers_learn_it(tmp_path, for
     exported = json.loads((out / "forge" / "moderation.json").read_text())
     assert exported["repos"]["oscr-fixture/eeg-analysis"]["papers"] == ["10.5555/oscr.fixture.1"]
     assert exported["notices"][0]["what"] == "a repository"
-    # Its research issues leave with it.
-    assert not any(json.loads(p.read_text()) for p in (out / "forge" / "research").iterdir())
+    # Its research issues stay: they are its paper's conversation (the Worker answers them too).
+    assert any(json.loads(p.read_text()) for p in (out / "forge" / "research").iterdir())
 
 
 def test_research_shards_leave_out_hidden_issues_and_the_words_of_hidden_comments(tmp_path, forge_d1):

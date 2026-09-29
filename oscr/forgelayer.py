@@ -803,14 +803,14 @@ def research(con: sqlite3.Connection, d1: community.D1 | None, hidden: moderatio
     """The research issues to publish, by number: ``{"issue": view, "comments": [...]}``, scrubbed.
     Without ``d1``, none. An issue about a repository left out of the layer (waiting for deletion,
     hidden, deleted), or about a paper the Mac holds off-topic or withdrawn, is left out. Night phase
-    16: so is an issue moderation hid, or one by a suspended account, or about a repository moderation
-    hid; a comment moderation hid, or by a suspended account, keeps its place without its words."""
+    16: so is an issue moderation hid, or one by a suspended account; a comment moderation hid, or by a
+    suspended account, keeps its place without its words. An issue about a repository moderation hid
+    stays: it is its paper's conversation, as the Worker answers it (DECISIONS.md D16-5)."""
     if d1 is None:
         return {}
     hidden = hidden or moderation.Hidden()
     try:
         left_out = {r["repo_id"] for r in _forge_rows(d1, "repos", "repo_id, state") if r["state"] in LEFT_OUT}
-        left_out |= {k.split(":", 1)[1] for k in hidden.repos if k.startswith(f"{FORGE}:")}
         issues = _paged(d1, "SELECT * FROM research_issues WHERE {where} ORDER BY {order} LIMIT {limit}", ("id",))
         comments = _paged(d1, "SELECT issue_id, n, author_id, author, author_via, author_role, body, created_at, edited_at, deleted, hidden "
                               "FROM research_comments WHERE {where} ORDER BY {order} LIMIT {limit}", ("issue_id", "n"))
