@@ -17,8 +17,10 @@
 // version, and the budget (src/lib/shards.ts) keeps the site under 15,000 whatever the size of
 // the catalogue: at most STATIC_PAPERS files of papers (one each, the reader on its page), and
 // FIXED_FILES_MAX for the rest.
+import { createHash } from "node:crypto";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { allowsHash, headersFor, parseHeaders } from "../src/lib/headers.ts";
 import {
   ENTITY_TYPES, FILE_LIMIT, FILE_MARGIN, FIXED_FILES_MAX, keyOf, LIST_PAGES_MAX, LOOKUP_HEX, SHARDS, shardOf, STATIC_PAPERS,
 } from "../src/lib/shards.ts";
@@ -213,6 +215,29 @@ for (const page of pages) {
     problems.push(`${page}: an inline script, which its Content-Security-Policy forbids`);
   }
 }
+// Every page's inline scripts and styles are allowed by the Content-Security-Policy public/_headers
+// gives it (the Worker gives its pages the same: the shell of a paper rendered on demand gets a
+// paper's): by their SHA-256, never by 'unsafe-inline'. A style attribute is refused outright.
+if (all.has("/_headers")) {
+  const headerRules = parseHeaders(readFileSync(join(DIST, "_headers"), "utf8"));
+  for (const page of pages) {
+    const path = page === "/paper/404.html" ? "/paper/shell/" : page.replace(/index\.html$/, "");
+    const policies = (headersFor(headerRules, path).get("content-security-policy") ?? "").split(",").filter((x) => x.trim());
+    const html = readFileSync(join(DIST, page), "utf8");
+    const inline = [
+      ...[...html.matchAll(/<script(?![^>]*\ssrc=)(?![^>]*type="application\/json")[^>]*>([\s\S]*?)<\/script>/g)].map((m) => ["script-src", m[1]]),
+      ...[...html.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)].map((m) => ["style-src", m[1]]),
+    ];
+    for (const [directive, body] of inline) {
+      const hash = createHash("sha256").update(body).digest("base64");
+      if (!policies.every((p) => allowsHash(p, directive, hash))) {
+        problems.push(`${page}: an inline ${directive === "script-src" ? "script" : "style"} its Content-Security-Policy refuses; allow it in public/_headers with '${`sha256-${hash}`}'`);
+      }
+    }
+    if (policies.length && /<[a-z][^>]*\sstyle="/i.test(html)) problems.push(`${page}: a style attribute, which science.css's rule and the policy refuse`);
+  }
+}
+
 // Every paper with a page is reachable by a link of a static page, and the list holds a bounded
 // number of pages.
 for (const a of [...staticPapers, ...onDemand]) {

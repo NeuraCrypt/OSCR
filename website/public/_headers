@@ -6,22 +6,66 @@
 # paper's text from Europe PMC (www.ebi.ac.uk, connect-src), else PubMed Central's copy (NCBI's
 # E-utilities, eutils.ncbi.nlm.nih.gov), and nothing else outside the site.
 # worker/pages.ts gives the pages it renders the same headers (a test checks that they agree).
+# Every file of the site (2026-09-29, the launch), FIRST: Workers static assets apply every rule that
+# matches, in the order of this file; a header two rules set is joined with a comma, and "! Name"
+# removes what an earlier rule set (developers.cloudflare.com/workers/static-assets/headers/, and the
+# asset worker's attachCustomHeaders, which unsets then sets, rule by rule). So:
+#   - nosniff, the referrer kept to this site (same-origin, the pages' own choice below: a duplicate
+#     of the same value is that value), no camera, microphone, place or payment for any page, no
+#     framing (DENY, and frame-ancestors);
+#   - a strict Content-Security-Policy for the pages that need nothing outside the site: this site's
+#     own files, and only them. A page that needs more REMOVES it ("! Content-Security-Policy") and
+#     sets its own below: two policies would both apply, and the stricter would win;
+#   - Strict-Transport-Security for a year, WITHOUT includeSubDomains or preload: on
+#     oscr.yannbellec-b.workers.dev it changes nothing (.dev is a TLD every browser already holds to
+#     HTTPS); on the custom domain planned before the launch (D8), includeSubDomains would force HTTPS
+#     on every name under it, and preload would put that on the browsers' lists, which is slow to
+#     undo: both are the owner's decision once the domain and its other names are known.
+# A page rendered by the Worker's code does not get these (Cloudflare applies _headers to the assets
+# only): worker/pages.ts gives it the same (SITE_HEADERS, PAPER_HEADERS), and a test checks that
+# they agree. npm run check holds every page's inline scripts and styles to its policy.
+/*
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: same-origin
+  Permissions-Policy: accelerometer=(), browsing-topics=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()
+  X-Frame-Options: DENY
+  Strict-Transport-Security: max-age=31536000
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'; object-src 'none'
+
+# The bundles (/_astro/): a script, a style sheet or a font needs no policy of its own, but a web
+# worker takes the policy its script's file is served with (the reader's highlighter runs in one):
+# the bundles keep none, as before, so that what a worker may fetch stays its page's decision.
+/_astro/*
+  ! Content-Security-Policy
+
 /account/
+  ! Content-Security-Policy
   X-Frame-Options: DENY
   Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'; object-src 'none'
   Referrer-Policy: same-origin
 
 /removal/
+  ! Content-Security-Policy
   X-Frame-Options: DENY
   Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'; object-src 'none'
   Referrer-Policy: same-origin
 
 /submit/
+  ! Content-Security-Policy
   X-Frame-Options: DENY
   Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'; object-src 'none'
   Referrer-Policy: same-origin
 
 /paper/:slug/
+  ! Content-Security-Policy
   X-Frame-Options: DENY
   Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self' https://www.ebi.ac.uk https://eutils.ncbi.nlm.nih.gov; form-action 'self'; frame-ancestors 'none'; base-uri 'none'; object-src 'none'
   Referrer-Policy: same-origin
+
+# The search (/search/): a Svelte island, which Astro starts with two inline scripts and one inline
+# style of its own (display: contents on the island's elements). Allowed by their SHA-256 only, not
+# by 'unsafe-inline'; npm run check computes them again at every build and fails when Astro changes
+# them (then copy the hashes it prints here).
+/search/
+  ! Content-Security-Policy
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'sha256-QzWFZi+FLIx23tnm9SBU4aEgx4x8DsuASP07mfqol/c=' 'sha256-Ya0pUYrC7nM5Cn/056TyVuEiz6dFGrzmkWzgON0pF0U='; style-src 'self' 'sha256-vv9IoKo7BSLbWcUHr3tNmfNVmm5L/9Cfn2H6LMk7/ow='; img-src 'self' data:; connect-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'; object-src 'none'

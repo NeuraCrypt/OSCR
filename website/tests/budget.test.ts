@@ -13,7 +13,8 @@ import {
   SHARDS, shardOf, STATIC_PAPERS, staticSelection,
 } from "../src/lib/shards.ts";
 import worker from "../worker/index.ts";
-import { type Assets, fillShell, handlePage, PAPER_HEADERS } from "../worker/pages.ts";
+import { allowsHash, headersFor, parseHeaders, ruleHeaders } from "../src/lib/headers.ts";
+import { type Assets, fillShell, handlePage, PAPER_HEADERS, SITE_HEADERS } from "../worker/pages.ts";
 
 const ctx = { waitUntil: () => undefined };
 
@@ -315,12 +316,46 @@ describe("a page that no static file answers (worker/pages.ts)", () => {
   });
 
   it("gives the paper's page the headers public/_headers gives the static ones", () => {
-    const rules = readFileSync(new URL("../public/_headers", import.meta.url), "utf8");
-    const block = rules.split(/\n(?=\S)/).find((b) => b.startsWith("/paper/:slug/"))!;
-    const declared = Object.fromEntries(
-      block.split("\n").slice(1).map((l) => l.trim()).filter(Boolean).map((l) => [l.slice(0, l.indexOf(":")), l.slice(l.indexOf(":") + 1).trim()]),
-    );
-    assert.deepEqual(declared, PAPER_HEADERS);
+    const rules = parseHeaders(readFileSync(new URL("../public/_headers", import.meta.url), "utf8"));
+    assert.deepEqual(ruleHeaders(rules, "/paper/:slug/"), PAPER_HEADERS);
+    // What a static paper's page gets in all: the site's headers, its own policy in place of theirs.
+    const page = headersFor(rules, "/paper/doi_10.5555_x/");
+    const worker = new Headers({ ...SITE_HEADERS, ...PAPER_HEADERS });
+    for (const [name, value] of page) {
+      // A header both blocks set with the same value (DENY, same-origin) is that value twice.
+      const once = [...new Set(value.split(", "))].join(", ");
+      assert.equal(name === "content-security-policy" ? value : once, worker.get(name), name);
+    }
+  });
+
+  it("gives every page the site's headers of public/_headers, the Worker's pages included", async () => {
+    const rules = parseHeaders(readFileSync(new URL("../public/_headers", import.meta.url), "utf8"));
+    assert.equal(rules[0].pattern, "/*", "the site's block comes first: the others remove or add to it");
+    assert.deepEqual(ruleHeaders(rules, "/*"), SITE_HEADERS);
+    const home = headersFor(rules, "/");
+    for (const [k, v] of Object.entries(SITE_HEADERS)) assert.equal(home.get(k.toLowerCase()), v, k);
+    assert.equal(home.get("strict-transport-security"), "max-age=31536000", "no includeSubDomains, no preload");
+    // A page with a policy of its own has that one only, never two (the stricter would win).
+    for (const path of ["/account/", "/removal/", "/submit/", "/paper/x/", "/search/"]) {
+      const csp = headersFor(rules, path).get("content-security-policy") ?? "";
+      assert.ok(csp && !csp.includes(", "), `${path}: ${csp}`);
+    }
+    assert.ok(headersFor(rules, "/paper/x/").get("content-security-policy")!.includes("https://www.ebi.ac.uk"));
+    // The bundles keep no policy: a web worker takes its script's.
+    assert.equal(headersFor(rules, "/_astro/highlight-worker-x.js").get("content-security-policy"), undefined);
+    assert.equal(headersFor(rules, "/_astro/x.js").get("x-content-type-options"), "nosniff");
+    // The Worker's 404 page: the site's headers, as they are.
+    const missing = await handlePage(get("/nothing/"), site());
+    for (const [k, v] of Object.entries(SITE_HEADERS)) assert.equal(missing.headers.get(k), v, k);
+  });
+
+  it("reads _headers as the assets apply it: in order, removals first, repeats joined", () => {
+    const rules = parseHeaders("# a comment\n/*\n  A: 1\n  B: x\n/p/:id/\n  ! A\n  A: 2\n  B: y\n/p/*\n  C: z\n");
+    assert.deepEqual([...headersFor(rules, "/p/7/")], [["b", "x, y"], ["a", "2"], ["c", "z"]]);
+    assert.deepEqual([...headersFor(rules, "/q/")], [["a", "1"], ["b", "x"]]);
+    assert.ok(allowsHash("default-src 'self'; script-src 'self' 'sha256-abc='", "script-src", "abc="));
+    assert.ok(!allowsHash("default-src 'self'; script-src 'self'", "script-src", "abc="));
+    assert.ok(!allowsHash("default-src 'self'", "style-src", "abc="));
   });
 
   it("sends the reader's former address and the address without its slash to the page", async () => {

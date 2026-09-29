@@ -34,10 +34,24 @@ export const PAPER_HEADERS: Readonly<Record<string, string>> = {
 /** How long a browser keeps a page: the records change once a night. */
 const CACHE = "public, max-age=600";
 
+/** The headers public/_headers gives every file of the site (its "/*" block, 2026-09-29): the
+ *  Worker's pages get them too — the 404 page as they are, a paper's page with PAPER_HEADERS over
+ *  them (its own policy in place of the strict one). A test checks that they agree. */
+export const SITE_HEADERS: Readonly<Record<string, string>> = {
+  "X-Content-Type-Options": "nosniff",
+  "Referrer-Policy": "same-origin",
+  "Permissions-Policy":
+    "accelerometer=(), browsing-topics=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()",
+  "X-Frame-Options": "DENY",
+  "Strict-Transport-Security": "max-age=31536000",
+  "Content-Security-Policy":
+    "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'; object-src 'none'",
+};
+
 const html = (body: string | null, status: number, extra: Record<string, string> = {}) =>
   new Response(body, {
     status,
-    headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": CACHE, "X-Content-Type-Options": "nosniff", ...extra },
+    headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": CACHE, ...SITE_HEADERS, ...extra },
   });
 
 /** A file of the site, through the assets (no Worker request). html_handling may answer a
