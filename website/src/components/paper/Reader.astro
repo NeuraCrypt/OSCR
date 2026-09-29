@@ -8,8 +8,10 @@
 // else from PubMed Central (src/scripts/reader-paper.ts). RIGHT, the authors' code: the list of its files and one file,
 // the one with the most matches, written here by the build (plain; the browser colors it); the
 // others are fetched on demand from /scripts/NN.json. A file whose license does not allow
-// republishing it has no text here: the reader says why and links to it at the source, which is
-// otherwise reached only through the file's menu.
+// republishing it has no text here: the reader's browser fetches it from where its authors published
+// it, at the pinned version, and shows it when its SHA-256 is the registry's (src/lib/source.ts);
+// otherwise the reader says why and links to it at the source, which is otherwise reached only
+// through the file's menu.
 import { SITE_NAME } from "../../config";
 import { alignmentOf, europePmcUrl, lot2, lotEntry, plural, shortName, type Article } from "../../lib/catalog";
 import { languageOf, sizeInWords } from "../../lib/code";
@@ -30,7 +32,7 @@ const { repos, files, texts } = readerFiles(
   a.code.map((r) => ({ repo: r.repo, url: r.url, name: shortName(r), license: r.license, state: r.state, lot: lot2(r.lot), entry: lotEntry(r) })),
 );
 const pairs = mapPairs(alignment?.pairs ?? [], repos, files);
-const initial = initialFile(files);
+const initial = initialFile(files, repos);
 const f = initial >= 0 ? files[initial] : undefined;
 const r = f ? repos[f.repo] : undefined;
 const text = initial >= 0 ? (texts.get(initial) ?? null) : null;
@@ -63,6 +65,8 @@ const data: ReaderData = {
   pairs,
   initial,
   initialEol: text !== null && text.endsWith("\n"),
+  paperId: a.id,
+  site: SITE_NAME,
 };
 const json = JSON.stringify(data).replace(/</g, "\\u003c");
 ---

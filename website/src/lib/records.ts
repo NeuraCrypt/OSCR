@@ -166,9 +166,12 @@ export function paperRecord(a: Article): PaperRecord {
     code: a.code.map((r) => {
       const e = lotEntry(r);
       const paths = (e?.files ?? []).filter((f) => f.kind !== "note").map((f) => f.path);
+      const listed = (e?.files ?? []).filter((f) => f.kind !== "note");
       return {
         repo: r.repo, name: shortName(r), url: r.url, license: r.license, state: r.state,
         copies: !!e?.published && (e?.files ?? []).some((f) => f.text !== null),
+        // Why the registry keeps no copy of its files: their license, or a removal request.
+        held: !e || e.published || !listed.length ? undefined : listed.every((f) => /removal request/i.test(f.note)) ? "withheld" : "license",
         files: paths.slice(0, FILES_LISTED),
         files_more: Math.max(0, paths.length - FILES_LISTED),
       };

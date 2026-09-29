@@ -4,7 +4,9 @@
 # writes every script as a file, astro.config.mjs). The account page (Phase 5); /submit/, /removal/ and a
 # paper's page (Phase 6), which holds the Code ↔ Paper reader since 2026-09-28: its browser reads the
 # paper's text from Europe PMC (www.ebi.ac.uk, connect-src), else PubMed Central's copy (NCBI's
-# E-utilities, eutils.ncbi.nlm.nih.gov), and nothing else outside the site.
+# E-utilities, eutils.ncbi.nlm.nih.gov), and, since 2026-09-29, a file of the authors' code the registry may not
+# copy from where they published it, at the pinned version (src/lib/source.ts, SOURCE_ORIGINS: GitHub's raw files,
+# GitLab's, Bitbucket's and Codeberg's, Hugging Face, Zenodo, Software Heritage); nothing else outside the site.
 # worker/pages.ts gives the pages it renders the same headers (a test checks that they agree).
 /account/
   X-Frame-Options: DENY
@@ -23,5 +25,5 @@
 
 /paper/:slug/
   X-Frame-Options: DENY
-  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self' https://www.ebi.ac.uk https://eutils.ncbi.nlm.nih.gov; form-action 'self'; frame-ancestors 'none'; base-uri 'none'; object-src 'none'
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self' https://www.ebi.ac.uk https://eutils.ncbi.nlm.nih.gov https://raw.githubusercontent.com https://gitlab.com https://bitbucket.org https://codeberg.org https://huggingface.co https://zenodo.org https://archive.softwareheritage.org; form-action 'self'; frame-ancestors 'none'; base-uri 'none'; object-src 'none'
   Referrer-Policy: same-origin

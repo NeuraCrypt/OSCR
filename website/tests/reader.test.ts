@@ -15,7 +15,7 @@ import { PREFS, readPref, writePref, type Store } from "../src/lib/prefs.ts";
 import { placePairs } from "../src/lib/anchor.ts";
 import { HttpError, TimeoutError, withRetry, worthRetrying } from "../src/lib/retry.ts";
 import {
-  encodePath, fileHref, initialFile, mapPairs, readerFiles, sourceOf, sourceWhy, whyNotShown, type LotFileIn, type PairIn, type RepoIn,
+  encodePath, fileHref, fromSource, initialFile, mapPairs, readerFiles, sourceOf, sourceWhy, whyNotShown, type LotFileIn, type PairIn, type RepoIn,
 } from "../src/lib/reader.ts";
 import { ancestors, buildTree } from "../src/lib/tree.ts";
 
@@ -325,14 +325,57 @@ describe("the reader's files and pairs", () => {
   });
 
   it("says when a copy was withheld at a removal request, a repository's or one file's", () => {
-    const WITHHELD = "Withheld from this site at a removal request, after a moderator's review: read it at the source.";
+    const WITHHELD = "Withheld from this site at a removal request: read it at the source.";
     const held: RepoIn[] = [
       { ...repos[0], entry: { ...repos[0].entry!, files: [file("a.py", null, { note: WITHHELD }), file("b.py", "b = 1\n")] } },
       { ...repos[0], repo: "github.com/lab/y", entry: { ...repos[0].entry!, published: false, files: [file("c.py", null, { note: WITHHELD })] } },
     ];
     const { files } = readerFiles(held);
     assert.deepEqual(files.map((f) => f.why), ["withheld", "", "withheld"]);
-    assert.equal(whyNotShown(files[0], { license: "MIT" }), "This file is not shown here: its copy was withheld at a removal request, after a moderator's review.");
+    assert.equal(whyNotShown(files[0], { license: "MIT" }), "This file is not shown here: it was withheld at a removal request.");
+    // A note written before 2026-09-29 says it the same way.
+    const before = readerFiles([{ ...repos[0], entry: { ...repos[0].entry!, files: [file("a.py", null, { note: "Withheld from this site at a removal request, after a moderator's review: read it at the source." })] } }]);
+    assert.equal(before.files[0].why, "withheld");
+  });
+
+  it("carries the facts of a file held back for its license, and where the browser fetches it", () => {
+    const DIGEST = "ab".repeat(32);
+    const source = { via: "github", url: "https://raw.githubusercontent.com/lab/h/" + "c".repeat(40) + "/{path}", at: "c".repeat(40) };
+    const held: RepoIn[] = [
+      {
+        repo: "github.com/lab/h", url: "https://github.com/lab/h", name: "lab/h", license: "", state: "alive", lot: "10",
+        entry: {
+          commit: "c".repeat(40), license: "", published: false, source, redistributable: "no",
+          files: [
+            file("run.m", null, { sha256: DIGEST, size: 1234, note: "This repository has no license" }),
+            file("old.m", null, { note: "This repository has no license" }),
+            file("cut.m", null, { note: "Withheld from this site at a removal request: read it at the source." }),
+            file("inside.m", null, { sha256: DIGEST, size: 10, via: "swh" }),
+          ],
+        },
+      },
+      // A template that leaves the allowed places is not kept: the files are linked, not fetched.
+      { ...repos[0], repo: "github.com/lab/z", entry: { ...repos[0].entry!, published: false, source: { via: "github", url: "https://evil.example/{path}", at: "x" }, files: [file("z.py", null, { sha256: DIGEST, size: 3 })] } },
+    ];
+    const { repos: rs, files } = readerFiles(held);
+    assert.deepEqual(rs[0].source, { via: "github", url: source.url, at: source.at });
+    assert.deepEqual(rs[1].source, { via: "", why: "host" });
+    assert.deepEqual(files.map((f) => [f.path, f.why, f.sha256 !== "", f.bytes, f.via]), [
+      ["run.m", "license", true, 1234, ""],
+      ["old.m", "license", false, null, ""],
+      ["cut.m", "withheld", false, null, ""],
+      ["inside.m", "license", true, 10, "swh"],
+      ["z.py", "license", true, 3, ""],
+    ]);
+    assert.deepEqual(files.map((f) => fromSource(rs, f)), [true, false, false, true, false]);
+    // Nothing in the page's data holds a text of it.
+    assert.ok(files.every((f) => !f.text));
+    assert.match(whyNotShown(files[0], rs[0]), /keeps no copy of this file: its repository has no license.*shows it from its source/);
+    assert.match(whyNotShown(files[1], rs[0]), /has no license, so its authors keep all their rights to it\.$/);
+    // With nothing copied, the reader opens on a file it can show from the source.
+    assert.equal(initialFile(files, rs), 0);
+    // A copied repository never carries a source.
+    assert.equal(readerFiles(repos).repos[0].source, null);
   });
 
   it("writes a file's address at the source once per repository when it can", () => {

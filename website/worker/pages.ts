@@ -27,7 +27,7 @@ export interface Assets {
 export const PAPER_HEADERS: Readonly<Record<string, string>> = {
   "X-Frame-Options": "DENY",
   "Content-Security-Policy":
-    "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self' https://www.ebi.ac.uk https://eutils.ncbi.nlm.nih.gov; form-action 'self'; frame-ancestors 'none'; base-uri 'none'; object-src 'none'",
+    "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self' https://www.ebi.ac.uk https://eutils.ncbi.nlm.nih.gov https://raw.githubusercontent.com https://gitlab.com https://bitbucket.org https://codeberg.org https://huggingface.co https://zenodo.org https://archive.softwareheritage.org; form-action 'self'; frame-ancestors 'none'; base-uri 'none'; object-src 'none'",
   "Referrer-Policy": "same-origin",
 };
 

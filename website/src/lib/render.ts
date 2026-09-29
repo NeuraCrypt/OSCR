@@ -396,7 +396,18 @@ export type PaperRecord = {
   /** `repo`: the registry's key of the repository (github.com/owner/name), which a correction names;
    *  `files`: its files' paths (at most removal.FILES_LISTED, `files_more` others) and `copies`,
    *  whether the site holds copies of their text: what a removal request may name. */
-  code: { repo: string; name: string; url: string; license: string; state: string; copies?: boolean; files?: string[]; files_more?: number }[];
+  code: {
+    repo: string;
+    name: string;
+    url: string;
+    license: string;
+    state: string;
+    copies?: boolean;
+    /** Why no copy of its files is kept: their license ("license"), or a removal request ("withheld"). */
+    held?: "license" | "withheld";
+    files?: string[];
+    files_more?: number;
+  }[];
   files: number;
   pairs: number;
   map: string;
@@ -531,6 +542,13 @@ export function paperView(p: PaperRecord): View {
             `<section><h3>${href(r.url) ? `<a class="code" href="${esc(href(r.url))}">${wrap(r.name)}</a>` : `<span class="code">${wrap(r.name)}</span>`}</h3>` +
             line("License", esc(r.license || "none: the authors keep all their rights")) +
             line("State", r.state === "alive" ? `<span class="ok">${esc(STATES.alive)}</span>` : `<span class="warning">${esc(STATES[r.state] ?? r.state)}</span>`) +
+            (r.copies
+              ? line("Copies", "kept by the registry: this license allows it")
+              : r.held === "withheld"
+                ? line("Copies", "withheld at a removal request: read it at its source")
+                : r.held === "license"
+                  ? line("Copies", `none: the registry keeps no copy of code whose license does not allow redistribution (${a("how this works", "/policies/code/")}); read it at its source`)
+                  : "") +
             `</section>`,
         )
         .join("")

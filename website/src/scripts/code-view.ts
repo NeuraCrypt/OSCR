@@ -3,8 +3,10 @@
 // them, the syntax highlighted by the worker (highlighter.ts), the lines one links to
 // (#L10-L20), and the file's header: its path, its language, its size, its license, and the
 // buttons (wrap, copy, link, raw) and the menu that leads to the source. A file whose text is
-// not here says why, and links to it at the source. Like every browser script, it never names
-// the platform.
+// not here says why, and links to it at the source. A file the registry may not copy, which the
+// reader's browser fetched from its source (lib/source.ts), says so above its lines: where it comes
+// from, at which version, that no copy is kept, and how to ask for its removal. Like every browser
+// script, it never names the platform (the page's data does: `data.site`).
 import {
   anchorText, CELL_LABELS, clampRange, HIGHLIGHT_MAX_BYTES, HIGHLIGHT_MAX_LINES, languageOf, planOf, sizeInWords, unComment,
   type Lang, type Plan, type Range,
@@ -12,6 +14,8 @@ import {
 import { plural } from "../lib/format";
 import { decorate, lineClass, pairClass, splitLines } from "../lib/lines";
 import { sourceOf, sourceWhy, whyNotShown, type ReaderData, type ReaderPair } from "../lib/reader";
+import { removalUrl } from "../lib/removal";
+import { noCopy, shownFrom, type Plan as SourcePlan } from "../lib/source";
 import { highlight } from "./highlighter";
 import { link, pairLink } from "./reader-paper";
 
@@ -56,6 +60,8 @@ async function copyText(text: string): Promise<boolean> {
 }
 
 export type CodeView = ReturnType<typeof codeView>;
+/** A file shown from its source: how it was fetched, and whether addresses were masked. */
+export type FromSource = { plan: Extract<SourcePlan, { ok: true }>; masked: boolean };
 
 export function codeView(data: ReaderData, hooks: { url(file: number, range: Range | null): string; say(text: string): void }) {
   const viewer = byId("code-view");
@@ -72,6 +78,8 @@ export function codeView(data: ReaderData, hooks: { url(file: number, range: Ran
   const sources = byId("source-links");
 
   let current = -1;
+  /** The file shown came from its source (not from the registry's copy): how. */
+  let from: FromSource | null = null;
   let lines: string[] = [];
   let raw = "";
   let lang: Lang = languageOf("");
@@ -104,7 +112,9 @@ export function codeView(data: ReaderData, hooks: { url(file: number, range: Ran
     ]
       .filter(Boolean)
       .join(" · ");
-    for (const b of [copyBtn, rawBtn, wrapBtn]) b.disabled = !f.text;
+    const shown = f.text || (from !== null && current === i);
+    for (const b of [copyBtn, rawBtn, wrapBtn]) b.disabled = !shown;
+    rawBtn.title = from && current === i ? "The file at its source, as your browser fetched it" : "Download the file as it is kept here";
     const at = sourceOf(r, f);
     const items = [
       link(at, at === r.url ? "The repository at the source" : "This file at the source"),
@@ -116,7 +126,7 @@ export function codeView(data: ReaderData, hooks: { url(file: number, range: Ran
         li.append(x);
         return li;
       }),
-      el("li", "why", sourceWhy(r.commit, f.text)),
+      el("li", "why", sourceWhy(r.commit, f.text ? true : from && current === i ? "source" : false)),
     );
     linkBtn.textContent = "Link";
   }
@@ -203,7 +213,9 @@ export function codeView(data: ReaderData, hooks: { url(file: number, range: Ran
     const tooBig = bytes > HIGHLIGHT_MAX_BYTES || lines.length > HIGHLIGHT_MAX_LINES;
     pairNote = [];
     notes([
-      f.truncated ? ["Shortened: only the first part of this file was kept here; ", link(sourceOf(r, f), "the whole file is at the source"), "."] : [],
+      from ? sourceNotice(i, from) : [],
+      from?.masked ? ["Email addresses are hidden: read the original at the source."] : [],
+      f.truncated && !from ? ["Shortened: only the first part of this file was kept here; ", link(sourceOf(r, f), "the whole file is at the source"), "."] : [],
       tooBig ? [`Syntax highlighting is off for this file: past ${sizeInWords(HIGHLIGHT_MAX_BYTES)} or ${plural(HIGHLIGHT_MAX_LINES, "line")}, it would slow the page.`] : [],
     ]);
     const gen = ++generation;
@@ -236,20 +248,34 @@ export function codeView(data: ReaderData, hooks: { url(file: number, range: Ran
     requestAnimationFrame(step);
   }
 
+  /** Where a file shown from its source comes from, why no copy is kept, and the ways onward. */
+  function sourceNotice(i: number, f: FromSource): (string | Node)[] {
+    const r = data.repos[data.files[i].repo];
+    return [
+      `${shownFrom(f.plan, r.name, r.source?.via ?? "")} ${noCopy(data.site, r.license)} `,
+      link("/policies/code/", "How this works"),
+      " · ",
+      link(removalUrl(data.paperId), "Request its removal"),
+    ];
+  }
+
   /* ---------- What is shown ---------- */
 
   /** The file the build wrote into the page: its lines are read back from it. */
   function adopt(i: number) {
     current = i;
+    from = null;
     lines = Array.from(ol.children, (li) => li.textContent ?? "");
     raw = lines.join("\n") + (data.initialEol && lines.length ? "\n" : "");
     selection = null;
     settle(i, false);
   }
 
-  /** File i, from its text. */
-  function show(i: number, text: string) {
+  /** File i, from its text: the registry's copy, or (`source`) what the browser fetched from its
+   *  source and checked. */
+  function show(i: number, text: string, source: FromSource | null = null) {
     current = i;
+    from = source;
     raw = text;
     lines = splitLines(text);
     selection = null;
@@ -257,9 +283,11 @@ export function codeView(data: ReaderData, hooks: { url(file: number, range: Ran
     viewer.scrollTo({ top: 0, left: 0 });
   }
 
-  /** File i, whose text is not here (or could not be loaded): why, and where it is. */
-  function showAway(i: number, failure = "") {
+  /** File i, whose text is not here (or could not be loaded): why (`sentence`, when the caller says
+   *  it whole), and where it is. */
+  function showAway(i: number, failure = "", sentence = "") {
     current = i;
+    from = null;
     generation += 1;
     lines = [];
     raw = "";
@@ -275,7 +303,7 @@ export function codeView(data: ReaderData, hooks: { url(file: number, range: Ran
     note.hidden = true;
     end.hidden = true;
     const at = sourceOf(r, f);
-    const p = el("p", "warning", whyNotShown(f, r, failure));
+    const p = el("p", "warning", sentence || whyNotShown(f, r, failure));
     const go = el("p");
     go.append(at === r.url ? "It can be read in its repository, " : "It can be read at the source: ", link(at, at === r.url ? r.name : f.path), ".");
     away.replaceChildren(p, go);
@@ -300,9 +328,9 @@ export function codeView(data: ReaderData, hooks: { url(file: number, range: Ran
     viewer.scrollTo({ top: 0, left: 0 });
   }
 
-  function loading(i: number) {
+  function loading(i: number, words = "") {
     head(i);
-    note.replaceChildren(`Loading ${data.files[i].path}…`);
+    note.replaceChildren(words || `Loading ${data.files[i].path}…`);
     note.hidden = false;
   }
 
@@ -351,6 +379,14 @@ export function codeView(data: ReaderData, hooks: { url(file: number, range: Ran
   });
   rawBtn.addEventListener("click", () => {
     const f = data.files[current];
+    if (from) {
+      // No copy is kept: the file at its source, where the browser fetched it.
+      const a = Object.assign(document.createElement("a"), { href: from.plan.url, target: "_blank", rel: "noopener noreferrer" });
+      document.body.append(a);
+      a.click();
+      a.remove();
+      return;
+    }
     if (!f?.text) return;
     const a = document.createElement("a");
     a.href = URL.createObjectURL(new Blob([raw], { type: "text/plain;charset=utf-8" }));
