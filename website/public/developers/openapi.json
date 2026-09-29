@@ -1812,6 +1812,239 @@
           }
         }
       }
+    },
+    "/api/v1/statuses": {
+      "get": {
+        "summary": "The statuses posted on a commit of a repository the registry knows, and their combined state.",
+        "operationId": "getStatuses",
+        "x-scope": "repos:read",
+        "security": [
+          {
+            "token": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ApiVersion"
+          },
+          {
+            "name": "path",
+            "in": "query",
+            "required": false,
+            "description": "owner/name.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "in": "query",
+            "required": false,
+            "description": "<forge>:<id>: one of path or id.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sha",
+            "in": "query",
+            "required": true,
+            "description": "The commit's full id.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The answer, JSON.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "Not modified: the ETag sent in If-None-Match still holds (not counted against the rate limit)."
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/statuses/post": {
+      "post": {
+        "summary": "Post a commit status (a lab's CI, a reproduction service): the latest of each context is kept.",
+        "operationId": "postStatusesPost",
+        "x-scope": "statuses:write",
+        "security": [
+          {
+            "token": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ApiVersion"
+          }
+        ],
+        "responses": {
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error"
+          },
+          "2XX": {
+            "description": "The answer, JSON.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "repo": {
+                    "description": "owner/name or <forge>:<id> (required)."
+                  },
+                  "sha": {
+                    "description": "The commit's full id (required)."
+                  },
+                  "state": {
+                    "description": "error, failure, pending or success (required)."
+                  },
+                  "context": {
+                    "description": "The service and its check, as “lab-ci/tests” (default: default)."
+                  },
+                  "description": {
+                    "description": "A short sentence (140 characters)."
+                  },
+                  "target_url": {
+                    "description": "An https page with the details."
+                  }
+                },
+                "required": [
+                  "repo",
+                  "sha",
+                  "state"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/statuses/actions": {
+      "post": {
+        "summary": "Post a commit status from a GitHub Actions workflow, with GitHub's OIDC token (audience: this site's origin) instead of a registry token: no secret in the repository.",
+        "operationId": "postStatusesActions",
+        "x-scope": null,
+        "security": [],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ApiVersion"
+          }
+        ],
+        "responses": {
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error"
+          },
+          "2XX": {
+            "description": "The answer, JSON.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "sha": {
+                    "description": "The commit's full id (required)."
+                  },
+                  "state": {
+                    "description": "error, failure, pending or success (required)."
+                  },
+                  "context": {
+                    "description": "Default: “GitHub Actions: <the workflow's name>”."
+                  },
+                  "description": {
+                    "description": "A short sentence (140 characters)."
+                  },
+                  "target_url": {
+                    "description": "An https page with the details (the run's page)."
+                  }
+                },
+                "required": [
+                  "sha",
+                  "state"
+                ]
+              }
+            }
+          }
+        }
+      }
     }
   }
 }

@@ -28,6 +28,8 @@
 //   GET  /api/forge/hooks/deliveries  signed in   one hook's deliveries of the last 7 days          hooks.ts
 //   POST /api/forge/hooks/write       signed in   make (pinged), change, ping, redeliver, rotate,   hooks.ts
 //                                                 delete a webhook
+//   GET  /api/forge/statuses          signed in   phase 10: a commit's statuses posted by outside   statuses.ts
+//                                                 services (the API posts them: api.ts)
 //
 // What every route gets here, in order: its path (another is 404), its method (405), the FORGE
 // binding (503 not_configured without it), and for the signed-in routes the accounts (COMMUNITY and
@@ -55,6 +57,7 @@ import { handleSocialFollow, handleSocialList, handleSocialMine, handleSocialPer
 import { handleStart } from "./start.ts";
 import { handleTokens, handleTokenWrite } from "./tokens.ts";
 import { handleHookDeliveries, handleHooks, handleHookWrite } from "./hooks.ts";
+import { handleStatuses } from "./statuses.ts";
 import type { Context, D1Database, ForgeDeps, ForgeRequest, ForgeServiceEnv, RouteHandler } from "./types.ts";
 import { handleWebhook } from "./webhook.ts";
 
@@ -97,6 +100,8 @@ export const FORGE_ROUTES: Readonly<Record<string, Route>> = {
   "/api/forge/hooks": { method: "GET", signedIn: true, handle: (r) => handleHooks(r) },
   "/api/forge/hooks/deliveries": { method: "GET", signedIn: true, handle: (r) => handleHookDeliveries(r) },
   "/api/forge/hooks/write": { method: "POST", signedIn: true, handle: (r) => handleHookWrite(r) },
+  // Phase 10: the statuses outside services posted on a commit (statuses.ts; posted through the API).
+  "/api/forge/statuses": { method: "GET", signedIn: true, handle: (r) => handleStatuses(r) },
 };
 
 const PREFIX = "/api/forge/";

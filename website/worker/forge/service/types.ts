@@ -49,6 +49,12 @@ export type ForgeServiceEnv = AccountEnv &
     /** Development only (hooks-core.ts): "1" lets outgoing webhooks post over http to localhost and
      *  127.0.0.1 (the local end-to-end run's receiver). Never in wrangler.toml, never in production. */
     HOOKS_ALLOW_LOCAL?: string;
+    /** Phase 10 (pr-checks.ts): the platform's name (the site's SITE_NAME), for the name of the check
+     *  run GitHub shows; unset, the run is "Research code checks". Never hard-coded. */
+    SITE_NAME?: string;
+    /** Development only (statuses.ts): GitHub Actions' OIDC issuer replaced by a mock (https, or http
+     *  on this machine). Production: https://token.actions.githubusercontent.com. */
+    GITHUB_OIDC_ISSUER?: string;
   };
 
 /** What the tests (and only they) inject. The Worker passes nothing: service/backend.ts builds

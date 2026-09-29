@@ -40,6 +40,7 @@ import type { ForgeEvent, RepoStub } from "../types.ts";
 import { WEBHOOK_BYTES } from "./caps.ts";
 import { eventOfDelivery, eventWrite } from "./events.ts";
 import { queueHooks } from "./hooks.ts";
+import { queuePullChecks } from "./pr-checks.ts";
 import { json, problem } from "./http.ts";
 import { all, deleteInstallation, deliveryRow, deliverySeen, installationById, repoByKey, rowsOf, statements, tracedCount, updateRepo, upsertInstallation } from "./store.ts";
 import type { D1Database, D1PreparedStatement, ForgeRequest, InstallationRow, RepoRow, RepoState, Write } from "./types.ts";
@@ -301,6 +302,11 @@ export async function handleWebhook(r: ForgeRequest): Promise<Response> {
   const seen = await known(r.db, backend.forge, event.delivery, who.installation, who.repo, r.t);
   if (seen.delivered) return acknowledged({ stored: 0, duplicate: true });
   const p = await plan(r, event, seen);
+  // Phase 10: the registry's checks of a pull request's new head, in waitUntil (pr-checks.ts): on a
+  // public repository the registry follows, covered by the installation that sent the delivery.
+  if (event.kind === "pull_request" && seen.repo && covers(seen.installation, seen.repo, event.repo) && event.repo.visibility === "public" && ALIVE.includes(seen.repo.state) && seen.repo.name) {
+    queuePullChecks(r, event, seen.repo);
+  }
   if (!p.writes.length) return acknowledged({ stored: 0, dropped: p.dropped });
   const rows = rowsOf(p.writes);
   // A change of one row is logged with its delivery row; a larger one is idempotent by itself.

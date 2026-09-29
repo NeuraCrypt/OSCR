@@ -33,6 +33,7 @@ import { handleSearch } from "../../api.ts";
 import type { Env } from "../../env.ts";
 import { API_RATE, bearer, giveBack, peekRate, rateHeaders, sharedLimit, takeRequest, type Principal, type RateState } from "./bearer.ts";
 import { handleHookDeliveries, handleHooks, handleHookWrite } from "./hooks.ts";
+import { handleActionsStatus, handleStatuses, handleStatusPost } from "./statuses.ts";
 import { handleActivity, handleFeed, handleInbox, handleNotices } from "./inbox.ts";
 import { runRoute } from "./index.ts";
 import { handleMine, handleRepo } from "./read.ts";
@@ -62,8 +63,11 @@ export interface ApiRoute {
   handle: RouteHandler;
   /** In words, for the index and the reference. */
   words: string;
-  /** Answered without a token (the index only). */
+  /** Answered without a registry token: the index, and the route that takes GitHub Actions' own OIDC
+   *  token (statuses.ts checks it). */
   tokenless?: boolean;
+  /** Needs no database at all (the index). */
+  bare?: boolean;
   /** Not counted against the rate limit (GET /rate_limit). */
   uncounted?: boolean;
   /** The query parameter of the next page when the answer's `next` is set (the Link header). */
@@ -135,7 +139,7 @@ async function search(r: ForgeRequest): Promise<Response> {
 
 /** Every route of version 1, by path. */
 export const API_ROUTES: Record<string, ApiRoute> = {
-  [API_PREFIX]: { method: "GET", scope: null, handle: index, tokenless: true, words: "This index: the version, the routes, how to authenticate." },
+  [API_PREFIX]: { method: "GET", scope: null, handle: index, tokenless: true, bare: true, words: "This index: the version, the routes, how to authenticate." },
   [`${API_PREFIX}/user`]: { method: "GET", scope: null, handle: user, words: "Whose token this is (public handles), its scopes, its expiry." },
   [`${API_PREFIX}/rate_limit`]: { method: "GET", scope: null, handle: rateLimit, uncounted: true, words: "The token's use of its rate limits (never counted)." },
   [`${API_PREFIX}/search`]: {
@@ -316,6 +320,45 @@ export const API_ROUTES: Record<string, ApiRoute> = {
       guid: "redeliver: the delivery's id.",
     },
   },
+  [`${API_PREFIX}/statuses`]: {
+    method: "GET",
+    scope: "repos:read",
+    handle: handleStatuses,
+    words: "The statuses posted on a commit of a repository the registry knows, and their combined state.",
+    params: [
+      { name: "path", words: "owner/name." },
+      { name: "id", words: "<forge>:<id>: one of path or id." },
+      { name: "sha", words: "The commit's full id.", required: true },
+    ],
+  },
+  [`${API_PREFIX}/statuses/post`]: {
+    method: "POST",
+    scope: "statuses:write",
+    handle: handleStatusPost,
+    words: "Post a commit status (a lab's CI, a reproduction service): the latest of each context is kept.",
+    body: {
+      repo: "owner/name or <forge>:<id> (required).",
+      sha: "The commit's full id (required).",
+      state: "error, failure, pending or success (required).",
+      context: "The service and its check, as “lab-ci/tests” (default: default).",
+      description: "A short sentence (140 characters).",
+      target_url: "An https page with the details.",
+    },
+  },
+  [`${API_PREFIX}/statuses/actions`]: {
+    method: "POST",
+    scope: null,
+    tokenless: true,
+    handle: handleActionsStatus,
+    words: "Post a commit status from a GitHub Actions workflow, with GitHub's OIDC token (audience: this site's origin) instead of a registry token: no secret in the repository.",
+    body: {
+      sha: "The commit's full id (required).",
+      state: "error, failure, pending or success (required).",
+      context: "Default: “GitHub Actions: <the workflow's name>”.",
+      description: "A short sentence (140 characters).",
+      target_url: "An https page with the details (the run's page).",
+    },
+  },
 };
 
 // ─── the router ──────────────────────────────────────────────────────────────
@@ -468,7 +511,7 @@ export async function handleApi(request: Request, env: ForgeServiceEnv | object,
   };
 
   const inner = withoutCookies(request);
-  if (route.tokenless) {
+  if (route.bare) {
     // The index needs no database.
     const r = { request: inner, url, path, t: said.t } as unknown as ForgeRequest;
     return finish(await route.handle(r), inner, url, said);

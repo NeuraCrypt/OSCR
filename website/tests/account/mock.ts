@@ -147,7 +147,8 @@ export class MockProviders {
     if (request.method === "GET" && /^\/(orcid\/oauth\/authorize|github\/login\/oauth\/authorize|google\/o\/oauth2\/v2\/auth)$/.test(path)) {
       return new Response(null, { status: 302, headers: { Location: this.authorize(request.url) } });
     }
-    if (path === "/orcid/oauth/jwks" || path === "/google/oauth2/v3/certs") return json(await this.jwks());
+    // Night phase 10: GitHub Actions' OIDC keys (statuses.ts), signed by the same mock key.
+    if (path === "/orcid/oauth/jwks" || path === "/google/oauth2/v3/certs" || path === "/actions/.well-known/jwks") return json(await this.jwks());
     if (request.method === "POST" && (path === "/orcid/oauth/token" || path === "/github/login/oauth/access_token" || path === "/google/token")) {
       const provider: Name = path.startsWith("/orcid/") ? "orcid" : path.startsWith("/github/") ? "github" : "google";
       return this.token(provider, form);
