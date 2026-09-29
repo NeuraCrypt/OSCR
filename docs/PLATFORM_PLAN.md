@@ -248,7 +248,7 @@ applied with `wrangler d1 migrations apply` on Cloudflare and by `oscr` on the M
 | `comments` | `id`, `discussion_id`✱, `parent_id`, `author_id`, `body_md`, `body_html` (sanitized at write), `created_at`, `edited_at`, `hidden` |
 | `votes` | `user_id`, `target_kind`, `target_id`✱, `value`, `created_at` (unique per user and target) |
 | `reproduction_reports` | `id`, `paper_id`✱, `user_id`, `outcome` (reproduced, partially, failed), `environment` (JSON), `repo_commit`, `datasets` (JSON), `notes_md`, `created_at` |
-| `reports` | `id`, `user_id`, `target_kind` (paper), `target_id`, `reason` (author_request, copyright, personal_data, incorrect, other), `details`, `status`, `message`, `created_at`, `decided_at`; index (user, kind, target), unique. Built (Phase 6) for removal requests; other reports with Phase 7 |
+| `reports` | `id`, `user_id`, `target_kind` (paper), `target_id`, `reason` (copyright, personal_data, not_my_work, retracted, incorrect, other; author_request before 2026-09-29), `details`, `requester_role`, `author_verified`, `scope` (record, scripts, repository, file, map), `scope_repo`, `scope_path`, `evidence_url`, `confirmed`, `status`, `message`, `created_at`, `updated_at`, `decided_at`; index (user, kind, target), unique. Built (Phase 6) for removal requests, made whole by the page /removal/ (migration 3, docs/CONTRIBUTIONS.md); other reports with Phase 7 |
 | `moderation_actions` | `id`, `moderator_id`, `target_kind`, `target_id`, `action`, `reason`, `created_at` |
 | `collections`, `collection_items` | `id`, `owner_id`, `title`, `public`; items `(collection_id, paper_id)` |
 | `subscriptions` | `user_id`✱, `target_kind` (category, journal, author, tool, dataset, search), `target_id`, `created_at` |

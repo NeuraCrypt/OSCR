@@ -129,8 +129,11 @@ What signed-in readers ask of the registry (`website/worker/contributions/`, `os
   is recorded as a test (`proof = 'test'`), never exported.
 - **Badge**: one static image (`/badge.svg`, no file per paper) and snippets; the author opens the
   pull request in GitHub's own editor. No write permission is ever asked of GitHub.
-- **Takedown**: a request from every record (signed in until Turnstile), decided by the owner
-  (`oscr reports`); accepted, the record leaves every public output (`article.withdrawn`).
+- **Takedown**: one page, `/removal/?paper=…`, linked from every record (signed in until Turnstile):
+  who asks, what (the record, the scripts' copies, a repository, a file, the tracing map), why, a
+  justification without an email address, two confirmations, a review before sending. Decided by the
+  owner (`oscr reports`); accepted, it leaves every public output at the next nightly — the record
+  (`article.withdrawn`) or only what it names (`withheld`).
 - Manual author claims and claims GitHub cannot settle: decided by the owner (`oscr claims`) until
   Phase 7's moderation.
 - **Costs**: a request writes 3 D1 rows, an answer 1 (in the facts push's daily budget); per-account
