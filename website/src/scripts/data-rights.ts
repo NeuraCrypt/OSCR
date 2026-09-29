@@ -188,8 +188,13 @@ function renderHeld(s: State) {
       ...other.map((r) => `; ${ROLE_WORDS[r.role] ?? r.role}${r.scope_id ? ` of ${r.scope_id}` : ""} (granted by ${GRANTED[r.granted_by] ?? "a moderator"} on ${day(r.granted_at)})`),
     ],
   ]);
-  const asked = TABLE_WORDS.filter(([t]) => (h.requests[t] ?? 0) > 0).map(([t, one, many]) => plural(h.requests[t], one, many));
-  rows.push(["Requests", [asked.length ? asked.join(", ") : "none", asked.length ? " — each listed on " : "", asked.length ? { href: "/account/#requests", text: "your account page" } : ""]]);
+  // The data-rights requests are listed on this page; the others, on the account page.
+  const others = TABLE_WORDS.filter(([t]) => t !== "rights" && (h.requests[t] ?? 0) > 0).map(([t, one, many]) => plural(h.requests[t], one, many));
+  const rights = h.requests.rights ?? 0;
+  const parts: Part[] = [];
+  if (others.length) parts.push(others.join(", "), " (listed on ", { href: "/account/#requests", text: "your account page" }, ")");
+  if (rights) parts.push(others.length ? "; " : "", `${plural(rights, "data-rights request")} (listed above)`);
+  rows.push(["Requests", parts.length ? parts : ["none"]]);
   rowsInto(byId("rights-held"), rows);
 }
 
