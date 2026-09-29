@@ -106,6 +106,10 @@ export interface RepoLayerAnswer {
   maps: number;
   paths: number;
   jobs: PendingJob[];
+  /** Phase 04 (D04-*): the linked papers' verified authors who signed in with GitHub, by their
+   *  GitHub login — the reviewers a pull request's page suggests. Answered only to a reader who
+   *  manages the repository or authored one of its papers; empty for anyone else. */
+  reviewers: { login: string; papers: string[] }[];
 }
 
 export interface MineItem {
@@ -270,6 +274,21 @@ function communityFacts(community: D1Database, user: User, repoKey: string, pape
   return community.prepare(parts.join(" UNION ALL ")).bind(...values);
 }
 
+/** Verified authors read at most for the suggested reviewers. */
+export const REVIEWERS_MAX = 30;
+
+/** The verified authors of these papers with a GitHub login, by the roles' index (roles_scope,
+ *  migrations/d1-community/0003) and the users' key: never a scan. */
+function authorsOf(community: D1Database, paperIds: string[]): D1PreparedStatement {
+  return community
+    .prepare(
+      "SELECT u.github_login AS login, r.scope_id AS paper FROM roles r JOIN users u ON u.id = r.user_id " +
+        `WHERE r.scope_kind = 'paper' AND r.scope_id IN (${paperIds.map(() => "?").join(", ")}) AND r.role = 'verified_author' ` +
+        `AND u.github_login IS NOT NULL AND u.github_login != '' LIMIT ${REVIEWERS_MAX}`,
+    )
+    .bind(...paperIds);
+}
+
 /** OSCR's layer over one repository, as the reader sees it. Reads: the repository (1 row), its
  *  papers, the traced count (1), the pending jobs, the reader's roles and facts. */
 export async function repoLayer(db: D1Database, community: D1Database, user: User, row: RepoRow, t: number): Promise<RepoLayerAnswer> {
@@ -300,6 +319,15 @@ export async function repoLayer(db: D1Database, community: D1Database, user: Use
     return { doi: p.paper_id.slice(4), status: p.status, slug: f?.slug || null, title: f?.title || null, at: Number(p.at) };
   });
   const may = roles.some((role) => role === "maintainer" || role === "owner" || role === "linked_by");
+  // The paper's verified authors as reviewers: to the people who manage the code or wrote a paper.
+  const reviewers = new Map<string, { login: string; papers: string[] }>();
+  if ((may || authored.size) && paperRows.length) {
+    for (const a of await all<{ login: string; paper: string }>(authorsOf(community, paperRows.map((p) => p.paper_id)))) {
+      const e = reviewers.get(a.login.toLowerCase()) ?? { login: a.login, papers: [] };
+      e.papers.push(a.paper.replace(/^doi:/, ""));
+      reviewers.set(a.login.toLowerCase(), e);
+    }
+  }
 
   return {
     forge: row.forge,
@@ -324,6 +352,7 @@ export async function repoLayer(db: D1Database, community: D1Database, user: Use
     maps: Number(traced.maps ?? 0),
     paths: Number(traced.paths ?? 0),
     jobs: jobRows.map((j) => ({ id: Number(j.id), kind: j.kind, ref: j.ref, createdAt: Number(j.created_at), notBefore: j.not_before })),
+    reviewers: [...reviewers.values()],
   };
 }
 

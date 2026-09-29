@@ -718,6 +718,45 @@ p.fork-status { margin: .3em 0; }
 form.fork-form p { margin: .5em 0; }
 form.fork-form .explain { color: var(--muted); font-size: .92em; }
 
+/* A pull request's page (night phase 04, E4): its head with the merge status at the top, its tabs,
+   the conversation as ruled comments (a review's decision in words, a role in words), the
+   conversations on lines indented under their review, the merge box as a ruled section */
+.pull-head h2 { margin: .4em 0 .2em; font-size: 1.35em; overflow-wrap: anywhere; }
+.pull-head .pull-number { color: var(--muted); font-weight: normal; }
+p.merge-status { margin: .2em 0 .6em; font-weight: bold; }
+p.merge-status.ok { color: var(--ok); }
+p.merge-status.warning { color: var(--warning); }
+nav.pull-tabs { margin-top: .4em; }
+.pull-record .body { min-width: 0; }
+.comment { margin: 0 0 1em; padding: .3em .8em .5em; border: 1px solid var(--rule); }
+.comment > .markdown-body { margin: .3em 0 0; }
+p.comment-head { margin: 0 -.8em .3em; padding: .25em .8em; background: var(--bg-sidebar); border-bottom: 1px solid var(--rule); font-size: .92em; overflow-wrap: anywhere; }
+p.comment-head .role { color: var(--muted); }
+.comment.review-approved > p.comment-head { color: var(--ok); }
+.comment.review-changes_requested > p.comment-head { color: var(--warning); }
+p.muted-note { color: var(--muted); font-style: italic; }
+p.timeline-event { margin: .3em 0 .8em .8em; color: var(--muted); font-size: .92em; }
+.thread { margin: .6em 0 .3em; padding: .2em .7em; border-left: 3px solid var(--rule); }
+.thread.outdated { border-left-style: dashed; }
+p.thread-where { margin: .2em 0; font-family: var(--font-code); font-size: .88em; overflow-wrap: anywhere; }
+.thread-comment { margin: .4em 0; }
+.thread-comment > p.comment-head { margin: 0 0 .2em; padding: 0; background: none; border: 0; }
+p.thread-actions, p.suggestion-note { margin: .3em 0; font-size: .9em; }
+section.merge-box { margin: 1em 0; padding: .3em .9em .6em; border: 1px solid var(--masthead); background: var(--bg-sidebar); }
+section.merge-box h3 { margin: .3em 0; }
+section.merge-box p { margin: .35em 0; }
+.merge-form input[type="text"] { font: inherit; width: min(40em, 100%); padding: .15em .35em; border: 1px solid #777; border-radius: 0; box-sizing: border-box; background: var(--bg); }
+.merge-form select { font: inherit; border-radius: 0; }
+.merge-form .explain { color: var(--muted); font-size: .9em; }
+a.primary-link { font-weight: bold; }
+section.comment-form { margin: 1em 0; }
+section.comment-form h3 { margin: .3em 0; }
+ul.reviewers { margin: .2em 0 .5em; padding-left: 1.2em; }
+ul.reviewers li { margin: .15em 0; overflow-wrap: anywhere; }
+p.ask-review input[type="text"] { font: inherit; width: 10em; padding: .1em .3em; border: 1px solid #777; border-radius: 0; }
+.sidebar p.summary-line { margin: .25em 0; font-size: .9em; }
+.sidebar p.explain { color: var(--muted); font-size: .88em; }
+
 footer {
   max-width: var(--width); margin: 0 auto; padding: 1em;
   border-top: 1px solid var(--rule); font-size: .85em; color: var(--muted);
@@ -761,5 +800,7 @@ footer a { margin-right: 1em; }
   .markdown-body img.align-right, .markdown-body img.align-left { float: none; margin: 0; }
   /* Phase 04: the pull request forms take the column */
   section.pull-form { padding-left: .6em; padding-right: .6em; }
+  section.merge-box, .comment { padding-left: .6em; padding-right: .6em; }
+  p.comment-head { margin-left: -.6em; margin-right: -.6em; padding-left: .6em; }
   form.pull-filter input[type="search"] { width: 100%; }
 }

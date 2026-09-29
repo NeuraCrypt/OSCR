@@ -139,8 +139,11 @@ describe("GET /api/forge/repo", () => {
       maps: 2,
       paths: 3,
       jobs: [{ id: 2, kind: "push", ref: HEAD, createdAt: T0 - 300, notBefore: null }],
+      // Phase 04: the verified authors with a GitHub login, the reviewers a pull request suggests.
+      reviewers: [{ login: "ada-fixture", papers: ["10.1234/one"] }],
     });
-    // Budget R6: at most 12 rows read in both databases, none written, never a scan.
+    // Budget R6: at most 12 rows read in both databases (phase 04's authors included), none
+    // written, never a scan.
     assert.ok(rowsRead(res) <= 12, `rows read: ${rowsRead(res)}`);
     assert.ok(rowsRead(res) >= 5);
     assert.equal(rowsWritten(res), 0);
@@ -169,6 +172,8 @@ describe("GET /api/forge/repo", () => {
     const { b: bob, userId: bobId } = await signIn(BOB);
     let layer = await body(await bob.fetch("/api/forge/repo?id=memory:101"));
     assert.deepEqual(layer.roles, []);
+    // Phase 04: the paper's authors are suggested only to those who manage the code or wrote a paper.
+    assert.deepEqual(layer.reviewers, []);
     assert.deepEqual(layer.authorOf, []);
     assert.equal(layer.restore, false);
     // Paper facts are the reader's own: Bob authored none, so no slug or title from them.

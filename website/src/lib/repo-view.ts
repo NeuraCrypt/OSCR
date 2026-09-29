@@ -252,6 +252,10 @@ export function parseLayer(value: unknown): ViewLayer | null {
     roles: Array.isArray(o.roles) ? o.roles.filter((r): r is string => typeof r === "string" && /^[a-z_]{1,40}$/.test(r)) : [],
     swh: typeof swh === "string" && swhUrl(swh) ? swh : null,
     copies: count(o.copies),
+    reviewers: (Array.isArray(o.reviewers) ? o.reviewers.slice(0, 30) : [])
+      .map(record)
+      .filter((r): r is Record<string, unknown> => !!r && typeof r.login === "string" && /^[A-Za-z0-9][A-Za-z0-9-]{0,38}$/.test(r.login))
+      .map((r) => ({ login: r.login as string, papers: (Array.isArray(r.papers) ? r.papers : []).filter((d): d is string => typeof d === "string" && DOI.test(d)).slice(0, 20) })),
   };
 }
 

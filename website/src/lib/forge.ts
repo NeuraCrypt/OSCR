@@ -258,6 +258,9 @@ export interface ShellLayer {
   deleteAfter: number | null;
   /** The reader's roles on the layer: "linked_by", "verified_author", "maintainer" (signed in). */
   roles: string[];
+  /** Phase 04: the papers' verified authors by their GitHub login (signed in, to the people who
+   *  manage the code or wrote a paper): the reviewers a pull request suggests. */
+  reviewers?: { login: string; papers: string[] }[];
 }
 
 /** What the /r/ shell knows of a repository, and hands to mountSettings and mountBranches
