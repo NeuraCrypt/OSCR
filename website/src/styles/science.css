@@ -550,6 +550,18 @@ nav.docs-nav [aria-current="page"] { font-weight: bold; color: var(--text); }
 p.docs-head { font-size: .9em; color: var(--muted); margin: .2em 0 .8em; }
 p.docs-link { margin: .8em 0 0; }
 
+/* The About panel's parts read from the files (night phase 02, E6): the languages in words, the
+   community files, "Cite this repository" with its APA and BibTeX */
+.sidebar p.languages { margin: .3em 0 .6em; }
+.sidebar p.community-title { font-weight: bold; margin: .6em 0 .2em; }
+.sidebar ul.community { margin: 0 0 .6em; padding-left: 1.1em; }
+details.cite-repo { margin: .6em 0; }
+details.cite-repo summary { cursor: pointer; font-weight: bold; }
+details.cite-repo p { margin: .35em 0; }
+p.cite-apa { overflow-wrap: anywhere; }
+pre.cite-bibtex { font-size: .8em; white-space: pre-wrap; overflow-wrap: anywhere; margin: .3em 0; }
+p.cite-message { color: var(--muted); font-size: .92em; }
+
 footer {
   max-width: var(--width); margin: 0 auto; padding: 1em;
   border-top: 1px solid var(--rule); font-size: .85em; color: var(--muted);

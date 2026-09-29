@@ -334,6 +334,9 @@ export const lineMenuExtras: ((state: { env: CodeEnv; opened: Opened; path: stri
 /** Line classes (E4: a tracing map's .pair-N) for a file, from its lines as shown. */
 export const lineMarkers: ((env: CodeEnv, opened: Opened, path: string, lines: readonly string[]) => Promise<Map<number, string>>)[] = [];
 
+/** A file's language as its repository says it (E6: .gitattributes' linguist-language), or null. */
+export const languageOverrides: ((env: CodeEnv, opened: Opened, path: string) => Promise<string | null>)[] = [];
+
 /** What a binary file is, in the viewer (E5: a PDF to open in the browser's viewer, an STL model). */
 export const binaryViews: ((path: string, bytes: Uint8Array) => El | null)[] = [];
 
@@ -462,7 +465,9 @@ export async function mountBlob(slot: HTMLElement, env: CodeEnv, segments: reado
     body.push(fileInfo({ size: 0, language: null, kind }), h("p", null, "This file is empty."));
   } else {
     const text = utf8Text(file.bytes);
-    const language = detectLanguage(path, text);
+    let override: string | null = null;
+    for (const f of languageOverrides) override ??= await f(env, opened, path).catch(() => null);
+    const language = detectLanguage(path, text, override);
     const read: ReadFile = { env, ref: opened.ref, commit: opened.commit, path, entry, entries: opened.entries, bytes: file.bytes, text, language };
     const claimed = renderers.find((r) => r.claims(path, language));
     let rendered: El | null = null;
