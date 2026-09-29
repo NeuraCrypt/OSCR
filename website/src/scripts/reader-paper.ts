@@ -198,7 +198,7 @@ export function paperPane(data: ReaderData, body: HTMLElement, status: HTMLEleme
     status.textContent = text;
   }
 
-  function fail(reason: string) {
+  function fail(reason: string, pmcToo = false) {
     state = "failed";
     status.className = "warning";
     const again = document.createElement("button");
@@ -209,7 +209,7 @@ export function paperPane(data: ReaderData, body: HTMLElement, status: HTMLEleme
       void load();
     });
     status.replaceChildren(
-      `The text of this paper could not be loaded from Europe PMC (${reason}). Read it at `,
+      `The text of this paper could not be loaded from Europe PMC (${reason})${pmcToo ? ", nor from PubMed Central" : ""}. Read it at `,
       link(data.doiUrl, "doi.org"),
       " or on ",
       link(data.epmcUrl, "Europe PMC"),
@@ -263,7 +263,8 @@ export function paperPane(data: ReaderData, body: HTMLElement, status: HTMLEleme
       first = err;
     }
     // Europe PMC did not give it: PubMed Central's copy, for a paper there.
-    if (/^PMC\d+$/i.test(data.fulltextId)) {
+    const pmc = /^PMC\d+$/i.test(data.fulltextId);
+    if (pmc) {
       waiting("Europe PMC did not answer; loading the paper from PubMed Central…");
       try {
         return show(parse(await get(PMC(data.fulltextId), 1, "PubMed Central")), "pmc");
@@ -272,9 +273,9 @@ export function paperPane(data: ReaderData, body: HTMLElement, status: HTMLEleme
       }
     }
     const e = first as Error;
-    if (e instanceof HttpError && e.status === 404) return fail("it has no full text for this paper");
-    if (e instanceof TimeoutError) return fail(`no answer within ${e.seconds} seconds, tried twice`);
-    fail(e instanceof TypeError ? "the network did not let the request through" : e.message);
+    if (e instanceof HttpError && e.status === 404) return fail("it has no full text for this paper", pmc);
+    if (e instanceof TimeoutError) return fail(`no answer within ${e.seconds} seconds, tried twice`, pmc);
+    fail(e instanceof TypeError ? "the network did not let the request through" : e.message, pmc);
   }
 
   function load(): Promise<void> {
