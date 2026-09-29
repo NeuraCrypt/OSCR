@@ -212,6 +212,34 @@ The lock before the GitHub side opens (`docs/MODERATION.md`, `docs/POLICIES.md`,
 - Their styles are in `science.css`: `.human-check`, `p.moderated`, `table.queue`, `form.lookup`,
   `.draft-notice`, `.policy`.
 
+## The command line (night phase 14)
+
+The researchers' `oscr` (`cli/`, `docs/CLI.md`, D14-*):
+
+- **Two commands are named `oscr`.** The harvester's (the root's `oscr` package, `.venv/bin/python -m
+  oscr` in launchd) never changes for the researchers' one. The researchers' is `cli/` with the import
+  package `oscr_cli`, the standard library only, installed in an environment of its own; never
+  `pip install` it into the repository's `.venv`. Here it runs as `PYTHONPATH=cli/src .venv/bin/python -m
+  oscr_cli`. Its settings are `~/.config/oscr-cli/`, its keychain service `oscr-cli`: never
+  `~/.config/oscr/settings` nor `org.oscr.*`.
+- **Its credentials live in the system's keychain only** (macOS `security -i`, the secret on standard
+  input; Linux `secret-tool`); a 0600 file only when the person asks. No token in argv, logs or
+  `--debug`. GitHub's token comes from GitHub's device flow with the App's public client id and never
+  reaches the registry; the git credential helper answers GitHub's host only.
+- **The registry's sign-in writes no row until a person decides**: codes sealed with `SESSION_KEY`,
+  approved on `/device/` by typing the terminal's code (Origin, CSRF, FORGE_OPEN, Turnstile), the token
+  made when collected. `DEVICE_CODE_SECONDS` is development only, never in wrangler.toml.
+- **It never runs what it reads**: `oscr check` and `oscr trace` read files as text from git's object
+  store; git always runs with `core.hooksPath` at the null device and `core.fsmonitor=false`. Its checks
+  are the Worker's, held to `tests/fixtures/checks-cases.json` (regenerate with
+  `website/scripts/checks-cases.ts` after a change of `checks-core.ts`, then make the port follow).
+- **The registry's view first**: every command gives the registry's page; GitHub's only when the
+  registry cannot show the thing, said why. Every text from the network is cleaned before it is shown.
+- **Its tests never reach the outside nor the owner's files**: fakes on 127.0.0.1, a fake or throwaway
+  keychain (an autouse guard refuses the system's), a throwaway HOME and `GIT_CONFIG_GLOBAL`:
+  `cd cli && ../.venv/bin/python -m pytest -q && ../.venv/bin/ruff check src tests`.
+- Its page's styles are in `science.css`: `input.device-code`.
+
 ## The website's style (website/)
 
 - `website/src/styles/science.css` is the **only** source of style of the site. It is

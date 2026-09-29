@@ -414,7 +414,7 @@ yet: phase 01 builds it on this design.
 | **`oscr_forge`** (new D1 database, binding `FORGE`) | Cloudflare D1 | repositories known by their forge id (public only), links to papers, installations, the paths tracing maps point to, the action log, jobs for the Mac; no Git object, token or email address | inside the Worker's D1 share (D00-12) |
 | **`GitBackend`** | `website/worker/forge/` (Worker and browser); `oscr/forge.py` (the Mac, read-only) | the forge-neutral interface; the GitHub adapter; an in-memory double and a contract suite for tests | $0 |
 | **The Mac** | as today | verifies linked repositories and their licenses; keeps the licensed script copies; computes tracing maps at pinned commits; polls public mirrors; asks Software Heritage to archive when a person requests it (D00-15). Never writes to a forge, never runs users' code | $0 |
-| **The researcher's machine** | `git` and the `oscr` command-line tool (phase 14) | imports, keeping commit ids (D00-8); uploads above OSCR's caps; local blame. The tool's GitHub token stays in the researcher's keychain | $0 |
+| **The researcher's machine** | `git` and the `oscr` command-line tool (phase 14: `cli/`, [CLI.md](CLI.md)) | imports, keeping commit ids (D00-8); uploads above OSCR's caps; local blame; the registry's checks, citations and tracing maps on a local clone. Both of the tool's tokens (GitHub's, the registry's) stay in the researcher's keychain | $0 |
 
 ```mermaid
 flowchart LR
@@ -913,3 +913,35 @@ D16-3: its file budget, its code-first reader, its removal page); the contract i
   `/limits/`, `/copyright/`, `/data-rights/`) and their scripts: none per report, block or decision.
 - **The screenshots**: `docs/night-screenshots/phase-16/` (15 desktop 1280×860, 15 phone 390×844,
   against the fake GitHub and `wrangler dev`, every outside address refused).
+
+### The `oscr` command line (phase 14): the registry in the researcher's own workflow
+
+Built on the night of 2026-09-29, after phase 16; the manual is [CLI.md](CLI.md), the API's side
+[API.md](API.md) "The command line's sign-in", the decisions D14-1 to D14-16 in
+[DECISIONS.md](DECISIONS.md).
+
+- **A distribution of its own** (D14-1): `cli/` (`cli/pyproject.toml`, the import package `oscr_cli`,
+  the console script `oscr`, the standard library only), installed in an environment of its own; the
+  harvester's `oscr` (the root's package, `.venv/bin/python -m oscr` in launchd) is untouched. In the
+  repository it runs as `PYTHONPATH=cli/src .venv/bin/python -m oscr_cli`.
+- **Two sign-ins, the keychain only** (D14-2 to D14-4): GitHub's own device flow with the App's public
+  client id (the token never reaches the registry; git's credential helper for GitHub's host only); the
+  registry's own device-code flow — a code sealed with the server key that writes no row, the page
+  `/device/` where the signed-in person types the terminal's code and approves (1 row), the token made
+  when the terminal collects it (`device-core.ts`, `device.ts`, `device_grants` in
+  `migrations/d1-forge/0011_device.sql`). macOS `security`, Linux `secret-tool`, a 0600 file only when
+  asked.
+- **The registry's own commands** (D14-6 to D14-9): `oscr check` (the Worker's checks ported line for
+  line, held to `tests/fixtures/checks-cases.json` with the TypeScript), `oscr cite`, `oscr trace`
+  (the static maps found again at any commit; a map proposed from selected lines), `oscr paper link`
+  (the site's own authorized action, opened pre-filled). They read files as text from git's object
+  store and never run them; git always runs with its hooks and filesystem monitor off.
+- **GitHub's side** (D14-10): GitHub's API directly with the person's own token, the registry's `/r/`
+  page given first, GitHub's address only when the registry cannot show the thing, said why.
+- **For assistants** (D14-11): `oscr mcp serve`, the read commands as read-only MCP tools over stdio.
+- **Safety**: every text from the network cleaned before it is shown (escape sequences, the controls
+  that reorder text), email addresses masked, no token in argv, logs or `--debug`.
+- **Files added to the site**: 1 page (`/device/`) and its script; `GET /api/v1/cli`,
+  `/api/v1/device/code`, `/api/v1/device/token`, `/api/v1/token/revoke`.
+- **The screenshots and transcripts**: `docs/night-screenshots/phase-14/` (the approval page and the
+  tokens list, desktop 1280×860 and phone 390×844; terminal transcripts of the end-to-end run).

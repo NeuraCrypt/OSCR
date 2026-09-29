@@ -37,6 +37,15 @@
 #    the fixture's organization (the fake) posts the registry's check run on a pull request from its
 #    pull_request delivery (the App's key: a throwaway key made for this run, never a real one).
 #
+# Phase 14 (8): the researchers' command line (cli/, run as `python -m oscr_cli`; tests/forge-service/e2e-cli.ts)
+#    against the fake GitHub and the Worker started again (Turnstile's passing test secret, FORGE_OPEN unset:
+#    Ada, the owner, approves; DEVICE_CODE_SECONDS=12, a development life for the expired code): sign-in through
+#    both device flows (the harness approves on the fake's device page and on /device/), status, the API, the
+#    git credential helper, check, cite, trace, repo create and its paper linked through the site's write
+#    path, issue create, a wrong scope, a refused approval, an expired code, MCP, sign-out; the credentials in
+#    a throwaway keychain file made and deleted by the run. TRANSCRIPTS=<folder> keeps its terminal
+#    transcripts (tokens scrubbed).
+#
 #   cd website && SITE_PORT=8791 MOCK_PORT=9491 FAKE_PORT=9490 RECEIVER_PORT=9492 sh tests/forge-service/e2e.sh
 #   (KEEP=1 leaves the three servers running, for screenshots; kill them after.)
 #
@@ -179,3 +188,8 @@ start_worker --var "TURNSTILE_SECRET_KEY:$TURNSTILE_PASS" --var "FORGE_OPEN:true
 env SITE="$SITE" MOCK="$MOCK" FAKE="$FAKE" REPO_ID="$REPO_ID" node --experimental-strip-types tests/forge-service/e2e-rules.ts open
 start_worker --var "TURNSTILE_SECRET_KEY:$TURNSTILE_FAIL" --var "FORGE_OPEN:true"
 env SITE="$SITE" MOCK="$MOCK" FAKE="$FAKE" REPO_ID="$REPO_ID" node --experimental-strip-types tests/forge-service/e2e-rules.ts fail
+
+# 8. Night phase 14 (tests/forge-service/e2e-cli.ts): the command line against the fake GitHub and the Worker,
+# started again with Turnstile's passing test secret, FORGE_OPEN unset, and sign-in codes that live 12 s.
+start_worker --var "TURNSTILE_SECRET_KEY:$TURNSTILE_PASS" --var "DEVICE_CODE_SECONDS:12"
+env SITE="$SITE" MOCK="$MOCK" FAKE="$FAKE" ROOT="$ROOT" TRANSCRIPTS="${TRANSCRIPTS:-}" node --experimental-strip-types tests/forge-service/e2e-cli.ts

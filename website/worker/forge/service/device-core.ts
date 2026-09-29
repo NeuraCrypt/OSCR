@@ -26,6 +26,13 @@ import { ForgeProblem, type D1Database, type D1PreparedStatement, type Write } f
 
 /** How long a code is good for (seconds). */
 export const DEVICE_SECONDS = 15 * 60;
+
+/** A code's life: DEVICE_SECONDS, or a shorter one in development (DEVICE_CODE_SECONDS, 5 to 899: the
+ *  end-to-end run's expired code); never longer. */
+export function deviceSeconds(env: { DEVICE_CODE_SECONDS?: string }): number {
+  const v = Number(env.DEVICE_CODE_SECONDS);
+  return Number.isInteger(v) && v >= 5 && v < DEVICE_SECONDS ? v : DEVICE_SECONDS;
+}
 /** The least time between two polls of one code (seconds). */
 export const POLL_SECONDS = 5;
 /** Codes one address may ask for in a minute (this isolate). */

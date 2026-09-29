@@ -7,7 +7,7 @@ import argparse
 from typing import Any
 
 from .. import github, oscr_api
-from ..errors import UsageError
+from ..errors import CliError, UsageError
 from ..output import add_format_flags, ago, emit
 from ..parsing import command, group
 from ..sanitize import shown
@@ -64,8 +64,11 @@ def _create(ctx: Any, args: argparse.Namespace) -> int:
             payload["report"] = {"outcome": args.outcome, "observed": args.observed, "expected": args.expected or "", "command": args.ran or "",
                                  "environment": args.environment or ""}
         made = oscr_api.post(ctx, "/research/open", payload) or {}
-        ctx.io.say(f"Opened research issue {made.get('id')} on {payload['paper']} in {ctx.config.site_name}.")
-        ctx.io.print(ctx.site_url(str(made.get("page") or f"/research/{made.get('id')}/")))
+        rid_made = str(made.get("id") or "")
+        if not rid_made.isdigit():
+            raise CliError("The registry's answer does not name the research issue it opened.")
+        ctx.io.say(f"Opened research issue {rid_made} on {payload['paper']} in {ctx.config.site_name}.")
+        ctx.io.print(ctx.site_url(f"/research/{rid_made}"))
         return 0
     body_json: dict[str, Any] = {"title": title, "body": body}
     if args.label:

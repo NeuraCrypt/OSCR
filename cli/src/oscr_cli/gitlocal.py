@@ -1,7 +1,8 @@
 """Git on the person's own machine, run as a subprocess (D14-1; docs/CLI.md "Safety").
 
-- Every call passes ``-c core.hooksPath=<the null device>``: no hook of a repository ever runs (a
-  cloned tree's own hooks are not cloned by git, and a person's templates are not asked either).
+- Every call passes ``-c core.hooksPath=<the null device>`` and ``-c core.fsmonitor=false``: no hook
+  of a repository ever runs (a cloned tree's own hooks are not cloned by git, and a person's templates
+  are not asked either), nor a filesystem monitor a repository's configuration could name.
 - Nothing read from a repository is ever executed by this tool: files are read as text
   (``git show``, ``git ls-files``, ``git ls-tree``), never imported, built or run.
 - ``GIT_TERMINAL_PROMPT=0`` for the calls that reach the network from the tool (clone, fetch): a
@@ -20,7 +21,8 @@ from pathlib import Path
 
 from .errors import CliError
 
-NULL_HOOKS = ["-c", f"core.hooksPath={os.devnull}"]
+#: No hook, and no filesystem monitor (a command a repository's own configuration could name).
+NULL_HOOKS = ["-c", f"core.hooksPath={os.devnull}", "-c", "core.fsmonitor=false"]
 
 
 class GitError(CliError):

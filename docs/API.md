@@ -54,6 +54,43 @@ A write grants the read of its area.
 | `hooks:write` | make, change, test, redeliver and delete your webhooks |
 | `statuses:write` | post commit statuses on the repositories the registry knows |
 
+## The command line's sign-in (night phase 14)
+
+The researchers' command line ([CLI.md](CLI.md)) gets a token through the registry's own device-code
+flow (RFC 8628's shape; D14-2), approved by a signed-in person on the site's page `/device/`:
+
+1. `POST /api/v1/device/code` (no token) `{scopes: [...], days?: 1–366 (30), name?: 40 characters}` →
+   `{device_code, user_code, verification_uri, expires_in: 900, interval: 5, scopes, days}`. **Nothing
+   is written**: the request (its scopes, life, name, expiry and a random nonce) is sealed with the server
+   key (HMAC-SHA-256, purpose "device-request") into the page's address, `/device/?r=<payload>.<seal>`;
+   the device code is another seal of the nonce and expiry (purpose "device-code", prefix `oscr_dc_`),
+   kept in the terminal's memory only; the user code is 8 consonants derived from the nonce by the
+   server key (purpose "device-user"). An address asks for at most 10 codes a minute (this isolate).
+2. The person opens the address, signs in (ORCID, GitHub, Google), **types the code their terminal
+   shows** (the page never shows it: an address someone else sent cannot be approved by a click), reads
+   the scopes in words, and approves or refuses: `GET /api/forge/device?r=…` and
+   `POST /api/forge/device/decide {request, code, decision: approve | deny, turnstile}` — the site's own
+   routes (cookie, Origin, CSRF token). Approving is making a token: `FORGE_OPEN` (until the content
+   rules, the owner only), the human check when it is set up, a suspended account makes none, 20 tokens
+   an account, the `automation` cap and the day's rows. Refusing is never refused. Five wrong codes for
+   a request and the page stops taking them. The decision is **one row** (`device_grants`, keyed by the
+   expiry's UTC day and the SHA-256 of the nonce) and its action row.
+3. The terminal polls `POST /api/v1/device/token` (no token) `{device_code}` at most every 5 seconds
+   (faster: 400 `slow_down`) for 15 minutes: 400 `authorization_pending`, `access_denied`,
+   `expired_token` (expired, or used already: a code opens one token), `invalid_grant` (not a code of the
+   registry's); approved, **the token is made now** — answered once, `{access_token, token_type:
+   "bearer", id, scopes, expires_at}`, only its SHA-256 kept (no secret at rest between the approval and
+   the collection) — and the grant is marked collected. 4 rows: the grant, the token and its index entry,
+   the action row.
+4. `POST /api/v1/token/revoke` (any token) `{}`: the token that makes the call is revoked at once (the
+   command line's sign-out). A token never revokes, makes or lists another.
+
+`GET /api/v1/cli` (no token) answers what a command line needs: the GitHub App's **public client id**
+(the command line's GitHub sign-in is GitHub's own device flow, asked of GitHub directly: that token
+never reaches the registry), the routes above, the scopes. The Mac's retention deletes the decisions the
+day after their code expired (`oscr/retention.py`). The development-only `DEVICE_CODE_SECONDS` (5 to 899)
+shortens a code's life for the end-to-end run; it is never in wrangler.toml.
+
 ## Rate limits
 
 - Per token: **60 requests a minute and 1,000 a day**. Every answer carries `X-RateLimit-Limit`,
@@ -116,6 +153,10 @@ site's pages ([SOCIAL.md](SOCIAL.md), [ISSUES.md](ISSUES.md), [FORGE.md](FORGE.m
 | `GET /api/v1` | none (no token) | the index: version, routes, scopes |
 | `GET /api/v1/user` | any | whose token this is (GitHub login, ORCID iD), its scopes and expiry |
 | `GET /api/v1/rate_limit` | any | the token's use of its limits (never counted) |
+| `GET /api/v1/cli` | none (no token) | phase 14: what a command line needs (the GitHub App's public client id, the sign-in's routes) |
+| `POST /api/v1/device/code` | none (no token) | phase 14: `{scopes, days?, name?}` → a sign-in code; nothing written |
+| `POST /api/v1/device/token` | none (no token) | phase 14: `{device_code}` → pending, slow down, refused, expired, or the token once |
+| `POST /api/v1/token/revoke` | any | phase 14: the token revokes itself |
 | `GET /api/v1/search?q=&type=` | any | the site's search (papers, repositories, research issues, people, topics) |
 | `GET /api/v1/repos?path=<owner>/<name>` or `?id=<forge>:<id>` | `repos:read` | the site's: the registry's layer over one repository |
 | `GET /api/v1/repos/mine?after=&limit=&mode=&template=` | `repos:read` | the site's: your repositories the registry knows, paged by name |
@@ -166,8 +207,9 @@ curl -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/jso
 |---|---|
 | the router (CORS, versions, request ids, errors, ETag, Link, scopes, rate limits) | `website/worker/forge/service/api.ts` |
 | tokens: what they are, their rows; the site's routes | `tokens-core.ts`, `tokens.ts` |
+| the command line's sign-in (phase 14) | `device-core.ts`, `device.ts`; the page `src/pages/device.astro`, `src/lib/device.ts`, `src/scripts/device.ts` |
 | a token on a request, the rate limits | `bearer.ts` |
 | the person, from a token or a session | `who.ts` |
 | the OpenAPI description | `openapi.ts`, `website/scripts/openapi.ts`, `website/public/developers/openapi.json` |
 | the pages | `website/src/pages/settings/tokens.astro`, `developers/index.astro`; `src/scripts/tokens.ts`; `src/lib/automation.ts` |
-| the tests | `website/tests/forge-service/tokens.test.ts`, `api.test.ts` |
+| the tests | `website/tests/forge-service/tokens.test.ts`, `api.test.ts`, `device.test.ts`; `tests/forge-pages/device.test.ts` |

@@ -62,6 +62,10 @@ export type ForgeServiceEnv = AccountEnv &
     /** Development only (turnstile.ts): a stand-in of Cloudflare's siteverify on this machine (the
      *  end-to-end run's). Never in wrangler.toml, never in production. */
     TURNSTILE_VERIFY_URL?: string;
+    /** Development only (device.ts, night phase 14): a shorter life for the command line's sign-in codes
+     *  (5 to 899 seconds), so that the end-to-end run sees one expire. Never longer than 15 minutes; never
+     *  in wrangler.toml, never in production. */
+    DEVICE_CODE_SECONDS?: string;
   };
 
 /** What the tests (and only they) inject. The Worker passes nothing: service/backend.ts builds

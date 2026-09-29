@@ -37,7 +37,7 @@ def _create(ctx: Any, args: argparse.Namespace) -> int:
         body["target_commitish"] = args.target
     made = github.call(ctx, "POST", f"/repos/{repo.owner}/{repo.name}/releases", body=body).body or {}
     row = _row(ctx, repo, made)
-    ctx.io.say(f"Made the release {row['tag']}{' (a draft)' if row['draft'] else ''} on {repo.full} (GitHub made it, as you). "
+    ctx.io.say(f"Made the release {shown(row['tag'])}{' (a draft)' if row['draft'] else ''} on {repo.full} (GitHub made it, as you). "
                f"On its page, tie it to the paper's version and its tracing map.")
     ctx.io.print(row["page"])
     return 0

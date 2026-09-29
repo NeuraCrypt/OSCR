@@ -68,6 +68,8 @@ the accounts set up (`COMMUNITY` and `SESSION_KEY`, else 503 `not_configured`).
 | `POST /api/forge/hooks/write` | signed in; Origin and CSRF; `FORGE_OPEN` (never to pause or delete) | `{op: create \| update \| ping \| redeliver \| rotate \| delete, …}`: made after a ping, its secret answered once | 4 rows to make one; 2–3 otherwise; each delivery 1 | phase 10 |
 | `GET /api/forge/statuses?path=&sha=` | signed in | phase 10: a commit's statuses posted by outside services, combined | the commit's statuses, 0 written | phase 10 |
 | `/api/v1`, `/api/v1/*` | a personal token (bearer; no cookie is read) | phase 10: the public API over the same handlers ([API.md](API.md)); `POST /api/v1/statuses/post` and `/statuses/actions` (GitHub Actions' OIDC token) post commit statuses | the routes' own rows; a status 2 | phase 10 |
+| `GET /api/forge/device?r=…`, `POST /api/forge/device/decide` | signed in; Origin and CSRF to decide; approving: `FORGE_OPEN`, the human check, the `automation` cap; refusing is never refused | phase 14: what a command line's sign-in asks (the sealed request of `/device/?r=…`); `{request, code, decision: approve \| deny, turnstile}` — the code typed from the terminal ([API.md](API.md#the-command-lines-sign-in-night-phase-14), [CLI.md](CLI.md)) | the grant and its action row (2); the command line's collection: 4 | phase 14 |
+| `/api/v1/cli`, `/api/v1/device/code`, `/api/v1/device/token`, `/api/v1/token/revoke` | no token (the first three); a token (the last) | phase 14: the App's public client id; a sign-in code (no row); the poll that answers the token once approved; a token revoking itself | 0; 0; 4 at the collection; 3 | phase 14 |
 | `POST /api/forge/report` | anyone: signed in (Origin and CSRF) or not (Origin); always Turnstile; not gated by `FORGE_OPEN` | phase 16: `{target, reason, details, label, turnstile}` → `{id, sentence}` (201); a copyright notice needs an account ([MODERATION.md](MODERATION.md)) | 3 rows | phase 16 |
 | `GET /api/forge/moderation` | the owner | phase 16: the queue (open reports, appeals, data-rights requests); `?target=` one thing's state | by index, 0 written | phase 16 |
 | `POST /api/forge/moderation/decide` | the owner; Origin and CSRF | phase 16: `{op: dismiss \| hide \| restore \| appeal, …}` | 2–6 rows (+ a suspended account's tokens and hooks) | phase 16 |
@@ -76,6 +78,11 @@ the accounts set up (`COMMUNITY` and `SESSION_KEY`, else 503 `not_configured`).
 | `GET /api/forge/blocks`, `POST /api/forge/blocks/write` | signed in; Origin and CSRF; `FORGE_OPEN` to write | phase 16: the reader's blocks and account-wide limit; block (silent), unblock | 2 rows | phase 16 |
 | `GET /api/forge/limits?repo=`, `POST /api/forge/limits/write` | signed in; Origin and CSRF; `FORGE_OPEN`; a manager of the repository | phase 16: a repository's interaction limit; set or lift one | 2 rows | phase 16 |
 | `POST /api/forge/rights`, `POST /api/forge/rights/answer` | signed in (a suspended account too), the human check; the answer: the owner | phase 16: a data-rights request; its answer, read on the person's page | 3 rows; 2 | phase 16 |
+
+Phase 14 adds no row to earlier routes: the researchers' command line (`cli/`, [CLI.md](CLI.md)) calls the
+public API with the registry's token, GitHub with the person's own, and opens the site's pages for the
+authorized actions (`oscr paper link` opens `/new/link/?repo=…&paper=…`, or the settings' Papers
+pre-filled from `?paper=`).
 
 Phase 16 adds checks, not rows, to earlier routes ([MODERATION.md](MODERATION.md)): a suspended account's
 writes are refused (403 `suspended`, `who.ts` and `start`); on a repository, opening, commenting,
@@ -483,7 +490,14 @@ checks (`tests/forge-service/e2e-rules.ts`, with the Worker started again by `st
 state): a report without an account behind Turnstile (Cloudflare's test secrets against the mock's
 `/turnstile/siteverify`), the owner's queue, a comment hidden for others; `FORGE_OPEN=true`: a
 non-owner's research issue under the caps, the human check, a block (a comment and a reaction
-refused), an interaction limit; the always-failing test secret. 216 checks in all. A test browser that shows the
+refused), an interaction limit; the always-failing test secret. Phase 14's checks
+(`tests/forge-service/e2e-cli.ts`, stage 8, the Worker started again with `DEVICE_CODE_SECONDS=12`): the
+researchers' command line run as `python -m oscr_cli` with a throwaway home and keychain file signs in
+through GitHub's device flow (the fake's `POST /control/device`) and the registry's (Ada approves on
+`/device/`, typing the terminal's code), then status, the API, the credential helper (GitHub's host
+only), check, cite, trace, repo create and its paper linked through the site's write path, issue
+create, a wrong scope, a refused approval, an expired code, MCP and sign-out (39 checks;
+`TRANSCRIPTS=<folder>` keeps the terminal's transcripts). 255 checks in all. A test browser that shows the
 `/r/` pages against the fake needs the Content-Security-Policy bypassed for them (it allows
 GitHub's own hosts, not the fake's): the screenshots in `docs/night-screenshots/phase-01/` were
 taken so, in headless Chrome only.

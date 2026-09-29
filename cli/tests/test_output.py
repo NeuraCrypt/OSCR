@@ -197,6 +197,9 @@ def test_redact_never_leaves_a_token():
     for secret in ("oscr_pat_" + "A" * 43, "ghu_" + "b" * 36, "ghr_" + "c" * 70, "github_pat_" + "d" * 50, "oscr_dc_" + "e" * 80):
         assert secret not in redact(f"token {secret} and Bearer {secret} and ?access_token={secret}&x=1")
     assert redact("https://x/?device_code=abc&y=1") == "https://x/?device_code=[…]&y=1"
+    words = "This token may not do this: it needs the scope research:write. Make a token with it."
+    assert redact(words) == words  # ordinary words after "token" stay
+    assert redact("Authorization: Bearer abcdefghijklmnopqrstuvwxyz0123") == "Authorization: Bearer […]"
 
 
 class _Handler(BaseHTTPRequestHandler):

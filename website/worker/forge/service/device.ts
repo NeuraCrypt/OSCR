@@ -31,6 +31,7 @@ import type { Principal } from "./bearer.ts";
 import {
   DEVICE_BODY_BYTES,
   DEVICE_SECONDS,
+  deviceSeconds,
   grantCollect,
   grantInsert,
   grantKey,
@@ -87,12 +88,13 @@ export async function handleDeviceCode(r: ForgeRequest): Promise<Response> {
   if (body instanceof ForgeProblem) return problemAnswer(body);
   const ask = validateAsk(body);
   if (ask instanceof ForgeProblem) return problemAnswer(ask);
-  const req: DeviceRequest = { nonce: randomToken(16), exp: r.t + DEVICE_SECONDS, ...ask };
+  const life = deviceSeconds(r.env);
+  const req: DeviceRequest = { nonce: randomToken(16), exp: r.t + life, ...ask };
   return json({
     device_code: await sealDevice(k, req),
     user_code: await userCode(k, req.nonce),
     verification_uri: `${r.url.origin}/device/?r=${await sealRequest(k, req)}`,
-    expires_in: DEVICE_SECONDS,
+    expires_in: life,
     interval: POLL_SECONDS,
     scopes: ask.scopes,
     days: ask.days,
@@ -109,7 +111,7 @@ export async function handleDeviceToken(r: ForgeRequest): Promise<Response> {
   if (body instanceof ForgeProblem) return problemAnswer(body);
   const code = await openDevice(k, (body as { device_code?: unknown } | null)?.device_code);
   if (!code) return problemAnswer(grantProblem("invalid_grant", "This is not a device code of the registry."));
-  if (code.exp <= r.t) return problemAnswer(grantProblem("expired_token", "This code expired (15 minutes): start the sign-in again."));
+  if (code.exp <= r.t) return problemAnswer(grantProblem("expired_token", "This code expired (a code lives 15 minutes): start the sign-in again."));
   if (!takePoll(code.nonce, r.t)) {
     return problemAnswer(grantProblem("slow_down", `Poll at most every ${POLL_SECONDS} seconds.`, { interval: POLL_SECONDS * 2 }));
   }
@@ -190,7 +192,7 @@ export async function handleDeviceRead(r: ForgeRequest): Promise<Response> {
       name: req.name,
       scopes: req.scopes.map((id) => ({ id, words: SCOPE_WORDS[id] })),
       days: req.days,
-      requested_at: iso(req.exp - DEVICE_SECONDS),
+      requested_at: iso(req.exp - deviceSeconds(r.env)),
       expires_at: iso(req.exp),
       expired: req.exp <= r.t,
       state: grant ? (grant.user_id === s.user.id ? grant.state : "decided") : "pending",

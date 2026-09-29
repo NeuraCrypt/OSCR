@@ -2571,3 +2571,218 @@ stars and follows no longer name a hidden repository; a GitHub issue, pull reque
 hides is named in its repository's layer (static `moderated_threads`, live `moderatedThreads`), so its
 page on the registry says only why and the lists leave it out; wrangler.toml is checked to hold neither
 FORGE_OPEN nor Turnstile's secret or stand-in.
+
+## Phase 14: the `oscr` command line (2026-09-29)
+
+Built on `night/phase-16-rules` (the owner's go for this phase). The researchers' command line, on the
+model of GitHub's `gh`: a distribution of its own (`cli/`), the registry's own device-code flow on the
+Worker, and the page that approves it. The contract for researchers is [CLI.md](CLI.md); the API's side
+is [API.md](API.md) "The command line's sign-in". The phase writes almost no row (§15.4: "in 10's
+share"): a sign-in is 6 rows, the rest are calls of the existing API.
+
+### D14-1. Two commands named `oscr`: the harvester's untouched, the researchers' a distribution of its own
+
+**Decision.** The Mac's `oscr` (the root's `oscr` package, `oscr = "oscr.cli:main"`, `.venv/bin/oscr`,
+and the launchd jobs, which run `.venv/bin/python -m oscr …`) is not renamed, moved or changed, but for
+one line after argparse's own refusal. The researchers' tool is `cli/`: its own `pyproject.toml`
+(distribution `oscr-cli`, a placeholder: the name on PyPI is the owner's), the import package
+`oscr_cli` (never `oscr`), the console script `oscr` (the plan's name), the standard library only. It
+installs in an isolated environment (`pipx install`, `uv tool install`); it is never installed into
+the repository's `.venv` (which would replace `.venv/bin/oscr`), and the root workspace does not list
+it (`uv sync` never installs it; `uv.lock` unchanged). In this repository it runs as
+`PYTHONPATH=cli/src .venv/bin/python -m oscr_cli`. Hints both ways: the researchers' `oscr nightly`
+(and the harvester's other commands it does not have) exits 2 naming `.venv/bin/python -m oscr …`; the
+harvester's `oscr auth` (and the researchers' other commands) keeps argparse's refusal (exit 2) with one
+more line naming the researchers' tool. `run` is both tools' (the harvester's daily pass, the
+researchers' CI runs): each keeps its own. Their settings (`~/.config/oscr-cli/` vs
+`~/.config/oscr/settings`) and keychain entries (`oscr-cli` vs `org.oscr.*`) are apart. A test of the
+harvester's suite (`tests/test_cli_coexistence.py`) holds its entry points, its launchd jobs and the
+separation.
+
+**Options compared.** Another command name (`oscr-cli`, `orc`): the plan names `oscr`, and researchers
+never have the harvester. A refusal whenever one is run in the other's place: it would break nothing
+but help nobody more than a line does. A shared package with extras: a researcher would install the
+harvester.
+
+### D14-2. The registry's own device-code flow: the code writes no row; the terminal's code is typed
+
+**Decision.** `POST /api/v1/device/code` writes nothing: the request (scopes as a bit mask, the token's
+life, a name, the expiry, a random nonce of 16 bytes) is sealed with `SESSION_KEY` (HMAC-SHA-256,
+purpose "device-request") into the approval page's address `/device/?r=…`; the device code is another
+seal of the nonce and expiry (purpose "device-code", prefix `oscr_dc_`); the user code is 8 consonants
+derived from the nonce (purpose "device-user"). The page never shows the user code: the signed-in
+person types it from the terminal, so an address someone else sent cannot be approved by a click
+(RFC 8628's remote phishing, narrowed). The decision is one row (`device_grants`, keyed by the expiry's
+UTC day and SHA-256("device\n" + nonce)) with its action row; the token is made when the terminal
+collects it (no secret at rest between the two), once (the grant marked collected, the update's
+change count deciding a race). Codes live 15 minutes; a code is polled at most every 5 s (this
+isolate's memory: `slow_down`); 10 codes a minute per address; 5 wrong user codes per request. Approving
+is making a token (FORGE_OPEN, Turnstile when set up, suspension, 20 tokens, the `automation` cap, the
+day's rows); refusing is never refused. A token revokes itself (`POST /api/v1/token/revoke`), never
+another. The Mac's retention deletes the grants the day after (a key range). `DEVICE_CODE_SECONDS`
+(development only, 5 to 899, never in wrangler.toml, a test holds it) shortens a code's life for the
+end-to-end run.
+
+**Options compared.** A row per code (RFC 8628's usual state): an unauthenticated route writing rows, a
+denial of the GitHub side's daily rows by anyone; a code shown in the address (`verification_uri_complete`):
+a click approves a stranger's request; the token made at approval and kept until collected: a secret at
+rest; OAuth with the registry as a provider (D10-13): client registrations, refresh tokens.
+
+**What it costs.** A sign-in: 2 rows at the decision, 4 at the collection, 1 deleted by the Mac. A code,
+a poll and the page's read: 0 rows written; a poll reads 1 row by key.
+
+### D14-3. Credentials in the system's keychain only; a plain file only when asked
+
+**Decision.** macOS: `security`, the secret handed to `security -i` on standard input (never on a command
+line, which `ps` shows), read back with `find-generic-password -w`; Linux: `secret-tool` (the secret on
+standard input); else an error that names `secret-tool` or `--insecure-storage`. The plain file
+(`credentials.json`, 0600) only on `--insecure-storage` or `credential_store = file`, with a warning at
+each write, and remembered per account so later commands find it there. Service `oscr-cli`, account
+`<service>:<host>:<user>`; the secret a base64url JSON (the token, GitHub's refresh token). `hosts.json`
+keeps public handles, scopes and expiries only. Environment tokens for CI: `OSCR_TOKEN`,
+`OSCR_GITHUB_TOKEN`, `GH_TOKEN` (not `GITHUB_TOKEN`: the harvester's on the Mac). Tests use a fake
+keychain, a throwaway keychain file (made and deleted, the person's keychain list checked unchanged),
+a stand-in `secret-tool`, and an autouse guard that refuses the system's own keychain.
+
+**Options compared.** Python's `keyring` package (a dependency); ctypes to Security.framework (fragile);
+`security add-generic-password -w <secret>` (the secret in argv).
+
+### D14-4. GitHub's device flow with the App's public client id; the git credential helper for GitHub's host only
+
+**Decision.** `oscr auth login` asks GitHub's own `login/device/code` and `login/oauth/access_token`
+with the GitHub App's public client id (the setting, `OSCR_GITHUB_CLIENT_ID`, or the registry's
+`GET /api/v1/cli`); no client secret exists in the tool; the token goes from GitHub to the keychain and
+never reaches the registry (D00-3). GitHub's addresses are the tool's own settings (github.com by
+default), never the registry's answer: a registry cannot point the GitHub sign-in elsewhere; the page
+opened must be on GitHub's configured host. The 8-hour token is renewed with its refresh token and the
+public client id (as GitHub allows a device-flow client; if GitHub asks for more, the device flow runs
+again: the owner's live test will say which). `oscr auth git-credential get` answers only the protocol and
+host of the configured GitHub address, never the registry's host (even if configured the same), and
+`store`/`erase` do nothing; `oscr auth setup-git` resets and sets `credential.<GitHub>.helper` only.
+
+### D14-5. Output: terminals and pipes, `--json`/`--jq`/`--template` in the standard library, escape sequences neutralised
+
+**Decision.** Tables for terminals, tab-separated lines for pipes (gh's). `--json FIELDS` with the
+fields a command declares; `--jq` a documented subset of jq (paths, iteration, pipes, alternatives,
+comparisons, object and array construction, ~40 functions); `--template` a subset of Go's templates
+(actions, range/if/with/else, pipelines, ~20 functions, gh's `tablerow`/`tablerender`). Every text from
+the network passes `sanitize.clean` before it is shown (C0 in caret notation, C1 as `\u009b`, the
+bidirectional controls as `<U+202E>`, CRLF to LF), and `mask_emails` (the Mac's and the Worker's
+pattern, held to `tests/fixtures/emails.json`). Colours: `NO_COLOR`, `CLICOLOR_FORCE`, `--color`,
+`accessible_colors` (shapes and words, never red against green); no spinner with
+`OSCR_SPINNER_DISABLED` or `spinner = false`. `--debug` prints requests and statuses, never a header's
+credential or a body, through a redaction of every credential shape. HTTP redirects keep the
+credential within the origin only. Exit codes 0, 1, 2, 3 (a check failed), 4 (sign-in), 130. The
+platform's name and default host live in `cli/src/oscr_cli/site.py` (a test holds them there).
+
+### D14-6. `oscr check`: the Worker's rules ported to Python, held to one file of cases
+
+**Decision.** `checks.py` and `citation.py` port `checks-core.ts`, `environments.ts`
+(`environmentFiles`) and `citation.ts` line for line (JavaScript's own quirks kept where they change
+an answer: `\w` and `\b` as ASCII, UTF-16 path order, `Math.round`, the object keys `in` sees).
+`website/scripts/checks-cases.ts` writes `tests/fixtures/checks-cases.json` (8 check inputs, their
+environment files, 8 citations) with the TypeScript's answers; a Node test holds the file to the
+TypeScript, a Python test holds the port to the file. The clone is read from git's object store at a
+commit (`ls-tree`, `show`), never the working tree's files; nothing is run; `--base` checks a change
+as the pull request's check run does. The papers: the live layer (a token with `repos:read`), else last
+night's static layer; the maps: the static shards.
+
+**Options compared.** Running the TypeScript with Node (researchers have Python); a shared WebAssembly
+build (a toolchain); rules duplicated without shared cases (they would drift).
+
+### D14-7. `oscr paper link` goes through the site's own authorized action
+
+**Decision.** A paper link is an authorized action (D01-7): GitHub checks, as the person, that they
+administer or maintain the repository. The command opens the site's page pre-filled —
+`/new/link/?repo=…&paper=…` when the registry does not know the repository, its settings' Papers
+(`?paper=`, read by `papersFromSearch`) when it does — where the person confirms and GitHub authorizes
+that one action. No new write route, no GitHub token sent to the registry.
+
+### D14-8. `oscr trace`: the registry's maps checked at any commit; a proposed map is a file the researcher keeps
+
+**Decision.** `trace list/check` read the static shards `/forge/traced/NN.json` (no token, no Worker
+request) and find each link's lines again at a commit of the clone with the site's own `relocate` and
+`locateBySymbol` (ported). `trace propose` makes a map from lines selected at one commit (paths with
+lines, `#L` anchors or permalinks read by the Mac's and the site's `parse_permalink`, ported and held to
+`tests/fixtures/permalinks.json`), with each link's GitHub and registry permalinks, the symbol read from
+the lines, a warning when the commit is on no remote branch; `--write` keeps it in
+`.oscr/maps/<doi>.json`. **The registry cannot receive a proposed map yet**: its maps come from the Mac's
+alignment and an author's validation; a route to propose one (reviewed by the paper's authors) is
+deferred (D14-13).
+
+### D14-9. `oscr cite`: the site's citation; a release's DOI from its notes; SWHIDs computed locally
+
+**Decision.** APA and BibTeX from `CITATION.cff` (the preferred citation by default; `--software` the
+code) or `codemeta.json`, as the site's "Cite this repository". `--release TAG` cites that version with
+the DOI its GitHub release notes name (a Zenodo deposit's badge first). `--swhid` prints
+`swh:1:rev:<commit>` and `swh:1:dir:<tree>` (Software Heritage's identifiers are git's object ids for
+revisions and directories), with the origin, and says they resolve once archived.
+
+### D14-10. The GitHub-side commands: GitHub directly with the person's token; the registry's page first
+
+**Decision.** `repo`, `pr`, `issue`, `release`, `run`, `workflow` ask GitHub's REST API directly with the
+person's GitHub token (anonymous for public reads when there is none), email fields dropped from every
+answer; each prints the registry's `/r/…` page of what it made or read. GitHub's address appears only
+when the registry cannot show the thing, with the reason (a file's blame, D02-5; a run's logs, D10-10;
+`--github`). `repo create` makes public repositories only (D00-14) and offers the link to the paper
+next; `pr create` runs the registry's checks on the change first; `issue create --research` makes the
+registry's research issues through `/api/v1/research/open`; `search` is the registry's (GitHub's with
+`--github`); `api` is the registry's `/api/v1` (GitHub's with `--github`). git clones straight from GitHub
+(or the `git_url` setting: a mirror, a test's local folder), hooks off.
+
+### D14-11. MCP: the read commands, in-process, answering their own JSON
+
+**Decision.** `oscr mcp serve`: JSON-RPC 2.0, one message a line on stdio (protocol versions 2025-06-18,
+2025-03-26, 2024-11-05), `initialize`, `ping`, `tools/list`, `tools/call`; 13 read-only tools
+(`readOnlyHint`), each the command a person would run with `--json`, in this process, without a
+terminal (no prompt, no browser, no colour). No write, no sign-in, no proposal is a tool.
+
+### D14-12. Packaging: prepared, not published
+
+**Decision.** `cli/pyproject.toml` (hatchling, `packages = ["src/oscr_cli"]`, Python ≥ 3.10, no
+dependency, the version in `__init__.py` and the metadata held equal by a test), `cli/README.md` for
+researchers, `cli/LICENSE` (Apache-2.0). `uv build --offline` makes the wheel and sdist from the local
+cache; the wheel installed in a throwaway environment answers `oscr --version` beside the harvester's.
+Publishing on PyPI is the owner's step (an outside contact; NIGHT_RUN §3): the name first.
+
+### D14-13. What is deferred
+
+- The full jq and Go template languages (variables, `reduce`, assignment, formats; `define`), Markdown
+  rendered in the terminal, a pager, extensions, shell aliases (an alias never runs a shell).
+- Receiving a proposed tracing map in the registry (a route and its review by the paper's authors).
+- `repo fork/archive/rename/delete`, `pr review/merge/…`, `issue` edit/comment/reopen, sub-issues and
+  dependencies, `release upload/download/verify`, `oscr discussion` and `oscr project` (phase 06),
+  `oscr snippet` (phase 13), imports (`git clone --mirror`/`push --mirror` with LFS), local blame with
+  the registry's permalinks.
+- The registry's device flow for other clients than the command line (OAuth with the registry as a
+  provider, D10-13); a registry token's refresh without a new approval.
+- Linux's keychain was tested through a stand-in `secret-tool`, not a live Secret Service.
+
+### D14-14. What it costs
+
+**Decision.** A sign-in: 6 rows written (2 at the decision, 4 at the collection) and 1 deleted the day
+after; ~2 Worker requests for the code and the collection, one per poll (≤ 180 in 15 minutes, usually
+1 to 3), 2 for the page. Every other command: the API's existing costs (phase 10's share), static shards
+(0 Worker requests), GitHub on the person's own quota. The site gains 1 page and its script bundle.
+
+### D14-15. The end-to-end run: the command line against the fake GitHub and `wrangler dev`
+
+**Decision.** `tests/forge-service/e2e.sh` stage 8 (`e2e-cli.ts`) starts the Worker again (Turnstile's
+passing test secret, FORGE_OPEN unset, `DEVICE_CODE_SECONDS=12`) and runs `python -m oscr_cli` with a
+throwaway home, config, git config and keychain file: both device flows approved by the harness (the
+fake's `/control/device`; `/device/` as Ada, typing the code), status, the API, the credential helper,
+check, cite, trace, repo create and its paper linked through the site's write path, issue create, a
+wrong scope, a refused approval, an expired code, MCP, sign-out (the token revoked, the keychain
+emptied), then the keychain file deleted. The fake GitHub gained the device flow (`approveDevice`,
+refresh tokens) and `POST /control/device`.
+
+### D14-16. An incident: a test reached the owner's global git configuration
+
+**What happened.** An early version of `oscr auth setup-git`'s test ran git without the test's
+`GIT_CONFIG_GLOBAL` (the git calls did not pass the context's environment), and added a helper for a
+localhost test address to the owner's `~/.gitconfig` (`[credential "http://127.0.0.1:56038/web"]`). It is
+inert (a test port that no longer answers); removing it was not done tonight (the permission check
+refused the edit of a personal file): NIGHT_REPORT.md gives the owner the one command.
+**Decision.** Every git call goes through the context's environment (`ctx.git`); the tests give every
+process a throwaway HOME, `GIT_CONFIG_GLOBAL` and config folder (an autouse fixture) and refuse the
+system keychain.

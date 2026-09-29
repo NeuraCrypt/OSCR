@@ -33,7 +33,8 @@ def redact(text: str) -> str:
     """The text without anything shaped like a credential."""
     s = str(text)
     s = re.sub(r"\b(?:gh[pousr]_|github_pat_|oscr_pat_|oscr_dc_|memtok_)[A-Za-z0-9_.-]+", "[…]", s)
-    s = re.sub(r"\b(Bearer|token|Basic)\s+[^\s,;]+", r"\1 […]", s, flags=re.I)
+    # A credential after its scheme: a long word of token characters (never an ordinary word after "token").
+    s = re.sub(r"\b(Bearer|token|Basic)\s+[A-Za-z0-9._~+/=-]{20,}", r"\1 […]", s, flags=re.I)
     s = re.sub(r"([?&](?:code|state|access_token|refresh_token|client_secret|device_code|token)=)[^&\s]+", r"\1[…]", s, flags=re.I)
     return re.sub(r"[A-Za-z0-9_-]{40,}", "[…]", s)
 

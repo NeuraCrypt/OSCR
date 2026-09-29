@@ -8,6 +8,7 @@ import { handleApi } from "../../worker/forge/service/api.ts";
 import {
   CODES_PER_MINUTE,
   DEVICE_PREFIX,
+  deviceSeconds,
   grantKey,
   openDevice,
   openRequest,
@@ -98,6 +99,12 @@ describe("the pure parts", () => {
     }
     const masked = validateAsk({ scopes: ["repos:read"], name: "ada@example.org's laptop" });
     assert.ok(!isProblem(masked) && !masked.name.includes("@"));
+  });
+
+  test("a code's life: 15 minutes; shorter only in development (DEVICE_CODE_SECONDS), never longer", () => {
+    assert.equal(deviceSeconds({}), 900);
+    assert.equal(deviceSeconds({ DEVICE_CODE_SECONDS: "12" }), 12);
+    for (const v of ["4", "900", "3600", "x", "12.5", ""]) assert.equal(deviceSeconds({ DEVICE_CODE_SECONDS: v }), 900, v);
   });
 
   test("this isolate's limits: a poll every 5 s, 10 codes a minute an address", () => {

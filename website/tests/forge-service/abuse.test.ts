@@ -120,6 +120,6 @@ describe("the development switches stay out of the deployment", () => {
   test("wrangler.toml sets neither FORGE_OPEN nor Turnstile's secret nor its local stand-in", async () => {
     const { readFileSync } = await import("node:fs");
     const toml = readFileSync(new URL("../../wrangler.toml", import.meta.url), "utf8").split("\n").filter((l) => !l.trim().startsWith("#")).join("\n");
-    for (const name of ["FORGE_OPEN", "TURNSTILE_SECRET_KEY", "TURNSTILE_VERIFY_URL"]) assert.ok(!toml.includes(name), name);
+    for (const name of ["FORGE_OPEN", "TURNSTILE_SECRET_KEY", "TURNSTILE_VERIFY_URL", "DEVICE_CODE_SECONDS"]) assert.ok(!toml.includes(name), name);
   });
 });

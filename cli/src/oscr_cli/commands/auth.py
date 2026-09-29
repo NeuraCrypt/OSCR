@@ -66,7 +66,7 @@ def _login(ctx: Any, args: argparse.Namespace) -> int:
             user = oscrauth.login(ctx, scopes=args.scopes, days=args.days, open_browser=not args.no_browser)
             ctx.io.say(f"{ctx.config.site_name}: signed in as {user}. The token is in {accounts.store(ctx).name}.")
     if accounts.GITHUB in services and not args.skip_git_hint:
-        ctx.io.say("To let git use your GitHub token for github.com only: oscr auth setup-git")
+        ctx.io.say(f"To let git use your GitHub token (for {ctx.config.github_host} only, never another host): oscr auth setup-git")
     return 0
 
 
