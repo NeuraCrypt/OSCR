@@ -58,7 +58,7 @@ import {
   type ReleaseTie,
 } from "../lib/releases.ts";
 import { type El, h } from "../lib/repo-view.ts";
-import { nextVersions, sortTags } from "../lib/semver.ts";
+import { nextVersions, parseSemver, sortTags } from "../lib/semver.ts";
 import { show, toDom } from "./dom.ts";
 import { sessionStore } from "./forge-client.ts";
 import { confirmAction, el, signedInHint, signInLine, whoIsHere } from "./pull-common.ts";
@@ -564,7 +564,9 @@ async function mountForm(slot: HTMLElement, env: CodeEnv, editTag: string | null
   const pre = editing ? {} : releasePrefill(env.search);
   const tagOf = new Map(tags.items.map((t) => [t.name, t.sha]));
   const sortedTags = sortTags(tags.items.map((t) => t.name), (x) => x);
-  const suggestions = nextVersions(latest?.tagName ?? sortedTags.find((t) => /\d/.test(t)) ?? null);
+  // The next version follows the highest version tagged (a pre-release included: v1.1.0-rc.1 → v1.1.0),
+  // else GitHub's latest release.
+  const suggestions = nextVersions(sortedTags.find((t) => parseSemver(t) !== null) ?? latest?.tagName ?? null);
   const defaultBranch = env.info.defaultBranch ?? branches.items[0]?.name ?? "";
 
   // The fields, as DOM (the view trees have no textarea); every text the person types stays theirs.
@@ -913,7 +915,7 @@ async function mountTags(slot: HTMLElement, env: CodeEnv): Promise<void> {
       ? h(
           "table",
           { class: "branches tags" },
-          h("thead", null, h("tr", null, h("th", null, "Tag"), h("th", null, "Commit"), h("th", null, "Kind"), h("th", null, "Release"), h("th", null, "Source (GitHub's)"))),
+          h("thead", null, h("tr", null, h("th", null, "Tag"), h("th", null, "Commit"), h("th", null, "Release"), h("th", null, "Source (GitHub's)"))),
           h("tbody", null, ...ordered.map((t) => tagRow(env.repo, t, byTag.get(t.name) ?? null))),
         )
       : null,

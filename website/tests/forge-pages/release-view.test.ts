@@ -75,9 +75,9 @@ test("the files: GitHub's links, sizes, digests, GitHub's counts; the archives a
 
 test("a tag's row: its commit, its kind, its release or a link to draft one", () => {
   const row = tagRow(REPO, { name: "paper-v1", sha: SHA, annotation: { sha: "c".repeat(40), message: "Submitted", tagger: null } }, null);
-  assert.match(textOf(row), /paper-v1.*aaaaaaa.*annotated: Submitted.*Draft a release from it.*zip · tar\.gz/s);
+  assert.match(textOf(row), /paper-v1.*aaaaaaa.*Draft a release from it.*zip · tar\.gz/s);
   assert.ok(hrefs(row).includes("/r/ada-fixture/eeg/releases/new?tag=paper-v1"));
-  assert.match(textOf(tagRow(REPO, { name: "v1", sha: SHA, annotation: null }, rel({ tagName: "v1" }))), /lightweight.*Accepted code/s);
+  assert.match(textOf(tagRow(REPO, { name: "v1", sha: SHA, annotation: null }, rel({ tagName: "v1" }))), /v1.*Accepted code/s);
 });
 
 describe("the drafts kept in the tab", () => {

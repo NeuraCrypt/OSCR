@@ -19,7 +19,7 @@
 // FAKE_CLIENT_SECRET), never real ones.
 import { createServer } from "node:http";
 import { FakeGitHub } from "./fake-github.ts";
-import { seedCodeTour, seedIssues, seedPulls } from "./fake-github-seed.ts";
+import { seedCodeTour, seedIssues, seedPulls, seedReleases } from "./fake-github-seed.ts";
 import { MemoryBackend } from "./memory.ts";
 
 const port = Number(process.argv[2] ?? 9490);
@@ -58,6 +58,8 @@ await org.repos.setTopics(eegRef, ["eeg", "neuroscience"]);
 const pulls = await seedPulls(org, double.session({ kind: "user", token: bob.token() }), eegRef);
 // Phase 05: labels, a milestone and issues (the issue pages).
 const issues = await seedIssues(org, double.session({ kind: "user", token: bob.token() }), eegRef);
+// Phase 07: releases (a published one with a file, a pre-release, a draft) and the environment files.
+const releases = await seedReleases(org, eegRef);
 const empty = await org.repos.create({ name: "empty-repo", visibility: "public" });
 await org.repos.transfer(empty.ref, { newOwner: "oscr-fixture" });
 await org.repos.create({ name: "compendium", visibility: "public", autoInit: true, isTemplate: true, description: "A research compendium: code, data and environment" });
@@ -76,7 +78,7 @@ const HOSTS: Record<string, string> = { api: "api.github.com", web: "github.com"
 
 async function answer(method: string, url: URL, headers: Headers, body: Uint8Array): Promise<Response> {
   if (url.pathname === "/control/seed") {
-    return Response.json({ ada: { id: ada.user.id, login: "ada-fixture" }, bob: { id: bob.user.id, login: "bob-fixture" }, repos: ["oscr-fixture/eeg-analysis", "oscr-fixture/empty-repo", "ada-fixture/compendium"], pulls, issues });
+    return Response.json({ ada: { id: ada.user.id, login: "ada-fixture" }, bob: { id: bob.user.id, login: "bob-fixture" }, repos: ["oscr-fixture/eeg-analysis", "oscr-fixture/empty-repo", "ada-fixture/compendium"], pulls, issues, releases });
   }
   if (url.pathname === "/control" && method === "POST") {
     const c = JSON.parse(new TextDecoder().decode(body) || "{}") as { login?: string; offline?: boolean };

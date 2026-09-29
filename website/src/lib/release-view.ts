@@ -180,7 +180,6 @@ export function tagRow(repo: RepoCoords, tag: T.Tag, release: T.Release | null, 
     null,
     h("td", { class: "name" }, h("a", { href: repoPath(repo, "tree", tag.name.split("/")) }, tag.name)),
     h("td", null, h("a", { href: repoPath(repo, "commit", [tag.sha]) }, h("code", null, short(tag.sha)))),
-    h("td", null, tag.annotation ? `annotated${tag.annotation.message ? `: ${notesExcerpt(tag.annotation.message, 80)}` : ""}` : "lightweight"),
     h(
       "td",
       null,

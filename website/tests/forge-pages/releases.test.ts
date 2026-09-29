@@ -95,6 +95,8 @@ describe("the list", () => {
     assert.equal(previousTag("v2.0.0-rc.2", items), "v2.0.0-rc.1", "a pre-release compares with the pre-release before it");
     assert.equal(previousTag("v2.0.0", items), "v1.10.0", "a release skips the pre-releases");
     assert.equal(previousTag("v0.1.0", items), "paper-final", "no version below: the newest published");
+    assert.equal(previousTag("v1.0.0", items), "submitted", "the lowest version: the tag that is no version, published before it");
+    assert.equal(previousTag("v1.0", [rel("v1.0"), rel("v1.1.0-rc.1", { prerelease: true, publishedAt: "2026-09-28T00:00:00Z" })]), null, "nothing before the first release");
   });
 
   test("the qualifiers and words; the registry's paper: and version:", () => {

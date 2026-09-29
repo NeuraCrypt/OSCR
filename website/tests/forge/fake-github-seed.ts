@@ -321,3 +321,95 @@ export async function seedIssues(ada: GitSession, bob: GitSession, repo: T.RepoR
   await ada.issues.comment(repo, question.number, "Not planned: the environment file and the lock file are enough to run it as it was.");
   return { figure: figure.number, docs: docs.number, question: question.number };
 }
+
+const ENVIRONMENT_YML = `name: eeg-analysis
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11
+  - numpy=1.26.4
+  - scipy=1.11.4
+  - matplotlib>=3.8
+  - pip
+  - pip:
+      - mne==1.6.0
+`;
+
+const REQUIREMENTS = `# The paper's environment (pip)
+numpy==1.26.4
+scipy>=1.11,<1.12
+matplotlib
+mne==1.6.0
+`;
+
+const DOCKERFILE = `FROM python:3.11-slim@sha256:${"4".repeat(64)}
+WORKDIR /study
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+COPY . .
+CMD ["python", "plot.py"]
+`;
+
+const DEVCONTAINER = `{
+  // The study's development container
+  "name": "eeg-analysis",
+  "image": "mcr.microsoft.com/devcontainers/python:3.11",
+  "postCreateCommand": "pip install -r requirements.txt"
+}
+`;
+
+const RELEASE_YML = `changelog:
+  exclude:
+    labels:
+      - ignore-for-release
+  categories:
+    - title: Changes that affect the results
+      labels:
+        - numerical difference
+    - title: Environment
+      labels:
+        - environment
+    - title: Other changes
+      labels:
+        - "*"
+`;
+
+/** Phase 07: the releases the release pages show (the screenshots) and the environment files a release
+ *  carries: the paper's version on the existing tag v1.0, published, with its notes and a file (the
+ *  source data of Figure 2); the environment files and the notes' configuration committed; a
+ *  pre-release for the journal's revision at the new head; and a draft, seen only by the people who may
+ *  push. Returns their tags. */
+export async function seedReleases(ada: GitSession, repo: T.RepoRef): Promise<{ published: string; prerelease: string; draft: string }> {
+  const published = await ada.releases.create(repo, {
+    tagName: "v1.0",
+    name: "The code of the published paper",
+    body: "The version of the code the paper's **Figures 1 and 2** were made with.\n\n## How to run it\n\n```\nconda env create -f environment.yml\npython plot.py\n```\n\nThe source data of Figure 2 is attached below.",
+    makeLatest: true,
+  });
+  const data = te.encode("subject,alpha_ratio\n1,2.05\n2,1.80\n3,0.29\n4,1.60\n");
+  await ada.releases.uploadAsset(repo, published.id, { name: "figure-2-source-data.csv", label: "Source data of Figure 2", contentType: "text/csv", size: data.length, body: data });
+  const head = await ada.git.resolve(repo, "main");
+  await ada.git.createCommit(repo, {
+    branch: "main",
+    expectedHead: head,
+    message: "Pin the environment of the paper (conda, pip, a container)",
+    changes: [
+      { op: "put", path: "environment.yml", content: te.encode(ENVIRONMENT_YML) },
+      { op: "put", path: "requirements.txt", content: te.encode(REQUIREMENTS) },
+      { op: "put", path: "Dockerfile", content: te.encode(DOCKERFILE) },
+      { op: "put", path: ".devcontainer/devcontainer.json", content: te.encode(DEVCONTAINER) },
+      { op: "put", path: ".gitattributes", content: te.encode("notebooks/ export-ignore\n*.ipynb export-ignore\n") },
+      { op: "put", path: ".github/release.yml", content: te.encode(RELEASE_YML) },
+    ],
+  });
+  const rc = await ada.git.resolve(repo, "main");
+  await ada.releases.create(repo, {
+    tagName: "v1.1.0-rc.1",
+    target: rc,
+    name: "The revision for the journal (under review)",
+    body: "The code of the manuscript's second version, as sent to the reviewers.\n\nThe environment is now pinned: `environment.yml`, `requirements.txt` and a container.",
+    prerelease: true,
+  });
+  await ada.releases.create(repo, { tagName: "v1.1.0", target: rc, name: "The revision, accepted", body: "Draft: to publish once the journal accepts the revision.", draft: true });
+  return { published: "v1.0", prerelease: "v1.1.0-rc.1", draft: "v1.1.0" };
+}

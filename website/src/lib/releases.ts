@@ -492,9 +492,14 @@ export function previousTag(tag: string, items: readonly T.Release[]): string | 
       .filter((x): x is { r: T.Release; v: NonNullable<ReturnType<typeof parseSemver>> } => x.v !== null && compareSemver(x.v, v) < 0 && (v.pre.length > 0 || !x.r.prerelease));
     below.sort((a, b) => compareSemver(b.v, a.v));
     if (below.length) return below[0].r.tagName;
+    // A version with no version below it: the non-version tags published before it, if any.
   }
-  const newest = [...published].sort((a, b) => ((b.publishedAt ?? b.createdAt) < (a.publishedAt ?? a.createdAt) ? -1 : 1));
-  return newest[0]?.tagName ?? null;
+  // By date: the newest published before this release (before now, for a new one).
+  const self = items.find((r) => r.tagName === tag && !r.draft);
+  const when = (r: T.Release) => r.publishedAt ?? r.createdAt;
+  const before = published.filter((r) => !self || when(r) < when(self)).filter((r) => !v || !parseSemver(r.tagName));
+  before.sort((a, b) => (when(b) < when(a) ? -1 : when(b) > when(a) ? 1 : 0));
+  return before[0]?.tagName ?? null;
 }
 
 /** The merged pull requests of a range: those whose merge commit is one of the range's commits (the
