@@ -156,12 +156,25 @@ export function byDay<T extends { published: string }>(rows: readonly T[]): { da
 
 /** A list of papers, the catalogue's way. `searchable`: the home page's filter reads the
  *  data-* attributes of each dt. */
-export function listing(rows: readonly Row[], opts: { searchable?: boolean } = {}): string {
-  let n = 0;
+export function listing(
+  rows: readonly Row[],
+  opts: {
+    searchable?: boolean;
+    /** The number of the first row, minus one: a page of the list (/list/2/) goes on counting. */
+    start?: number;
+    /** The papers of each day in the whole list, when a page shows only some of them. */
+    dayTotals?: ReadonlyMap<string, number>;
+  } = {},
+): string {
+  let n = opts.start ?? 0;
+  const count = (day: string, here: number) => {
+    const total = opts.dayTotals?.get(day) ?? here;
+    return total > here ? `${plural(total, "paper")}, ${number(here)} on this page` : plural(here, "paper");
+  };
   return byDay(rows)
     .map(
       (d) =>
-        `<h2 class="day">${esc(d.label)} <small>(${esc(plural(d.rows.length, "paper"))})</small></h2>` +
+        `<h2 class="day">${esc(d.label)} <small>(${esc(count(d.day, d.rows.length))})</small></h2>` +
         `<dl class="listing">${d.rows.map((r) => rowHtml(r, (n += 1), opts.searchable ?? false)).join("")}</dl>`,
     )
     .join("");

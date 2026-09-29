@@ -15,11 +15,12 @@
 //
 // It prints the number of files, folder by folder: a Worker's static assets stop at 20,000 per
 // version, and the budget (src/lib/shards.ts) keeps the site under 15,000 whatever the size of
-// the catalogue: at most 2 × STATIC_PAPERS files of papers, and FIXED_FILES_MAX for the rest.
+// the catalogue: at most STATIC_PAPERS files of papers (one each, the reader on its page), and
+// FIXED_FILES_MAX for the rest.
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
-  ENTITY_TYPES, FILE_LIMIT, FILE_MARGIN, FIXED_FILES_MAX, keyOf, LOOKUP_HEX, SHARDS, shardOf, STATIC_PAPERS,
+  ENTITY_TYPES, FILE_LIMIT, FILE_MARGIN, FIXED_FILES_MAX, keyOf, LIST_PAGES_MAX, LOOKUP_HEX, SHARDS, shardOf, STATIC_PAPERS,
 } from "../src/lib/shards.ts";
 
 const DIST = "dist";
@@ -179,11 +180,15 @@ const pages = files.filter((f) => f.endsWith(".html"));
 const SECTIONS = ["overview", "code", "map", "data", "versions", "cite", "similar", "contribute", "removal", "discussion",
   "reproductions", "activity"];
 let links = 0;
+/** The paths the static pages link to: every paper with a page must be one of them (the list by
+ *  date, /list/, links to all of them since the home page shows only the latest). */
+const linked = new Set();
 const follow = (from, url) => {
   // /api/* is the Worker's code (sign-in, search), not a file of dist/.
   if (!url.startsWith("/") || url.startsWith("//") || url.startsWith("/api/")) return;
   links += 1;
   const path = decodeURI(url.split(/[?#]/)[0].replace(/&amp;/g, "&"));
+  if (from.endsWith(".html")) linked.add(path);
   if (!leads(path)) problems.push(`${from}: broken link ${url}`);
 };
 for (const page of pages) {
@@ -208,6 +213,13 @@ for (const page of pages) {
     problems.push(`${page}: an inline script, which its Content-Security-Policy forbids`);
   }
 }
+// Every paper with a page is reachable by a link of a static page, and the list holds a bounded
+// number of pages.
+for (const a of [...staticPapers, ...onDemand]) {
+  if (!linked.has(`/paper/${a.slug}/`)) problems.push(`${a.doi}: no static page links to its page (the list by date should)`);
+}
+const listPages = files.filter((f) => /^\/list\/(\d+\/)?index\.html$/.test(f)).length;
+if (listPages > LIST_PAGES_MAX) problems.push(`/list/: ${n(listPages)} pages, more than ${n(LIST_PAGES_MAX)}`);
 // The links the records hold, which the browser or the Worker will render.
 const hrefs = (value, out = []) => {
   if (Array.isArray(value)) for (const v of value) hrefs(v, out);
@@ -245,6 +257,7 @@ const kinds = {
   "/paper/<slug>/ (on demand)": onDemand.length,
   ...Object.fromEntries(ENTITY_TYPES.map((t) => [`/${t}/<key>/`, records[t].size])),
   "/browse/<facet>/<value>/": files.filter((f) => /^\/browse\/[^/]+\/[^/]+\/index\.html$/.test(f)).length,
+  "/list/ and its pages": listPages,
   "/lookup/<shard>.json": shards.length,
 };
 if (everyRoute) {

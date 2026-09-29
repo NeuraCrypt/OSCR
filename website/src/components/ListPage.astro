@@ -1,0 +1,67 @@
+---
+// A page of the list of every paper with a page (decision D2), the most recent first: /list/ is
+// the first, /list/2/ the second… (src/lib/lists.ts). A fixed number of files at most
+// (LIST_PAGES_MAX, src/lib/shards.ts), whatever the catalogue's size: every paper is one link
+// away from a static page. The first page also lists every page with the dates it covers.
+import Base from "../layouts/Base.astro";
+import Listing from "./Listing.astro";
+import Pager from "./Pager.astro";
+import { number, plural, withCode, withPage, type Article } from "../lib/catalog";
+import { dateInWords } from "../lib/format";
+import { listPaging, listUrl, newestFirst } from "../lib/lists";
+
+interface Props {
+  /** The page, from 1. */
+  page: number;
+}
+const { page } = Astro.props;
+const all = newestFirst(withPage);
+const { size, pages } = listPaging(all.length);
+const slice = (n: number) => all.slice((n - 1) * size, n * size);
+const shown = slice(page);
+const dayTotals = new Map<string, number>();
+for (const a of all) dayTotals.set(a.published, (dayTotals.get(a.published) ?? 0) + 1);
+const when = (a: Article | undefined) => (a ? (a.published ? dateInWords(a.published) : "no date") : "");
+const span = (list: Article[]) => {
+  const first = when(list[0]);
+  const last = when(list.at(-1));
+  return first === last ? first : `${first} to ${last}`;
+};
+const onRequest = withPage.filter((a) => a.status === "on_request").length;
+const dataOnly = withPage.filter((a) => a.status === "data_only").length;
+const title = page === 1 ? "Every paper, by date" : `Every paper, by date: page ${page}`;
+---
+<Base
+  title={title}
+  description={`The ${number(all.length)} papers with a page, the most recent first: their authors' code, code on request, or data only.`}
+  breadcrumb={page === 1 ? [{ text: "Every paper" }] : [{ text: "Every paper", href: "/list/" }, { text: `Page ${page}` }]}
+>
+  <h1>{title}</h1>
+  <p class="summary">
+    {plural(all.length, "paper")} with a page: {number(withCode.length)} with their authors' code, {number(onRequest)} with
+    code on request, {number(dataOnly)} with data only. The most recent first, {number(size)} a page.
+    {shown.length > 0 && ` Page ${number(page)} of ${number(pages)}: ${span(shown)}.`}
+  </p>
+
+  <Pager page={page} pages={pages} />
+
+  <Listing articles={shown} start={(page - 1) * size} dayTotals={dayTotals} />
+
+  <Pager page={page} pages={pages} />
+
+  {page === 1 && pages > 1 && (
+    <>
+      <h2 class="section" id="pages">Every page of the list</h2>
+      <ol class="columns">
+        {Array.from({ length: pages }, (_, i) => i + 1).map((n) => (
+          <li>{n === 1 ? span(slice(n)) : <a href={listUrl(n)}>{span(slice(n))}</a>}</li>
+        ))}
+      </ol>
+    </>
+  )}
+  <p class="line">
+    Also: <a href="/browse/">by category</a>, <a href="/authors/">author</a>, <a href="/journals/">journal</a>,
+    <a href="/institutions/">institution</a>, <a href="/tools/">tool</a> or <a href="/datasets/">dataset</a>; the
+    <a href="/search/">search</a>; the <a href="/lookup/">DOI lookup</a> for any paper read, with or without a page.
+  </p>
+</Base>

@@ -1,0 +1,13 @@
+---
+// The list's other pages, /list/2/ to /list/<n>/: LIST_PAGES_MAX at most (src/lib/lists.ts).
+import ListPage from "../../components/ListPage.astro";
+import { withPage } from "../../lib/catalog";
+import { listPaging } from "../../lib/lists";
+
+export function getStaticPaths() {
+  const { pages } = listPaging(withPage.length);
+  return Array.from({ length: Math.max(0, pages - 1) }, (_, i) => ({ params: { page: String(i + 2) }, props: { page: i + 2 } }));
+}
+const { page } = Astro.props as { page: number };
+---
+<ListPage page={page} />

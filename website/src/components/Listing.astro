@@ -1,17 +1,21 @@
 ---
 // A list of papers, the catalogue's way (science.css): one h2.day per day of
-// publication, then a dl.listing, one dt/dd per paper. The home page, the categories and
-// the entity pages all use it. A paper without code (on request, data only) has no
-// Code ↔ Paper reader: its status says what there is, in words. The markup is
+// publication, then a dl.listing, one dt/dd per paper. The home page, the list of every paper
+// (/list/), the categories and the entity pages all use it. A paper without code (on request,
+// data only) has no Code ↔ Paper reader: its status says what there is, in words. The markup is
 // lib/render.ts's `listing`, the same the entity pages get in the browser.
 import { rowOf, type Article } from "../lib/catalog";
 import { listing } from "../lib/render";
 
 interface Props {
   articles: Article[];
-  /** The home page's filter reads these data-* attributes (its masthead search). */
+  /** The rows carry data-* attributes for a filter in the page. */
   searchable?: boolean;
+  /** The number of the first paper, minus one (a page of the list goes on counting). */
+  start?: number;
+  /** The papers of each day in the whole list, when this shows only some of them. */
+  dayTotals?: ReadonlyMap<string, number>;
 }
-const { articles, searchable = false } = Astro.props;
+const { articles, searchable = false, start = 0, dayTotals } = Astro.props;
 ---
-<Fragment set:html={listing(articles.map(rowOf), { searchable })} />
+<Fragment set:html={listing(articles.map(rowOf), { searchable, start, dayTotals })} />

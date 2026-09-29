@@ -9,7 +9,7 @@ import {
   type AuthorRecord, type PaperRecord, type Row, type ToolRecord,
 } from "../src/lib/render.ts";
 import {
-  ENTITY_ROWS_MAX, ENTITY_TYPES, FILE_MARGIN, FIXED_FILES_MAX, groupShards, keyOf, lookupShard, MAX_CATEGORIES, packEntities,
+  ENTITY_ROWS_MAX, ENTITY_TYPES, FILE_LIMIT, FILE_MARGIN, FIXED_FILES_MAX, LIST_PAGES_MAX, SITEMAP_SHARDS, groupShards, keyOf, lookupShard, MAX_CATEGORIES, packEntities,
   SHARDS, shardOf, STATIC_PAPERS, staticSelection,
 } from "../src/lib/shards.ts";
 import worker from "../worker/index.ts";
@@ -76,12 +76,17 @@ describe("the number of files", () => {
       const oldest = [...chosen].map((s) => papers.find((p) => p.slug === s)!.published).sort()[0];
       assert.ok(papers.every((p) => chosen.has(p.slug) || p.published <= oldest));
     }
-    // What the check (scripts/check.mjs) holds the build to adds up to the margin.
-    assert.ok(2 * STATIC_PAPERS + FIXED_FILES_MAX <= FILE_MARGIN);
+    // What the check (scripts/check.mjs) holds the build to stays within the margin: a paper's page
+    // is one file (the reader on it); were it two again, still within the Worker's limit.
+    assert.ok(STATIC_PAPERS + FIXED_FILES_MAX <= FILE_MARGIN);
+    assert.ok(2 * STATIC_PAPERS + FIXED_FILES_MAX <= FILE_LIMIT);
     // The shards (the lookup's 256 with them), the lots of scripts and the category pages leave
     // room for the fixed pages and bundles.
     const shardFiles = Object.values(SHARDS).reduce((n, x) => n + x, 0) + 256;
     assert.ok(shardFiles + 128 + MAX_CATEGORIES + 100 <= FIXED_FILES_MAX, `${shardFiles} shard files`);
+    // With the 256 lots of scripts, the list's pages and the sitemap's shards (the launch pages,
+    // 2026-09-29), still room for the fixed pages and bundles.
+    assert.ok(shardFiles + 256 + MAX_CATEGORIES + 28 + LIST_PAGES_MAX + SITEMAP_SHARDS + 1 + 150 <= FIXED_FILES_MAX);
   });
 
   it("chooses the same static papers at every build, ties broken by name", () => {

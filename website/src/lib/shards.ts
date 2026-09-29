@@ -22,18 +22,41 @@ export const FILE_LIMIT = 20_000;
 export const FILE_MARGIN = 15_000;
 
 /** How many papers have a static page (and, with code, a static Code ↔ Paper reader): the most
- *  recent papers with a page, by publication date. At most two files each: 12,000 files at
- *  worst. Past it, a paper's page is rendered on demand by the Worker. */
+ *  recent papers with a page, by publication date. One file each since the reader is on the
+ *  paper's page (two before: 12,000 files at worst). Past it, a paper's page is rendered on
+ *  demand by the Worker. */
 export const STATIC_PAPERS = 6_000;
 
 /** What every other kind of file may take at most, whatever the catalogue's size: the shards
  *  below and the lookup's (2,560 in all), 256 lots of scripts (oscr/catalog.py N_LOTS), the
  *  category pages (the classification's vocabulary, about 60 values: MAX_CATEGORIES at most),
- *  27 pages of the authors' list, and the fixed pages and bundles. With the papers' 12,000, the
- *  margin exactly: 2 × STATIC_PAPERS + FIXED_FILES_MAX = FILE_MARGIN. The check holds the build
- *  to both. */
+ *  27 pages of the authors' list, and the fixed pages and bundles. The check holds the build
+ *  to both.
+ *
+ *  Since the launch pages (2026-09-29), also the list of every paper by date (LIST_PAGES_MAX pages
+ *  at most), the sitemap's shards (SITEMAP_SHARDS at most), the information pages and the brand's
+ *  files: 3,500 in all. A paper's page is one file since the Code ↔ Paper reader moved onto it
+ *  (2026-09-29, "code first"): the papers take STATIC_PAPERS files at most, not twice as many, so
+ *  STATIC_PAPERS + FIXED_FILES_MAX = 9,500 stays well under FILE_MARGIN, and 2 × STATIC_PAPERS +
+ *  FIXED_FILES_MAX under the Worker's FILE_LIMIT. */
 export const MAX_CATEGORIES = 200;
-export const FIXED_FILES_MAX = 3_000;
+export const FIXED_FILES_MAX = 3_500;
+
+/** The home page lists the most recent papers with their authors' code: whole days of
+ *  publication, the most recent first, as long as they hold at most HOME_PAPERS papers (a first
+ *  day that holds more is cut there, and says so). ~130 KB of HTML at most. */
+export const HOME_PAPERS = 100;
+
+/** The list of every paper with a page, the most recent first (/list/, /list/2/, …): LIST_PAGE
+ *  papers a page while that makes at most LIST_PAGES_MAX pages; past LIST_PAGE × LIST_PAGES_MAX
+ *  (20,000 papers), the number of pages stays LIST_PAGES_MAX and each page holds more. */
+export const LIST_PAGE = 100;
+export const LIST_PAGES_MAX = 200;
+
+/** The sitemap (/sitemap.xml, an index of /sitemaps/NN.xml): SITEMAP_URLS addresses a shard (the
+ *  sitemaps protocol's limit is 50,000), SITEMAP_SHARDS shards at most (1.6 million addresses). */
+export const SITEMAP_URLS = 50_000;
+export const SITEMAP_SHARDS = 32;
 
 /** The lookup's shards: the first LOOKUP_HEX hex characters of sha1(DOI), 16² = 256. The same
  *  number as oscr/entities.py LOOKUP_HEX (a test checks it). */

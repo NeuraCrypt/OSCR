@@ -1,0 +1,20 @@
+---
+// The pages of the list (science.css `nav.pager`): newer, the first and last pages and those
+// around this one, older. Nothing when there is one page.
+import { listUrl, pagerPages } from "../lib/lists";
+
+interface Props {
+  page: number;
+  pages: number;
+}
+const { page, pages } = Astro.props;
+---
+{pages > 1 && (
+  <nav class="pager" aria-label="Pages of the list">
+    {page > 1 ? <a href={listUrl(page - 1)} rel="prev">Newer</a> : <span>Newer</span>}
+    {pagerPages(page, pages).map((p) =>
+      p === 0 ? <span>…</span> : p === page ? <strong aria-current="page">{p}</strong> : <a href={listUrl(p)}>{p}</a>,
+    )}
+    {page < pages ? <a href={listUrl(page + 1)} rel="next">Older</a> : <span>Older</span>}
+  </nav>
+)}
