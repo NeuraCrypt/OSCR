@@ -138,7 +138,8 @@ the number of files must not grow with the catalogue: how each kind of page is r
 
 | route | what it shows | from the export | rendered |
 |---|---|---|---|
-| `/` | the papers with their authors' code, by day of publication | `catalog.json` | static |
+| `/` | what the registry is and its figures, then the latest days of publication, whole, up to `HOME_PAPERS` (100) papers with their authors' code (2026-09-29: it held every paper, 3.5 MB of HTML; now ~97 KB) | `catalog.json` | static |
+| `/list/`, `/list/<n>/` | every paper with a page, by day, the most recent first, 100 a page, `LIST_PAGES_MAX` (200) pages at most (past 20,000 papers the pages grow, not their number); the first page lists every page with its dates | `catalog.json` | static |
 | `/paper/<slug>/` | a paper with code, code on request or data only (decision D2), in sections: Overview, Code, Map, Data, Versions, Cite, Similar (and Discussion, Reproductions, Activity, which open with sign-in); see "The paper's page" below | `catalog.json`, `entities/`, `papers/` | static for the 6,000 most recent (`STATIC_PAPERS`); the others by the Worker, a reduced page |
 | `/paper/<slug>/code/` | the Code ↔ Paper reader, for the papers with code | `catalog.json`, `alignments/`, `scripts/` | static with its paper; past them, the Worker sends it to `/paper/<slug>/#code` |
 | `/browse/` | the categories by facet, with their counts; the other ways in | `entities/categories.json` | static |
@@ -151,7 +152,8 @@ the number of files must not grow with the catalogue: how each kind of page is r
 | `/lookup/` | the DOI lookup: any paper read, with or without a page | `lookup/NN.json` | static page; the browser fetches one of 256 shards |
 | `/search/` | the search (Phase 3): a static page and a Svelte island that asks `/api/search` only when a search is submitted | D1, through the Worker | static + Worker |
 | `/account/` | sign-in, the linked identities, the roles, "your papers", the maintainer claim form (Phase 5) | nothing: the page asks `/api/account/me` | static + Worker |
-| `/about/` | what the registry is, and what it never publishes | — | static |
+| `/about/`, `/help/` (and 13 guides), `/policies/` (and 8 policies), `/privacy/`, `/brand/`, `/labs/`, `/taxonomy/` | the information pages (2026-09-29), on the model of arXiv's: the mission and how it works, the guides, the policies, every personal datum held, the name and the logo, the open data and what is in development, the scope and the categories with their definitions and counts; a footer on every page links to them | `catalog.json`, `entities/`, `papers/` (the taxonomy's topics), `oscr/vocabulary/categories.json` | static |
+| `/sitemap.xml`, `/sitemaps/NN.xml`, `/robots.txt` | the sitemap's index and its shards (every indexable page: the fixed pages, the list, the categories, every paper with a page, every entity; 50,000 addresses a shard, `SITEMAP_SHARDS` (32) at most); robots.txt keeps robots off `/api/` and the search's results, which cost Worker requests | the same | static |
 
 - **Who counts.** `oscr/entities.py` counts only the papers with a page (D2): the authors'
   code (verified, found, empty, dead), code on request, data only. An off-topic paper appears
@@ -166,6 +168,29 @@ the number of files must not grow with the catalogue: how each kind of page is r
   every internal link (the links held by the records included, and the entities behind the
   rewrites), that each record is in the shard its key names, and the file budget; it prints the
   number of files folder by folder.
+
+### Headers (2026-09-29)
+
+`website/public/_headers` begins with a block for every file (`/*`): `X-Content-Type-Options:
+nosniff`, `Referrer-Policy: same-origin`, a `Permissions-Policy` that turns off the camera, the
+microphone, place, payment, sensors, USB and topics, `X-Frame-Options: DENY`, a strict
+`Content-Security-Policy` (this site's files only) and `Strict-Transport-Security: max-age=31536000`.
+
+- **Why no `includeSubDomains` or `preload`**: on `workers.dev` the header changes nothing (`.dev` is
+  a TLD every browser holds to HTTPS); on the custom domain planned before the launch (D8),
+  `includeSubDomains` would force HTTPS on every name under it, and `preload` would write that into the
+  browsers' lists, slow to undo. Both are the owner's to decide once the domain is known.
+- **How the rules combine**: Workers static assets apply every rule that matches, in the file's order;
+  a header two rules set is joined with a comma, and `! Name` removes what an earlier rule set (the
+  asset worker's `attachCustomHeaders`: removals, then sets, rule by rule). Two policies would both
+  apply, the stricter winning: so the pages with their own (the account, `/submit/`, `/removal/`, a
+  paper's page, the search's hashed island scripts) remove the site's first. `/_astro/*` keeps no
+  policy: a web worker takes its script's, and the reader's highlighter runs in one. Checked with
+  `wrangler dev`.
+- **The Worker's pages** (an older paper, the 404 page) get the same from `worker/pages.ts`
+  (`SITE_HEADERS`, `PAPER_HEADERS` over them), tested against the file (`src/lib/headers.ts` reads
+  `_headers` as the assets apply it). `npm run check` hashes every inline script and style of every
+  page and fails when its policy refuses one, naming the hash to add.
 
 ## How pages are rendered, and the file budget
 
@@ -183,10 +208,16 @@ catalogue's listing of the static pages is its too).
 | the DOI lookup | 256 `/lookup/NN.json` | the page's script fetches one shard | 0 |
 | an address no file answers | — | the Worker serves `404.html` with the status 404 | 1 |
 
-- **The budget holds whatever the catalogue's size**: at most 2 × 6,000 files of papers, and
-  `FIXED_FILES_MAX` (3,000) for everything else — the 2,304 record shards, 256 lookup shards, 128
-  lots of scripts, the category pages (`MAX_CATEGORIES`, 200) and the fixed pages and bundles. The
-  two add up to the check's margin, 15,000, under the 20,000 limit. `npm run check` prints the
+- **The budget holds whatever the catalogue's size**: at most 6,000 files of papers (one each since
+  the reader is on the paper's page; two before), and `FIXED_FILES_MAX` (3,500 since 2026-09-29) for
+  everything else — the 2,304 record shards, 256 lookup shards, 256 lots of scripts, the category pages
+  (`MAX_CATEGORIES`, 200), the list by date (`LIST_PAGES_MAX`, 200), the sitemap's shards
+  (`SITEMAP_SHARDS`, 32), the information pages, the brand's files and the bundles: 9,500 at most,
+  under the check's margin of 15,000 and the 20,000 limit.
+- **Every paper is reachable**: the check fails when a paper with a page is linked from no static
+  page (the list by date links to all of them) or is missing from the sitemap. Measured on the real
+  catalogue (2026-09-29): 46 list pages, one sitemap shard (27,544 addresses); 2,695 files besides the
+  papers' 4,554, 7,249 in all. `npm run check` prints the
   files folder by folder and fails past either; `npm run check:growth` (in CI) builds the fixture,
   then the fixture grown with 40,000 authors, 15,000 institutions, 12,000 papers and 150,000 DOIs:
   67 files, then 2,628, only the shards differing.

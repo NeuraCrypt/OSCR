@@ -518,9 +518,12 @@ dl.index dd { margin: .15em 0 0; color: var(--muted); }
 table.facts { border-collapse: collapse; width: 100%; font-size: .94em; }
 table.facts th, table.facts td { padding: .35em .6em; border-bottom: 1px solid var(--rule); text-align: left; vertical-align: top; }
 table.facts thead th { background: var(--bg-sidebar); border-bottom-color: #aaa; }
-table.facts td.n, table.facts th.n { text-align: right; white-space: nowrap; }
+table.facts td, table.facts th { overflow-wrap: anywhere; }
+table.facts td.n, table.facts th.n { text-align: right; overflow-wrap: normal; }
 @media (max-width: 800px) {
-  .info { flex-direction: column; gap: 1em; }
+  /* Stretched to the column: a <pre> or a table scrolls inside it, never the page. */
+  .info { flex-direction: column; gap: 1em; align-items: stretch; }
+  .info-body { width: 100%; }
   .info-menu {
     order: 0; position: static; width: 100%; box-sizing: border-box;
     padding: .4em 0 0; border-right: 0; border-top: 1px solid var(--rule);

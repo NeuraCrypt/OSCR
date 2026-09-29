@@ -156,7 +156,40 @@ the catalogue's size (`website/src/lib/shards.ts`, held by `npm run check`; docs
   correction, removal request). Every request no file answers runs the Worker
   (`not_found_handling = "none"`), which serves the 404 page itself.
 - **The DOI lookup**: 256 shards (`oscr/entities.py` LOOKUP_HEX, `/lookup/NN.json`).
+- **The lists and the sitemap** (2026-09-29): the list of every paper by date, `/list/` (100 a page,
+  `LIST_PAGES_MAX` = 200 pages at most), and the sitemap's shards (`SITEMAP_SHARDS` = 32 at most) are
+  in `FIXED_FILES_MAX`, raised to 3,500; a paper's page is one file since the reader is on it, so
+  `STATIC_PAPERS` + `FIXED_FILES_MAX` = 9,500 stays under the 15,000 margin.
 - A new kind of page adds a fixed number of files, never one per paper or per entity.
+
+## Information pages (the launch, 2026-09-29)
+
+About, Help (an index and 13 guides), Policies (an index and 8 policies), Privacy, Brand, Labs and
+Taxonomy, on the model of arXiv's info site, in the site's own words (`website/src/pages/`, their
+menus in `website/src/lib/info.ts`, the layout `src/components/Info.astro`):
+
+- **Every statement is true of the code and the docs**: a feature, a number, a partner or a promise
+  that does not exist is never written. What exists only on unmerged branches (the night branches)
+  is named on Labs only, marked "in development". Figures come from the build's export.
+- **A footer on every page** (`Base.astro`): About, Help, Policies, Privacy, Brand, Labs, Taxonomy,
+  Limits, the source. The masthead stays compact, with the owner's logo (`public/brand/`, made by
+  `tools/make_logo_assets.py`; its alt is `SITE_NAME`).
+- **`OPERATOR_NAME` and `OPERATOR_ADDRESS`** (`website/src/config.ts`, next to `SITE_NAME`, or at
+  build time) name the operator on `/privacy/` and `/policies/terms/`. Empty, the pages say that they
+  are published before the launch, and `npm run check` prints a launch warning (never a failure).
+- **Privacy** lists every personal datum, the private collection of authors' contact details
+  included; a change to what the registry keeps changes `/privacy/` in the same commit.
+- `/policies/code/` and `/policies/moderation/` are written with the code reader: the pages link to
+  them through `pageExists` (a link once the page exists, its name until then).
+- **The home page** shows the latest days, whole, up to `HOME_PAPERS` (100) papers with code; every
+  paper with a page is in `/list/` (100 a page, `LIST_PAGES_MAX` pages at most); the sitemap
+  (`/sitemap.xml`, `SITEMAP_SHARDS` shards of 50,000) and `robots.txt` list and guard the rest.
+  `npm run check` fails when a paper with a page is linked from no static page or missing from the
+  sitemap.
+- **Headers**: a site-wide block first in `public/_headers` (nosniff, referrer, permissions, a
+  strict policy, HSTS without `includeSubDomains` or `preload`); a page that needs more removes the
+  site's policy (`! Content-Security-Policy`) and sets its own. `worker/pages.ts` gives its pages the
+  same; `npm run check` holds every inline script and style to its page's policy.
 
 ## The website's style (website/)
 

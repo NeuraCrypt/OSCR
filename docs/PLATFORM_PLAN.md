@@ -444,6 +444,16 @@ the fixed pages and bundles): 15,000, the check's margin. `npm run check` fails 
 prints the files folder by folder; `npm run check:growth` (CI) shows that only the shards change
 when the catalogue grows.
 
+**The launch (2026-09-29).** The home page held every paper with code (3.5 MB of HTML, 535 KB
+gzipped, for 2,664 papers under 152 days, on the real catalogue): it now shows whole days of
+publication up to `HOME_PAPERS` (100) papers (97 KB, 16 KB gzipped), and every paper with a page is in
+the list by date, `/list/` and `/list/<n>/`, 100 a page in `LIST_PAGES_MAX` (200) pages at most — 46
+today; past 20,000 papers the pages hold more, their number stays. With the sitemap's shards
+(`SITEMAP_SHARDS`, 32 at most) and some 35 information pages, `FIXED_FILES_MAX` goes from 3,000 to
+3,500; a paper takes one file since the reader is on its page, so the papers' 6,000 and the rest's
+3,500 stay under the 15,000 margin. Measured on the real catalogue: 7,164 files before, 7,249 after
+(2,695 besides the papers; the sitemap, one shard of 27,544 addresses).
+
 **Limits.**
 
 - Every miss runs the Worker: robots probing addresses spend requests that were free before. The
