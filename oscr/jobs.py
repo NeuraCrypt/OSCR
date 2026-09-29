@@ -470,6 +470,15 @@ def run_edit(runner: Runner, job: dict[str, Any], row: dict[str, Any] | None, us
         return Outcome("done", [f"UPDATE edits SET status = 'refused', message = {literal(words(why))}, decided_at = {t} {where}"],
                        message=why)
     source = "maintainer" if row["as_role"] == "maintainer" else "author"
+    if source == "maintainer" and not moderation.maintainers(runner, row["user_id"]).get(row["repo"]):
+        # A contributor of the repository is shown as its maintainer by GitHub's check, but one merged
+        # pull request makes one: the rules do not let them change the paper's record (the Worker
+        # refuses it too since 2026-09-29; this is for a request recorded before).
+        message = moderation.UNTRUSTED_MAINTAINER
+        moderation.log(runner.state, runner.target, "edit", int(row["id"]), "edit.untrusted_maintainer", "refused",
+                       user_id=row["user_id"], paper=row["paper_id"], detail={"repo": row["repo"]}, now=runner.now())
+        return Outcome("done", [f"UPDATE edits SET status = 'refused', message = {literal(words(message))}, decided_at = {t} "
+                                f"{where}"], message=message)
     version, applied, skipped = apply_changes(runner, row["paper_id"], json.loads(row["changes"] or "[]"), source=source,
                                               who=actor(user), ref=f"edit:{row['id']}")
     if version is None and not applied:
@@ -857,6 +866,7 @@ def decide_submission(runner: Runner, submission_id: int, accept: bool, message:
     _write(runner, [f"UPDATE submissions SET status = {literal(status)}, message = {literal(words(said))}, "
                     f"updated_at = {t} WHERE id = {int(submission_id)} AND status = {literal(s['status'])}"])
     _settled(runner, ("publish",), submission_id, status)
+    moderation.unwait(runner.state, runner.target, "submission", int(submission_id))
     moderation.log(runner.state, runner.target, "submission", int(submission_id), "owner", status, user_id=s["user_id"],
                    paper=s["paper_id"], detail={"message": message}, now=runner.now())
     return f"submission {submission_id} ({s['doi']}): {status}"

@@ -12,14 +12,14 @@ suites read tests/fixtures/moderation_rules.json).
 | request | rule | what happens |
 |---|---|---|
 | removal, from a verified author of the paper | `report.verified_author` | applied at once, whatever it names |
-| removal of copies (a repository, a file, the paper's scripts) by a maintainer of that code | `report.maintainer` | applied at once, to the repositories they maintain |
+| removal of copies (a repository, a file, the paper's scripts) by a trusted maintainer of that code | `report.maintainer` | applied at once, to the repositories they maintain — trusted: its owner or a public member of its organization on GitHub, or made one by the owner; a mere contributor is not |
 | removal of copies, for copyright or personal data, by anyone else | `report.hide_at_once` | hidden at once, pending the operator's review (who may restore it) — at most 3 an account and 30 in all a day, and not a justification repeated 3 times in 7 days |
 | any other removal (a whole record, a tracing map, another reason) | `report.review` | waits for the operator, 30 days at most; then closed without removal, with how to ask again |
-| a submission published by someone not among the paper's authors | `submission.corroborated` / `submission.uncorroborated` | published when each code link is in the paper's own text, or its README cites the paper, or its owner is one of its authors; else refused, with the reason and how to ask again |
+| a submission published by someone not among the paper's authors | `submission.corroborated` / `submission.review` → `submission.expired` | published when each code link is cited by the paper's own text or metadata, or its owner is proven one of its authors (an author's public ORCID record links the account; or a verified author of the paper maintains it, as owner or organization member); else waits for the operator, 30 days at most, then refused with how to ask again. A README citing the paper and a GitHub display name are never proof: anyone can write them |
 | a draft not published | `submission.draft_expired` | refused after 30 days (it can be corrected and published again) |
-| an author claim | `claim.paper_metadata`, `claim.orcid_record`, `claim.expired` | verified when the paper lists the claimant's ORCID iD, or the claimant's public ORCID record lists the paper (checked again daily); else closed after 30 days, with how to claim again |
+| an author claim | `claim.paper_metadata`, `claim.crossref_orcid`, `claim.expired` | verified when the paper lists the claimant's ORCID iD, or when Crossref's automatic update put the paper in the claimant's ORCID record (the publisher deposited the iD with the paper; checked again daily) — never a work the claimant added themselves or through a search wizard; else closed after 30 days, with how to claim again |
 | a maintainer claim GitHub did not settle | `claim.expired` | closed after 30 days, with how to be checked again |
-| corrections of links, validations of maps | — | already restricted to verified authors and maintainers by the Worker; applied by the Mac |
+| corrections of links, validations of maps | `edit.untrusted_maintainer` | already restricted to verified authors and maintainers by the Worker; applied by the Mac — except a correction as a maintainer who is only a contributor of the repository, refused |
 
 Every automatic decision is logged with its rule (`moderation_log` in data/community/state.db:
 `oscr reports list --auto-log`, and the same for claims and submissions); the owner's commands keep
@@ -70,6 +70,19 @@ HARM = frozenset({"copyright", "personal_data"})
 RULES = "rules"
 #: Where a person's own link comes from (link.found_by): not the paper's text.
 PERSONS = ("submitter", "author", "maintainer", "owner")
+#: Where a link found by the harvester comes from when the PAPER ITSELF cites it: its text (text:…)
+#: or the metadata its publisher deposited at Crossref (crossref:…). A DataCite record that declares
+#: the paper (datacite:…) is not: anyone can deposit one.
+PAPER_ORIGINS = ("text:", "crossref:")
+#: How GitHub showed a maintainer (the Worker's check, website/worker/account/verify.ts) when the rules
+#: trust them: the owner of the repository, a public member of the organization that owns it. A
+#: contributor, or the author of a commit in it, is not enough: one merged pull request makes one.
+TRUSTED_VIA = frozenset({"owner", "org_member"})
+#: Crossref's automatic update of ORCID records: it adds a paper to a record only when the paper's
+#: publisher deposited that ORCID iD with it. Works a person adds themselves, or through a search
+#: wizard (Crossref Metadata Search, Scopus, Europe PMC…: they carry an "assertion origin"), prove
+#: nothing.
+CROSSREF_AUTO_UPDATE = "0000-0001-9884-1913"
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS moderation_log (
@@ -235,8 +248,8 @@ def deadline_words(due: float) -> str:
 
 class Evidence(Protocol):
     def orcid_lists_doi(self, orcid: str, doi: str, *, sandbox: bool) -> bool | None:
-        """Whether the public ORCID record of `orcid` lists the paper `doi` among its works; None when
-        ORCID could not be asked."""
+        """Whether Crossref's automatic update put the paper `doi` in the public ORCID record of `orcid`
+        (its publisher deposited the iD with it: `crossref_listed`); None when ORCID could not be asked."""
 
     def owner_is_author(self, con: sqlite3.Connection, article_id: str, repo: str) -> str:
         """Why the owner of `repo` is one of the paper's authors, in words; "" when nothing shows it."""
@@ -250,11 +263,6 @@ class NoEvidence:
 
     def owner_is_author(self, con: sqlite3.Connection, article_id: str, repo: str) -> str:
         return ""
-
-
-def _folded(name: str) -> str:
-    t = unicodedata.normalize("NFKD", name or "").encode("ascii", "ignore").decode().lower()
-    return " ".join(sorted(re.findall(r"[a-z]+", t)))
 
 
 class MacEvidence:
@@ -281,12 +289,7 @@ class MacEvidence:
         works = self._json(f"{self.ORCID_SANDBOX if sandbox else self.ORCID}/{orcid}/works")
         if works is None:
             return None
-        for group in works.get("group") or []:
-            for x in ((group.get("external-ids") or {}).get("external-id") or []):
-                if (x.get("external-id-type") or "").lower() == "doi" and \
-                        str(x.get("external-id-value") or "").strip().lower() == doi.lower():
-                    return True
-        return False
+        return crossref_listed(works, doi)
 
     def owner_is_author(self, con: sqlite3.Connection, article_id: str, repo: str) -> str:
         parts = repo.split("/")
@@ -303,14 +306,26 @@ class MacEvidence:
                 p = urlsplit(address if "://" in address else f"https://{address}")
                 if p.hostname in ("github.com", "www.github.com") and p.path.strip("/").split("/")[0].lower() == owner:
                     return f"the ORCID record of {a['name']}, an author, links to github.com/{parts[1]}"
-        # 2. The owner's GitHub profile bears an author's full name.
-        profile = self._json(f"https://api.github.com/users/{parts[1]}") or {}
-        if profile.get("type") == "User" and profile.get("name"):
-            theirs = _folded(profile["name"])
-            for a in authors:
-                if theirs and len(theirs.split()) >= 2 and theirs == _folded(a["name"]):
-                    return f"the GitHub profile of {parts[1]} bears the name of {a['name']}, an author"
+        # (A GitHub profile bearing an author's name proves nothing: anyone can set any display name.)
         return ""
+
+
+def crossref_listed(works: dict[str, Any], doi: str) -> bool:
+    """Whether an ORCID record's works (the public API's /works) hold `doi` as added by Crossref's
+    automatic update — its own client, asserting on no one's behalf. Not a work the person added, nor
+    one a search wizard added at the person's request."""
+    for group in works.get("group") or []:
+        ids = ((group.get("external-ids") or {}).get("external-id") or [])
+        if not any((x.get("external-id-type") or "").lower() == "doi"
+                   and str(x.get("external-id-value") or "").strip().lower() == doi.lower() for x in ids):
+            continue
+        for w in group.get("work-summary") or []:
+            src = w.get("source") or {}
+            client = (src.get("source-client-id") or {}).get("path")
+            on_behalf = any(src.get(k) for k in ("assertion-origin-orcid", "assertion-origin-client-id", "assertion-origin-name"))
+            if client == CROSSREF_AUTO_UPDATE and not src.get("source-orcid") and not on_behalf:
+                return True
+    return False
 
 
 def public_name(name: str) -> str:
@@ -348,12 +363,45 @@ def verified_author(runner: Runner, user: dict[str, Any] | None, paper: str) -> 
                                              (paper, orcid)).fetchone())
 
 
+def trusted_maintainer(via: str, decided_by: str, granted_by: str) -> bool:
+    """A maintainer the rules trust (website/src/lib/moderation.ts, maintainerTrusted): made one by the
+    owner, or shown by GitHub as the repository's owner or a public member of its organization — not a
+    contributor, nor the author of a commit: one merged pull request makes one."""
+    return granted_by == "owner" or decided_by == "owner" or via in TRUSTED_VIA
+
+
+def maintainers(runner: Runner, user_id: str) -> dict[str, bool]:
+    """The repositories an account maintains, each with whether the rules trust it as their maintainer
+    (the role, and the claim that keeps GitHub's answer: `via`)."""
+    if not user_id:
+        return {}
+    uid = literal(user_id)
+    roles = {r["scope_id"]: r.get("granted_by") or "" for r in runner.d1.query(
+        f"SELECT scope_id, granted_by FROM roles WHERE user_id = {uid} AND role = 'maintainer' AND scope_kind = 'repo'")}
+    claims: dict[str, tuple[str, str]] = {}
+    for c in runner.d1.query(f"SELECT repo, evidence, decided_by FROM claims WHERE user_id = {uid} AND kind = 'maintainer' "
+                             "AND status = 'verified'"):
+        try:
+            via = str((json.loads(c.get("evidence") or "{}") or {}).get("via") or "")
+        except ValueError:
+            via = ""
+        claims[c["repo"]] = (via, c.get("decided_by") or "")
+    return {repo: trusted_maintainer(*claims.get(repo, ("", "")), granted) for repo, granted in roles.items()}
+
+
+UNTRUSTED_MAINTAINER = ("Not applied: GitHub shows you as a contributor of this repository, not as its owner or a public "
+                        "member of its organization, and the registry's rules let only those correct a paper's record as its "
+                        "maintainer (a contributor may ask the paper's authors, who can correct it). There is no human "
+                        "moderator on duty at the moment.")
+
+
 def maintained(runner: Runner, user: dict[str, Any] | None, paper: str, scope: str, repo: str) -> list[str]:
-    """The repositories of the paper's code named by a request that the account maintains (GitHub's
-    check, or the owner's decision): the one named, or for "scripts" every one of the paper's."""
+    """The repositories of the paper's code named by a request that the account maintains, as a
+    maintainer the rules trust (`trusted_maintainer`): the one named, or for "scripts" every one of
+    the paper's."""
     if not user or scope not in NARROW:
         return []
-    mine = {r["scope_id"] for r in _roles(runner, user["id"]) if r["role"] == "maintainer" and r["scope_kind"] == "repo"}
+    mine = {r for r, trusted in maintainers(runner, user["id"]).items() if trusted}
     code = {r[0] for r in runner.con.execute("SELECT repo FROM link WHERE article_id = ? AND role = 'code'", (paper,))}
     named = code if scope == "scripts" else ({repo} & code if code else {repo})
     return sorted(mine & named)
@@ -434,66 +482,127 @@ def decide_report(runner: Runner, job: dict[str, Any], row: dict[str, Any], user
                            "who": REQUESTERS.get(row.get("requester_role") or "", ""), "what": SCOPES.get(scope, scope)})
 
 
-def corroboration(runner: Runner, article_id: str, link: links.Link) -> str:
-    """Why a submitted code link is this paper's, in words; "" when nothing shows it."""
+def submission_path(links_: list[dict[str, bool]]) -> Path:
+    """What the rules do with a non-author's submission, from what shows each code link to be the
+    paper's (website/src/lib/moderation.ts, submissionPath): published when every link is cited by the
+    paper itself (`cited`) or its owner is proven one of the paper's authors (`owner_author`). A README
+    citing the paper, a GitHub display name bearing an author's: never enough — the submitter can
+    write both."""
+    if links_ and all(x.get("cited") or x.get("owner_author") for x in links_):
+        return Path("submission.corroborated", "publish")
+    return Path("submission.review", "review")
+
+
+def paper_cites(con: sqlite3.Connection, article_id: str, repo: str, depth: int = 0) -> str:
+    """Where the paper itself cites a repository (its text, or the metadata its publisher deposited at
+    Crossref), in words; "" when it does not. The source repository an archive's record names (the
+    GitHub of a Zenodo record) counts when the paper itself cites that archive."""
+    for r in con.execute("SELECT found_by, reasons FROM link WHERE article_id = ? AND repo = ?", (article_id, repo)):
+        found = r["found_by"] or ""
+        if found.startswith(PAPER_ORIGINS):
+            return "the paper itself cites it" if found.startswith("text:") else "the paper's metadata at Crossref cites it"
+        if found in ("zenodo:source", "dryad:software") and depth == 0:
+            try:
+                reasons = json.loads(r["reasons"] or "[]")
+            except ValueError:
+                reasons = []
+            parent = next((x.rsplit(" ", 1)[-1] for x in reasons if isinstance(x, str)
+                           and x.startswith("source declared by the record of ")), "")
+            if parent and paper_cites(con, article_id, parent, depth + 1):
+                return f"the archive the paper cites ({parent}) names it as its source"
+    return ""
+
+
+def owner_role_proof(runner: Runner, article_id: str, repo: str) -> str:
+    """Why the repository's owner is one of the paper's authors from the roles in D1: an account that is
+    a verified author of the paper AND a trusted maintainer of the repository; "" when none is."""
+    rows = runner.d1.query(
+        "SELECT a.user_id FROM roles a JOIN roles m ON m.user_id = a.user_id WHERE a.role = 'verified_author' "
+        f"AND a.scope_kind = 'paper' AND a.scope_id = {literal(article_id)} AND m.role = 'maintainer' "
+        f"AND m.scope_kind = 'repo' AND m.scope_id = {literal(repo)}")
+    for r in rows:
+        if maintainers(runner, r["user_id"]).get(repo):
+            return "a verified author of the paper maintains it (its owner, or a public member of its organization)"
+    return ""
+
+
+def corroboration(runner: Runner, article_id: str, link: links.Link) -> dict[str, Any]:
+    """What shows a submitted code link to be this paper's: `cited` (the paper itself), `owner_author`
+    (its owner proven an author: an author's ORCID record, or the roles in D1), each with its words;
+    and, for the operator only, what proves nothing (`hint`: a README citing the paper)."""
     con = runner.con
-    marks = ",".join("?" * len(PERSONS))
-    found = con.execute(f"SELECT found_by, section FROM link WHERE article_id = ? AND repo = ? AND found_by NOT IN ({marks})",
-                        (article_id, link.repo, *PERSONS)).fetchone()
-    if found is not None:
-        return "the paper itself cites it"
+    cited = paper_cites(con, article_id, link.repo)
+    owner = "" if cited else (runner.evidence.owner_is_author(con, article_id, link.repo)
+                              or owner_role_proof(runner, article_id, link.repo))
     d = con.execute("SELECT cites_article FROM repository WHERE repo = ?", (link.repo,)).fetchone()
-    if d is not None and (d["cites_article"] or "").strip():
-        return "its README cites the paper"
-    return runner.evidence.owner_is_author(con, article_id, link.repo)
+    hint = "its README cites the paper (anyone can write that)" if d is not None and (d["cites_article"] or "").strip() else ""
+    return {"cited": bool(cited), "owner_author": bool(owner), "why": cited or owner, "hint": hint}
+
+
+REVIEW_SUBMISSION = ("Waits for the operator's review, until {deadline} at most: {missing} — the paper does not cite "
+                     "{it}, and nothing proves that {its} owner is one of its authors (a README citing the paper, or a "
+                     "display name, proves nothing: anyone can write them). There is no human moderator on duty at the "
+                     "moment; unreviewed, it is closed on that day.")
+EXPIRED_SUBMISSION = ("Closed without publication: no one could review it within {days} days, and the registry has no human "
+                      "moderator on duty. Its links are published at once when the paper itself cites them, or when their "
+                      "owner is proven one of the paper's authors: if you are one, sign in with the ORCID iD the paper lists "
+                      "and verify the repository on GitHub from your account page (or link your GitHub account from your "
+                      "ORCID record), then correct this submission and publish it again.")
 
 
 def decide_submission(runner: Runner, job: dict[str, Any], row: dict[str, Any], user: dict[str, Any] | None) -> Outcome:
     """A draft published by someone the paper does not list among its authors: published when every
-    code link is shown to be this paper's; otherwise refused, with why and how to ask again."""
-    from .jobs import Outcome, _out_of_scope, _paper, _stamp, _submitted, apply_submission, words
+    code link is shown to be this paper's by what the submitter cannot forge; refused when the paper is
+    out of scope; otherwise it waits for the operator, 30 days at most."""
+    from .jobs import Outcome, _handles, _out_of_scope, _paper, _stamp, _submitted, apply_submission, words
     t = _stamp(runner)
     sid = int(row["id"])
     where = f"WHERE id = {sid} AND status = 'moderation'"
     paper = row["paper_id"]
     a = _paper(runner.con, paper)
     why = _out_of_scope(a)
-    if not why and not (a["title"] or "").strip():
-        why = "The registry could not read this paper's metadata, so it cannot check the links against it."
-    reasons: dict[str, str] = {}
-    missing: list[str] = []
-    if not why:
-        for link in _submitted(row):
-            r = corroboration(runner, paper, link)
-            if r:
-                reasons[link.repo] = r
-            else:
-                missing.append(link.url)
-    if why or missing:
-        message = why or (
-            f"Not published: the registry could not tie {', '.join(missing)} to this paper — the paper does not cite "
-            f"{'it' if len(missing) == 1 else 'them'}, {'its' if len(missing) == 1 else 'their'} README does not cite the paper, "
-            "and nothing shows that the owner is one of its authors. To publish it: if you are an author, sign in with the "
-            "ORCID iD the paper lists, then publish again (your submission is published at once); or add the paper's DOI to "
-            "the repository's README, then correct this submission from your account page and publish it again.")
-        log(runner.state, runner.target, "submission", sid, "submission.uncorroborated", "refused", user_id=row["user_id"],
-            paper=paper, detail={"missing": missing, "corroborated": reasons, "why": why}, now=runner.now())
-        return Outcome("done", [f"UPDATE submissions SET status = 'refused', message = {literal(words(message))}, "
-                                f"updated_at = {t} {where}"], message="refused by the rules")
-    status, said = apply_submission(runner, row, user)
-    message = f"{said} Published by the registry's rules: " + "; ".join(f"{k}: {v}" for k, v in reasons.items()) + "."
-    log(runner.state, runner.target, "submission", sid, "submission.corroborated", status, user_id=row["user_id"], paper=paper,
-        detail={"corroborated": reasons}, now=runner.now())
-    return Outcome("done", [f"UPDATE submissions SET status = {literal(status)}, message = {literal(words(message))}, "
-                            f"updated_at = {t} {where}"], message=f"published by the rules ({len(reasons)} link(s))")
+    if why:
+        log(runner.state, runner.target, "submission", sid, "submission.out_of_scope", "refused", user_id=row["user_id"],
+            paper=paper, detail={"why": why}, now=runner.now())
+        return Outcome("done", [f"UPDATE submissions SET status = 'refused', message = {literal(words(why))}, "
+                                f"updated_at = {t} {where}"], message="refused: out of scope")
+    submitted = _submitted(row)
+    found = {link.url: corroboration(runner, paper, link) for link in submitted} if (a["title"] or "").strip() else {}
+    path = submission_path(list(found.values()))
+    detail = {"links": found}
+    if path.outcome == "publish":
+        status, said = apply_submission(runner, row, user)
+        message = f"{said} Published by the registry's rules: " + "; ".join(f"{k}: {v['why']}" for k, v in found.items()) + "."
+        log(runner.state, runner.target, "submission", sid, path.rule, status, user_id=row["user_id"], paper=paper,
+            detail=detail, now=runner.now())
+        return Outcome("done", [f"UPDATE submissions SET status = {literal(status)}, message = {literal(words(message))}, "
+                                f"updated_at = {t} {where}"], message=f"published by the rules ({len(found)} link(s))")
+    missing = [u for u, c in found.items() if not c["why"]] or [link.url for link in submitted]
+    first = runner.state.execute("SELECT 1 FROM waits WHERE target = ? AND kind = 'submission' AND ref = ? AND rule = ?",
+                                 (runner.target, sid, path.rule)).fetchone() is None
+    due = wait(runner.state, runner.target, "submission", sid, runner.now(), path.rule)
+    sql = []
+    if first:
+        log(runner.state, runner.target, "submission", sid, path.rule, "review", user_id=row["user_id"], paper=paper,
+            detail={**detail, "due": due}, now=runner.now())
+        one = len(missing) == 1
+        text = REVIEW_SUBMISSION.format(deadline=deadline_words(due), missing=", ".join(missing), it="it" if one else "them",
+                                        its="its" if one else "their")
+        sql = [f"UPDATE submissions SET message = {literal(words(text))} {where}"]
+    return Outcome("owner", sql, message=f"waits for the operator until {deadline_words(due)}",
+                   detail={"submission": row["id"], "doi": row["doi"], "paper_id": paper,
+                           "code_urls": json.loads(row["code_urls"] or "[]"), "note": row["note"], "user": _handles(user),
+                           "due": due, "rule": path.rule,
+                           "guard": "; ".join(f"{u}: {c['hint']}" for u, c in found.items() if c["hint"] and not c["why"])})
 
 
 VERIFIED_CLAIM = ("Verified by the registry's rules: {why}. You may now correct this paper's record, validate its map and "
                   "have your removal requests applied at once.")
 EXPIRED_AUTHOR_CLAIM = ("Closed: in {days} days, nothing could show that you are one of this paper's authors — the paper does not "
-                        "list your ORCID iD, and your public ORCID record does not list the paper — and the registry has no human "
-                        "moderator on duty. Add the paper to the works of your ORCID record (or sign in with the ORCID iD the paper "
-                        "lists), then claim it again: the rules check it at once, and again each day.")
+                        "list your ORCID iD, and Crossref did not add the paper to your ORCID record (a work you add yourself "
+                        "proves nothing) — and the registry has no human moderator on duty. Sign in with the ORCID iD the paper "
+                        "lists; or allow Crossref's automatic update in your ORCID record, so that the paper comes into it once "
+                        "its publisher deposited your iD, then claim it again: the rules check it at once, and again each day.")
 EXPIRED_MAINTAINER_CLAIM = ("Closed: in {days} days, nothing could show that you maintain this repository, and the registry has no "
                             "human moderator on duty. Only GitHub can be checked automatically: once GitHub shows you as its owner, "
                             "a public member of its organization or one of its contributors, ask for the check again from your "
@@ -514,7 +623,8 @@ def _claim_proof(runner: Runner, row: dict[str, Any], user: dict[str, Any] | Non
     # The iDs of a site signed in with ORCID's sandbox are the sandbox's: their records are looked up there.
     sandbox = evidence.get("orcid_issuer", "sandbox") != "orcid"
     if orcid and doi and runner.evidence.orcid_lists_doi(orcid, doi, sandbox=sandbox):
-        return "claim.orcid_record", "your public ORCID record lists this paper among your works"
+        return "claim.crossref_orcid", ("Crossref's automatic update put this paper in your ORCID record: its publisher "
+                                        "deposited your ORCID iD with it")
     return "", ""
 
 
@@ -605,8 +715,9 @@ def sweep(runner: Runner) -> dict[str, int]:
             break
         kind, ref = w["kind"], int(w["ref"])
         row = rows.get((kind, ref))
-        settle_kinds = {"report": ("report",), "claim": ("claim",), "submission": ("submission",)}[kind]
-        waiting_status = {"report": "open", "claim": "pending", "submission": "draft"}[kind]
+        review = w["rule"] == "submission.review"          # a non-author's submission, not a draft
+        settle_kinds = {"report": ("report",), "claim": ("claim",), "submission": ("publish",) if review else ("submission",)}[kind]
+        waiting_status = {"report": "open", "claim": "pending", "submission": "moderation" if review else "draft"}[kind]
         if row is None or row["status"] != waiting_status:
             unwait(runner.state, runner.target, kind, ref)          # decided meanwhile
             continue
@@ -632,12 +743,17 @@ def sweep(runner: Runner) -> dict[str, int]:
             sql = (f"UPDATE claims SET status = 'rejected', decided_by = '{RULES}', decided_at = {t}, "
                    f"message = {literal(words(text))} WHERE id = {ref} AND status = 'pending'")
             decision = "rejected"
+        elif review:
+            sql = (f"UPDATE submissions SET status = 'refused', message = {literal(words(EXPIRED_SUBMISSION.format(days=REVIEW_DAYS)))}, "
+                   f"updated_at = {t} WHERE id = {ref} AND status = 'moderation'")
+            decision = "refused"
         else:
             sql = (f"UPDATE submissions SET status = 'refused', message = {literal(words(DRAFT_EXPIRED.format(days=REVIEW_DAYS)))}, "
                    f"updated_at = {t} WHERE id = {ref} AND status = 'draft' AND updated_at = {int(row['updated_at'])}")
             decision = "refused"
         out["written"] += _write(runner, [sql])
-        rule = {"report": "report.expired", "claim": "claim.expired", "submission": "submission.draft_expired"}[kind]
+        rule = {"report": "report.expired", "claim": "claim.expired",
+                "submission": "submission.expired" if review else "submission.draft_expired"}[kind]
         log(runner.state, runner.target, kind, ref, rule, decision, user_id=row["user_id"],
             paper=row.get("target_id") or row.get("paper_id") or row.get("repo") or "", detail={"since": w["since"]}, now=now)
         unwait(runner.state, runner.target, kind, ref)

@@ -227,20 +227,20 @@ def test_a_published_submission_puts_its_links_on_the_record_as_a_new_version(w)
     assert ("align", paper, True) in w.harvester.calls
 
 
-def test_a_draft_published_by_someone_else_is_decided_by_the_rules_and_the_owner_may_still_decide(w):
-    """The moderator's rules decide a draft published by someone who is not among the paper's
-    authors (tests/test_moderation.py has each rule): nothing ties this link to the paper, so it is
-    refused, in words. One the rules did not see (its job lost) can still be decided by the owner."""
+def test_a_draft_published_by_someone_else_waits_for_the_owner_when_nothing_proves_its_links(w):
+    """The moderator's rules (tests/test_moderation.py has each): nothing the submitter cannot forge ties
+    this link to the paper, so it waits for the owner, 30 days at most, the submitter told why."""
     sid = _submit(w, user="u_ben")
     w.poll()
     assert w.row("submissions", sid)["author"] == 0
     w.d1con.execute("UPDATE submissions SET status = 'moderation' WHERE id = ?", (sid,))
     w.job("publish", sid, "u_ben")
-    assert w.poll().owner == 0
-    assert w.row("submissions", sid)["status"] == "refused" and "could not tie" in w.row("submissions", sid)["message"]
-    assert jobs.waiting(w.state, "local", ("publish",)) == []
-    w.d1con.execute("UPDATE submissions SET status = 'moderation' WHERE id = ?", (sid,))
-    w.d1con.commit()
+    assert w.poll().owner == 1
+    row = w.row("submissions", sid)
+    assert row["status"] == "moderation" and row["message"].startswith("Waits for the operator's review, until 26 October 2026")
+    listed = jobs.describe_waiting(jobs.waiting(w.state, "local", ("publish",)))
+    assert f"submission {sid}: 10.5555/oscr.fixture.7" in listed and "GitHub ben-example" in listed
+    assert "the rules (submission.review) close it by themselves on 26 October 2026" in listed
     assert jobs.decide_submission(w.runner, sid, True, "Thank you.").endswith("published")
     row = w.row("submissions", sid)
     assert row["status"] == "published" and "Thank you." in row["message"]
@@ -307,7 +307,18 @@ def test_a_correction_is_applied_as_a_new_version_with_its_provenance(w):
     assert set(dict(w.mac.execute("SELECT repo, role FROM link WHERE article_id = ?", (P1,)).fetchall())) == {EEG, "zenodo:1234567"}
 
 
+def maintainer(w, user: str, repo: str, via: str = "owner") -> None:
+    """A maintainer as the Worker records one after GitHub's check (the role, and the claim that keeps
+    how GitHub showed it: owner, org_member, contributor, commit_author)."""
+    w.d1con.execute("INSERT INTO roles (user_id, role, scope_kind, scope_id, granted_by, granted_at) VALUES "
+                    "(?, 'maintainer', 'repo', ?, 'system', ?)", (user, repo, T))
+    w.d1con.execute("INSERT INTO claims (user_id, kind, repo, evidence, status, created_at, decided_by, decided_at) VALUES "
+                    "(?, 'maintainer', ?, ?, 'verified', ?, 'system', ?)", (user, repo, json.dumps({"via": via}), T, T))
+    w.d1con.commit()
+
+
 def test_a_maintainer_removes_their_repository_and_the_verification_does_not_overrule_a_role(w):
+    maintainer(w, "u_ben", UNLICENSED)
     eid = _edit(w, [{"op": "remove", "repo": UNLICENSED}], user="u_ben", paper=P2, as_role="maintainer", repo=UNLICENSED)
     w.poll()
     assert w.row("edits", eid)["status"] == "applied"

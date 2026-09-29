@@ -482,7 +482,7 @@ function contribute(p: PaperRecord): string {
     `<div id="claim-block" hidden><h3>Claim this paper</h3><p id="claim-state"></p>` +
     `<form id="claim-form" method="post" action="/api/claims" hidden>` +
     `<p>Your ORCID iD is not among this paper's authors in its metadata: say why you are one of them. The registry's rules verify ` +
-    `the claim as soon as your public ORCID record lists this paper (checked each day, 30 days at most; ${a("how claims are decided", "/policies/moderation/")}).</p>` +
+    `the claim as soon as Crossref adds this paper to your ORCID record, once its publisher deposited your iD with it (checked each day, 30 days at most; a work you add yourself proves nothing; ${a("how claims are decided", "/policies/moderation/")}).</p>` +
     `<p><label for="claim-statement">Why you are one of its authors</label><br>` +
     `<textarea id="claim-statement" name="statement" rows="3" maxlength="1000" required></textarea></p>` +
     `<p><label for="claim-link">A page that shows it (optional)</label><br>` +

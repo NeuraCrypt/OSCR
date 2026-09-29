@@ -12,7 +12,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
 sys.path.insert(0, str(ROOT / "tests"))
 
-from test_jobs import ADA, BEN, EEG, P1, P2, UNLICENSED, T, World  # noqa: E402
+from test_jobs import ADA, BEN, EEG, P1, P2, UNLICENSED, T, World, maintainer  # noqa: E402
 
 from oscr import catalog, cli, community, jobs, moderation  # noqa: E402
 
@@ -82,12 +82,22 @@ def rules(w, kind=None):
 # The base rules, shared with the site (website/src/lib/moderation.ts reads the same cases).
 
 def test_the_rules_are_the_ones_the_site_announces():
-    cases = json.loads((ROOT / "tests" / "fixtures" / "moderation_rules.json").read_text())["cases"]
+    fixture = json.loads((ROOT / "tests" / "fixtures" / "moderation_rules.json").read_text())
+    cases = fixture["cases"]
     assert len(cases) >= 20
     for c in cases:
         path = moderation.report_path(c["scope"], c["reason"], c["author_verified"], c["maintainer"])
         assert (path.rule, path.outcome) == (c["rule"], c["outcome"]), c
     assert {c["outcome"] for c in cases} == {"apply", "hide", "review"}
+    for c in fixture["submissions"]:
+        path = moderation.submission_path(c["links"])
+        assert (path.rule, path.outcome) == (c["rule"], c["outcome"]), c
+    # What the submitter can write never publishes: a README citing the paper, a display name.
+    forged = [c for c in fixture["submissions"] if any(x.get("readme") or x.get("name") for x in c["links"])
+              and not all(x["cited"] or x["owner_author"] for x in c["links"])]
+    assert forged and all(c["outcome"] == "review" for c in forged)
+    for c in fixture["maintainers"]:
+        assert moderation.trusted_maintainer(c["via"], c["decided_by"], c["granted_by"]) is c["trusted"], c
 
 
 # ---------------------------------------------------------------------------------------
@@ -114,9 +124,7 @@ def test_the_worker_s_flag_alone_is_not_trusted(w):
 
 
 def test_a_maintainers_request_withholds_their_own_code_only(w):
-    w.d1con.execute("INSERT INTO roles (user_id, role, scope_kind, scope_id, granted_by, granted_at) VALUES "
-                    "('u_ben', 'maintainer', 'repo', ?, 'system', ?)", (EEG, T))
-    w.d1con.commit()
+    maintainer(w, "u_ben", EEG, via="org_member")
     one = ask(w, user="u_ben", scope="repository", scope_repo=EEG, reason="other", requester_role="other")
     w.poll()
     assert w.row("reports", one)["status"] == "accepted"
@@ -129,9 +137,7 @@ def test_a_maintainers_request_withholds_their_own_code_only(w):
 
 
 def test_a_maintainer_asking_for_all_the_scripts_withholds_the_repositories_they_maintain(w):
-    w.d1con.execute("INSERT INTO roles (user_id, role, scope_kind, scope_id, granted_by, granted_at) VALUES "
-                    "('u_ben', 'maintainer', 'repo', ?, 'system', ?)", (EEG, T))
-    w.d1con.commit()
+    maintainer(w, "u_ben", EEG)
     rid = ask(w, user="u_ben", scope="scripts", reason="other", requester_role="other")
     w.poll()
     assert withheld(w) == [("repository", P1, EEG, "", f"local:{rid}")]
@@ -306,43 +312,116 @@ def _moderated(w, user="u_ben", doi="10.5555/oscr.fixture.7", urls=("https://git
     return sid
 
 
-def test_a_submission_whose_links_nothing_ties_to_the_paper_is_refused_with_how_to_ask_again(w):
+def test_a_submission_nothing_ties_to_the_paper_waits_for_the_operator_then_closes(w):
     sid = _moderated(w)
     out = w.poll()
-    assert (out.done, out.owner) == (1, 0)
+    assert (out.done, out.owner, out.written) == (0, 1, 1)
     row = w.row("submissions", sid)
-    assert row["status"] == "refused" and "could not tie https://github.com/oscr-fixture/new-code to this paper" in row["message"]
-    assert "sign in with the ORCID iD the paper lists" in row["message"] and "correct this submission" in row["message"]
+    assert row["status"] == "moderation" and "https://github.com/oscr-fixture/new-code" in row["message"]
+    assert "until 26 October 2026" in row["message"] and "anyone can write them" in row["message"]
     assert w.mac.execute("SELECT COUNT(*) FROM link WHERE article_id = 'doi:10.5555/oscr.fixture.7'").fetchone()[0] == 0
-    assert rules(w, "submission") == [("submission", sid, "submission.uncorroborated", "refused")]
-    assert ("owner", "doi:10.5555/oscr.fixture.7", "github.com/oscr-fixture/new-code") in w.evidence.asked
+    assert rules(w, "submission") == [("submission", sid, "submission.review", "review")]
+    assert w.poll().written == 0, "told once"
+    w.clock.t = T + 31 * DAY
+    assert w.poll().closed == 1
+    row = w.row("submissions", sid)
+    assert row["status"] == "refused" and row["message"].startswith("Closed without publication")
+    assert "sign in with the ORCID iD the paper lists" in row["message"] and "@" not in row["message"]
+    assert rules(w, "submission")[-1] == ("submission", sid, "submission.expired", "refused")
+    assert jobs.waiting(w.state, "local", ("publish",)) == []
 
 
-@pytest.mark.parametrize("how", ["text", "readme", "owner"])
-def test_a_submission_whose_links_are_the_papers_is_published(w, how):
-    repo = "github.com/oscr-fixture/new-code"
+def test_abuse_a_readme_that_cites_the_paper_publishes_nothing(w):
+    """An attacker makes a repository whose README cites someone else's paper, then submits it."""
+    sid = _moderated(w, urls=("https://github.com/attacker/fake-code",))
+    w.mac.execute("UPDATE repository SET cites_article = 'doi' WHERE repo = 'github.com/attacker/fake-code'")
+    w.mac.commit()
+    w.poll()
+    assert w.row("submissions", sid)["status"] == "moderation"
+    assert w.mac.execute("SELECT COUNT(*) FROM link WHERE repo = 'github.com/attacker/fake-code' AND role = 'code' "
+                         "AND article_id = 'doi:10.5555/oscr.fixture.7'").fetchone()[0] == 0
+    # The operator sees it, and why it proves nothing.
+    guard = jobs.waiting(w.state, "local", ("publish",))[0]["detail"]["guard"]
+    assert "its README cites the paper (anyone can write that)" in guard
+
+
+def test_abuse_a_github_display_name_that_bears_an_authors_name_publishes_nothing(w):
+    """An attacker sets their GitHub display name to an author's ("Ada Fixture"), then submits their
+    own repository: the Mac's lookups never read display names."""
+    class Client:
+        asked: list[str] = []
+
+        def get(self, url, **kw):
+            self.asked.append(url)
+            body = {"type": "User", "name": "Ada Fixture"} if "api.github.com/users/" in url else {"researcher-url": []}
+            return type("R", (), {"ok": True, "json": lambda self: body})()
+
+    w.runner.evidence = moderation.MacEvidence(Client())
+    sid = _moderated(w, urls=("https://github.com/ada-impostor/code",))
+    w.poll()
+    assert w.row("submissions", sid)["status"] == "moderation"
+    assert not any("api.github.com" in u for u in Client.asked)
+    assert rules(w, "submission") == [("submission", sid, "submission.review", "review")]
+
+
+@pytest.mark.parametrize("how", ["text", "crossref", "archive", "orcid", "roles"])
+def test_a_submission_whose_links_are_proven_the_papers_is_published(w, how):
+    repo, paper = "github.com/oscr-fixture/new-code", "doi:10.5555/oscr.fixture.7"
     sid = _moderated(w)
+    link = ("INSERT INTO link (article_id, repo, url, host, kind, role, confidence, found_by, reasons) VALUES "
+            "(?, ?, ?, ?, ?, 'code', 'high', ?, ?)")
     if how == "text":
-        w.mac.execute("INSERT INTO link (article_id, repo, url, host, kind, role, confidence, found_by) VALUES "
-                      "('doi:10.5555/oscr.fixture.7', ?, 'https://github.com/oscr-fixture/new-code', 'github.com', 'forge', "
-                      "'code', 'high', 'text:availability')", (repo,))
-    elif how == "readme":
-        w.mac.execute("UPDATE repository SET cites_article = 'doi' WHERE repo = ?", (repo,))
-    else:
+        w.mac.execute(link, (paper, repo, "https://github.com/oscr-fixture/new-code", "github.com", "forge", "text:availability", "[]"))
+    elif how == "crossref":
+        w.mac.execute(link, (paper, repo, "https://github.com/oscr-fixture/new-code", "github.com", "forge",
+                             "crossref:is-supplemented-by", "[]"))
+    elif how == "archive":
+        # The paper cites a Zenodo record, whose record names the GitHub repository it archives.
+        w.mac.execute(link, (paper, "zenodo:77", "https://zenodo.org/records/77", "zenodo.org", "archive", "text:availability", "[]"))
+        w.mac.execute(link, (paper, repo, "https://github.com/oscr-fixture/new-code", "github.com", "forge", "zenodo:source",
+                             json.dumps(["source declared by the record of zenodo:77"])))
+    elif how == "orcid":
         w.evidence.owners[repo] = "the ORCID record of Ada Fixture, an author, links to github.com/oscr-fixture"
+    else:
+        # Ada, a verified author of the paper, is the repository's owner on GitHub.
+        w.d1con.execute("INSERT INTO roles (user_id, role, scope_kind, scope_id, granted_by, granted_at) VALUES "
+                        "('u_ada', 'verified_author', 'paper', ?, 'system', ?)", (paper, T))
+        maintainer(w, "u_ada", repo)
     w.mac.commit()
     w.poll()
     row = w.row("submissions", sid)
     assert row["status"] == "published", row["message"]
     assert "Published by the registry's rules" in row["message"]
-    assert w.mac.execute("SELECT role FROM link WHERE article_id = 'doi:10.5555/oscr.fixture.7' AND repo = ?", (repo,)).fetchone()[0] == "code"
     assert rules(w, "submission") == [("submission", sid, "submission.corroborated", "published")]
-    # The operator may take it back: the links leave the record, as a new version.
-    assert "reversed" in moderation.reverse_submission(w.runner, sid, "Not the paper's code.")
-    if how != "text":
-        assert w.mac.execute("SELECT COUNT(*) FROM link WHERE article_id = 'doi:10.5555/oscr.fixture.7' AND repo = ?",
-                             (repo,)).fetchone()[0] == 0
-    assert w.row("submissions", sid)["status"] == "refused"
+    if how in ("orcid", "roles"):
+        # The operator may take it back: the links leave the record, as a new version.
+        assert "reversed" in moderation.reverse_submission(w.runner, sid, "Not the paper's code.")
+        assert w.mac.execute("SELECT COUNT(*) FROM link WHERE article_id = ? AND repo = ?", (paper, repo)).fetchone()[0] == 0
+        assert w.row("submissions", sid)["status"] == "refused"
+
+
+@pytest.mark.parametrize("found_by", ["datacite:Software", "github:readme"])
+def test_abuse_a_link_only_a_third_partys_record_declares_is_not_the_papers(w, found_by):
+    """A DataCite record anyone can deposit (a Zenodo upload saying "supplement to" the paper), a README
+    found on GitHub: the harvester keeps what they say, the rules do not take it as the paper's word."""
+    repo, paper = "github.com/oscr-fixture/new-code", "doi:10.5555/oscr.fixture.7"
+    sid = _moderated(w)
+    w.mac.execute("INSERT INTO link (article_id, repo, url, host, kind, role, confidence, found_by) VALUES "
+                  "(?, ?, 'https://github.com/oscr-fixture/new-code', 'github.com', 'forge', 'code', 'high', ?)",
+                  (paper, repo, found_by))
+    w.mac.commit()
+    w.poll()
+    assert w.row("submissions", sid)["status"] == "moderation"
+
+
+def test_a_verified_author_who_only_contributed_to_the_repository_proves_nothing(w):
+    repo, paper = "github.com/oscr-fixture/new-code", "doi:10.5555/oscr.fixture.7"
+    sid = _moderated(w)
+    w.d1con.execute("INSERT INTO roles (user_id, role, scope_kind, scope_id, granted_by, granted_at) VALUES "
+                    "('u_ada', 'verified_author', 'paper', ?, 'system', ?)", (paper, T))
+    maintainer(w, "u_ada", repo, via="contributor")
+    w.poll()
+    assert w.row("submissions", sid)["status"] == "moderation"
 
 
 def test_an_off_topic_submission_is_refused_by_the_rules(w):
@@ -398,7 +477,7 @@ def test_a_claim_the_papers_metadata_proves_is_verified(w):
     assert tuple(role) == ("verified_author", P2, "rules")
 
 
-def test_a_claim_the_claimants_orcid_record_proves_is_verified_now_or_on_a_later_check(w):
+def test_a_claim_crossref_put_in_the_claimants_orcid_record_is_verified_now_or_on_a_later_check(w):
     w.user("u_new", "New Author", orcid="0000-0000-0000-0052")
     cid = _claim(w, user="u_new", orcid_issuer="orcid")
     assert w.poll().owner == 1
@@ -477,12 +556,15 @@ def test_corrections_and_validations_are_still_only_verified_peoples(w):
 # The owner overrides the rules.
 
 def test_the_owner_may_accept_what_the_rules_refused_or_closed(w):
-    # A submission the rules refused: published by the owner.
+    # A submission the rules could not prove, then closed after 30 days: published by the owner.
     sid = _moderated(w)
+    w.poll()
+    w.clock.t = T + 31 * DAY
     w.poll()
     assert w.row("submissions", sid)["status"] == "refused"
     assert jobs.decide_submission(w.runner, sid, True, "We checked it with the authors.").endswith("published")
     assert w.row("submissions", sid)["status"] == "published"
+    w.clock.t = T
     # A whole record's removal the rules closed after 30 days: accepted by the owner.
     rid = ask(w)
     w.poll()
@@ -504,3 +586,65 @@ def test_the_owner_may_accept_what_the_rules_refused_or_closed(w):
     w.poll()
     jobs.decide_report(w.runner, other, False, "The record is correct.")
     assert jobs.decide_report(w.runner, other, True).endswith("is already rejected")
+
+
+# ---------------------------------------------------------------------------------------
+# What a claimant or a contributor could forge.
+
+def _work(doi: str, **source) -> dict:
+    return {"external-ids": {"external-id": [{"external-id-type": "doi", "external-id-value": doi.upper()}]},
+            "work-summary": [{"source": source}]}
+
+
+def test_abuse_a_paper_the_claimant_added_to_their_own_orcid_record_proves_nothing():
+    """Anyone can add any paper to their own ORCID record, by hand or through a search wizard: only a
+    work Crossref's automatic update added (the publisher deposited the iD with the paper) counts."""
+    doi = "10.5555/oscr.fixture.2"
+    crossref = {"source-client-id": {"path": moderation.CROSSREF_AUTO_UPDATE}, "source-name": {"value": "Crossref"}}
+    cases = [
+        ({"source-orcid": {"path": "0000-0000-0000-0052"}, "source-name": {"value": "Mallory"}}, False),      # by hand
+        ({"source-client-id": {"path": "0000-0002-3054-1567"}, "source-name": {"value": "Crossref Metadata Search"},
+          "assertion-origin-name": {"value": "Mallory"}}, False),                                             # a wizard
+        ({"source-client-id": {"path": "0000-0002-5982-8983"}, "source-name": {"value": "Scopus - Elsevier"},
+          "assertion-origin-orcid": {"path": "0000-0000-0000-0052"}}, False),
+        ({**crossref, "assertion-origin-orcid": {"path": "0000-0000-0000-0052"}}, False),                   # on someone's behalf
+        (crossref, True),
+    ]
+    for source, counts in cases:
+        assert moderation.crossref_listed({"group": [_work(doi, **source)]}, doi) is counts, source
+    assert moderation.crossref_listed({"group": [_work("10.1/other", **crossref)]}, doi) is False
+
+
+def test_the_macs_orcid_lookup_reads_only_crossrefs_work(w):
+    class Client:
+        def get(self, url, **kw):
+            works = {"group": [_work("10.5555/oscr.fixture.2", **{"source-orcid": {"path": "0000-0000-0000-0052"}})]}
+            return type("R", (), {"ok": True, "json": lambda self: works})()
+
+    w.runner.evidence = moderation.MacEvidence(Client())
+    w.user("u_mal", "Mallory", orcid="0000-0000-0000-0052")
+    cid = _claim(w, user="u_mal", orcid_issuer="orcid")
+    w.poll()
+    assert w.row("claims", cid)["status"] == "pending"
+    assert w.d1con.execute("SELECT COUNT(*) FROM roles WHERE user_id = 'u_mal'").fetchone()[0] == 0
+
+
+def test_abuse_a_contributor_is_not_trusted_as_a_maintainer(w):
+    """One merged pull request makes a GitHub contributor, whom the Worker's check shows as a maintainer:
+    the rules neither apply their removal at once, nor let them change the paper's record."""
+    maintainer(w, "u_ben", EEG, via="contributor")
+    rid = ask(w, user="u_ben", scope="repository", scope_repo=EEG, reason="other", requester_role="other")
+    w.poll()
+    assert w.row("reports", rid)["status"] == "open" and withheld(w) == []
+    eid = w.request("edits", "edit", {"user_id": "u_ben", "paper_id": P1, "as_role": "maintainer", "repo": EEG,
+                                      "changes": json.dumps([{"op": "remove", "repo": EEG}]), "created_at": T})
+    w.poll()
+    row = w.row("edits", eid)
+    assert row["status"] == "refused" and "not as its owner or a public member of its organization" in row["message"]
+    assert w.mac.execute("SELECT COUNT(*) FROM link WHERE article_id = ? AND repo = ?", (P1, EEG)).fetchone()[0] == 1
+    assert ("edit", eid, "edit.untrusted_maintainer", "refused") in rules(w)
+    # The owner of the repository is trusted.
+    maintainer(w, "u_eve", EEG, via="owner")
+    other = ask(w, user="u_eve", scope="repository", scope_repo=EEG, reason="other", requester_role="other")
+    w.poll()
+    assert w.row("reports", other)["status"] == "accepted"

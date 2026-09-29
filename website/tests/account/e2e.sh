@@ -11,8 +11,8 @@
 # 4. tests/account/e2e.ts: sign-ins, linking, verifications, sign-out, D1's count of rows written;
 # 5. tests/contributions/e2e.ts, in three steps with the Mac's job runner between them (`oscr jobs
 #    poll --local`, offline, its deposits on the mock Zenodo sandbox), the moderator's rules
-#    (oscr/moderation.py) and the owner's decisions (`oscr claims accept`, `oscr reports reject`, and
-#    `oscr submissions accept`, which overrides the rules' refusal);
+#    (oscr/moderation.py) and the owner's decisions (`oscr claims accept`, `oscr reports reject`,
+#    `oscr submissions accept` of what the rules left to the owner);
 # 6. the removal request's page in a real browser (tests/contributions/removal-e2e.ts): a headless
 #    Chrome, every address outside this machine blocked, signs in, opens /removal/?paper=…, sends a
 #    request through its review step; the rules apply it at the poll (a verified author's); the page
@@ -102,9 +102,10 @@ mac claims accept "$CLAIM" --message "Welcome."
 mac reports reject "$REPORT" --message "The record is correct."
 node --experimental-strip-types tests/contributions/e2e.ts answers
 mac jobs poll
-# Offline, nothing ties the submitted link to the paper: the rules refuse it; the owner overrides them.
-SUBMISSION=$(owner_log submissions | sed -n 's/.* submission \([0-9]*\)  submission\.uncorroborated → refused.*/\1/p' | head -n 1)
-[ -n "$SUBMISSION" ] || { echo "FAIL the rules did not decide the submission"; exit 1; }
+# Offline, nothing the submitter cannot forge ties the link to the paper: the rules leave it to the
+# owner (submission.review), who publishes it.
+SUBMISSION=$(owner_list submissions | sed -n 's/^submission \([0-9]*\):.*/\1/p' | head -n 1)
+[ -n "$SUBMISSION" ] || { echo "FAIL the submission is not in the owner's list"; exit 1; }
 mac submissions accept "$SUBMISSION"
 mac jobs poll
 node --experimental-strip-types tests/contributions/e2e.ts published

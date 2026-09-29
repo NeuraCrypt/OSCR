@@ -153,10 +153,14 @@ What signed-in readers ask of the registry (`website/worker/contributions/`, `os
   maintainer of the code it names, is applied at once; copies of the authors' code are hidden at once
   for copyright or personal data (3 an account, 30 in all a day; not a justification repeated 3 times
   in 7 days; not after the owner said no); anything else waits for the owner, then closes without
-  removal. A non-author's submission is published when each link is in the paper's text, its README
-  cites the paper, or its owner is an author; otherwise refused with how to ask again. A claim is
-  verified when the paper or the claimant's public ORCID record shows it (checked daily), otherwise
-  closed after 30 days. Every automatic decision is logged with its rule (`oscr reports|claims|
+  removal. A non-author's submission is published only when each link is cited by the paper itself
+  (its text or its publisher's Crossref metadata) or its owner is proven an author (an author's ORCID
+  record links the GitHub account, or a verified author owns it); a README citing the paper, a display
+  name or a DataCite record never counts; otherwise it waits for the owner, then closes. A claim is
+  verified when the paper lists the iD or Crossref's automatic update put the paper in the claimant's
+  ORCID record (never a work they added themselves), otherwise closed after 30 days. A maintainer is
+  trusted (removals at once, corrections) only as the repository's owner or a public organization
+  member, not as a contributor. Every automatic decision is logged with its rule (`oscr reports|claims|
   submissions list --auto-log`); the owner decides what waits, overrides a rule's refusal (`accept`)
   and reverses what a rule did (`reverse`). The site tells the requester what will happen
   (`src/lib/moderation.ts`, the same base rules: `tests/fixtures/moderation_rules.json`). No free text

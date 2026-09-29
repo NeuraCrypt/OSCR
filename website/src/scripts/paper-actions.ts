@@ -223,7 +223,7 @@ onSubmit("claim-form", async () => {
   const r = await post("/api/claims", { paper_id: paper, statement: value("claim-statement"), link: value("claim-link") });
   if (!r.ok) return write(byId("claim-state"), "warning", problem(r.data));
   if (r.data.status === "verified") write(byId("claim-state"), "ok", "You are a verified author of this paper.");
-  else write(byId("claim-state"), "warning", "Your claim waits: the registry's rules verify it once your public ORCID record lists this paper (checked each day, 30 days at most). Your account page follows it.");
+  else write(byId("claim-state"), "warning", "Your claim waits: the registry's rules verify it once Crossref adds this paper to your ORCID record (its publisher deposited your iD with it; checked each day, 30 days at most). Your account page follows it.");
   byId("claim-form")?.setAttribute("hidden", "");
 });
 

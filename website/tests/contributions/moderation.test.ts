@@ -5,7 +5,9 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { afterEach, beforeEach, describe, it, test } from "node:test";
-import { ASK_AGAIN, expectedWords, mayAskAgain, reportPath, REVIEW_DAYS, reviewDeadline } from "../../src/lib/moderation.ts";
+import {
+  ASK_AGAIN, expectedWords, maintainerTrusted, mayAskAgain, reportPath, REVIEW_DAYS, reviewDeadline, submissionPath, type LinkProof,
+} from "../../src/lib/moderation.ts";
 import { pendingMaintainer } from "../../worker/account/store.ts";
 import { rows } from "../account/d1.ts";
 import { ada, benOnGithub, body, contributions, EEG, P1, P2, removal, UNLICENSED, type Contributions } from "./world.ts";
@@ -13,6 +15,8 @@ import { ada, benOnGithub, body, contributions, EEG, P1, P2, removal, UNLICENSED
 describe("the base rules", () => {
   const fixture = JSON.parse(readFileSync(new URL("../../../tests/fixtures/moderation_rules.json", import.meta.url), "utf8")) as {
     cases: { scope: string; reason: string; author_verified: boolean; maintainer: boolean; rule: string; outcome: string }[];
+    submissions: { links: LinkProof[]; rule: string; outcome: string }[];
+    maintainers: { via: string; decided_by: string; granted_by: string; trusted: boolean }[];
   };
 
   it("are the machine's, case by case", () => {
@@ -20,6 +24,16 @@ describe("the base rules", () => {
     for (const c of fixture.cases) {
       assert.deepEqual(reportPath(c.scope, c.reason, c.author_verified, c.maintainer), { rule: c.rule, outcome: c.outcome }, JSON.stringify(c));
     }
+    for (const c of fixture.submissions) assert.deepEqual(submissionPath(c.links), { rule: c.rule, outcome: c.outcome }, JSON.stringify(c));
+    for (const c of fixture.maintainers) assert.equal(maintainerTrusted(c.via, c.decided_by, c.granted_by), c.trusted, JSON.stringify(c));
+  });
+
+  it("never publish on what a submitter can write: a README citing the paper, a display name", () => {
+    assert.equal(submissionPath([{ cited: false, owner_author: false, readme: true, name: true }]).outcome, "review");
+    assert.equal(submissionPath([{ cited: true, owner_author: false }, { cited: false, owner_author: false, readme: true }]).outcome, "review");
+    assert.equal(submissionPath([{ cited: false, owner_author: true }]).outcome, "publish");
+    assert.ok(!maintainerTrusted("contributor", "system", "system") && !maintainerTrusted("commit_author", "", "system"));
+    assert.ok(maintainerTrusted("owner", "system", "system") && maintainerTrusted("contributor", "owner", "system"));
   });
 
   it("say what will happen, and until when a request waits", () => {
@@ -64,12 +78,31 @@ test("the Worker tells the requester what the rules will do", async () => {
   assert.deepEqual(mine.reports.map((r: { expected: { outcome: string } }) => r.expected.outcome), ["hide", "review"]);
 });
 
-test("a maintainer of the named code is told that the rules apply it", async () => {
+test("a maintainer of the named code is told that the rules apply it, a mere contributor is not", async () => {
   const ben = await benOnGithub(w);
   const user = rows(w.db, "users").find((u) => u.github_login === "ben-example")!;
   w.db.sqlite.prepare("INSERT INTO roles (user_id, role, scope_kind, scope_id, granted_by, granted_at) VALUES (?, 'maintainer', 'repo', ?, 'system', 1)").run(user.id, EEG);
-  const out = await body(await ben.post("/api/reports", removal({ role: "other", scope: "repository", repo: EEG, reason: "other" })));
+  w.db.sqlite
+    .prepare("INSERT INTO claims (user_id, kind, repo, evidence, status, created_at, decided_by, decided_at) VALUES (?, 'maintainer', ?, ?, 'verified', 1, 'system', 1)")
+    .run(user.id, EEG, JSON.stringify({ via: "contributor" }));
+  let out = await body(await ben.post("/api/reports", removal({ role: "other", scope: "repository", repo: EEG, reason: "other" })));
+  assert.deepEqual([out.report.expected.rule, out.report.expected.outcome], ["report.review", "review"]);
+  w.db.sqlite.prepare("UPDATE claims SET evidence = ? WHERE user_id = ?").run(JSON.stringify({ via: "org_member" }), user.id);
+  out = await body(await ben.post("/api/reports", removal({ role: "other", scope: "repository", repo: EEG, reason: "other", details: "Completed: the repository is ours, and its copy is not wanted here." })));
   assert.deepEqual([out.report.expected.rule, out.report.expected.outcome], ["report.maintainer", "apply"]);
+  assert.match(out.report.expected.words, /its owner, or a public member of its organization/);
+});
+
+test("a submitter is told what the rules accept as proof, and what they do not", async () => {
+  const ben = await benOnGithub(w);
+  const res = await ben.post("/api/submissions", { doi: "10.5555/oscr.fixture.7", code_urls: ["https://github.com/oscr-fixture/new-code"] });
+  const out = await body(res);
+  assert.equal(res.status, 201);
+  assert.equal(out.submission.expected, null, "queued: the machine has not read it yet");
+  w.db.sqlite.prepare("UPDATE submissions SET status = 'draft'").run();
+  const listed = await body(await ben.fetch("/api/contributions"));
+  assert.match(listed.submissions[0].expected.words, /A README citing the paper, or a display name, proves nothing: anyone can write them/);
+  assert.match(listed.submissions[0].expected.words, /waits for the operator's review, 30 days at most/);
 });
 
 test("a refused request is asked again only in a way the rules decide at once", async () => {

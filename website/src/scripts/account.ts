@@ -287,7 +287,7 @@ const SUBMISSION: Record<string, [string, "ok" | "warning"]> = {
   queued: ["being read by the registry", "warning"],
   draft: ["draft ready: review it, then publish it", "ok"],
   publishing: ["being published", "warning"],
-  moderation: ["being checked by the registry's rules", "warning"],
+  moderation: ["checked by the registry's rules, or waiting for the operator (30 days at most)", "warning"],
   published: ["published", "ok"],
   refused: ["refused", "warning"],
 };
@@ -374,7 +374,7 @@ function submissionItem(s: Submission): HTMLElement {
     form.method = "post";
     form.dataset.publish = String(s.id);
     form.append(
-      para("", s.author ? "Your ORCID iD is among the paper's authors: the record is published at once." : "The registry's rules check that its code links are the paper's before it is published (cited in the paper, a README citing it, or an owner among its authors)."),
+      para("", s.author ? "Your ORCID iD is among the paper's authors: the record is published at once." : "The registry's rules publish it only when each code link is proven the paper's (cited by the paper itself, or its owner proven one of its authors); otherwise it waits for the operator, 30 days at most. A README citing the paper proves nothing."),
       button("Publish"),
     );
     box.append(form);
@@ -466,7 +466,7 @@ byId("submissions-list")?.addEventListener("submit", async (ev) => {
     if (r.ok) write(out, "ok", "Corrected: the registry reads the links again and writes a new draft.");
   } else {
     r = await call(`/api/submissions/${form.dataset.publish}/publish`);
-    if (r.ok) write(out, "ok", r.data.status === "publishing" ? "Published: the record goes on the site at its next update." : "Sent: the registry's rules check its links within about ten minutes, then publish it or say why not.");
+    if (r.ok) write(out, "ok", r.data.status === "publishing" ? "Published: the record goes on the site at its next update." : "Sent: the registry's rules check its links within about ten minutes, then publish it, or leave it to the operator and say why.");
   }
   busy(form, false);
   if (!r.ok) return write(out, "warning", problem(r.data));

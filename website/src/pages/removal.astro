@@ -189,7 +189,8 @@ const choice = (group: string, value: string) => `${group}-${value.replace(/_/g,
     <li>
       {SITE_NAME}'s machine reads it within about ten minutes and applies its published rules
       (<a href="/policies/moderation/">the moderation policy</a>): a request from a verified author of the paper (your ORCID
-      iD among its authors), or from a maintainer of the code it names, is applied without waiting; the copies of the
+      iD among its authors), or from a maintainer of the code it names (its owner, or a public member of its organization, on
+      GitHub), is applied without waiting; the copies of the
       authors' code are hidden at once for copyright or personal data, pending review; any other request waits for the
       operator, 30 days at most, and nothing is removed meanwhile. There is no human moderator on duty at the moment: a
       request no one decided in 30 days is closed without removal, and may be asked again in a way the rules decide.

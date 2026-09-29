@@ -85,7 +85,8 @@ const digest = map?.digest ?? "";
       <form id="claim-form" method="post" action="/api/claims" hidden>
         <p>
           Your ORCID iD is not among this paper's authors in its metadata: say why you are one of them. The registry's rules
-          verify the claim as soon as your public ORCID record lists this paper (checked each day, 30 days at most;{" "}
+          verify the claim as soon as Crossref adds this paper to your ORCID record, once its publisher deposited your iD with
+          it (checked each day, 30 days at most; a work you add yourself proves nothing;{" "}
           <a href="/policies/moderation/">how claims are decided</a>).
         </p>
         <p><label for="claim-statement">Why you are one of its authors</label><br />

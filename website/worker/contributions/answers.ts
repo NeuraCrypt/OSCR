@@ -1,7 +1,7 @@
 // What the contributions' routes answer: the rows of D1 as the pages read them (times in ISO 8601,
 // JSON columns parsed, each paper with its page), and the shape of a paper's id.
 
-import { expectedWords, reportPath, reviewDeadline, type Path } from "../../src/lib/moderation.ts";
+import { expectedWords, reportPath, reviewDeadline, SUBMISSION_WORDS, type Path } from "../../src/lib/moderation.ts";
 import { removalUrl } from "../../src/lib/removal.ts";
 import { paperSlug } from "../account/index.ts";
 import type { AuthorClaimRow, EditRow, ReportRow, SubmissionRow, ValidationRow } from "./store.ts";
@@ -47,6 +47,8 @@ export function submissionJson(r: SubmissionRow) {
     message: r.message,
     created_at: iso(r.created_at),
     updated_at: iso(r.updated_at),
+    // What the moderator's rules do once a non-author publishes it (lib/moderation.ts).
+    expected: r.author !== 1 && (r.status === "draft" || r.status === "moderation") ? { rule: "submission", words: SUBMISSION_WORDS } : null,
   };
 }
 

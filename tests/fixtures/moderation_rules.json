@@ -1,5 +1,5 @@
 {
- "about": "What the automatic moderator does with a removal request, before its guards (a limit of hides a day, a repeated justification, the operator's earlier no): oscr/moderation.py report_path, and its TypeScript twin website/src/lib/moderation.ts, which tells the requester. Read by tests/test_moderation.py and website/tests/contributions/moderation.test.ts.",
+ "about": "What the automatic moderator does, before its guards: a removal request (cases: oscr/moderation.py report_path), a non-author's submission (submissions: submission_path; each link cited by the paper itself, its owner proven an author, and what proves nothing: a README citing the paper, a display name bearing an author's), and whether a maintainer is trusted (maintainers: trusted_maintainer, from GitHub's check `via`, and who decided or granted it). Their TypeScript twins (website/src/lib/moderation.ts) tell the requester. Read by tests/test_moderation.py and website/tests/contributions/moderation.test.ts.",
  "cases": [
   {
    "scope": "record",
@@ -1120,6 +1120,963 @@
    "maintainer": true,
    "rule": "report.verified_author",
    "outcome": "apply"
+  }
+ ],
+ "submissions": [
+  {
+   "links": [
+    {
+     "cited": false,
+     "owner_author": false,
+     "readme": false,
+     "name": false
+    }
+   ],
+   "rule": "submission.review",
+   "outcome": "review"
+  },
+  {
+   "links": [
+    {
+     "cited": false,
+     "owner_author": false,
+     "readme": false,
+     "name": false
+    },
+    {
+     "cited": true,
+     "owner_author": false,
+     "readme": false,
+     "name": false
+    }
+   ],
+   "rule": "submission.review",
+   "outcome": "review"
+  },
+  {
+   "links": [
+    {
+     "cited": false,
+     "owner_author": false,
+     "readme": false,
+     "name": false
+    },
+    {
+     "cited": false,
+     "owner_author": false,
+     "readme": true,
+     "name": true
+    }
+   ],
+   "rule": "submission.review",
+   "outcome": "review"
+  },
+  {
+   "links": [
+    {
+     "cited": false,
+     "owner_author": false,
+     "readme": false,
+     "name": true
+    }
+   ],
+   "rule": "submission.review",
+   "outcome": "review"
+  },
+  {
+   "links": [
+    {
+     "cited": false,
+     "owner_author": false,
+     "readme": false,
+     "name": true
+    },
+    {
+     "cited": true,
+     "owner_author": false,
+     "readme": false,
+     "name": false
+    }
+   ],
+   "rule": "submission.review",
+   "outcome": "review"
+  },
+  {
+   "links": [
+    {
+     "cited": false,
+     "owner_author": false,
+     "readme": false,
+     "name": true
+    },
+    {
+     "cited": false,
+     "owner_author": false,
+     "readme": true,
+     "name": true
+    }
+   ],
+   "rule": "submission.review",
+   "outcome": "review"
+  },
+  {
+   "links": [
+    {
+     "cited": false,
+     "owner_author": false,
+     "readme": true,
+     "name": false
+    }
+   ],
+   "rule": "submission.review",
+   "outcome": "review"
+  },
+  {
+   "links": [
+    {
+     "cited": false,
+     "owner_author": false,
+     "readme": true,
+     "name": false
+    },
+    {
+     "cited": true,
+     "owner_author": false,
+     "readme": false,
+     "name": false
+    }
+   ],
+   "rule": "submission.review",
+   "outcome": "review"
+  },
+  {
+   "links": [
+    {
+     "cited": false,
+     "owner_author": false,
+     "readme": true,
+     "name": false
+    },
+    {
+     "cited": false,
+     "owner_author": false,
+     "readme": true,
+     "name": true
+    }
+   ],
+   "rule": "submission.review",
+   "outcome": "review"
+  },
+  {
+   "links": [
+    {
+     "cited": false,
+     "owner_author": false,
+     "readme": true,
+     "name": true
+    }
+   ],
+   "rule": "submission.review",
+   "outcome": "review"
+  },
+  {
+   "links": [
+    {
+     "cited": false,
+     "owner_author": false,
+     "readme": true,
+     "name": true
+    },
+    {
+     "cited": true,
+     "owner_author": false,
+     "readme": false,
+     "name": false
+    }
+   ],
+   "rule": "submission.review",
+   "outcome": "review"
+  },
+  {
+   "links": [
+    {
+     "cited": false,
+     "owner_author": false,
+     "readme": true,
+     "name": true
+    },
+    {
+     "cited": false,
+     "owner_author": false,
+     "readme": true,
+     "name": true
+    }
+   ],
+   "rule": "submission.review",
+   "outcome": "review"
+  },
+  {
+   "links": [
+    {
+     "cited": false,
+     "owner_author": true,
+     "readme": false,
+     "name": false
+    }
+   ],
+   "rule": "submission.corroborated",
+   "outcome": "publish"
+  },
+  {
+   "links": [
+    {
+     "cited": false,
+     "owner_author": true,
+     "readme": false,
+     "name": false
+    },
+    {
+     "cited": true,
+     "owner_author": false,
+     "readme": false,
+     "name": false
+    }
+   ],
+   "rule": "submission.corroborated",
+   "outcome": "publish"
+  },
+  {
+   "links": [
+    {
+     "cited": false,
+     "owner_author": true,
+     "readme": false,
+     "name": false
+    },
+    {
+     "cited": false,
+     "owner_author": false,
+     "readme": true,
+     "name": true
+    }
+   ],
+   "rule": "submission.review",
+   "outcome": "review"
+  },
+  {
+   "links": [
+    {
+     "cited": false,
+     "owner_author": true,
+     "readme": false,
+     "name": true
+    }
+   ],
+   "rule": "submission.corroborated",
+   "outcome": "publish"
+  },
+  {
+   "links": [
+    {
+     "cited": false,
+     "owner_author": true,
+     "readme": false,
+     "name": true
+    },
+    {
+     "cited": true,
+     "owner_author": false,
+     "readme": false,
+     "name": false
+    }
+   ],
+   "rule": "submission.corroborated",
+   "outcome": "publish"
+  },
+  {
+   "links": [
+    {
+     "cited": false,
+     "owner_author": true,
+     "readme": false,
+     "name": true
+    },
+    {
+     "cited": false,
+     "owner_author": false,
+     "readme": true,
+     "name": true
+    }
+   ],
+   "rule": "submission.review",
+   "outcome": "review"
+  },
+  {
+   "links": [
+    {
+     "cited": false,
+     "owner_author": true,
+     "readme": true,
+     "name": false
+    }
+   ],
+   "rule": "submission.corroborated",
+   "outcome": "publish"
+  },
+  {
+   "links": [
+    {
+     "cited": false,
+     "owner_author": true,
+     "readme": true,
+     "name": false
+    },
+    {
+     "cited": true,
+     "owner_author": false,
+     "readme": false,
+     "name": false
+    }
+   ],
+   "rule": "submission.corroborated",
+   "outcome": "publish"
+  },
+  {
+   "links": [
+    {
+     "cited": false,
+     "owner_author": true,
+     "readme": true,
+     "name": false
+    },
+    {
+     "cited": false,
+     "owner_author": false,
+     "readme": true,
+     "name": true
+    }
+   ],
+   "rule": "submission.review",
+   "outcome": "review"
+  },
+  {
+   "links": [
+    {
+     "cited": false,
+     "owner_author": true,
+     "readme": true,
+     "name": true
+    }
+   ],
+   "rule": "submission.corroborated",
+   "outcome": "publish"
+  },
+  {
+   "links": [
+    {
+     "cited": false,
+     "owner_author": true,
+     "readme": true,
+     "name": true
+    },
+    {
+     "cited": true,
+     "owner_author": false,
+     "readme": false,
+     "name": false
+    }
+   ],
+   "rule": "submission.corroborated",
+   "outcome": "publish"
+  },
+  {
+   "links": [
+    {
+     "cited": false,
+     "owner_author": true,
+     "readme": true,
+     "name": true
+    },
+    {
+     "cited": false,
+     "owner_author": false,
+     "readme": true,
+     "name": true
+    }
+   ],
+   "rule": "submission.review",
+   "outcome": "review"
+  },
+  {
+   "links": [
+    {
+     "cited": true,
+     "owner_author": false,
+     "readme": false,
+     "name": false
+    }
+   ],
+   "rule": "submission.corroborated",
+   "outcome": "publish"
+  },
+  {
+   "links": [
+    {
+     "cited": true,
+     "owner_author": false,
+     "readme": false,
+     "name": false
+    },
+    {
+     "cited": true,
+     "owner_author": false,
+     "readme": false,
+     "name": false
+    }
+   ],
+   "rule": "submission.corroborated",
+   "outcome": "publish"
+  },
+  {
+   "links": [
+    {
+     "cited": true,
+     "owner_author": false,
+     "readme": false,
+     "name": false
+    },
+    {
+     "cited": false,
+     "owner_author": false,
+     "readme": true,
+     "name": true
+    }
+   ],
+   "rule": "submission.review",
+   "outcome": "review"
+  },
+  {
+   "links": [
+    {
+     "cited": true,
+     "owner_author": false,
+     "readme": false,
+     "name": true
+    }
+   ],
+   "rule": "submission.corroborated",
+   "outcome": "publish"
+  },
+  {
+   "links": [
+    {
+     "cited": true,
+     "owner_author": false,
+     "readme": false,
+     "name": true
+    },
+    {
+     "cited": true,
+     "owner_author": false,
+     "readme": false,
+     "name": false
+    }
+   ],
+   "rule": "submission.corroborated",
+   "outcome": "publish"
+  },
+  {
+   "links": [
+    {
+     "cited": true,
+     "owner_author": false,
+     "readme": false,
+     "name": true
+    },
+    {
+     "cited": false,
+     "owner_author": false,
+     "readme": true,
+     "name": true
+    }
+   ],
+   "rule": "submission.review",
+   "outcome": "review"
+  },
+  {
+   "links": [
+    {
+     "cited": true,
+     "owner_author": false,
+     "readme": true,
+     "name": false
+    }
+   ],
+   "rule": "submission.corroborated",
+   "outcome": "publish"
+  },
+  {
+   "links": [
+    {
+     "cited": true,
+     "owner_author": false,
+     "readme": true,
+     "name": false
+    },
+    {
+     "cited": true,
+     "owner_author": false,
+     "readme": false,
+     "name": false
+    }
+   ],
+   "rule": "submission.corroborated",
+   "outcome": "publish"
+  },
+  {
+   "links": [
+    {
+     "cited": true,
+     "owner_author": false,
+     "readme": true,
+     "name": false
+    },
+    {
+     "cited": false,
+     "owner_author": false,
+     "readme": true,
+     "name": true
+    }
+   ],
+   "rule": "submission.review",
+   "outcome": "review"
+  },
+  {
+   "links": [
+    {
+     "cited": true,
+     "owner_author": false,
+     "readme": true,
+     "name": true
+    }
+   ],
+   "rule": "submission.corroborated",
+   "outcome": "publish"
+  },
+  {
+   "links": [
+    {
+     "cited": true,
+     "owner_author": false,
+     "readme": true,
+     "name": true
+    },
+    {
+     "cited": true,
+     "owner_author": false,
+     "readme": false,
+     "name": false
+    }
+   ],
+   "rule": "submission.corroborated",
+   "outcome": "publish"
+  },
+  {
+   "links": [
+    {
+     "cited": true,
+     "owner_author": false,
+     "readme": true,
+     "name": true
+    },
+    {
+     "cited": false,
+     "owner_author": false,
+     "readme": true,
+     "name": true
+    }
+   ],
+   "rule": "submission.review",
+   "outcome": "review"
+  },
+  {
+   "links": [
+    {
+     "cited": true,
+     "owner_author": true,
+     "readme": false,
+     "name": false
+    }
+   ],
+   "rule": "submission.corroborated",
+   "outcome": "publish"
+  },
+  {
+   "links": [
+    {
+     "cited": true,
+     "owner_author": true,
+     "readme": false,
+     "name": false
+    },
+    {
+     "cited": true,
+     "owner_author": false,
+     "readme": false,
+     "name": false
+    }
+   ],
+   "rule": "submission.corroborated",
+   "outcome": "publish"
+  },
+  {
+   "links": [
+    {
+     "cited": true,
+     "owner_author": true,
+     "readme": false,
+     "name": false
+    },
+    {
+     "cited": false,
+     "owner_author": false,
+     "readme": true,
+     "name": true
+    }
+   ],
+   "rule": "submission.review",
+   "outcome": "review"
+  },
+  {
+   "links": [
+    {
+     "cited": true,
+     "owner_author": true,
+     "readme": false,
+     "name": true
+    }
+   ],
+   "rule": "submission.corroborated",
+   "outcome": "publish"
+  },
+  {
+   "links": [
+    {
+     "cited": true,
+     "owner_author": true,
+     "readme": false,
+     "name": true
+    },
+    {
+     "cited": true,
+     "owner_author": false,
+     "readme": false,
+     "name": false
+    }
+   ],
+   "rule": "submission.corroborated",
+   "outcome": "publish"
+  },
+  {
+   "links": [
+    {
+     "cited": true,
+     "owner_author": true,
+     "readme": false,
+     "name": true
+    },
+    {
+     "cited": false,
+     "owner_author": false,
+     "readme": true,
+     "name": true
+    }
+   ],
+   "rule": "submission.review",
+   "outcome": "review"
+  },
+  {
+   "links": [
+    {
+     "cited": true,
+     "owner_author": true,
+     "readme": true,
+     "name": false
+    }
+   ],
+   "rule": "submission.corroborated",
+   "outcome": "publish"
+  },
+  {
+   "links": [
+    {
+     "cited": true,
+     "owner_author": true,
+     "readme": true,
+     "name": false
+    },
+    {
+     "cited": true,
+     "owner_author": false,
+     "readme": false,
+     "name": false
+    }
+   ],
+   "rule": "submission.corroborated",
+   "outcome": "publish"
+  },
+  {
+   "links": [
+    {
+     "cited": true,
+     "owner_author": true,
+     "readme": true,
+     "name": false
+    },
+    {
+     "cited": false,
+     "owner_author": false,
+     "readme": true,
+     "name": true
+    }
+   ],
+   "rule": "submission.review",
+   "outcome": "review"
+  },
+  {
+   "links": [
+    {
+     "cited": true,
+     "owner_author": true,
+     "readme": true,
+     "name": true
+    }
+   ],
+   "rule": "submission.corroborated",
+   "outcome": "publish"
+  },
+  {
+   "links": [
+    {
+     "cited": true,
+     "owner_author": true,
+     "readme": true,
+     "name": true
+    },
+    {
+     "cited": true,
+     "owner_author": false,
+     "readme": false,
+     "name": false
+    }
+   ],
+   "rule": "submission.corroborated",
+   "outcome": "publish"
+  },
+  {
+   "links": [
+    {
+     "cited": true,
+     "owner_author": true,
+     "readme": true,
+     "name": true
+    },
+    {
+     "cited": false,
+     "owner_author": false,
+     "readme": true,
+     "name": true
+    }
+   ],
+   "rule": "submission.review",
+   "outcome": "review"
+  },
+  {
+   "links": [],
+   "rule": "submission.review",
+   "outcome": "review"
+  }
+ ],
+ "maintainers": [
+  {
+   "via": "owner",
+   "decided_by": "system",
+   "granted_by": "system",
+   "trusted": true
+  },
+  {
+   "via": "owner",
+   "decided_by": "system",
+   "granted_by": "owner",
+   "trusted": true
+  },
+  {
+   "via": "owner",
+   "decided_by": "owner",
+   "granted_by": "system",
+   "trusted": true
+  },
+  {
+   "via": "owner",
+   "decided_by": "owner",
+   "granted_by": "owner",
+   "trusted": true
+  },
+  {
+   "via": "owner",
+   "decided_by": "",
+   "granted_by": "system",
+   "trusted": true
+  },
+  {
+   "via": "owner",
+   "decided_by": "",
+   "granted_by": "owner",
+   "trusted": true
+  },
+  {
+   "via": "org_member",
+   "decided_by": "system",
+   "granted_by": "system",
+   "trusted": true
+  },
+  {
+   "via": "org_member",
+   "decided_by": "system",
+   "granted_by": "owner",
+   "trusted": true
+  },
+  {
+   "via": "org_member",
+   "decided_by": "owner",
+   "granted_by": "system",
+   "trusted": true
+  },
+  {
+   "via": "org_member",
+   "decided_by": "owner",
+   "granted_by": "owner",
+   "trusted": true
+  },
+  {
+   "via": "org_member",
+   "decided_by": "",
+   "granted_by": "system",
+   "trusted": true
+  },
+  {
+   "via": "org_member",
+   "decided_by": "",
+   "granted_by": "owner",
+   "trusted": true
+  },
+  {
+   "via": "contributor",
+   "decided_by": "system",
+   "granted_by": "system",
+   "trusted": false
+  },
+  {
+   "via": "contributor",
+   "decided_by": "system",
+   "granted_by": "owner",
+   "trusted": true
+  },
+  {
+   "via": "contributor",
+   "decided_by": "owner",
+   "granted_by": "system",
+   "trusted": true
+  },
+  {
+   "via": "contributor",
+   "decided_by": "owner",
+   "granted_by": "owner",
+   "trusted": true
+  },
+  {
+   "via": "contributor",
+   "decided_by": "",
+   "granted_by": "system",
+   "trusted": false
+  },
+  {
+   "via": "contributor",
+   "decided_by": "",
+   "granted_by": "owner",
+   "trusted": true
+  },
+  {
+   "via": "commit_author",
+   "decided_by": "system",
+   "granted_by": "system",
+   "trusted": false
+  },
+  {
+   "via": "commit_author",
+   "decided_by": "system",
+   "granted_by": "owner",
+   "trusted": true
+  },
+  {
+   "via": "commit_author",
+   "decided_by": "owner",
+   "granted_by": "system",
+   "trusted": true
+  },
+  {
+   "via": "commit_author",
+   "decided_by": "owner",
+   "granted_by": "owner",
+   "trusted": true
+  },
+  {
+   "via": "commit_author",
+   "decided_by": "",
+   "granted_by": "system",
+   "trusted": false
+  },
+  {
+   "via": "commit_author",
+   "decided_by": "",
+   "granted_by": "owner",
+   "trusted": true
+  },
+  {
+   "via": "",
+   "decided_by": "system",
+   "granted_by": "system",
+   "trusted": false
+  },
+  {
+   "via": "",
+   "decided_by": "system",
+   "granted_by": "owner",
+   "trusted": true
+  },
+  {
+   "via": "",
+   "decided_by": "owner",
+   "granted_by": "system",
+   "trusted": true
+  },
+  {
+   "via": "",
+   "decided_by": "owner",
+   "granted_by": "owner",
+   "trusted": true
+  },
+  {
+   "via": "",
+   "decided_by": "",
+   "granted_by": "system",
+   "trusted": false
+  },
+  {
+   "via": "",
+   "decided_by": "",
+   "granted_by": "owner",
+   "trusted": true
   }
  ]
 }

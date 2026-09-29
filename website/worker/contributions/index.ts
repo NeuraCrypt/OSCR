@@ -18,7 +18,7 @@
 // accounts'); every answer is JSON, `Cache-Control: no-store`. The contract, the rows each route
 // writes and the free plan's budget: docs/CONTRIBUTIONS.md.
 
-import { ASK_AGAIN, mayAskAgain, reportPath } from "../../src/lib/moderation.ts";
+import { ASK_AGAIN, maintainerTrusted, mayAskAgain, reportPath } from "../../src/lib/moderation.ts";
 import { checkRequest, loadFacts, type PaperFacts } from "../../src/lib/removal.ts";
 import { MAX_PENDING, paperSlug } from "../account/index.ts";
 import { measured, now, readJson, ready, signedIn, staleCookies, type SignedIn } from "../account/guard.ts";
@@ -26,7 +26,7 @@ import { json, problem } from "../account/http.ts";
 import { repoKey } from "../account/repo.ts";
 import { csrfToken } from "../account/session.ts";
 import { hasRole, identitiesOf, pendingClaims, reads, type Role } from "../account/store.ts";
-import type { AccountEnv, Context } from "../account/types.ts";
+import type { AccountEnv, Context, D1Database } from "../account/types.ts";
 import {
   authorClaimJson,
   editJson,
@@ -218,6 +218,32 @@ async function paperState(request: Request, env: ContributionsEnv, url: URL, t: 
   );
 }
 
+/** The repositories an account maintains as a maintainer the moderator's rules trust
+ *  (lib/moderation.ts, maintainerTrusted): its owner or a public member of its organization on GitHub,
+ *  or made one by the owner — not a contributor. One read, of the account's verified maintainer claims
+ *  (which keep how GitHub showed it), when it holds a maintainer role. */
+async function trustedRepos(db: D1Database, userId: string, roles: Role[]): Promise<Set<string>> {
+  const held = roles.filter((x) => x.role === "maintainer" && x.scope_kind === "repo");
+  if (!held.length) return new Set();
+  const claims =
+    (await db
+      .prepare("SELECT repo, evidence, decided_by FROM claims WHERE user_id = ? AND kind = 'maintainer' AND status = 'verified'")
+      .bind(userId)
+      .all<{ repo: string; evidence: string; decided_by: string }>()).results ?? [];
+  const how = new Map(
+    claims.map((c) => {
+      let via = "";
+      try {
+        via = String((JSON.parse(c.evidence || "{}") as { via?: unknown }).via ?? "");
+      } catch {
+        via = "";
+      }
+      return [c.repo, { via, decided: c.decided_by ?? "" }] as const;
+    }),
+  );
+  return new Set(held.filter((m) => maintainerTrusted(how.get(m.scope_id)?.via ?? "", how.get(m.scope_id)?.decided ?? "", m.granted_by ?? "")).map((m) => m.scope_id));
+}
+
 // ---------------------------------------------------------------------------------------------
 // Links, as a form gives them.
 
@@ -399,6 +425,16 @@ async function edit(request: Request, env: ContributionsEnv, t: number): Promise
     if (!repo || !(await hasRole(db, user.id, "maintainer", "repo", repo)) || !(await isRepoOfPaper(db, repo, paper))) {
       return problem(403, "not_allowed", "Only a maintainer of this paper's code may correct its record as such.", s.cookies);
     }
+    // A contributor is shown as a maintainer by GitHub's check, but one merged pull request makes one.
+    const roles = ((await reads.roles(db, user.id).all<Role>()).results ?? []) as Role[];
+    if (!(await trustedRepos(db, user.id, roles)).has(repo)) {
+      return problem(
+        403,
+        "not_allowed",
+        "Only the owner of this repository, or a public member of its organization, may correct the paper's record as its maintainer: GitHub shows you as a contributor. The paper's authors can correct it.",
+        s.cookies,
+      );
+    }
   } else if (!(await hasRole(db, user.id, "verified_author", "paper", paper))) {
     return problem(403, "not_author", "Only a verified author of this paper may correct its record.", s.cookies);
   }
@@ -546,7 +582,8 @@ async function report(request: Request, env: ContributionsEnv, t: number): Promi
   const roles = ((await reads.roles(db, user.id).all<Role>()).results ?? []) as Role[];
   const isAuthor = roles.some((x) => x.role === "verified_author" && x.scope_kind === "paper" && x.scope_id === paper);
   const named = r.scope === "scripts" ? facts.repos.map((x) => x.repo) : r.repo ? [r.repo] : [];
-  const maintainer = roles.some((x) => x.role === "maintainer" && x.scope_kind === "repo" && named.includes(x.scope_id));
+  const trusted = await trustedRepos(db, user.id, roles);
+  const maintainer = named.some((x) => trusted.has(x));
   const path = reportPath(r.scope, r.reason, isAuthor, maintainer);
   if (before && before.status !== "open" && !(before.status === "rejected" && mayAskAgain(path))) {
     return json(
