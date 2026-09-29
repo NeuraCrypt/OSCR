@@ -956,6 +956,17 @@ export function runContract(name: string, make: () => Promise<Harness>): void {
         await refused(user(h, h.collaborator).issues.update(r.ref, 9999, { title: "x" }), "not_found");
       });
 
+      it("has no issue type on a personal repository (GitHub's types are an organization's)", async () => {
+        const h = await make();
+        const s = user(h);
+        const r = await h.seed({ name: "typed" });
+        const i = await s.issues.create(r.ref, { title: "No type" });
+        assert.equal(i.type, null);
+        await refused(s.issues.create(r.ref, { title: "Typed", type: "Bug" }), "invalid");
+        await refused(s.issues.update(r.ref, i.number, { type: "Bug" }), "invalid");
+        assert.equal((await s.issues.update(r.ref, i.number, { type: null })).type, null);
+      });
+
       it("keeps labels and milestones, and assigns people", async () => {
         const h = await make();
         const s = user(h);

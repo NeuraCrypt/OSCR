@@ -79,7 +79,8 @@ export type RouteHandler = (r: ForgeRequest) => Promise<Response>;
 
 // ─── authorized actions ──────────────────────────────────────────────────────
 
-/** Every kind of authorized action (phase 01's, phase 03's commit, phase 04's forks and pull requests). The migrations' CHECK on actions.kind lists the
+/** Every kind of authorized action (phase 01's, phase 03's commit, phase 04's forks and pull
+ *  requests, phase 05's issues). The migrations' CHECK on actions.kind lists the
  *  same (a test compares them); a later phase adds its kinds to both. */
 export const ACTION_KINDS = [
   "create", "generate", "link", "papers", "rename", "edit", "topics", "features", "template",
@@ -92,6 +93,10 @@ export const ACTION_KINDS = [
   // person (act-forks.ts, act-pulls.ts).
   "fork", "fork_sync", "pull_open", "pull_edit", "pull_review", "pull_comment", "pull_thread",
   "pull_merge", "pull_update", "pull_revert",
+  // Phase 05 (migrations/d1-forge/0004_issues.sql): GitHub's issues, labels and milestones, made by
+  // GitHub as the person (act-issues.ts).
+  "issue_open", "issue_edit", "issue_comment", "issue_react", "issue_lock", "issue_pin", "issue_transfer",
+  "issue_relation", "issue_branch", "issue_labels", "issue_milestone",
 ] as const;
 
 export type ActionKind = (typeof ACTION_KINDS)[number];

@@ -546,6 +546,9 @@ export interface Issue {
   comments: number;
   reactions: Partial<Record<Reaction, number>>;
   subIssues: { total: number; completed: number } | null;
+  /** The issue's type (phase 05): GitHub's issue types belong to organizations ("Task", "Bug",
+   *  "Feature" by default); null on a personal repository, or when none is set. */
+  type: string | null;
   /** GitHub numbers issues and pull requests together, and lists both as issues. */
   isPullRequest: boolean;
   createdAt: string;
@@ -573,6 +576,9 @@ export interface NewIssue {
   labels?: string[];
   assignees?: string[];
   milestone?: number;
+  /** An issue type of the repository's organization (phase 05); a personal repository has none:
+   *  `invalid`. */
+  type?: string;
 }
 
 export interface IssuePatch {
@@ -583,6 +589,8 @@ export interface IssuePatch {
   labels?: string[];
   assignees?: string[];
   milestone?: number | null;
+  /** null clears it (phase 05). */
+  type?: string | null;
 }
 
 export interface IssueComment {

@@ -59,7 +59,7 @@ describe("the rows", () => {
     assert.equal(stateOf(pr({ draft: true })).words, "Draft");
     assert.equal(stateOf(pr({ state: "closed" })).tone, "muted");
     assert.match(textOf(pullRow(REPO, pr({ head: { repo: { forge: "github", owner: "ada", name: "eeg" }, ref: "fix", sha: SHA } }))), / fix → main/);
-    const issue = { number: 9, id: "9", nodeId: null, title: "T", body: "", state: "closed", stateReason: null, author: { name: "x", login: "x", id: null }, labels: [], assignees: [], milestone: null, locked: false, lockReason: null, pinned: null, comments: 2, reactions: {}, subIssues: null, isPullRequest: true, createdAt: "2026-01-01T00:00:00Z", updatedAt: "", closedAt: null } as T.Issue;
+    const issue = { number: 9, id: "9", nodeId: null, title: "T", body: "", state: "closed", stateReason: null, author: { name: "x", login: "x", id: null }, labels: [], assignees: [], milestone: null, locked: false, lockReason: null, pinned: null, comments: 2, reactions: {}, subIssues: null, type: null, isPullRequest: true, createdAt: "2026-01-01T00:00:00Z", updatedAt: "", closedAt: null } as T.Issue;
     assert.match(textOf(searchRow(REPO, issue)), /^Closed T#9 opened 2026-01-01 by x · 2 comments$/);
   });
 

@@ -117,3 +117,20 @@ describe("the in-memory double's own behaviour", () => {
     await assert.rejects(b.session({ kind: "installation", installationId: h.installationId }).repos.get(r.ref), (e: unknown) => e instanceof GitBackendError && e.code === "unauthorized");
   });
 });
+
+describe("the double's issue types (phase 05)", () => {
+  it("an organization's repository takes GitHub's default types; a personal one none", async () => {
+    const h = await harness();
+    const b = h.backend as MemoryBackend;
+    const lab = b.addOrg("neuro-lab", [h.owner.login]);
+    const s = b.session({ kind: "user", token: h.owner.token });
+    const r = await h.seed({ name: "lab-code" });
+    b.move(b.repos.get(r.key.id)!, lab.id, "lab-code");
+    const ref = { forge: "memory" as const, owner: "neuro-lab", name: "lab-code" };
+    const i = await s.issues.create(ref, { title: "Crash on load", type: "bug" });
+    assert.equal(i.type, "Bug");
+    assert.equal((await s.issues.update(ref, i.number, { type: "Task" })).type, "Task");
+    assert.equal((await s.issues.update(ref, i.number, { type: null })).type, null);
+    await assert.rejects(s.issues.create(ref, { title: "x", type: "Epic" }), (e: unknown) => e instanceof GitBackendError && e.code === "invalid");
+  });
+});

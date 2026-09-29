@@ -151,6 +151,8 @@ export interface MemIssue {
   subIssues: number[];
   parent: number | null;
   blockedBy: number[];
+  /** An organization's issue type (phase 05), or null. */
+  type: string | null;
   timeline: { kind: T.TimelineEvent["kind"]; actorId: string | null; at: number; subject: string | null }[];
   createdAt: number;
   updatedAt: number;

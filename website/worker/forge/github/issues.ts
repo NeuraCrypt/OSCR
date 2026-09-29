@@ -54,6 +54,12 @@ function checkTime(t: unknown): string {
   return t;
 }
 
+/** An issue type's name (an organization's: "Bug", "Task"…). */
+export function checkIssueType(t: unknown): string {
+  if (typeof t !== "string" || !t.trim() || t.length > 50 || /[\u0000-\u001f]/.test(t)) throw invalid("not an issue type");
+  return t.trim();
+}
+
 function checkQuery(q: unknown): string {
   if (typeof q !== "string" || q.length > 256 || /[\u0000-\u001f]/.test(q)) throw invalid("not a search");
   return q.trim();
@@ -125,6 +131,7 @@ export function issueOps(ctx: Ctx): IssueOps {
         labels: input.labels?.map(checkLabelName),
         assignees: input.assignees?.map(checkLogin),
         milestone: input.milestone === undefined ? undefined : checkNumber(input.milestone),
+        type: input.type === undefined ? undefined : checkIssueType(input.type),
       };
       return map.issue(await http.json({ method: "POST", path, json: body }));
     },
@@ -143,6 +150,7 @@ export function issueOps(ctx: Ctx): IssueOps {
         labels: patch.labels?.map(checkLabelName),
         assignees: patch.assignees?.map(checkLogin),
         milestone: patch.milestone === undefined ? undefined : patch.milestone === null ? null : checkNumber(patch.milestone),
+        type: patch.type === undefined ? undefined : patch.type === null ? null : checkIssueType(patch.type),
       };
       return map.issue(await http.json({ method: "PATCH", path, json: body }));
     },

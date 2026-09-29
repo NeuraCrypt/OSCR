@@ -209,6 +209,7 @@ function issueJson(i: T.Issue): Json {
     comments: i.comments,
     reactions: { total_count: Object.values(i.reactions).reduce((n, x) => n + (x ?? 0), 0), ...i.reactions },
     sub_issues_summary: i.subIssues ? { ...i.subIssues, percent_completed: 0 } : undefined,
+    type: i.type ? { id: 1, name: i.type, description: null, color: "gray" } : null,
     pull_request: i.isPullRequest ? { url: "https://api.github.com/pulls" } : undefined,
     created_at: i.createdAt,
     updated_at: i.updatedAt,
@@ -789,12 +790,12 @@ export class FakeGitHub {
     });
     this.on("POST", new RegExp(`${R}/issues$`), async (m, x) => {
       const j = x.json;
-      return reply(issueJson(await x.session.issues.create(ref(m), { title: String(j.title), body: j.body as string | undefined, labels: j.labels as string[] | undefined, assignees: j.assignees as string[] | undefined, milestone: j.milestone as number | undefined })), 201);
+      return reply(issueJson(await x.session.issues.create(ref(m), { title: String(j.title), body: j.body as string | undefined, labels: j.labels as string[] | undefined, assignees: j.assignees as string[] | undefined, milestone: j.milestone as number | undefined, type: j.type as string | undefined })), 201);
     });
     this.on("GET", new RegExp(`${R}/issues/(\\d+)$`), async (m, x) => reply(issueJson(await x.session.issues.get(ref(m), Number(m[3])))));
     this.on("PATCH", new RegExp(`${R}/issues/(\\d+)$`), async (m, x) => {
       const j = x.json;
-      const patch: T.IssuePatch = { title: j.title as string | undefined, body: j.body as string | undefined, state: j.state as "open" | "closed" | undefined, stateReason: j.state_reason as T.StateReason | undefined, labels: j.labels as string[] | undefined, assignees: j.assignees as string[] | undefined };
+      const patch: T.IssuePatch = { title: j.title as string | undefined, body: j.body as string | undefined, state: j.state as "open" | "closed" | undefined, stateReason: j.state_reason as T.StateReason | undefined, labels: j.labels as string[] | undefined, assignees: j.assignees as string[] | undefined, type: j.type as string | null | undefined };
       if ("milestone" in j) patch.milestone = j.milestone as number | null;
       return reply(issueJson(await x.session.issues.update(ref(m), Number(m[3]), patch)));
     });

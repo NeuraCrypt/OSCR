@@ -16,6 +16,8 @@ import { commitOut, makeCommit, mergeCommits, notFound, setBranch } from "./memo
 const REACTIONS = new Set(["+1", "-1", "laugh", "confused", "heart", "hooray", "rocket", "eyes"]);
 const LOCKS = new Set(["off-topic", "too heated", "resolved", "spam"]);
 const REASONS = new Set(["completed", "not_planned", "duplicate", "reopened"]);
+/** An organization's default issue types (GitHub's); a personal repository has none. */
+export const ISSUE_TYPES = ["Task", "Bug", "Feature"];
 const CLOSING = /\b(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)\s+#(\d+)\b/gi;
 const MENTION = /(?:^|[^\w/#&])#(\d+)\b/g;
 
@@ -67,6 +69,7 @@ function issueOut(c: Call, r: MemRepo, i: MemIssue): T.Issue {
     comments: i.comments.length,
     reactions: counts(i.reactions),
     subIssues: { total: children.length, completed: children.filter((x) => x.state === "closed").length },
+    type: i.type,
     isPullRequest: i.pull !== null,
     createdAt: iso(i.createdAt),
     updatedAt: iso(i.updatedAt),
@@ -115,6 +118,7 @@ function newIssue(c: Call, r: MemRepo, title: string, body: string, pull: MemPul
     subIssues: [],
     parent: null,
     blockedBy: [],
+    type: null,
     timeline: [],
     createdAt: b.now(),
     updatedAt: b.now(),
@@ -855,6 +859,16 @@ export function issueOps(c: Call): IssueOps {
     i.milestone = n;
   };
 
+  /** An issue type of the repository's organization, as GitHub names it; a personal repository
+   *  has none (GitHub's issue types are an organization's). */
+  const typeName = (r: MemRepo, name: unknown): string => {
+    if (typeof name !== "string" || !name.trim() || name.length > 50) throw invalid("not an issue type");
+    if (b.accounts.get(r.ownerId)?.type !== "organization") throw invalid("issue types belong to organizations: this repository's owner has none");
+    const known = ISSUE_TYPES.find((t) => t.toLowerCase() === name.trim().toLowerCase());
+    if (!known) throw invalid(`no issue type named ${name.trim()}`);
+    return known;
+  };
+
   const plainIssue = (r: MemRepo, n: number): MemIssue => {
     const i = issueAt(r, n);
     if (i.pull) throw invalid("a pull request is not an issue here");
@@ -927,11 +941,13 @@ export function issueOps(c: Call): IssueOps {
       c.enter("issues.create", { act: "write" });
       const r = withIssues(ref, "read");
       if (r.archived) throw new GitBackendError("archived", "the repository is archived");
+      const type = input.type === undefined ? undefined : typeName(r, input.type);
       const i = newIssue(c, r, title, body, null);
       if (triage(r)) {
         if (labels) setLabels(i, labelNames(r, labels));
         if (assignees) setAssignees(i, assigneeLogins(assignees));
         if (milestone !== undefined) setMilestone(r, i, milestone);
+        if (type !== undefined) i.type = type;
       }
       return issueOut(c, r, i);
     },
@@ -954,7 +970,8 @@ export function issueOps(c: Call): IssueOps {
       if (r.archived) throw new GitBackendError("archived", "the repository is archived");
       const canTriage = triage(r);
       if (!canTriage && !mine(i)) throw new GitBackendError("forbidden", "only the author or a triager edits an issue");
-      if (!canTriage && (labels || assignees || patch.milestone !== undefined)) throw new GitBackendError("forbidden", "labels, assignees and milestones need triage");
+      if (!canTriage && (labels || assignees || patch.milestone !== undefined || patch.type !== undefined)) throw new GitBackendError("forbidden", "labels, assignees, milestones and types need triage");
+      const type = patch.type === undefined || patch.type === null ? patch.type : typeName(r, patch.type);
       if (patch.title !== undefined && patch.title !== i.title) {
         i.title = patch.title;
         note(c, i, "renamed", patch.title);
@@ -966,6 +983,7 @@ export function issueOps(c: Call): IssueOps {
       if (labels) setLabels(i, labelNames(r, labels));
       if (assignees) setAssignees(i, assigneeLogins(assignees));
       if (patch.milestone !== undefined) setMilestone(r, i, patch.milestone);
+      if (type !== undefined) i.type = type;
       if (patch.state === "closed" && i.state === "open") {
         if (i.pull) throw invalid("close a pull request through pulls.update");
         closeIssue(c, i, patch.stateReason && patch.stateReason !== "reopened" ? patch.stateReason : "completed");
@@ -1272,6 +1290,7 @@ export function issueOps(c: Call): IssueOps {
       moved.createdAt = i.createdAt;
       moved.labels = i.labels.filter((l) => target.labels.has(l.toLowerCase()));
       moved.assignees = [...i.assignees];
+      moved.type = i.type;
       moved.comments = i.comments.map((x) => ({ ...x }));
       for (const x of moved.comments) b.issueComments.set(x.id, { repoId: target.id, number: moved.number });
       note(c, moved, "transferred", `${b.ownerLogin(r)}/${r.name}#${number}`);

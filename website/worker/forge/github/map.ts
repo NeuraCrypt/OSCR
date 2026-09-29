@@ -410,6 +410,7 @@ export function issue(v: unknown): T.Issue {
   const summary = optObj(i, "sub_issues_summary");
   const reason = optStr(i, "state_reason");
   const lock = optStr(i, "active_lock_reason");
+  const type = optObj(i, "type");
   return {
     number: num(i, "number"),
     id: id(i),
@@ -428,6 +429,7 @@ export function issue(v: unknown): T.Issue {
     comments: optNum(i, "comments") ?? 0,
     reactions: reactions(i.reactions),
     subIssues: summary ? { total: num(summary, "total"), completed: num(summary, "completed") } : null,
+    type: type ? (optStr(type, "name") ?? null) : null,
     isPullRequest: i.pull_request !== undefined && i.pull_request !== null,
     createdAt: str(i, "created_at"),
     updatedAt: str(i, "updated_at"),
