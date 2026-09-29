@@ -43,7 +43,7 @@ export const CODE_LIMITS = {
   highlightLineChars: 5_000,
   /** A Markdown file (a README) is rendered up to this size, then cut, as GitHub cuts at 500 KiB. */
   renderBytes: 500 * 1024,
-  /** An image is read and shown up to this size. */
+  /** An image is read and shown up to this size; a notebook (its outputs hold images) and a PDF too. */
   imageBytes: 10 * 1024 * 1024,
   /** Entries listed in one directory before "and N more" (GitHub: 1,000). */
   listEntries: 1_000,
@@ -183,6 +183,10 @@ export function imageType(path: string): string | null {
   return ext ? (IMAGE_TYPES[ext] ?? null) : null;
 }
 
+/** How much of a file the viewer reads: an image, a notebook or a PDF up to 10 MiB, any other
+ *  file up to 1 MiB. */
+export const readLimit = (path: string): number => (imageType(path) || /\.(?:ipynb|pdf)$/i.test(path) ? CODE_LIMITS.imageBytes : CODE_LIMITS.displayBytes);
+
 export type FileKind = "text" | "image" | "binary" | "lfs" | "too_large" | "symlink" | "submodule" | "empty";
 
 /** How the page shows a file, from its tree entry (before reading: a file too large is not read)
@@ -193,7 +197,7 @@ export function classifyFile(entry: Pick<T.TreeEntry, "mode" | "type" | "size"> 
   const size = file?.size ?? entry?.size ?? null;
   if (file?.lfs) return "lfs";
   if (imageType(path) && !/\.svg$/i.test(path)) return size !== null && size > CODE_LIMITS.imageBytes ? "too_large" : "image";
-  if (size !== null && size > CODE_LIMITS.displayBytes) return "too_large";
+  if (size !== null && size > readLimit(path)) return "too_large";
   if (file?.binary) return "binary";
   if (size === 0) return "empty";
   return "text";

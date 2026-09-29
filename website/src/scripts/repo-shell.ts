@@ -10,7 +10,7 @@
 // line in words, the Code button, the quick setup of an empty repository, the papers, the GitHub
 // Pages site; under settings/ and branches/, E8's modules (mountSettings, mountBranches).
 // Phase 02 builds the code views here (repo-code.ts, repo-history.ts, repo-markdown.ts,
-// repo-traced.ts).
+// repo-traced.ts, repo-rich.ts, repo-docs.ts).
 //
 // Everything is written as text nodes (masked for email addresses), never as HTML; links are
 // checked again here (repo-view.ts safeHref). Like every browser script, it never names the
@@ -50,6 +50,8 @@ import { type CodeEnv, mountCode, mountTree, wireKeys } from "./repo-code.ts";
 import "./repo-history.ts";
 import "./repo-markdown.ts";
 import "./repo-traced.ts";
+import "./repo-rich.ts";
+import "./repo-docs.ts";
 import { codePanel, quickSetup, useTemplate, wireCopy } from "./repo-code-panel.ts";
 import { mountBranches } from "./repo-branches.ts";
 import { mountSettings } from "./repo-settings.ts";

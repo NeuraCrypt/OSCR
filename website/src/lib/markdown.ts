@@ -51,6 +51,8 @@ export interface MarkdownContext {
   plainCode?: boolean;
   /** The file at the source: the last resort for what the viewer cannot draw (a Mermaid diagram). */
   sourceUrl?: string;
+  /** A notebook cell's attachments: name → a data: address of the image (attachment:name). */
+  attachments?: Record<string, string>;
 }
 
 export interface Heading {
@@ -503,7 +505,8 @@ const AUTO: { re: RegExp; trim?: (s: string) => string; href: (m: RegExpMatchArr
   { re: /(?<![\w/.@-])(www\.[A-Za-z0-9-]+\.[^\s<>"]*[^\s<>".,;:!?\]'*_~])/, trim: trimAddress, href: (_m, _r, shown) => `https://${shown}` },
 ];
 
-const slugOf = (text: string): string =>
+/** A heading's anchor as GitHub makes it: lower case, punctuation dropped, spaces as "-". */
+export const slugOf = (text: string): string =>
   text
     .trim()
     .toLowerCase()
@@ -578,6 +581,11 @@ class Renderer {
     let s = decodeEntities(src.trim());
     if (/#gh-dark-mode-only$/.test(s)) return null;
     s = s.replace(/#gh-light-mode-only$/, "");
+    const attached = /^attachment:(.{1,200})$/.exec(s);
+    if (attached) {
+      const src = this.ctx.attachments?.[attached[1]];
+      return src ? h("img", { alt, title: title ?? null, src }) : h("span", { class: "missing-image" }, alt || "an attached image");
+    }
     const path = this.ctx.resolveImage ? this.ctx.resolveImage(s) : null;
     if (path) {
       if (this.images.length < 50) this.images.push(path);

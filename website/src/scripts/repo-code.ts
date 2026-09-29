@@ -53,6 +53,7 @@ import {
   parseLineHash,
   pathCrumbs,
   permalink,
+  readLimit,
   refLabel,
   type RefLists,
   refSegments,
@@ -288,7 +289,11 @@ export async function mountTree(slot: HTMLElement, env: CodeEnv, segments: reado
   const latest = slot.querySelector<HTMLElement>("#latest-change");
   if (latest && !opts.home) void latestChange(env, opened, dir, latest);
   const extras = slot.querySelector<HTMLElement>("#tree-extras");
-  if (extras) for (const extra of treeExtras) await extra(extras, env, opened, dir).catch(() => undefined);
+  if (extras) {
+    // Each extra in its own place (the documentation's link, the README), in the order registered.
+    const places = treeExtras.map(() => extras.appendChild(document.createElement("div")));
+    await Promise.all(treeExtras.map((extra, k) => extra(places[k], env, opened, dir).catch(() => undefined)));
+  }
   return opened;
 }
 
@@ -329,7 +334,10 @@ export const lineMenuExtras: ((state: { env: CodeEnv; opened: Opened; path: stri
 /** Line classes (E4: a tracing map's .pair-N) for a file, from its lines as shown. */
 export const lineMarkers: ((env: CodeEnv, opened: Opened, path: string, lines: readonly string[]) => Promise<Map<number, string>>)[] = [];
 
-/** Notes above a file's lines (E4: which lines the tracing maps link). */
+/** What a binary file is, in the viewer (E5: a PDF to open in the browser's viewer, an STL model). */
+export const binaryViews: ((path: string, bytes: Uint8Array) => El | null)[] = [];
+
+/** Notes above a file's lines (E4: which lines the tracing maps link; E5: a map, a model, a markup). */
 export const blobNotes: ((env: CodeEnv, opened: Opened, path: string, lines: readonly string[]) => Promise<El | null>)[] = [];
 
 /** The lines of a text as the viewer shows them: masked, highlighted within the limits. */
@@ -400,7 +408,7 @@ export async function mountBlob(slot: HTMLElement, env: CodeEnv, segments: reado
       slot,
       page(
         fileInfo({ size: entry?.size ?? null, language: null, kind: kind0 }),
-        atSource(`This file is larger than the viewer shows (${sizeInWords(CODE_LIMITS.displayBytes)} of text, ${sizeInWords(CODE_LIMITS.imageBytes)} for an image).`, sourceUrl(env, "blob", opened.commit, path)),
+        atSource(`This file is larger than the viewer shows (${sizeInWords(CODE_LIMITS.displayBytes)} of text, ${sizeInWords(CODE_LIMITS.imageBytes)} for an image, a notebook or a PDF).`, sourceUrl(env, "blob", opened.commit, path)),
       ),
     );
     finish();
@@ -408,8 +416,7 @@ export async function mountBlob(slot: HTMLElement, env: CodeEnv, segments: reado
   }
   let file: T.FileContent;
   try {
-    const max = kind0 === "image" ? CODE_LIMITS.imageBytes : CODE_LIMITS.displayBytes;
-    file = await env.session.git.readFile(gh, opened.commit, path, { maxBytes: max });
+    file = await env.session.git.readFile(gh, opened.commit, path, { maxBytes: readLimit(path) });
   } catch (e) {
     show(slot, page(h("div", { id: "file-failure" })));
     const into = slot.querySelector<HTMLElement>("#file-failure");
@@ -449,7 +456,8 @@ export async function mountBlob(slot: HTMLElement, env: CodeEnv, segments: reado
     const url = URL.createObjectURL(new Blob([file.bytes as Uint8Array<ArrayBuffer>], { type }));
     body.push(fileInfo({ size, language: null, kind }), h("figure", { class: "file-image" }, h("img", { src: url, alt: path.split("/").pop() ?? path })));
   } else if (kind === "binary") {
-    body.push(fileInfo({ size, language: null, kind }), h("p", null, "A binary file: it has no lines to show. Download it to open it with its program."));
+    const view = binaryViews.map((f) => f(path, file.bytes)).find((x): x is El => !!x);
+    body.push(fileInfo({ size, language: null, kind }), view ?? h("p", null, "A binary file: it has no lines to show. Download it to open it with its program."));
   } else if (kind === "empty") {
     body.push(fileInfo({ size: 0, language: null, kind }), h("p", null, "This file is empty."));
   } else {

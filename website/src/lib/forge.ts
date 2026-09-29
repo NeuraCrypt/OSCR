@@ -34,11 +34,13 @@ export const GITHUB = "https://github.com";
  *    the page resolves the longest branch or tag that prefixes the segments, as GitHub does);
  *  - commits/<ref>/<path…>: the history of a branch, or of a file; commit/<sha>: one commit;
  *  - compare/<base>...<head>: a comparison (three dots; refs may hold "/");
- *  - find/<ref>: the file finder; search: the search in the repository (?q=). */
-export type RepoView = "home" | "settings" | "branches" | "tree" | "blob" | "commits" | "commit" | "compare" | "find" | "search";
+ *  - find/<ref>: the file finder; search: the search in the repository (?q=);
+ *  - docs/<ref>/<page…>: the repository's documentation (its Markdown) read as pages (E5: GitHub
+ *    Pages adapted, no author HTML or JavaScript). */
+export type RepoView = "home" | "settings" | "branches" | "tree" | "blob" | "commits" | "commit" | "compare" | "find" | "search" | "docs";
 export const REPO_VIEWS: readonly RepoView[] = ["home", "settings", "branches"];
 /** The views that carry segments after their name (a ref, a path, a commit, a comparison). */
-export const CODE_VIEWS: readonly RepoView[] = ["tree", "blob", "commits", "commit", "compare", "find", "search"];
+export const CODE_VIEWS: readonly RepoView[] = ["tree", "blob", "commits", "commit", "compare", "find", "search", "docs"];
 
 export interface RepoCoords {
   owner: string;
@@ -73,6 +75,7 @@ const SEGMENTS: Partial<Record<RepoView, [number, number]>> = {
   compare: [1, 64],
   find: [0, 64],
   search: [0, 0],
+  docs: [0, 64],
 };
 
 /** The repository and the view a path of the shell names, or null: /r/<owner>/<name>/ (the final

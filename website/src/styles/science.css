@@ -514,6 +514,42 @@ ol.lines.code li.traced::before { box-shadow: inset -3px 0 0 var(--masthead); co
 .traced-note li { margin: .15em 0; padding: 0 .3em; cursor: auto; }
 p.traced-explain { margin: .3em 0; }
 
+/* Rich files (night phase 02, E5): a notebook's cells as saved (its inputs in their prompt, its
+   outputs below, never run), a table with its rows numbered and a filter, and the sentence above a
+   file shown as source although it is more (a map, a 3D model, another markup) */
+p.rich-note { margin: .3em 0 .8em; color: var(--muted); font-size: .93em; }
+.notebook { margin: .4em 0 1em; }
+.nb-cell { margin: 0 0 .9em; }
+.nb-markdown { padding: 0 .2em; }
+.nb-prompt { display: block; font-family: var(--font-code); font-size: .8em; color: var(--muted); margin: 0 0 .15em; }
+.nb-input pre.code-block { margin: 0; line-height: 1.4; tab-size: 4; }
+.nb-output { margin: .3em 0 0 1.2em; }
+.nb-output pre { margin: 0; background: none; border: 0; border-left: 2px solid var(--rule); padding: .2em .6em; white-space: pre-wrap; overflow-wrap: anywhere; font-size: .85em; }
+.nb-stderr pre { background: #fbf3e6; }
+.nb-error pre { background: #fbeaea; color: #6b1414; }
+.nb-image img { max-width: 100%; height: auto; border: 1px solid var(--rule); background: var(--bg); }
+.nb-note p, p.nb-note { margin: .2em 0; color: var(--muted); font-size: .9em; font-style: italic; }
+.data-table p.table-filter { font-size: .92em; margin: .3em 0 .5em; }
+.data-table p.table-filter input { width: min(18em, 60%); }
+.data-table .table-scroll { overflow: auto; max-height: 75vh; width: fit-content; max-width: 100%; box-sizing: border-box; border: 1px solid var(--rule); }
+table.data { border-collapse: collapse; font-size: .88em; }
+table.data th, table.data td { border-bottom: 1px solid var(--rule); border-right: 1px solid #e6e6e6; padding: .2em .6em; text-align: left; vertical-align: top; white-space: pre-wrap; max-width: 30em; overflow-wrap: anywhere; }
+table.data th { background: var(--bg-sidebar); position: sticky; top: 0; }
+table.data .num { text-align: right; font-variant-numeric: tabular-nums; }
+table.data .row-num { color: var(--muted); text-align: right; background: var(--bg-sidebar); user-select: none; }
+
+/* The Docs view: a repository's documentation as pages, their list on the left (above on a phone) */
+.docs-layout { display: flex; gap: 1.4em; align-items: flex-start; }
+nav.docs-nav { flex: 0 0 14em; font-size: .9em; border: 1px solid var(--rule); background: var(--bg-sidebar); padding: .3em .7em; position: sticky; top: .5em; max-height: calc(100vh - 2em); overflow: auto; }
+nav.docs-nav p.docs-root { font-weight: bold; margin: .2em 0 .4em; font-family: var(--font-code); }
+nav.docs-nav ul { list-style: none; margin: 0; padding: 0; }
+nav.docs-nav li { margin: .15em 0; overflow-wrap: anywhere; }
+nav.docs-nav li.level-2 { padding-left: .8em; } nav.docs-nav li.level-3 { padding-left: 1.6em; } nav.docs-nav li.level-4 { padding-left: 2.4em; }
+nav.docs-nav [aria-current="page"] { font-weight: bold; color: var(--text); }
+.docs-main { flex: 1; min-width: 0; }
+p.docs-head { font-size: .9em; color: var(--muted); margin: .2em 0 .8em; }
+p.docs-link { margin: .8em 0 0; }
+
 footer {
   max-width: var(--width); margin: 0 auto; padding: 1em;
   border-top: 1px solid var(--rule); font-size: .85em; color: var(--muted);
@@ -546,6 +582,8 @@ footer a { margin-right: 1em; }
   form.commit-filters input[type="text"], form.compare-form input[type="text"] { width: 100%; box-sizing: border-box; }
   section.danger, .setup, .panel { padding-left: .6em; padding-right: .6em; }
   section.readme { padding-left: .6em; padding-right: .6em; }
+  .docs-layout { flex-direction: column; align-items: stretch; }
+  nav.docs-nav { position: static; flex-basis: auto; max-height: 16em; }
   section.readme h2.readme-name { margin-left: -.6em; margin-right: -.6em; padding-left: .6em; }
   .markdown-body img.align-right, .markdown-body img.align-left { float: none; margin: 0; }
 }
