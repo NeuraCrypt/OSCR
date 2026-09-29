@@ -4,19 +4,20 @@
 // rules it states are the code's: oscr/moderation.py (the Mac, which decides), src/lib/moderation.ts
 // (the base rules, which the site tells the requester; both read tests/fixtures/moderation_rules.json),
 // the Worker's own checks (worker/contributions/). science.css only.
-import Base from "../../layouts/Base.astro";
+import Info from "../../components/Info.astro";
 import { SITE_NAME } from "../../config";
 import { CAMPAIGN, CAMPAIGN_DAYS, HIDE_PER_ACCOUNT, HIDE_PER_DAY, POLL_MINUTES, REVIEW_DAYS } from "../../lib/moderation";
 import { NIGHTLY } from "../../lib/removal";
 
 const ISSUES = "https://github.com/yannbellec/Open-Scientific-Code-Registry-OSCR-/issues";
 ---
-<Base
+<Info
   title="How requests are decided"
   description={`How ${SITE_NAME} decides removal requests, submissions and claims: published rules, what waits for the operator and for how long, how to appeal. There is currently no human moderator on duty.`}
-  breadcrumb={[{ text: "Policies" }, { text: "Moderation" }]}
+  group="policies"
+  path="/policies/moderation/"
+  parents={[{ text: "Policies", href: "/policies/" }]}
 >
-  <h1>How requests are decided</h1>
   <p class="summary">
     <strong>There is currently no human moderator on duty.</strong> What readers ask of {SITE_NAME} — to remove something,
     to add a paper's code, to be recognized as a paper's author — is decided by the published rules below, applied by
@@ -145,4 +146,4 @@ const ISSUES = "https://github.com/yannbellec/Open-Scientific-Code-Registry-OSCR
       data there; for personal data, use the removal request page of the record, whose justification only the operator reads.
     </li>
   </ul>
-</Base>
+</Info>

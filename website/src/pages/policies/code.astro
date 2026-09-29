@@ -5,7 +5,7 @@
 // their code. The rules it states are the code's: oscr/scriptstore.py (verified_license), oscr/repos.py
 // (the licenses), oscr/catalog.py (source_of, mask_emails), src/lib/source.ts (the browser's fetch).
 // docs/SCRIPT_STORAGE.md has the measurements. science.css only.
-import Base from "../../layouts/Base.astro";
+import Info from "../../components/Info.astro";
 import { SITE_NAME } from "../../config";
 import { SOURCE_MAX_BYTES } from "../../lib/source";
 
@@ -18,12 +18,13 @@ const OPEN = [
 const CONDITIONS = ["CC-BY-NC-4.0", "CC-BY-NC-SA-4.0", "CC-BY-NC-ND-4.0", "CC-BY-ND-4.0"];
 const limit = `${SOURCE_MAX_BYTES / 1_000_000} MB`;
 ---
-<Base
+<Info
   title="The authors' code: copies and sources"
   description={`Which scripts ${SITE_NAME} copies, which it shows from their source without copying them, how each file is checked, and how an author removes or relicenses their code.`}
-  breadcrumb={[{ text: "Policies" }, { text: "The authors' code" }]}
+  group="policies"
+  path="/policies/code/"
+  parents={[{ text: "Policies", href: "/policies/" }]}
 >
-  <h1>The authors' code: what {SITE_NAME} copies, and what it shows from its source</h1>
   <p class="summary">
     {SITE_NAME} shows the code that the authors of a paper published with it. When the code's license allows
     redistribution, {SITE_NAME} keeps a copy. When it does not, {SITE_NAME} keeps no copy: your browser fetches each file
@@ -178,4 +179,4 @@ const limit = `${SOURCE_MAX_BYTES / 1_000_000} MB`;
       withdrawn, no index of {SITE_NAME} points to it any more.
     </li>
   </ul>
-</Base>
+</Info>
