@@ -230,7 +230,11 @@ const toc = [
     <li><strong>Where</strong>: in the database on the operator's computer, and in a private dataset on Hugging Face,{" "}
       <code>OpenScientificCodeRegistry/Private</code>, which is not public and which the operator alone manages; the
       software refuses to send it to a dataset that is not private.</li>
-    <li><strong>How long</strong>: as long as the paper is in the registry's database; erased on request.</li>
+    <li><strong>How long</strong>: as long as the paper is in the registry's database; erased on request. After an
+      erasure or an objection, the registry keeps your ORCID iD, and a fingerprint (SHA-256) of each address found with
+      it — never the address — on a list of people whose contact details it never collects again; the private copy on
+      Hugging Face is published again without you at the next nightly publication, and its history rewritten so that no
+      earlier version keeps you.</li>
     <li><strong>Your rights</strong>: an author may ask what is kept about them, have it corrected, or have it erased, and
       may object to it (<a href="#rights">how</a>).</li>
   </ul>
@@ -284,6 +288,7 @@ const toc = [
         <tr><td>The requests' state and the moderator's log, on the operator's computer</td><td>with no set end: nothing deletes them automatically; they are the record of how each request was decided</td></tr>
         <tr><td>Published records of papers and authors</td><td>as long as the paper is in the catalogue; a removal takes them out at the next nightly publication</td></tr>
         <tr><td>Authors' contact details</td><td>as long as the paper is in the registry's database; erased on request</td></tr>
+        <tr><td>The list of authors who asked not to be kept (an ORCID iD, fingerprints of addresses)</td><td>as long as the registry collects contact details: it is what keeps them from being collected again</td></tr>
         <tr><td>A validated map's record on Zenodo</td><td>permanently, as a DOI requires</td></tr>
         <tr><td>Visitors' requests at Cloudflare</td><td>as Cloudflare's policy says; {SITE_NAME}'s code keeps none</td></tr>
       </tbody>

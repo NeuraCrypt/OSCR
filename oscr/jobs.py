@@ -24,7 +24,11 @@ outcome into the request's own row, which the reader's pages show:
   with `oscr claims` and `oscr reports` and may reverse what the rules did. A claim accepted writes
   the role into D1; a removal accepted withdraws from every public output what it names: the whole
   record (`article.withdrawn`), or only the copies of its scripts, of one repository, of one file, or
-  its tracing map (`withheld`, catalog.withheld).
+  its tracing map (`withheld`, catalog.withheld). A removal asked for personal data that waits for
+  the owner is never closed by the rules: the GDPR gives the owner one month to answer it;
+- `rights`: a data-rights request (the page /data-rights/, oscr/rights.py): access, erasure or
+  objection answered at once for an account signed in with its ORCID iD, an account deleted; what the
+  Mac cannot prove waits for the owner (`oscr rights`) with its legal deadline, never closed unanswered.
 
 **State.** `data/community/state.db`, with the facts push's: each job's status, attempts and what
 the owner needs to see (`job`), the last job seen per target (`job_cursor`). The rows written
@@ -40,6 +44,7 @@ accepted: the claim and the role).
     oscr claims list|accept|refuse …     the claims that wait for the owner
     oscr reports list|accept|reject …    the removal requests
     oscr submissions list|accept|refuse …  the submissions published by someone who is not an author
+    oscr rights list|done|refuse|erase …   the data-rights requests the Mac could not answer by itself
 """
 from __future__ import annotations
 
@@ -51,7 +56,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any, Protocol
 
-from . import catalog, community, db, entities, links, moderation, zenodo
+from . import catalog, community, db, entities, links, moderation, rights, zenodo
 from .community import D1, literal
 
 #: A job that failed this many times is given up, and the reader told.
@@ -60,7 +65,7 @@ MAX_ATTEMPTS = 5
 BATCH = 100
 #: The request's table, per kind of job.
 TABLES: dict[str, str] = {"submission": "submissions", "publish": "submissions", "edit": "edits",
-                          "validation": "validations", "claim": "claims", "report": "reports"}
+                          "validation": "validations", "claim": "claims", "report": "reports", "rights": "rights"}
 #: Roles of a link, as the site names them → as the harvester does.
 ROLES: dict[str, str] = {"code": "code", "data": "data", "tool": "third_party_tool"}
 
@@ -591,7 +596,7 @@ def run_report(runner: Runner, job: dict[str, Any], row: dict[str, Any] | None, 
 
 HANDLERS: dict[str, Callable[[Runner, dict[str, Any], dict[str, Any] | None, dict[str, Any] | None], Outcome]] = {
     "submission": run_submission, "publish": run_publish, "edit": run_edit, "validation": run_validation,
-    "claim": run_claim, "report": run_report,
+    "claim": run_claim, "report": run_report, "rights": rights.run_rights,
 }
 
 
@@ -699,7 +704,9 @@ def poll(runner: Runner) -> Poll:
             runner.con.rollback()
             outcome = Outcome("retry", message=f"{type(e).__name__}: {e}"[:300])
         if outcome.status == "retry" and outcome.counts and latest["attempts"] + 1 >= MAX_ATTEMPTS:
-            outcome = give_up(kind, ref, outcome.message, _stamp(runner))
+            # A data-rights request is never closed unanswered: the operator's, with its legal deadline.
+            outcome = (rights.hand_over(runner, row, users.get(latest["user_id"]), outcome.message) if kind == "rights"
+                       else give_up(kind, ref, outcome.message, _stamp(runner)))
         try:
             out.written += _write(runner, outcome.sql)
         except community.D1Error as e:
@@ -872,7 +879,8 @@ def decide_submission(runner: Runner, submission_id: int, accept: bool, message:
     return f"submission {submission_id} ({s['doi']}): {status}"
 
 
-def status(state: sqlite3.Connection) -> str:
+def status(state: sqlite3.Connection, now: float | None = None) -> str:
+    now = now or time.time()
     lines = []
     for r in state.execute("SELECT target, last_id FROM job_cursor ORDER BY target"):
         lines.append(f"{r['target']}: jobs read up to {r['last_id']}")
@@ -882,15 +890,28 @@ def status(state: sqlite3.Connection) -> str:
         lines.append(f"{r['target']}: {r['rows']} rows written on {r['day']} (UTC), jobs and facts together")
     moderation.ensure_schema(state)
     for r in state.execute("SELECT target, rule, decision, COUNT(*) AS n FROM moderation_log WHERE at > ? GROUP BY 1, 2, 3 "
-                           "ORDER BY 1, 2, 3", (time.time() - moderation.DAY,)):
+                           "ORDER BY 1, 2, 3", (now - moderation.DAY,)):
         lines.append(f"{r['target']}: the moderator's rules in the last 24 hours: {r['rule']} → {r['decision']}: {r['n']}")
-    for r in state.execute("SELECT target, kind, COUNT(*) AS n, MIN(due) AS due FROM waits GROUP BY 1, 2 ORDER BY 1, 2"):
+    never = ", ".join(literal(r) for r in moderation.NEVER_CLOSE)
+    for r in state.execute(f"SELECT target, kind, COUNT(*) AS n, MIN(due) AS due FROM waits WHERE rule NOT IN ({never}) "
+                           "GROUP BY 1, 2 ORDER BY 1, 2"):
         lines.append(f"{r['target']}: {r['n']} {r['kind']}(s) waiting, the first closes on {moderation.deadline_words(r['due'])}")
+    # What only the operator can answer, about personal data: the GDPR's one month, never closed by the rules.
+    legal: dict[str, list[float]] = {}
+    for r in state.execute(f"SELECT target, due FROM waits WHERE rule IN ({never})"):
+        legal.setdefault(r["target"], []).append(float(r["due"]))
+    for r in state.execute("SELECT target, detail FROM job WHERE kind = 'rights' AND status = 'owner'"):
+        legal.setdefault(r["target"], []).append(float(json.loads(r["detail"] or "{}").get("due") or 0))
+    for target, dues in sorted(legal.items()):
+        late = sum(1 for d in dues if d and d < now)
+        lines.append(f"{target}: {len(dues)} request(s) about personal data wait for you (GDPR: one month), the first to "
+                     f"answer by {moderation.deadline_words(min(dues))}" + (f" — {late} OVERDUE" if late else ""))
     return "\n".join(lines) or "no job read yet"
 
 
-def describe_waiting(items: list[dict[str, Any]]) -> str:
+def describe_waiting(items: list[dict[str, Any]], now: float | None = None) -> str:
     """The owner's list, one request per paragraph."""
+    now = now or time.time()
     if not items:
         return "nothing waits for you"
     out = []
@@ -916,7 +937,12 @@ def describe_waiting(items: list[dict[str, Any]]) -> str:
             said = [", ".join(d.get("code_urls", [])), d.get("note", "")]
         due = d.get("due")
         rule = d.get("rule")
-        said.append(f"the rules ({rule}) close it by themselves on {moderation.deadline_words(due)}" if due else "")
+        if d.get("legal") and due:
+            late = " — OVERDUE" if due < now else ""
+            said.append(f"about personal data: answer it by {moderation.deadline_words(due)} (GDPR: one month); the rules "
+                        f"never close it{late}")
+        else:
+            said.append(f"the rules ({rule}) close it by themselves on {moderation.deadline_words(due)}" if due else "")
         if d.get("guard"):
             said.append(f"not hidden at once: {d['guard']}")
         out.append(f"{what} — {when} UTC\n" + "".join(f"    {x}\n" for x in said if x))

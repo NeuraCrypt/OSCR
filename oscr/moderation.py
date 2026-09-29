@@ -15,6 +15,7 @@ suites read tests/fixtures/moderation_rules.json).
 | removal of copies (a repository, a file, the paper's scripts) by a trusted maintainer of that code | `report.maintainer` | applied at once, to the repositories they maintain — trusted: its owner or a public member of its organization on GitHub, or made one by the owner; a mere contributor is not |
 | removal of copies, for copyright or personal data, by anyone else | `report.hide_at_once` | hidden at once, pending the operator's review (who may restore it) — at most 3 an account and 30 in all a day, and not a justification repeated 3 times in 7 days |
 | any other removal (a whole record, a tracing map, another reason) | `report.review` | waits for the operator, 30 days at most; then closed without removal, with how to ask again |
+| the same, asked for personal data | `report.personal_data` | waits for the operator, who must answer within one month (GDPR art. 12(3)); never closed by the rules, flagged in the operator's list |
 | a submission published by someone not among the paper's authors | `submission.corroborated` / `submission.review` → `submission.expired` | published when each code link is cited by the paper's own text or metadata, or its owner is proven one of its authors (an author's public ORCID record links the account; or a verified author of the paper maintains it, as owner or organization member); else waits for the operator, 30 days at most, then refused with how to ask again. A README citing the paper and a GitHub display name are never proof: anyone can write them |
 | a draft not published | `submission.draft_expired` | refused after 30 days (it can be corrected and published again) |
 | an author claim | `claim.paper_metadata`, `claim.crossref_orcid`, `claim.expired` | verified when the paper lists the claimant's ORCID iD, or when Crossref's automatic update put the paper in the claimant's ORCID record (the publisher deposited the iD with the paper; checked again daily) — never a work the claimant added themselves or through a search wizard; else closed after 30 days, with how to claim again |
@@ -24,7 +25,8 @@ suites read tests/fixtures/moderation_rules.json).
 Every automatic decision is logged with its rule (`moderation_log` in data/community/state.db:
 `oscr reports list --auto-log`, and the same for claims and submissions); the owner's commands keep
 working, to decide what waits, and to reverse what the rules did (`oscr reports reverse <n>`, `oscr
-claims reverse <n>`, `oscr submissions reverse <n>`).
+claims reverse <n>`, `oscr submissions reverse <n>`). The log is kept LOG_RETENTION_DAYS (12 months):
+each poll's sweep deletes older entries, and the job runner's settled requests of that age (`purge`).
 
 No free text a reader types reaches a public page: notes, statements, justifications and evidence
 links are read by the operator only (and lose their email addresses). The one name a reader's account
@@ -33,6 +35,7 @@ the validator's ORCID iD — goes through `public_name`. So no language model is
 """
 from __future__ import annotations
 
+import calendar
 import hashlib
 import json
 import re
@@ -40,6 +43,7 @@ import sqlite3
 import time
 import unicodedata
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any, Protocol
 from urllib.parse import urlsplit
 
@@ -53,6 +57,10 @@ DAY = 86_400
 #: How long a request may wait for the operator before the rules close it.
 REVIEW_DAYS = 30
 REVIEW_S = REVIEW_DAYS * DAY
+#: What the rules never close: a removal asked for personal data waits for the operator, who must answer
+#: it within one month (GDPR art. 12(3)), and so does a data-rights request (oscr/rights.py, which is
+#: never put among the `waits` the sweep closes).
+NEVER_CLOSE = ("report.personal_data",)
 #: Automatic hides of copies at the word of someone the registry cannot verify: per account, and in
 #: all, in 24 hours. Past them, a request waits for the operator.
 HIDE_PER_ACCOUNT = 3
@@ -241,6 +249,15 @@ def unwait(state: sqlite3.Connection, target: str, kind: str, ref: int) -> None:
 
 def deadline_words(due: float) -> str:
     return time.strftime("%-d %B %Y", time.gmtime(due))
+
+
+def one_month_after(t: float) -> float:
+    """The legal deadline of a request about personal data made at `t` (GDPR art. 12(3), "within one
+    month"): the same day of the next month, or its last day when it has none (31 January → the end of
+    February). website/src/lib/moderation.ts, oneMonthAfter, computes the same."""
+    d = datetime.fromtimestamp(t, tz=UTC)
+    year, month = (d.year + 1, 1) if d.month == 12 else (d.year, d.month + 1)
+    return d.replace(year=year, month=month, day=min(d.day, calendar.monthrange(year, month)[1])).timestamp()
 
 
 # ---------------------------------------------------------------------------------------
@@ -467,18 +484,26 @@ def decide_report(runner: Runner, job: dict[str, Any], row: dict[str, Any], user
         unwait(runner.state, runner.target, "report", int(row["id"]))
         return Outcome("done", [f"UPDATE reports SET status = 'accepted', message = {literal(words(message))}, decided_at = {t} "
                                 f"WHERE id = {int(row['id'])} AND status = 'open'"], message=f"{path.rule}: {what}")
+    # Asked for personal data, it is a request under the GDPR: the operator must answer it within one month,
+    # and the rules never close it unanswered (NEVER_CLOSE).
+    legal = row["reason"] == "personal_data"
+    if legal:
+        path = Path("report.personal_data", "review")
     first = runner.state.execute("SELECT 1 FROM waits WHERE target = ? AND kind = 'report' AND ref = ?",
                                  (runner.target, int(row["id"]))).fetchone() is None
-    due = wait(runner.state, runner.target, "report", int(row["id"]), float(row["created_at"]), path.rule)
+    due = wait(runner.state, runner.target, "report", int(row["id"]), float(row["created_at"]), path.rule,
+               due=one_month_after(float(row["created_at"])) if legal else None)
     if first:
         log(runner.state, runner.target, "report", int(row["id"]), path.rule, "review", user_id=row["user_id"], paper=paper,
             detail={**detail, "due": due}, now=runner.now())
-    return Outcome("owner", message=f"waits for the operator until {deadline_words(due)}" + (f" ({guard})" if guard else ""),
+    said = (f"waits for the operator, who must answer by {deadline_words(due)} (GDPR: one month)" if legal else
+            f"waits for the operator until {deadline_words(due)}")
+    return Outcome("owner", message=said + (f" ({guard})" if guard else ""),
                    detail={"report": row["id"], "paper_id": paper, "reason": row["reason"], "details": row["details"],
                            "role": row.get("requester_role") or "", "author_verified": bool(row.get("author_verified")),
                            "scope": scope, "repo": row.get("scope_repo") or "", "path": row.get("scope_path") or "",
                            "evidence_url": row.get("evidence_url") or "", "confirmed": bool(row.get("confirmed")),
-                           "user": _handles(user), "due": due, "rule": path.rule, "guard": guard,
+                           "user": _handles(user), "due": due, "rule": path.rule, "guard": guard, "legal": legal,
                            "who": REQUESTERS.get(row.get("requester_role") or "", ""), "what": SCOPES.get(scope, scope)})
 
 
@@ -699,8 +724,10 @@ def sweep(runner: Runner) -> dict[str, int]:
     ensure_schema(runner.state)
     now = runner.now()
     out = {"closed": 0, "verified": 0, "written": 0}
-    due = [dict(r) for r in runner.state.execute("SELECT * FROM waits WHERE target = ? AND (due <= ? OR (next_check > 0 "
-                                                 "AND next_check <= ?)) ORDER BY due", (runner.target, now, now))]
+    never = ", ".join(literal(r) for r in NEVER_CLOSE)
+    due = [dict(r) for r in runner.state.execute(f"SELECT * FROM waits WHERE target = ? AND rule NOT IN ({never}) AND "
+                                                 "(due <= ? OR (next_check > 0 AND next_check <= ?)) ORDER BY due",
+                                                 (runner.target, now, now))]
     if not due:
         return out
     rows: dict[tuple[str, int], dict[str, Any]] = {}
@@ -733,6 +760,16 @@ def sweep(runner: Runner) -> dict[str, int]:
                                  (now + CLAIM_RECHECK_S, runner.target, kind, ref))
             runner.state.commit()
         if w["due"] > now:
+            continue
+        if kind == "report" and row.get("reason") == "personal_data":
+            # A request about personal data recorded before the rule that keeps it open (NEVER_CLOSE): it
+            # waits for the operator until its legal deadline, and the rules never close it.
+            runner.state.execute("UPDATE waits SET rule = ?, due = ? WHERE target = ? AND kind = 'report' AND ref = ?",
+                                 (NEVER_CLOSE[0], one_month_after(float(w["since"])), runner.target, ref))
+            runner.state.execute("UPDATE job SET detail = json_set(detail, '$.legal', json('true'), '$.rule', ?, '$.due', ?) "
+                                 "WHERE target = ? AND kind = 'report' AND ref = ? AND status = 'owner' AND json_valid(detail)",
+                                 (NEVER_CLOSE[0], one_month_after(float(w["since"])), runner.target, ref))
+            runner.state.commit()
             continue
         if kind == "report":
             sql = (f"UPDATE reports SET status = 'rejected', message = {literal(words(EXPIRED_REPORT.format(days=REVIEW_DAYS)))}, "

@@ -225,7 +225,7 @@ def test_a_version_7_database_gets_the_table_of_what_is_withheld(tmp_path, monke
     old.close()
     monkeypatch.undo()
     con = db.open_db(tmp_path / "seven.db")
-    assert int(con.execute("SELECT value FROM meta WHERE name = 'schema_version'").fetchone()[0]) == 8
+    assert int(con.execute("SELECT value FROM meta WHERE name = 'schema_version'").fetchone()[0]) == db.SCHEMA_VERSION >= 8
     assert con.execute("SELECT title FROM article").fetchone()[0] == "T"
     jobs.withhold(con, "map", "doi:10.1/a", request="remote:1", reason="retracted", now=T)
     with pytest.raises(sqlite3.IntegrityError):

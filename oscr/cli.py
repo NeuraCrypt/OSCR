@@ -22,12 +22,14 @@
     oscr jobs poll --local|--remote      Phase 6: the site's requests (submissions, corrections, validations…)
     oscr claims|reports|submissions list|accept|refuse|reverse   what the moderator's rules leave to the owner,
                                          and what they did (--auto-log) (oscr/moderation.py)
+    oscr rights list|done|refuse|erase   the data-rights requests the Mac could not answer (oscr/rights.py)
 """
 from __future__ import annotations
 
 import argparse
 import json
 import signal
+import sqlite3
 import sys
 import time
 from datetime import date
@@ -90,12 +92,18 @@ def _article_id(con, doi: str) -> str:
 
 def _jobs(con, a: argparse.Namespace, cfg: dict[str, str], client: Client, opts: harvest.Options) -> str:
     """Phase 6: the site's requests, read from D1 community and answered (oscr/jobs.py)."""
-    from . import community, jobs, moderation
+    from . import community, jobs, moderation, rights
     state = jobs.open_state(Path(a.folder) / "state.db")
     try:
         if a.command == "jobs" and a.action == "status":
             return jobs.status(state)
         target = "remote" if a.remote else "local" if a.local else ""
+        if a.command == "rights" and a.action == "list":
+            if a.auto_log:
+                since = time.time() - a.days * 86_400 if a.days else 0
+                return moderation.describe_log(moderation.entries(state, target or None, ("rights",), since))
+            return rights.describe_waiting(jobs.waiting(state, target or "remote", ("rights",)) if target else
+                                           jobs.waiting(state, "local", ("rights",)) + jobs.waiting(state, "remote", ("rights",)))
         kinds = {"claims": ("claim",), "reports": ("report",), "submissions": ("publish",)}.get(a.command, ())
         if a.command != "jobs" and a.action == "list" and a.auto_log:
             # What the moderator's rules decided, for the owner's audit (oscr/moderation.py).
@@ -119,6 +127,14 @@ def _jobs(con, a: argparse.Namespace, cfg: dict[str, str], client: Client, opts:
                 return jobs.poll(runner).describe(target)
             if a.id is None:
                 raise SystemExit(f"{a.command} {a.action}: which one? (its number, from `oscr {a.command} list`)")
+            if a.command == "rights":
+                keys = []
+                for x in a.row or []:
+                    paper, _, position = x.rpartition(":")
+                    if not paper or not position.isdigit():
+                        raise SystemExit(f"--row {x}: the paper's id, a colon, the author's position (doi:10.1/x:2)")
+                    keys.append((paper, int(position)))
+                return rights.decide(runner, a.id, a.action, a.message, orcid=a.orcid or "", rows=keys)
             if a.action == "reverse":
                 return {"claims": moderation.reverse_claim, "reports": moderation.reverse_report,
                         "submissions": moderation.reverse_submission}[a.command](runner, a.id, a.message)
@@ -274,9 +290,11 @@ def main(argv: list[str] | None = None) -> int:
     lb.add_argument("csv", nargs="?", default="data/annotation/sample.csv")
 
     ct = sp.add_parser("contacts", help="the authors' contact details: PRIVATE, to the private dataset only")
-    ct.add_argument("action", choices=["summary", "build", "publish"],
+    ct.add_argument("action", choices=["summary", "build", "publish", "suppress-in"],
                     help="summary: counts; build: contacts.parquet in --folder; publish: build, check that the "
-                         "dataset is private, send")
+                         "dataset is private, send (its history rewritten after an erasure); suppress-in: apply "
+                         "the suppression list (the data-rights erasures) to another database file, a backup copy")
+    ct.add_argument("--file", help="suppress-in: the database file (a backup copy of the registry's)")
     ct.add_argument("--folder", default="data/contacts")
     ct.add_argument("--dataset", default=cfg.get("OSCR_CONTACTS_DATASET", "OpenScientificCodeRegistry/Private"))
     ct.add_argument("--dry-run", action="store_true", help="publish: build and check, send nothing")
@@ -342,6 +360,18 @@ def main(argv: list[str] | None = None) -> int:
         dp.add_argument("--auto-log", action="store_true", help="with list: the automatic decisions, each with its rule")
         dp.add_argument("--days", type=int, default=0, help="with --auto-log: only the last N days (default: all)")
         community_target(dp)
+    rp = sp.add_parser("rights", help="the data-rights requests (the page /data-rights/) the Mac could not answer by "
+                                      "itself: each with its legal deadline (GDPR: one month), never closed unanswered")
+    rp.add_argument("action", choices=["list", "done", "refuse", "erase"],
+                    help="list what waits (--auto-log: what was answered); done: your answer; refuse: with the reasons; "
+                         "erase: the contact rows of --orcid, or the --row(s) you found, then done")
+    rp.add_argument("id", type=int, nargs="?", help="its number, from the list")
+    rp.add_argument("--message", default="", help="your words for the person (shown on their page /data-rights/)")
+    rp.add_argument("--orcid", help="erase: the ORCID iD whose contact rows go")
+    rp.add_argument("--row", action="append", help="erase: a row you found, <paper id>:<position> (repeat it)")
+    rp.add_argument("--auto-log", action="store_true", help="with list: what was answered, each with its rule")
+    rp.add_argument("--days", type=int, default=0, help="with --auto-log: only the last N days (default: all)")
+    community_target(rp)
 
     n = sp.add_parser("nightly", help="the publication: public catalogue, then Hugging Face and the website")
     n.add_argument("--out", default="data/public", help="a separate folder, only ever generated in public mode")
@@ -483,13 +513,22 @@ def main(argv: list[str] | None = None) -> int:
                 print(contacts.summary(con))
             elif a.action == "build":
                 print(contacts.build(con, Path(a.folder), platform=platform))
+            elif a.action == "suppress-in":
+                if not a.file or not Path(a.file).exists():
+                    raise SystemExit("contacts suppress-in: --file <a copy of the database>")
+                other = sqlite3.connect(a.file)
+                try:
+                    n = contacts.apply_suppression(other, contacts.suppressed(con))
+                finally:
+                    other.close()
+                print(f"{a.file}: {n} row(s) deleted or blanked by the suppression list")
             else:
                 print(contacts.publish(con, Path(a.folder), a.dataset, platform=platform, dry_run=a.dry_run))
         elif a.command == "community":
             from . import community
             print(community.command(con, a.action, target="remote" if a.remote else "local" if a.local else None,
                                     folder=Path(a.folder), budget=a.budget, settings=cfg))
-        elif a.command in ("jobs", "claims", "reports", "submissions"):
+        elif a.command in ("jobs", "claims", "reports", "submissions", "rights"):
             print(_jobs(con, a, cfg, client, opts))
         elif a.command == "zenodo":
             _zenodo(con, a)

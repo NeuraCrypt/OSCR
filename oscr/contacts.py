@@ -13,9 +13,16 @@ output: `catalog.public_db` drops the table, and the site hides every email addr
 would show (`catalog.mask_emails`).
 
 The owner's other rule still holds: no mass email to the authors (CLAUDE.md).
+
+**Data rights** (the page /data-rights/, oscr/rights.py). An author signed in with their ORCID iD may
+see what is kept about them (`holds`), have it erased or object to it (`forget`): their rows go, and
+their iD and the digests of their addresses join the suppression list (`contact_suppressed`,
+migration 9), which `write` and `table` honour, so that they are never collected again. The next
+publication rewrites the private dataset's history (`publish`): no earlier revision keeps them.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 import sqlite3
@@ -292,9 +299,161 @@ def merge(jats: list[dict[str, Any]], epmc: list[dict[str, Any]]) -> list[dict[s
     return out
 
 
-def write(con: sqlite3.Connection, article_id: str, rows: list[dict[str, Any]], now: float | None = None) -> int:
-    """Replace the paper's contact rows."""
+# ---------------------------------------------------------------------------------------
+# The suppression list: the people who asked not to be kept (oscr/rights.py).
+
+def email_digest(email: str) -> str:
+    """The SHA-256 of an address, as the suppression list keeps it: never the address itself."""
+    e = (email or "").strip().lower()
+    return hashlib.sha256(e.encode()).hexdigest() if e else ""
+
+
+def suppressed(con: sqlite3.Connection) -> tuple[set[str], set[str]]:
+    """(the ORCID iDs, the digests of addresses) never to collect again."""
+    try:
+        rows = con.execute("SELECT kind, value FROM contact_suppressed").fetchall()
+    except sqlite3.OperationalError:          # a database before migration 9
+        return set(), set()
+    return {r[1] for r in rows if r[0] == "orcid"}, {r[1] for r in rows if r[0] == "email"}
+
+
+def honour(rows: list[dict[str, Any]], orcids: set[str], digests: set[str]) -> list[dict[str, Any]]:
+    """The rows without the people on the suppression list: a row with their iD goes; one of their
+    addresses in another row is blanked — that row may be another author's, who shares the address —
+    and a row that then names no one (an address no author could be tied to) goes."""
+    out = []
+    for r in rows:
+        if (r.get("orcid") or "").upper() in orcids:
+            continue
+        if r.get("email") and email_digest(r["email"]) in digests:
+            if not (r.get("name") or r.get("family") or r.get("orcid")):
+                continue
+            r = {**r, "email": ""}
+        out.append(r)
+    return out
+
+
+def suppress(con: sqlite3.Connection, orcid: str = "", emails: set[str] | list[str] = (), *, request: str = "",
+             now: float | None = None) -> int:
+    """Put an iD and addresses (as their digests) on the suppression list. Returns the entries added."""
     now = now or time.time()
+    entries = ([("orcid", orcid.strip().upper())] if orcid.strip() else []) + \
+        [("email", email_digest(e)) for e in sorted(set(emails)) if e]
+    before = con.total_changes
+    con.executemany("INSERT OR IGNORE INTO contact_suppressed (kind, value, since, request) VALUES (?, ?, ?, ?)",
+                    [(k, v, now, request) for k, v in entries])
+    return con.total_changes - before
+
+
+def _rows(con: sqlite3.Connection, sql: str, args: tuple[Any, ...] = ()) -> list[sqlite3.Row]:
+    """Rows by name, whatever the connection's own row factory."""
+    cur = con.cursor()
+    cur.row_factory = sqlite3.Row
+    return cur.execute(sql, args).fetchall()
+
+
+def _tied(con: sqlite3.Connection, orcid: str) -> tuple[list[sqlite3.Row], list[sqlite3.Row], set[str]]:
+    """The rows about the author with this iD: (the iD's own rows; the rows without an iD that carry one
+    of their addresses under the same family name; their addresses). Nothing else is theirs for sure."""
+    orcid = orcid.strip().upper()
+    own = _rows(con, "SELECT rowid AS rid, * FROM contact WHERE orcid != '' AND upper(orcid) = ? ORDER BY article_id, "
+                      "position", (orcid,)) if orcid else []
+    emails = {r["email"] for r in own if r["email"]}
+    families = {_fold(r["family"]) for r in own if _fold(r["family"])}
+    same: list[sqlite3.Row] = []
+    for e in sorted(emails):
+        for r in _rows(con, "SELECT rowid AS rid, * FROM contact WHERE email = ? AND orcid = '' ORDER BY article_id, position",
+                       (e,)):
+            if _fold(r["family"]) in families:
+                same.append(r)
+    return own, same, emails
+
+
+def holds(con: sqlite3.Connection, orcid: str) -> list[dict[str, Any]]:
+    """What the registry keeps about the author with this iD (the access right): each row, with its
+    paper and where it was read."""
+    own, same, _ = _tied(con, orcid)
+    out = []
+    for r in [*own, *same]:
+        found = _rows(con, "SELECT doi, title, journal, published FROM article WHERE id = ?", (r["article_id"],))
+        a = found[0] if found else None
+        out.append({"article_id": r["article_id"], "doi": (a["doi"] if a else "") or "", "title": (a["title"] if a else "") or "",
+                    "journal": (a["journal"] if a else "") or "", "published": (a["published"] if a else "") or "",
+                    "position": r["position"], "given": r["given"], "family": r["family"], "name": r["name"],
+                    "orcid": r["orcid"], "email": r["email"], "organization": r["organization"], "address": r["address"],
+                    "affiliation": r["affiliation"], "corresponding": bool(r["corresponding"]), "source": r["source"],
+                    "found_at": r["found_at"], "tied_by": "orcid" if r["orcid"] else "address"})
+    return out
+
+
+def forget(con: sqlite3.Connection, orcid: str, *, request: str = "", now: float | None = None) -> dict[str, int]:
+    """Erase what the registry keeps about the author with this iD, and never collect it again (the
+    erasure and objection rights): the iD's rows, and the rows without an iD that carry one of their
+    addresses under the same family name, are deleted; one of their addresses in another author's row
+    is blanked; the iD and the addresses' digests join the suppression list. The private dataset loses
+    them at its next publication (`publish`). Returns the counts."""
+    own, same, emails = _tied(con, orcid)
+    gone = [r["rid"] for r in [*own, *same]]
+    con.executemany("DELETE FROM contact WHERE rowid = ?", [(rid,) for rid in gone])
+    blanked = 0
+    for e in sorted(emails):
+        for r in _rows(con, "SELECT rowid AS rid, name, family FROM contact WHERE email = ?", (e,)):
+            if not (r["name"] or r["family"]):
+                con.execute("DELETE FROM contact WHERE rowid = ?", (r["rid"],))
+            elif con.execute("UPDATE OR IGNORE contact SET email = '' WHERE rowid = ?", (r["rid"],)).rowcount == 0:
+                con.execute("DELETE FROM contact WHERE rowid = ?", (r["rid"],))      # its twin without an address stays
+            blanked += 1
+    added = suppress(con, orcid, emails, request=request, now=now)
+    con.commit()
+    return {"rows": len(gone), "papers": len({r["article_id"] for r in [*own, *same]}), "emails": len(emails),
+            "blanked": blanked, "suppressed": added}
+
+
+def forget_rows(con: sqlite3.Connection, keys: list[tuple[str, int]], *, request: str = "owner",
+                now: float | None = None) -> dict[str, int]:
+    """The operator's erasure for a person the registry could not recognize by an ORCID iD (a GitHub or
+    Google account): the rows the operator found (paper, position) are deleted, their addresses and iD
+    suppressed."""
+    rows = [r for k in keys for r in _rows(con, "SELECT rowid AS rid, * FROM contact WHERE article_id = ? AND position = ?", k)]
+    con.executemany("DELETE FROM contact WHERE rowid = ?", [(r["rid"],) for r in rows])
+    added = 0
+    for orcid in {r["orcid"] for r in rows if r["orcid"]} or {""}:
+        added += suppress(con, orcid, {r["email"] for r in rows if r["email"]}, request=request, now=now)
+    con.commit()
+    return {"rows": len(rows), "papers": len({r["article_id"] for r in rows}), "suppressed": added}
+
+
+def apply_suppression(con: sqlite3.Connection, suppression: tuple[set[str], set[str]] | None = None) -> int:
+    """The suppression list applied to a database's rows — the registry's, or a backup copy's with the
+    registry's list (`oscr contacts suppress-in`). Returns the rows deleted or blanked."""
+    orcids, digests = suppression if suppression is not None else suppressed(con)
+    con.create_function("oscr_email_digest", 1, email_digest, deterministic=True)
+    before = con.total_changes
+    con.executemany("DELETE FROM contact WHERE orcid != '' AND upper(orcid) = ?", [(o,) for o in orcids])
+    if digests:
+        con.execute("CREATE TEMP TABLE IF NOT EXISTS oscr_suppressed_digest (value TEXT PRIMARY KEY)")
+        con.execute("DELETE FROM oscr_suppressed_digest")
+        con.executemany("INSERT OR IGNORE INTO oscr_suppressed_digest VALUES (?)", [(d,) for d in digests])
+        hit = "email != '' AND oscr_email_digest(email) IN (SELECT value FROM oscr_suppressed_digest)"
+        con.execute(f"DELETE FROM contact WHERE {hit} AND name = '' AND family = '' AND orcid = ''")
+        con.execute(f"UPDATE OR IGNORE contact SET email = '' WHERE {hit}")
+        con.execute(f"DELETE FROM contact WHERE {hit}")
+    con.commit()
+    return con.total_changes - before
+
+
+def pending_publication(con: sqlite3.Connection) -> int:
+    """Entries of the suppression list the private dataset was not published without yet."""
+    try:
+        return int(con.execute("SELECT COUNT(*) FROM contact_suppressed WHERE published_at IS NULL").fetchone()[0])
+    except sqlite3.OperationalError:
+        return 0
+
+
+def write(con: sqlite3.Connection, article_id: str, rows: list[dict[str, Any]], now: float | None = None) -> int:
+    """Replace the paper's contact rows, without the people on the suppression list."""
+    now = now or time.time()
+    rows = honour(rows, *suppressed(con))
     con.execute("DELETE FROM contact WHERE article_id = ?", (article_id,))
     con.executemany(
         "INSERT OR REPLACE INTO contact (article_id, position, email, given, family, name, orcid, organization, "
@@ -315,7 +474,8 @@ def table(con: sqlite3.Connection) -> list[dict[str, Any]]:
         "SELECT a.doi, c.article_id, a.title, a.journal, a.published, c.position, c.given, c.family, c.name, "
         "c.orcid, c.email, c.organization, c.address, c.affiliation, c.corresponding, c.source "
         "FROM contact c JOIN article a ON a.id = c.article_id ORDER BY a.published DESC, c.article_id, c.position")
-    return [dict(zip(COLUMNS, r)) for r in rows]
+    # The suppression list holds here too: nothing of a person who asked leaves, whatever the table holds.
+    return honour([dict(zip(COLUMNS, r)) for r in rows], *suppressed(con))
 
 
 CARD = """---
@@ -334,8 +494,10 @@ organization, address, affiliation and email, with the paper's DOI, title, journ
 - **Purpose**: to cite the authors of the code and to reach them about their own work (their
   tracing map, a correction, a takedown). No mass email.
 - **Personal data** (GDPR): this dataset must stay **private**. The publisher refuses to send
-  it to a dataset that is not. An author may ask for their data to be erased:
-  https://github.com/yannbellec/Open-Scientific-Code-Registry-OSCR-/issues
+  it to a dataset that is not. An author sees what is kept about them, has it erased or objects to
+  it on the registry's page /data-rights/ (signed in with their ORCID iD: answered automatically).
+  An erasure reaches this dataset at its next publication, which then rewrites its history: no
+  earlier revision keeps the person.
 - `contacts.parquet`: {rows:,} rows, {papers:,} papers, {emails:,} email addresses
   (generated {date}).
 """
@@ -358,9 +520,15 @@ def build(con: sqlite3.Connection, folder: Path, *, platform: str = "OSCR") -> d
 
 
 def publish(con: sqlite3.Connection, folder: Path, dataset: str = DATASET, *, platform: str = "OSCR",
-            dry_run: bool = False) -> str:
+            dry_run: bool = False, now: float | None = None) -> str:
     """Build, check that `dataset` is PRIVATE, then send. Refuses a dataset that is public
-    (or that cannot be checked)."""
+    (or that cannot be checked).
+
+    A dataset on Hugging Face is a git repository: a new `contacts.parquet` leaves every earlier one
+    in its history, where a person erased since could still be downloaded. So when an erasure or an
+    objection came since the last publication (`pending_publication`), the publication then rewrites
+    the history (`forget_history`): one commit remains, the current one, and the files of the earlier
+    revisions are deleted for good. Only then are the entries marked published."""
     from huggingface_hub import HfApi
 
     from .scriptstore import token
@@ -369,12 +537,40 @@ def publish(con: sqlite3.Connection, folder: Path, dataset: str = DATASET, *, pl
     info = api.dataset_info(dataset)
     if info.private is not True:
         raise SystemExit(f"refusing to send personal data: {dataset} is not a private dataset")
+    pending = pending_publication(con)
     if dry_run:
-        return f"dry run: {counts['rows']} rows ({counts['emails']} emails) ready for {dataset} (private)"
+        return (f"dry run: {counts['rows']} rows ({counts['emails']} emails) ready for {dataset} (private)"
+                + (f"; {pending} erasure(s) since the last publication: its history would be rewritten" if pending else ""))
     api.upload_folder(folder_path=str(folder), repo_id=dataset, repo_type="dataset",
                       allow_patterns=["contacts.parquet", "README.md"],
                       commit_message=f"Contacts of {time.strftime('%Y-%m-%d')}: {counts['rows']} rows")
-    return f"{counts['rows']} rows ({counts['emails']} emails, {counts['papers']} papers) → {dataset} (private)"
+    said = f"{counts['rows']} rows ({counts['emails']} emails, {counts['papers']} papers) → {dataset} (private)"
+    if not pending:
+        return said
+    purged = forget_history(api, dataset, folder / "contacts.parquet")
+    con.execute("UPDATE contact_suppressed SET published_at = ? WHERE published_at IS NULL", (now or time.time(),))
+    con.commit()
+    return f"{said}; {pending} erasure(s) since the last publication: history rewritten, {purged} earlier file(s) deleted"
+
+
+def forget_history(api: Any, dataset: str, current: Path) -> int:
+    """After an erasure: the dataset's history squashed to its current commit
+    (`HfApi.super_squash_history`: the earlier commits cannot be retrieved any more), then every stored
+    file that is not the current `contacts.parquet` deleted for good (`list_lfs_files`,
+    `permanently_delete_lfs_files`: a squashed history no longer points to them, but the storage keeps
+    them until they are deleted). Refuses to delete anything when it cannot recognize the current file
+    among them. Returns the files deleted."""
+    api.super_squash_history(repo_id=dataset, repo_type="dataset",
+                             commit_message=f"Contacts of {time.strftime('%Y-%m-%d')}: history rewritten after an erasure")
+    digest = hashlib.sha256(current.read_bytes()).hexdigest()
+    stored = [f for f in api.list_lfs_files(dataset, repo_type="dataset")]
+    if not any(digest in (f.oid, f.file_oid) for f in stored):
+        raise SystemExit(f"{dataset}: the current contacts.parquet is not among its stored files: the earlier "
+                         f"revisions' files were NOT deleted (the history is rewritten); look before trying again")
+    stale = [f for f in stored if digest not in (f.oid, f.file_oid)]
+    if stale:
+        api.permanently_delete_lfs_files(dataset, stale, repo_type="dataset", rewrite_history=True)
+    return len(stale)
 
 
 def summary(con: sqlite3.Connection) -> str:
@@ -387,4 +583,6 @@ def summary(con: sqlite3.Connection) -> str:
         "unclaimed_emails": q("SELECT COUNT(*) FROM contact WHERE position = 0"),
         "with_organization": q("SELECT COUNT(*) FROM contact WHERE organization != ''"),
         "with_address": q("SELECT COUNT(*) FROM contact WHERE address != ''"),
+        "suppressed_orcids": len(suppressed(con)[0]),
+        "erasures_not_yet_published": pending_publication(con),
     })

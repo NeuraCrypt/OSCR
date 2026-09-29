@@ -787,6 +787,8 @@ def public_db(con: sqlite3.Connection, path: Path) -> None:
     # (oscr/contacts.py), never into a public output. Email addresses in the scripts' text
     # are hidden, as on the site.
     target.execute("DROP TABLE IF EXISTS contact")
+    # Nor who asked not to be kept (their ORCID iD, their addresses' digests: oscr/contacts.py, migration 9).
+    target.execute("DROP TABLE IF EXISTS contact_suppressed")
     target.executemany("UPDATE file SET text = ? WHERE rowid = ?",
                        [(mask_emails(t), rid) for rid, t in
                         target.execute("SELECT rowid, text FROM file WHERE text LIKE '%@%'").fetchall()])
