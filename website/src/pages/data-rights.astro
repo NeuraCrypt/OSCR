@@ -1,0 +1,44 @@
+---
+// /data-rights/: exercise a data right (night phase 16, E4; the privacy statement, docs/POLICIES.md):
+// signed in (the proof of identity), behind the human check; answered on /account/moderation/, never by
+// email, within one month. Its script is src/scripts/data-rights.ts. science.css only.
+import Base from "../layouts/Base.astro";
+import PolicyDraft from "../components/PolicyDraft.astro";
+import { SITE_NAME } from "../config";
+import { RIGHT_WORDS, RIGHTS } from "../lib/moderation";
+---
+<Base
+  title="Your data rights"
+  description="Ask for a copy of your data, its correction, its erasure, or that its use stop: answered in the site, within one month."
+  breadcrumb={[{ text: "Privacy", href: "/privacy/" }, { text: "Your data rights" }]}
+>
+  <div class="policy">
+    <h1>Your data rights</h1>
+    <PolicyDraft drafted="2026-09-29" />
+    <p class="summary">
+      Ask {SITE_NAME}'s owner for what the law gives you over your data. Being signed in proves who you are; for
+      the data of a paper's author (the catalogue, the private contact details), sign in with the ORCID iD the
+      paper names. The answer comes on your page <a href="/account/moderation/">“What of mine is hidden”</a>,
+      never by email, within one month (two more months for a complex request, and the answer says why).
+    </p>
+    <p id="rights-status" role="status" aria-live="polite">Reading who you are…</p>
+    <form id="rights-form" hidden>
+      <fieldset>
+        <legend>What do you ask for?</legend>
+        <ul class="choices">
+          {RIGHTS.map((r) => <li><label><input type="radio" name="right" value={r} required /> {RIGHT_WORDS[r].charAt(0).toUpperCase() + RIGHT_WORDS[r].slice(1)}</label></li>)}
+        </ul>
+      </fieldset>
+      <p>
+        <label for="rights-details">In your words (what to correct, which use you object to; no email address)</label><br />
+        <textarea id="rights-details" rows="5" maxlength="2000"></textarea>
+      </p>
+      <p><button type="submit" id="rights-send">Send the request</button></p>
+      <p id="rights-said" role="status" aria-live="polite"></p>
+    </form>
+    <p>What {SITE_NAME} holds, and why: <a href="/privacy/">the privacy statement</a>.</p>
+  </div>
+  <script>
+    import "../scripts/data-rights";
+  </script>
+</Base>

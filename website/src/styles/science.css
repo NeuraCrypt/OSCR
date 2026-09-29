@@ -1348,3 +1348,17 @@ form.lookup input[type="text"] { width: min(28em, 100%); }
 @media (max-width: 640px) {
   table.queue { display: block; overflow-x: auto; }
 }
+/* Night phase 16: the rules and privacy pages. A draft says so first, in a ruled block (neither a
+   banner nor a badge); the pages' numbered sections and their tables are the site's ordinary ones. */
+.draft-notice { margin: .6em 0 1.2em; padding: .3em .9em; border: 1px solid var(--warning); background: var(--bg-sidebar); }
+.draft-notice p { margin: .3em 0; }
+.policy h2 { margin-top: 1.4em; }
+.policy dl { margin: .4em 0 1em; }
+.policy dt { font-weight: bold; margin-top: .6em; }
+.policy dd { margin: .1em 0 .3em 1.2em; }
+.policy table { border-collapse: collapse; margin: .5em 0 1em; font-size: .95em; }
+.policy th, .policy td { text-align: left; vertical-align: top; padding: .25em 1em .25em 0; border-bottom: 1px solid var(--rule); }
+.policy th { font-weight: bold; }
+@media (max-width: 640px) {
+  .policy table { display: block; overflow-x: auto; }
+}

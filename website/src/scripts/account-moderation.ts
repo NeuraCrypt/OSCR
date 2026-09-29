@@ -2,13 +2,12 @@
 // requests and the answers. One request to read; an appeal or a counter-notice is one more, behind the
 // human check. Like every browser script, it never names the platform.
 
-import { humanCheck, type HumanCheck } from "./human-check.ts";
+import { HUMAN_WAIT, humanToken } from "./human-check.ts";
 import { el, signInLine } from "./pull-common.ts";
 import { getJson, postJson, problemOf, signedIn, type Json } from "./social-client.ts";
 
 const status = document.getElementById("mine-status");
 const day = (t: number) => new Date(t * 1000).toISOString().slice(0, 10);
-let check: Promise<HumanCheck | null> | null = null;
 
 function appealForm(x: Json, counter: boolean): HTMLElement {
   const box = el("div", { class: "confirm" });
@@ -18,17 +17,13 @@ function appealForm(x: Json, counter: boolean): HTMLElement {
   const said = el("span", { role: "status" });
   const send = el("button", { type: "button" }, counter ? "Send the counter-notice" : "Send the appeal");
   send.addEventListener("click", async () => {
-    const human = await (check ??= (() => {
-      const c = document.getElementById("mine-check") as HTMLElement;
-      c.hidden = false;
-      box.append(c);
-      return humanCheck(c);
-    })());
-    if (!human) return void (said.textContent = "The human check is needed to send it.");
-    if (!human.token()) return void (said.textContent = "Tick the human check, then send.");
     send.disabled = true;
-    const r = await postJson("/api/forge/appeal", { target: x.target, kind: counter ? "counter_notice" : "appeal", text: text.value, goodFaith: goodFaith.checked, accurate: accurate.checked, scope: x.kind === "profile" ? "profile" : undefined, turnstile: human.token() });
-    human.reset();
+    const turnstile = await humanToken(send);
+    if (turnstile === null) {
+      send.disabled = false;
+      return void (said.textContent = HUMAN_WAIT);
+    }
+    const r = await postJson("/api/forge/appeal", { target: x.target, kind: counter ? "counter_notice" : "appeal", text: text.value, goodFaith: goodFaith.checked, accurate: accurate.checked, scope: x.kind === "profile" ? "profile" : undefined, turnstile });
     send.disabled = false;
     said.textContent = r.ok ? String(r.body.sentence ?? "Sent.") : problemOf(r.body);
     if (r.ok) void load();

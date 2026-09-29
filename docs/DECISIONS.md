@@ -2495,3 +2495,28 @@ deleted webhooks, tokens expired for 30 days, interaction limits past their end,
 than a year ago, data-rights requests answered more than 3 years ago. The moderation decisions are kept
 (their notices are public). The statuses of commits no longer in their repository need GitHub's
 answer: deferred (D16-20).
+
+### D16-17. The rules and privacy pages: static drafts, marked, built from the code where they can be
+
+**Decision.** Seven pages, one file each (the file budget): `/terms/` (the GitHub side under GitHub's
+own terms; what people own and license; suspension and appeal), `/acceptable-use/` (the reasons a report
+may give, and what happens), `/guidelines/`, `/privacy/` (every personal datum held, the private
+collection of authors' contact details included, the cookies, the browser's storage, the processors,
+retention, transfers, Do Not Track and Global Privacy Control, children, the researchers' data in the
+catalogue, the rights), `/limits/` (its numbers imported from the Worker's constants at build time, the
+quota messages from the code: the page cannot disagree with it), `/copyright/` (takedowns, GitHub's
+notice for code on GitHub, private information, counter-notices, public notices), `/data-rights/` (the
+form). Each opens with a ruled notice: a draft awaiting the owner's review, not in force, not legal
+advice. What only the owner can say is left as a bracketed blank ([the owner's name and postal address],
+the transfers' safeguards, the liability and the law that applies, the counter-notice delay). The footer
+links them. Publishing the policies in a public repository under CC0 (the plan) is the owner's choice:
+their texts are the pages' files.
+
+### D16-18. Data rights: asked and answered in the site, open to everyone, within one month
+
+**Decision.** `POST /api/forge/rights` (signed in: the sign-in is the proof of identity; for a paper's
+author, the ORCID iD the paper names), behind the human check when it is set up, 3 a day, 3 waiting at
+most, open whatever FORGE_OPEN says and to a suspended account; `POST /api/forge/rights/answer` (the
+owner) answers or refuses with words the person reads on `/account/moderation/`, never by email. The
+owner's queue shows the person's public handles (never the account's id) and the date due (one month).
+Self-service export and deletion come with phase 09. 3 rows a request, 2 an answer.

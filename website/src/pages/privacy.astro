@@ -1,0 +1,165 @@
+---
+// /privacy/: the privacy statement (night phase 16, E4; docs/POLICIES.md). Every personal datum the
+// registry holds, where, why, for how long, who else processes it, and the rights over it — the
+// private collection of authors' contact details included (CLAUDE.md). A draft for the owner's review.
+// Static; science.css only.
+import Base from "../layouts/Base.astro";
+import PolicyDraft from "../components/PolicyDraft.astro";
+import { SITE_NAME } from "../config";
+---
+<Base
+  title="Privacy"
+  description="Every personal datum the registry holds, why, for how long, who else processes it, and your rights over it."
+  breadcrumb={[{ text: "Privacy" }]}
+>
+  <div class="policy">
+    <h1>Privacy</h1>
+    <PolicyDraft drafted="2026-09-29" />
+    <p class="summary">
+      What {SITE_NAME} holds about people, why, where, for how long, who else handles it, and how to exercise
+      your rights. {SITE_NAME} never asks for, reads or stores the email address of anyone who uses it; it sends
+      no email; it shows no advertising, sells nothing and tracks no one.
+    </p>
+
+    <h2 id="who">1. Who is responsible</h2>
+    <p>
+      {SITE_NAME} is run by one person, its owner, who is the data controller: [the owner's name and postal
+      address — to be completed by the owner]. There is no email contact, on purpose: every question and request
+      is made in the site (<a href="/data-rights/">your data rights</a>, <a href="/report/">a report</a>), and
+      answered there.
+    </p>
+
+    <h2 id="accounts">2. If you have an account</h2>
+    <p>You sign in with ORCID, GitHub or Google; {SITE_NAME} asks them for as little as they allow.</p>
+    <table>
+      <thead><tr><th>What</th><th>Why</th><th>How long</th></tr></thead>
+      <tbody>
+        <tr><td>A random account number; the name the provider gave (if any); your ORCID iD and your GitHub login, when you linked them; when the account was made</td><td>To know you when you come back, and to show your public handle beside what you write</td><td>Until the account is deleted (on request now; by yourself with phase 09)</td></tr>
+        <tr><td>Each linked sign-in: the provider and its account number for you (an ORCID iD, GitHub's numeric id, Google's opaque id)</td><td>To sign you in</td><td>As the account</td></tr>
+        <tr><td>Your sessions: a fingerprint (SHA-256) of each browser's session, its dates, and a short hint such as "Firefox on macOS" (never the full browser string)</td><td>To keep you signed in, and to list your sessions</td><td>30 days after the last use</td></tr>
+        <tr><td>Your roles (verified author of a paper, maintainer of a repository) and your claims, with the words you gave</td><td>To let you correct and validate what is yours</td><td>As the account</td></tr>
+        <tr><td>What you ask of the registry: papers submitted, corrections, validations of a tracing map, removal requests, with your words (email addresses removed)</td><td>To do what you asked, and to show you where it stands</td><td>As the account; a removal request as long as its decision</td></tr>
+      </tbody>
+    </table>
+    <p>
+      No email address: ORCID and Google are asked only for an identifier ("openid"), GitHub for no permission at
+      all. A provider's token is used during the sign-in only, and never stored.
+    </p>
+
+    <h2 id="github-side">3. On the GitHub side</h2>
+    <p>
+      Repositories live in their owners' own GitHub accounts, under GitHub's terms and GitHub's privacy statement.
+      {SITE_NAME} keeps only its own layer:
+    </p>
+    <table>
+      <thead><tr><th>What</th><th>Why</th><th>How long</th></tr></thead>
+      <tbody>
+        <tr><td>Public repositories linked or created through {SITE_NAME}, the papers they are linked to, and which account linked them</td><td>To show a paper's code and keep its tracing map</td><td>Until the repository is unlinked or deleted (30 days of grace)</td></tr>
+        <tr><td>A log of what each account did (the kind of action, when, on which repository, its GitHub numeric id), never the content, never a token</td><td>The daily limits, security, and a person's public activity (their profile's calendar and timeline; never whom they blocked, their notifications or their profile edits)</td><td>For as long as the database lasts; a person's public activity shows the last year</td></tr>
+        <tr><td>Research issues and their comments: the words, and who wrote them as they are named (a GitHub login, an ORCID iD or a name)</td><td>A paper's scientific conversation; they are public</td><td>Until deleted by their author or hidden by moderation</td></tr>
+        <tr><td>Stars, star lists, follows and watches, your profile (the words you chose), notification states</td><td>What you asked for; public unless your profile is private (then only you see your stars, lists and follows)</td><td>Until you remove them; notifications and their states 3 months (saved ones kept)</td></tr>
+        <tr><td>The events that feed notifications: who did what, on which repository or paper, and the GitHub logins a text mentions (at most 10)</td><td>Your notifications and your feed, computed when you read them</td><td>3 months</td></tr>
+        <tr><td>Personal tokens of the public API: a fingerprint (SHA-256), their name, their permissions, the day of their last use — never the token</td><td>To let your scripts act as you</td><td>Until revoked; 30 days after they expire</td></tr>
+        <tr><td>Webhooks: the address as you gave it (shown to you only), the events, and a log of each delivery (its status and duration, never the receiver's answer)</td><td>To send what you asked for</td><td>Until deleted; deliveries 7 days</td></tr>
+        <tr><td>Commit statuses posted by outside services: their words and address, and the handle of who posted them</td><td>They are public, on the commit's page</td><td>As the repository</td></tr>
+        <tr><td>Reports (who reported is never shown; without an account, nothing about the reporter is kept), moderation decisions, appeals, blocks with your note, interaction limits, data-rights requests</td><td>The rules, and your rights</td><td>Reports 1 year after their decision; decisions and their public notices kept; limits until they end; requests 3 years after their answer</td></tr>
+      </tbody>
+    </table>
+    <p>
+      Signed out, a repository's page asks {SITE_NAME} nothing: your browser reads GitHub's public API and files
+      directly, on your own quota, so GitHub sees your address as for any GitHub page. What the static pages
+      show of the registry's layer (stars, profiles, research issues) is published each night as files of the
+      site: private profiles and private lists are never in them.
+    </p>
+
+    <h2 id="catalogue">4. Researchers' data in the catalogue</h2>
+    <p>
+      The catalogue describes published papers with code: their titles, dates, journals, DOIs, their authors'
+      names, ORCID iDs and affiliations as the publications and the scholarly databases give them (Crossref,
+      Europe PMC, PubMed Central, OpenAlex), and links to the authors' code, with copies of scripts whose
+      licence allows it (email addresses in the code are masked). This is public scholarly information, shown
+      so that research can be checked and reused (legitimate interest); an author may correct or claim a
+      record from its page, ask for a record or its copies to be removed (<a href="/removal/">the removal
+      page</a>), or object to it (<a href="/data-rights/">your data rights</a>). The public copies of scripts
+      are also published as the Hugging Face dataset OpenScientificCodeRegistry/Database.
+    </p>
+    <h3 id="contacts">The authors' contact details, kept privately</h3>
+    <p>
+      For each author of a paper in the catalogue, {SITE_NAME} also keeps, <strong>privately</strong>, the contact
+      details the paper itself publishes: email address, given and family names, ORCID iD, organisation,
+      postal address and affiliation, linked to the paper and its DOI. They come from the paper's full text and
+      its Europe PMC record, and serve to cite the authors and to reach the authors of the code about their own
+      paper. They are kept on the owner's computer and in a private Hugging Face dataset
+      (OpenScientificCodeRegistry/Private, which the software refuses to publish unless it is private). They
+      are never shown on the site, never in a public file, and never used for mass email: the registry does not
+      send email. An author may ask to see, correct or erase theirs, or object to their keeping, on
+      <a href="/data-rights/">the data-rights page</a> (signed in with the ORCID iD the paper names).
+    </p>
+
+    <h2 id="cookies">5. Cookies and your browser's storage</h2>
+    <table>
+      <thead><tr><th>Name</th><th>What it is</th><th>How long</th></tr></thead>
+      <tbody>
+        <tr><td><code>__Host-oscr_session</code></td><td>Your session, when you sign in (a random value; the site keeps only its fingerprint)</td><td>30 days, extended while you use it</td></tr>
+        <tr><td><code>__Host-oscr_signed_in</code></td><td>"Signed in: yes", no identity, so that a signed-out page asks the server nothing</td><td>As the session</td></tr>
+        <tr><td><code>__Host-oscr_flow</code></td><td>The sign-in in progress (sealed: its state and proof key), between the site and ORCID, GitHub or Google</td><td>10 minutes</td></tr>
+        <tr><td><code>__Host-oscr_forge</code></td><td>One authorized action in progress (sealed), between the site and GitHub</td><td>10 minutes</td></tr>
+      </tbody>
+    </table>
+    <p>
+      All are strictly necessary, secure, and for this site only: no advertising, analytics or third-party
+      cookie, so there is nothing to consent to. Your browser's own storage keeps, for you only and never sent:
+      your display preferences (localStorage), the drafts of files you edit and pull-request reviews you have not
+      sent (localStorage), and answers of GitHub's API for the tab (sessionStorage).
+    </p>
+    <p>
+      The human check (Cloudflare Turnstile) on the forms that publish words runs in Cloudflare's own frame and
+      handles what your browser sends to it under Cloudflare's privacy policy; {SITE_NAME} receives only whether
+      it passed.
+    </p>
+
+    <h2 id="processors">6. Who else handles data</h2>
+    <dl>
+      <dt>Cloudflare</dt><dd>Hosts the site, its server code and its databases (Workers, D1), and runs the human check (Turnstile). It processes every visitor's address and requests to serve them.</dd>
+      <dt>GitHub</dt><dd>Sign-in with GitHub, the registry's GitHub App, and the repositories themselves; your browser reads GitHub directly on repository pages.</dd>
+      <dt>ORCID and Google</dt><dd>Sign-in only, with an identifier and no email address.</dd>
+      <dt>Hugging Face</dt><dd>Stores the public dataset of script copies, and the private dataset of the authors' contact details.</dd>
+      <dt>Zenodo</dt><dd>Gives a DOI to a tracing map an author validates, with that author's name and ORCID iD as creator, at their request.</dd>
+      <dt>OpenAlex, Crossref, Europe PMC, PubMed Central</dt><dd>The scholarly databases the catalogue is built from; on a paper's page, your browser reads the paper's text from Europe PMC (or PubMed Central).</dd>
+      <dt>Software Heritage</dt><dd>Archives a public repository when a person asks.</dd>
+    </dl>
+    <p>
+      Some of these process data outside the European Union, notably in the United States. [To be completed by
+      the owner: the safeguard each relies on — for example the standard contractual clauses of the provider's
+      data-processing terms, or the EU–US Data Privacy Framework where the provider is certified.]
+    </p>
+
+    <h2 id="signals">7. Do Not Track, Global Privacy Control</h2>
+    <p>
+      {SITE_NAME} does not track visitors, sell or share data for advertising, or profile anyone: there is
+      nothing for these signals to turn off, and a browser that sends them is treated exactly like one that does
+      not.
+    </p>
+
+    <h2 id="children">8. Children</h2>
+    <p>
+      {SITE_NAME} is made for researchers and is not directed at children; accounts are not meant for anyone
+      under 16. If we learn that a child's data is here, it is removed.
+    </p>
+
+    <h2 id="rights">9. Your rights</h2>
+    <p>
+      You may ask for a copy of your data (access), for it in a machine-readable form (portability), for a
+      correction (rectification), for its erasure, for its use to stop (objection), or for it to be kept but not
+      used while a question is settled (restriction). Ask on <a href="/data-rights/">the data-rights page</a>:
+      being signed in proves who you are (with ORCID, GitHub or Google); for the data of a paper's author, sign
+      in with the ORCID iD the paper names. The answer comes on your page <a href="/account/moderation/">“What of
+      mine is hidden”</a>, never by email, within one month (two more months for a complex request, and we say
+      why). Exporting and deleting your account yourself come with a later version (phase 09). You may also
+      complain to your data-protection authority (in France, the CNIL).
+    </p>
+
+    <h2 id="changes">10. Changes</h2>
+    <p>This statement carries its date. A change that matters is announced on the site before it applies.</p>
+  </div>
+</Base>

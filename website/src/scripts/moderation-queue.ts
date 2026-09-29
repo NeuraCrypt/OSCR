@@ -109,9 +109,30 @@ function drawAppeals(box: HTMLElement, appeals: Json[]): void {
 
 function drawRights(box: HTMLElement, rights: Json[]): void {
   if (!rights.length) return void box.replaceChildren(el("p", {}, "No request waiting."));
-  const list = el("ul", {});
-  for (const x of rights) list.append(el("li", {}, `${day(Number(x.at))}: ${x.kind} — ${x.details || "(no words)"} `, el("a", { href: `#rights-${x.id}` }, `request ${x.id}`)));
-  box.replaceChildren(list);
+  const table = el("table", { class: "queue" }, el("thead", {}, el("tr", {}, el("th", {}, "Since"), el("th", {}, "Who"), el("th", {}, "What"), el("th", {}, "Answer (read on their page)"))));
+  const body = el("tbody", {});
+  for (const x of rights) {
+    const who = (x.who ?? {}) as Json;
+    const text = el("textarea", { rows: "3", maxlength: "2000", "aria-label": "Your answer" });
+    const said = el("span", { role: "status" });
+    const send = (state: string) => async () => {
+      const r = await postJson("/api/forge/rights/answer", { id: x.id, at: x.at, state, answer: text.value });
+      said.textContent = r.ok ? "Answered." : problemOf(r.body);
+      if (r.ok) void load();
+    };
+    const answer = el("button", { type: "button" }, "Answer");
+    const refuse = el("button", { type: "button" }, "Refuse");
+    answer.addEventListener("click", send("answered"));
+    refuse.addEventListener("click", send("refused"));
+    body.append(el("tr", {},
+      el("td", {}, day(Number(x.at)), el("br", {}), `due ${day(Number(x.at) + 30 * 86_400)}`),
+      el("td", {}, [who.github ? `GitHub ${who.github}` : "", who.orcid ? `ORCID ${who.orcid}` : "", who.name ? String(who.name) : ""].filter(Boolean).join(" · ") || "an account"),
+      el("td", { class: "text" }, `${x.kind}: ${x.details || "(no words)"}`),
+      el("td", {}, text, el("br", {}), answer, " ", refuse, " ", said),
+    ));
+  }
+  table.append(body);
+  box.replaceChildren(table);
 }
 
 async function load(): Promise<void> {

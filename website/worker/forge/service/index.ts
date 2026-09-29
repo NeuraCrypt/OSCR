@@ -40,6 +40,8 @@
 //   POST /api/forge/blocks/write      signed in   block, unblock (silent)                              blocks.ts
 //   GET  /api/forge/limits            signed in   a repository's interaction limit                     blocks.ts
 //   POST /api/forge/limits/write      signed in   set or lift an interaction limit                     blocks.ts
+//   POST /api/forge/rights            signed in   a data-rights request (Turnstile)                    rights.ts
+//   POST /api/forge/rights/answer     the owner   its answer, read on the person's page                rights.ts
 //
 // What every route gets here, in order: its path (another is 404), its method (405), the FORGE
 // binding (503 not_configured without it), and for the signed-in routes the accounts (COMMUNITY and
@@ -70,6 +72,7 @@ import { handleHookDeliveries, handleHooks, handleHookWrite } from "./hooks.ts";
 import { handleStatuses } from "./statuses.ts";
 import { handleAppeal, handleModerationMine, handleModerationRead, handleModerationWrite, handleReport } from "./moderation.ts";
 import { handleBlocks, handleBlockWrite, handleLimits, handleLimitWrite } from "./blocks.ts";
+import { handleRights, handleRightsAnswer } from "./rights.ts";
 import type { Context, D1Database, ForgeDeps, ForgeRequest, ForgeServiceEnv, RouteHandler } from "./types.ts";
 import { handleWebhook } from "./webhook.ts";
 
@@ -125,6 +128,9 @@ export const FORGE_ROUTES: Readonly<Record<string, Route>> = {
   "/api/forge/blocks/write": { method: "POST", signedIn: true, handle: (r) => handleBlockWrite(r) },
   "/api/forge/limits": { method: "GET", signedIn: true, handle: (r) => handleLimits(r) },
   "/api/forge/limits/write": { method: "POST", signedIn: true, handle: (r) => handleLimitWrite(r) },
+  // Phase 16: data-rights requests, answered in the site.
+  "/api/forge/rights": { method: "POST", signedIn: true, handle: (r) => handleRights(r) },
+  "/api/forge/rights/answer": { method: "POST", signedIn: true, handle: (r) => handleRightsAnswer(r) },
 };
 
 const PREFIX = "/api/forge/";

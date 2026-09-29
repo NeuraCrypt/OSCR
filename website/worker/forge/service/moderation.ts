@@ -44,7 +44,7 @@ import {
 } from "./moderation-core.ts";
 import { issueById } from "./research-core.ts";
 import { tokensOf } from "./tokens-core.ts";
-import { checkTurnstile } from "./turnstile.ts";
+import { checkTurnstile, requireHuman } from "./turnstile.ts";
 import { utcDay } from "./caps.ts";
 import { who } from "./who.ts";
 import { actionRow, all, first, newNonce, repoByKey, rowsOf, statements } from "./store.ts";
@@ -255,10 +255,17 @@ export async function handleModerationRead(r: ForgeRequest): Promise<Response> {
   }
   const [open, rights] = await Promise.all([
     all<ReportRow>(r.db.prepare("SELECT id, at, reporter, kind, target, label, reason, details FROM content_reports WHERE state = 'open' AND day >= ? ORDER BY day, id LIMIT ?").bind(since, 2 * QUEUE_MAX)),
-    all<{ id: string; at: number; kind: string; details: string }>(
-      r.db.prepare("SELECT id, at, kind, details FROM rights_requests WHERE state = 'open' AND at >= ? ORDER BY at LIMIT ?").bind(Math.floor(r.t) - QUEUE_DAYS * 86_400, QUEUE_MAX),
+    all<{ id: string; at: number; kind: string; details: string; user_id: string }>(
+      r.db.prepare("SELECT id, at, kind, details, user_id FROM rights_requests WHERE state = 'open' AND at >= ? ORDER BY at LIMIT ?").bind(Math.floor(r.t) - QUEUE_DAYS * 86_400, QUEUE_MAX),
     ),
   ]);
+  // Who asked, by their public handles (the owner's page only: the owner acts on the account); never the
+  // account's id.
+  const rightsView = [];
+  for (const x of rights) {
+    const u = await userById(s.db, x.user_id);
+    rightsView.push({ id: x.id, at: x.at, kind: x.kind, details: x.details, who: u ? { github: u.github_login, orcid: u.orcid, name: u.display_name } : null });
+  }
   // The appeals and counter-notices wait in the same queue; each is shown with the decision it answers.
   const isAppeal = (x: ReportRow) => (x.reason as string) === "appeal" || (x.reason as string) === "counter_notice";
   const reports = open.filter((x) => !isAppeal(x)).slice(0, QUEUE_MAX);
@@ -269,7 +276,7 @@ export async function handleModerationRead(r: ForgeRequest): Promise<Response> {
     const row = resolved && !(resolved instanceof ForgeProblem) ? await moderationRow(r.db, resolved.kind, resolved.key) : null;
     appeals.push({ ...(row ? rowView(row) : { target: x.target, label: x.label }), report: x.id, appealKind: x.reason, appealText: x.details, appealAt: x.at });
   }
-  return json({ reports: reports.map(reportView), appeals, rights, owner: true });
+  return json({ reports: reports.map(reportView), appeals, rights: rightsView, owner: true });
 }
 
 /** The moderation row written (inserted, or made hidden again), as one statement: 2 rows (the row, its
@@ -387,7 +394,8 @@ export async function handleAppeal(r: ForgeRequest): Promise<Response> {
   if (body instanceof ForgeProblem) return say(body);
   const p = validateAppeal(body);
   if (p instanceof ForgeProblem) return say(p);
-  const human = await checkTurnstile(r.env, p.turnstile, r.deps.turnstileFetch);
+  // The human check when it is set up (signed in, an appeal is open even before: turnstile.ts).
+  const human = await requireHuman(r, p.turnstile);
   if (human) return say(human);
   const scope = r.url.searchParams.get("scope") === "profile" || (body as { scope?: unknown }).scope === "profile" ? "profile" : null;
   const resolved = await resolveTarget(r, s.db, p.target, scope);

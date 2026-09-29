@@ -1,0 +1,50 @@
+---
+// /acceptable-use/: the acceptable-use and content policy (night phase 16, E4; docs/POLICIES.md). The
+// reasons a report may give (moderation-core.ts REPORT_REASONS) are this page's sections. A draft for
+// the owner's review. Static; science.css only.
+import Base from "../layouts/Base.astro";
+import PolicyDraft from "../components/PolicyDraft.astro";
+import { SITE_NAME } from "../config";
+---
+<Base
+  title="Acceptable use"
+  description="What is not allowed in the registry: unlawful content, harassment, private information, malware, spam, impersonation, misinformation, infringement, abuse of the service."
+  breadcrumb={[{ text: "Acceptable use" }]}
+>
+  <div class="policy">
+    <h1>Acceptable use and content</h1>
+    <PolicyDraft drafted="2026-09-29" />
+    <p class="summary">
+      {SITE_NAME} is for the code of research and the conversation about it. The following are not allowed; each
+      is a reason on <a href="/report/">the report form</a>.
+    </p>
+    <dl>
+      <dt id="unlawful">Unlawful content</dt>
+      <dd>Anything illegal to publish where the registry is run or where its readers are, including content that sexualises minors or promotes terrorism.</dd>
+      <dt id="abuse">Harassment, threats and abuse</dt>
+      <dd>Threatening, insulting or intimidating a person or a group; hateful content about who people are; pursuing someone who asked to be left alone (they may also block you).</dd>
+      <dt id="private">Private information (doxxing)</dt>
+      <dd>Publishing someone's private details — an address, a telephone number, health, identity documents, a private email — without their consent. The authors' professional names and affiliations in published papers are not private information.</dd>
+      <dt id="malware">Malware and harmful files</dt>
+      <dd>Code or files made to harm the computers that run them, steal from them, or use them without their owner's knowledge. {SITE_NAME} runs nobody's code; it refuses to copy files known as malware and hides the repositories that hold them.</dd>
+      <dt id="spam">Spam</dt>
+      <dd>Advertising, links for their own sake, the same text posted again and again, stars, follows or lists made to inflate numbers, accounts made in bulk.</dd>
+      <dt id="impersonation">Impersonation</dt>
+      <dd>Pretending to be a researcher, a lab, a journal or an organisation you are not, or claiming someone else's paper or code.</dd>
+      <dt id="misinformation">Deliberate misinformation</dt>
+      <dd>Fabricated results, fake citations or reproductions, false claims about a paper or its authors made to deceive. An honest disagreement, a failed reproduction reported as such, or a mistake is not misinformation: it is science.</dd>
+      <dt id="copyright">Infringement</dt>
+      <dd>Publishing someone else's work without the rights to do so; removing a licence or its author's name. How a rights holder asks for removal: <a href="/copyright/">takedowns</a>.</dd>
+      <dt id="service">Abuse of the service</dt>
+      <dd>Getting around the limits (several accounts, going past the API's rates), probing or attacking the service, using it as general storage or computing, or scraping it beyond what the API and the public files offer.</dd>
+    </dl>
+    <h2 id="enforcement">What happens</h2>
+    <p>
+      The owner reads every report. Depending on what happened, they may do nothing, hide one comment or issue,
+      hide a repository from the registry's pages, hide a profile's words, or suspend an account. Each decision
+      is said to the person on their page and published as a notice without the hidden words
+      (<a href="/notices/">the notices</a>); the person may appeal once (<a href="/terms/#appeal">terms</a>).
+      Unlawful content may be reported to the authorities.
+    </p>
+  </div>
+</Base>

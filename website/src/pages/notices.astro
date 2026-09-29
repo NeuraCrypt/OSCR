@@ -10,7 +10,7 @@ import { NOTICES } from "../lib/moderated";
 <Base
   title="Moderation notices"
   description="What was hidden from the registry's pages, why and when, and what was restored: redacted public notices."
-  breadcrumb={[{ text: "Moderation notices" }]}
+  breadcrumb={[{ text: "Acceptable use", href: "/acceptable-use/" }, { text: "Moderation notices" }]}
 >
   <h1>Moderation notices</h1>
   <p class="summary">
@@ -20,7 +20,9 @@ import { NOTICES } from "../lib/moderated";
     When {SITE_NAME}'s owner hides something from the registry's pages — after a report, a takedown notice or
     the registry's own check for known malware — a notice is published here: what kind of thing, why, when, and
     whether it was restored. A notice never repeats the hidden words, never names who reported it, and never
-    publishes private information. Anything the registry shows can be reported from the “Report” link beside it.
+    publishes private information. The rules are the <a href="/acceptable-use/">acceptable-use policy</a> and the{" "}
+    <a href="/terms/">terms</a>; takedowns and counter-notices are explained on <a href="/copyright/">the
+    takedown page</a>.
   </p>
   {NOTICES.length > 0 && (
     <table class="queue">

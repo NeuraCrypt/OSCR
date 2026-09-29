@@ -15,7 +15,7 @@ export type { Env };
  *  search within that time reads nothing from D1. */
 export const CACHE_SECONDS = 600;
 
-const MESSAGES = {
+export const MESSAGES = {
   quota:
     "The search has used its daily quota. Please try again tomorrow; meanwhile, Browse and the DOI lookup are static and always work.",
   unavailable:
