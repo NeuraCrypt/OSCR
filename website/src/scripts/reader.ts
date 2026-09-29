@@ -15,6 +15,7 @@
 // for the file, then #pair-3 for a pair, or #L10-L20 for lines. Like every browser script, it
 // never names the platform.
 import { anchorText, lineAnchor, type Range } from "../lib/code";
+import { pairClass } from "../lib/lines";
 import { browserStore, PREFS, readPref, writePref } from "../lib/prefs";
 import { fileHref, type ReaderData } from "../lib/reader";
 import { codeView, scrollInto } from "./code-view";
@@ -86,7 +87,7 @@ function start(data: ReaderData) {
     const p = pairs.get(active);
     const para = p && paper.forPair(p);
     if (para) {
-      para.classList.add("is-active");
+      markParagraph(para, p.pair);
       scrollInto(paperBody, para);
       return;
     }
@@ -168,7 +169,17 @@ function start(data: ReaderData) {
 
   /* ---------- Pairs ---------- */
 
+  /** The paragraph of the pair being read, and its classes before: it takes the pair's color
+   *  (a paragraph of several pairs has the first's). */
+  let markedParagraph: { el: HTMLElement; before: string } | null = null;
+  function markParagraph(para: HTMLElement, k: number) {
+    if (markedParagraph?.el !== para) markedParagraph = { el: para, before: para.className };
+    para.className = `${markedParagraph.before.replace(/\bpair-\d\b/, "").trim()} ${pairClass(k)} is-active`.trim();
+  }
+
   function clearActive() {
+    if (markedParagraph) markedParagraph.el.className = markedParagraph.before;
+    markedParagraph = null;
     for (const e of Array.from(document.querySelectorAll(".is-active"))) e.classList.remove("is-active");
     view.unmark();
   }
@@ -190,7 +201,7 @@ function start(data: ReaderData) {
     clearActive();
     document.querySelector(`#legend a[data-pair="${k}"]`)?.classList.add("is-active");
     const para = paperShown() ? paper.forPair(p) : null;
-    para?.classList.add("is-active");
+    if (para) markParagraph(para, k);
     const shown = p.file >= 0 && (await show(p.file));
     if (active !== k) return; // another pair was chosen meanwhile
     const lines = shown ? view.markPair(p) : null;
