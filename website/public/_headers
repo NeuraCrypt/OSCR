@@ -61,12 +61,12 @@
 
 /research/*
   X-Frame-Options: DENY
-  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'; object-src 'none'
+  Content-Security-Policy: default-src 'self'; script-src 'self' https://challenges.cloudflare.com; style-src 'self'; img-src 'self' data:; connect-src 'self'; frame-src https://challenges.cloudflare.com; form-action 'self'; frame-ancestors 'none'; base-uri 'none'; object-src 'none'
   Referrer-Policy: same-origin
 
 /r/*
   X-Frame-Options: DENY
-  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; connect-src 'self' https://api.github.com https://raw.githubusercontent.com; form-action 'self'; frame-ancestors 'none'; base-uri 'none'; object-src 'none'
+  Content-Security-Policy: default-src 'self'; script-src 'self' https://challenges.cloudflare.com; style-src 'self'; img-src 'self' data: blob:; connect-src 'self' https://api.github.com https://raw.githubusercontent.com; frame-src https://challenges.cloudflare.com; form-action 'self'; frame-ancestors 'none'; base-uri 'none'; object-src 'none'
   Referrer-Policy: same-origin
 
 # Night phase 08: the social pages hold a CSRF token or ask the Worker for the reader's own data: this
@@ -78,7 +78,7 @@
 
 /stars/
   X-Frame-Options: DENY
-  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'; object-src 'none'
+  Content-Security-Policy: default-src 'self'; script-src 'self' https://challenges.cloudflare.com; style-src 'self'; img-src 'self' data:; connect-src 'self'; frame-src https://challenges.cloudflare.com; form-action 'self'; frame-ancestors 'none'; base-uri 'none'; object-src 'none'
   Referrer-Policy: same-origin
 
 /feed/
@@ -93,7 +93,7 @@
 
 /u/*
   X-Frame-Options: DENY
-  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; connect-src 'self' https://api.github.com https://raw.githubusercontent.com; form-action 'self'; frame-ancestors 'none'; base-uri 'none'; object-src 'none'
+  Content-Security-Policy: default-src 'self'; script-src 'self' https://challenges.cloudflare.com; style-src 'self'; img-src 'self' data: blob:; connect-src 'self' https://api.github.com https://raw.githubusercontent.com; frame-src https://challenges.cloudflare.com; form-action 'self'; frame-ancestors 'none'; base-uri 'none'; object-src 'none'
   Referrer-Policy: same-origin
 
 # Night phase 10: the settings of personal tokens and webhooks hold a CSRF token, and a token or a
@@ -101,12 +101,12 @@
 # is static (no script).
 /settings/tokens/
   X-Frame-Options: DENY
-  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'; object-src 'none'
+  Content-Security-Policy: default-src 'self'; script-src 'self' https://challenges.cloudflare.com; style-src 'self'; img-src 'self' data:; connect-src 'self'; frame-src https://challenges.cloudflare.com; form-action 'self'; frame-ancestors 'none'; base-uri 'none'; object-src 'none'
   Referrer-Policy: same-origin
 
 /settings/hooks/
   X-Frame-Options: DENY
-  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'; object-src 'none'
+  Content-Security-Policy: default-src 'self'; script-src 'self' https://challenges.cloudflare.com; style-src 'self'; img-src 'self' data:; connect-src 'self'; frame-src https://challenges.cloudflare.com; form-action 'self'; frame-ancestors 'none'; base-uri 'none'; object-src 'none'
   Referrer-Policy: same-origin
 
 /developers/
@@ -136,3 +136,7 @@
   X-Frame-Options: DENY
   Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'; object-src 'none'
   Referrer-Policy: same-origin
+
+# Night phase 16: the pages above whose forms carry the human check (/research/*, /r/* and its research
+# issue form, /u/* and its profile form, /stars/ and its lists, /settings/tokens/, /settings/hooks/) also
+# allow Turnstile's script and frame, from challenges.cloudflare.com, and nothing else outside the site.

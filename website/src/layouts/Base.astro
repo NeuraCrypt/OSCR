@@ -3,7 +3,7 @@
 // imported here only. The name of the platform comes from src/config.ts, and only
 // from there.
 import "../styles/science.css";
-import { SITE_NAME, SITE_TAGLINE } from "../config";
+import { SITE_NAME, SITE_TAGLINE, TURNSTILE_SITE_KEY } from "../config";
 import { catalog, generatedInWords } from "../lib/catalog";
 
 interface Props {
@@ -41,6 +41,8 @@ const sections = [
     <title>{fullTitle}</title>
     <meta name="description" content={description} />
     <meta name="application-name" content={SITE_NAME} />
+    {/* Night phase 16: Turnstile's public site key, for the forms' human check (src/scripts/human-check.ts). */}
+    {TURNSTILE_SITE_KEY && <meta name="turnstile-site-key" content={TURNSTILE_SITE_KEY} />}
     <meta property="og:site_name" content={SITE_NAME} />
     <meta property="og:title" content={title ?? fullTitle} />
     <meta property="og:description" content={description} />

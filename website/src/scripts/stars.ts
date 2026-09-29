@@ -4,6 +4,7 @@
 // references (BibTeX, RIS) in the browser. One request to read (GET /api/forge/social/mine), one per
 // change (2 rows). Like every browser script, it never names the platform.
 
+import { HUMAN_WAIT, humanToken } from "./human-check.ts";
 import { bibtex, ris, subjectHref, subjectKind, subjectWords, type RefItem } from "../lib/social.ts";
 import { el } from "./pull-common.ts";
 import { getJson, postJson, problemOf, signedIn } from "./social-client.ts";
@@ -151,7 +152,10 @@ async function main(): Promise<void> {
   const create = el("form", { class: "list-form" }, name, " ", description, " ", el("label", { for: "new-list-public" }, isPublic, " Public"), " ", el("button", { type: "submit" }, "Create a list"));
   create.addEventListener("submit", async (ev) => {
     ev.preventDefault();
-    const r = await postJson("/api/forge/social/list", { op: "create", name: name.value, description: description.value, public: isPublic.checked });
+    // Night phase 16: a list's name is public: the human check (human-check.ts).
+    const turnstile = await humanToken(create.querySelector<HTMLElement>('button[type="submit"]') ?? create);
+    if (turnstile === null) return void said.replaceChildren(el("span", { class: "warning" }, HUMAN_WAIT));
+    const r = await postJson("/api/forge/social/list", { op: "create", name: name.value, description: description.value, public: isPublic.checked, turnstile });
     if (!r.ok) return void said.replaceChildren(el("span", { class: "warning" }, problemOf(r.body)));
     lists.push({ id: Number(r.body.id), name: name.value.trim(), description: description.value.trim(), public: isPublic.checked, collection: "", items: [] });
     name.value = "";

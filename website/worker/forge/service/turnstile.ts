@@ -15,7 +15,7 @@
 //   fails), against a local stand-in of `siteverify`: `TURNSTILE_VERIFY_URL`, a development-only
 //   variable accepted on this machine only (http://127.0.0.1, http://localhost), never in wrangler.toml.
 
-import type { ForgeServiceEnv } from "./types.ts";
+import type { ForgeRequest, ForgeServiceEnv } from "./types.ts";
 import { ForgeProblem } from "./types.ts";
 
 export const SITEVERIFY = "https://challenges.cloudflare.com/turnstile/v0/siteverify";
@@ -64,4 +64,13 @@ export async function checkTurnstile(env: ForgeServiceEnv, token: string, fetche
     return new ForgeProblem(503, "human_check_unavailable", "The human check could not be verified just now: please try again in a moment.");
   }
   return ok ? null : new ForgeProblem(403, "human_check", FAILED);
+}
+
+/** The human check of a public write form of the site (research issues and comments, profiles, star
+ *  lists, tokens, webhooks, data-rights requests): null when it passes. A request of the public API
+ *  carries a token instead (made behind this check) and is not asked. While Turnstile is not set up,
+ *  only the owner can reach a write (gate.ts `forgeOpen`), and is not asked either. */
+export async function requireHuman(r: ForgeRequest, token: unknown): Promise<ForgeProblem | null> {
+  if (r.principal || !turnstileReady(r.env)) return null;
+  return checkTurnstile(r.env, typeof token === "string" ? token : "", r.deps.turnstileFetch);
 }

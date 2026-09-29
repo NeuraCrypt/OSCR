@@ -8,6 +8,7 @@
 // with the person's publications from the catalogue. Like every browser script, it never names the
 // platform.
 
+import { HUMAN_WAIT, humanToken } from "./human-check.ts";
 import { renderMarkdown } from "../lib/markdown.ts";
 import { githubEndpoints, h, type El } from "../lib/repo-view.ts";
 import {
@@ -181,7 +182,11 @@ function editForm(p: Profile, said: HTMLElement): HTMLElement {
     ev.preventDefault();
     const v = (id: string) => (form.querySelector(`#pf-${id}`) as HTMLInputElement).value.trim();
     const c = (id: string) => (form.querySelector(`#pf-${id}`) as HTMLInputElement).checked;
+    // Night phase 16: a profile's words are public: the human check (human-check.ts).
+    const turnstile = await humanToken(form.querySelector<HTMLElement>('button[type="submit"]') ?? form);
+    if (turnstile === null) return void said.replaceChildren(el("span", { class: "warning" }, HUMAN_WAIT));
     const r = await postJson("/api/forge/social/profile", {
+      turnstile,
       name: v("name"), bio: v("bio"), pronouns: v("pronouns"), company: v("company"), location: v("location"), timezone: v("timezone"),
       website: v("website"), links: v("links").split(/\s+/).filter(Boolean), pinned: v("pinned").split(/\s+/).filter(Boolean), status: v("status"),
       busy: c("busy"), readme: c("readme"), private: c("private"),

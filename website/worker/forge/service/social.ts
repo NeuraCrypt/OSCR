@@ -24,6 +24,7 @@ import { readCapped } from "./flow.ts";
 import { closed, dailyCaps, globalCap, mayWrite, overCap } from "./gate.ts";
 import { accountHidden, hiddenAmong, hiddenOne, moderationView } from "./hidden.ts";
 import { blockedByAny, blockedProblem } from "./blocks.ts";
+import { requireHuman } from "./turnstile.ts";
 import { json, problemAnswer } from "./http.ts";
 import { linkedGithub } from "./identity.ts";
 import {
@@ -305,6 +306,11 @@ export async function handleSocialList(r: ForgeRequest): Promise<Response> {
   if (body instanceof ForgeProblem) return say(body);
   const p = validateList(body);
   if (p instanceof ForgeProblem) return say(p);
+  // Night phase 16: a list's name and description are public: the human check when they are written.
+  if (p.op === "create" || (p.op === "edit" && (p.name !== null || p.description !== null))) {
+    const human = await requireHuman(r, (body as { turnstile?: unknown }).turnstile);
+    if (human) return say(human);
+  }
   const lists = await all<ListRow>(listsOf(r.db, s.user.id));
   const list = p.op === "create" ? null : (lists.find((l) => l.list_id === p.id) ?? null);
   if (p.op !== "create" && !list) return say(new ForgeProblem(404, "not_found", "You have no list of this number."));
@@ -388,6 +394,9 @@ export async function handleSocialProfile(r: ForgeRequest): Promise<Response> {
   if (body instanceof ForgeProblem) return say(body);
   const p = validateProfile(body, r.t);
   if (p instanceof ForgeProblem) return say(p);
+  // Night phase 16: a profile's words are public: the human check (turnstile.ts).
+  const human = await requireHuman(r, (body as { turnstile?: unknown }).turnstile);
+  if (human) return say(human);
   const writes = [profileWrite(r.db, s.user.id, p, r.t)];
   const gate = await maySocial(r, s, "profile", 2);
   if (gate instanceof ForgeProblem) return say(gate);

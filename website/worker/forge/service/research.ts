@@ -6,6 +6,7 @@ import { who as whoAsks } from "./who.ts";
 import { accountHidden, hiddenActors, hiddenAmong, hiddenCommentsOf, hiddenOne, moderationView } from "./hidden.ts";
 import { isOwner } from "./moderation.ts";
 import { mayInteract } from "./blocks.ts";
+import { requireHuman } from "./turnstile.ts";
 import { queueHooks } from "./hooks.ts";
 import { FORGE_ROWS_PER_DAY } from "./caps.ts";
 import { readCapped } from "./flow.ts";
@@ -264,6 +265,9 @@ export async function handleResearchOpen(r: ForgeRequest): Promise<Response> {
   if (body instanceof ForgeProblem) return say(body);
   const parsed = validateOpen(body);
   if (parsed instanceof ForgeProblem) return say(parsed);
+  // Night phase 16: the human check of the form (turnstile.ts; not asked of an API token).
+  const human = await requireHuman(r, body.turnstile);
+  if (human) return say(human);
   if (parsed.repo) {
     const known = await knownCode(r, s.db, parsed.repo, parsed.paper);
     if (!known) {
@@ -309,6 +313,11 @@ export async function handleResearchComment(r: ForgeRequest): Promise<Response> 
   if (body instanceof ForgeProblem) return say(body);
   const p = validateComment(body);
   if (p instanceof ForgeProblem) return say(p);
+  // Night phase 16: a new comment passes the human check (an edit, a deletion, a hide need not).
+  if (p.n === null) {
+    const human = await requireHuman(r, body.turnstile);
+    if (human) return say(human);
+  }
   const issue = await first<IssueRow>(issueById(r.db, p.id));
   if (!issue) return say(new ForgeProblem(404, "not_found", "The registry has no research issue of this number."));
   const moderated = await hiddenOne(r.db, "research", String(issue.id));

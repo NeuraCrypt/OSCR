@@ -17,6 +17,7 @@ import { handleForge, isForgePath } from "../../worker/forge/service/index.ts";
 import { actionRow, deliveryRow, insertJob, insertRepo, linkPapers, newNonce, updateRepo, type NewRepo } from "../../worker/forge/service/store.ts";
 import type { Context, ForgeDeps, ForgeServiceEnv, JobKind, Outcome, PaperStatus, RepoState, RowKind, Write } from "../../worker/forge/service/types.ts";
 import { fakeForgeD1, type FakeForgeD1 } from "./d1.ts";
+import { TEST_SECRET_PASS } from "../../worker/forge/service/turnstile.ts";
 
 /** 2026-09-28 12:00 UTC, the double's own default time. */
 export const T0 = 1_790_596_800;
@@ -35,8 +36,27 @@ export interface ForgeWorld extends World {
   browser: () => ForgeBrowser;
 }
 
+/** Cloudflare's siteverify as its documented test secrets make it answer (night phase 16): the secret
+ *  1x…AA passes any token, 2x…AA fails every one. Never Cloudflare itself from a test. */
+export const turnstileStandIn: typeof fetch = async (_url, init) => {
+  const form = new URLSearchParams(String(init?.body ?? ""));
+  const pass = form.get("secret") === TEST_SECRET_PASS && !!form.get("response");
+  return new Response(JSON.stringify({ success: pass, "error-codes": pass ? [] : ["invalid-input-response"] }), { headers: { "Content-Type": "application/json" } });
+};
+
+/** The token a page sends once Turnstile's widget passed (Cloudflare's documented dummy token). */
+export const HUMAN_TOKEN = "XXXX.DUMMY.TOKEN.XXXX";
+
+/** The routes whose forms carry the human check (night phase 16): the test browser sends the widget's
+ *  token with them, as a page does once the check passed, unless a test sends its own. */
+export const HUMAN_ROUTES = new Set([
+  "/api/forge/research/open", "/api/forge/research/comment", "/api/forge/social/profile", "/api/forge/social/list",
+  "/api/forge/tokens/write", "/api/forge/hooks/write", "/api/forge/report", "/api/forge/appeal", "/api/forge/rights",
+]);
+
 /** A fresh world. `env` overrides the environment (FORGE_OPEN, FORGE_OWNER_GITHUB_ID: undefined to
- *  unset), `deps` the service's dependencies. */
+ *  unset), `deps` the service's dependencies. Night phase 16: Turnstile is set up with Cloudflare's
+ *  always-passing test secret and a local stand-in of siteverify (the switch FORGE_OPEN needs it). */
 export function forgeWorld(opts: { env?: Partial<ForgeServiceEnv>; deps?: Partial<ForgeDeps>; t?: number } = {}): ForgeWorld {
   const base = world();
   const clock = { t: opts.t ?? T0 };
@@ -44,10 +64,10 @@ export function forgeWorld(opts: { env?: Partial<ForgeServiceEnv>; deps?: Partia
   const backend = new MemoryBackend({ now: () => clock.t });
   const ada = backend.addUser(ADA_LOGIN);
   base.mock.who.github = { id: Number(ada.user.id), login: ADA_LOGIN, name: "Ada Fixture" };
-  const env: ForgeServiceEnv = { ...base.env, FORGE: forge, FORGE_OWNER_GITHUB_ID: ada.user.id, ...opts.env };
+  const env: ForgeServiceEnv = { ...base.env, FORGE: forge, FORGE_OWNER_GITHUB_ID: ada.user.id, TURNSTILE_SECRET_KEY: TEST_SECRET_PASS, ...opts.env };
   const waited: Promise<unknown>[] = [];
   const ctx = { waited, waitUntil: (p: Promise<unknown>) => void waited.push(p.catch(() => undefined)) };
-  const deps: ForgeDeps = { backend, now: () => clock.t, ...opts.deps };
+  const deps: ForgeDeps = { backend, now: () => clock.t, turnstileFetch: turnstileStandIn, ...opts.deps };
   const w: ForgeWorld = {
     ...base,
     forge,
@@ -84,6 +104,14 @@ export class ForgeBrowser extends Browser {
   constructor(w: ForgeWorld) {
     super(w.env, w.mock);
     this.w = w;
+  }
+
+  /** A POST as a page sends it; to a form with the human check, with the widget's token (unless given). */
+  async post(path: string, body?: unknown, opts: { csrf?: string | null; origin?: string | null; headers?: Record<string, string> } = {}): Promise<Response> {
+    const withToken = HUMAN_ROUTES.has(new URL(path, this.origin).pathname) && body && typeof body === "object" && !Array.isArray(body) && !("turnstile" in body)
+      ? { ...(body as Record<string, unknown>), turnstile: HUMAN_TOKEN }
+      : body;
+    return super.post(path, withToken, opts);
   }
 
   async fetch(path: string, init: { method?: string; headers?: Record<string, string>; body?: string } = {}): Promise<Response> {

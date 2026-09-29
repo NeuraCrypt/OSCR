@@ -3,6 +3,7 @@
 // (FORGE_OPEN), the daily caps counted from the rows, the answers in words (no token ever), OSCR's
 // rows as statements (store.ts, as D1 bills them, never a scan), the registry of action kinds, and
 // the Worker's bundle, which imports nothing from website/tests/.
+import { TEST_SECRET_PASS } from "../../worker/forge/service/turnstile.ts";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
@@ -164,7 +165,7 @@ describe("the routes", () => {
 });
 
 describe("the gate", () => {
-  test("FORGE_OPEN: closed by default, the owner only with FORGE_OWNER_GITHUB_ID, everyone with FORGE_OPEN=true", () => {
+  test("FORGE_OPEN: closed by default, the owner only with FORGE_OWNER_GITHUB_ID, everyone with FORGE_OPEN=true and the content rules in force", () => {
     for (const id of ["1", "4242001", null, undefined, ""]) assert.equal(mayWrite({}, id), false, String(id));
     const owner = { FORGE_OWNER_GITHUB_ID: "4242001" };
     assert.equal(mayWrite(owner, "4242001"), true);
@@ -174,8 +175,12 @@ describe("the gate", () => {
     assert.equal(mayWrite({ FORGE_OWNER_GITHUB_ID: " 4242001 " }, "4242001"), true);
     // An owner id that is not a number closes the gate to everyone.
     for (const bad of ["", "ada-fixture", "42 42", "*"]) assert.equal(mayWrite({ FORGE_OWNER_GITHUB_ID: bad }, bad), false, bad);
-    for (const open of ["true", " true "]) assert.equal(mayWrite({ FORGE_OPEN: open }, "7"), true, open);
-    for (const notOpen of ["1", "TRUE", "yes", "false", ""]) assert.equal(mayWrite({ FORGE_OPEN: notOpen }, "7"), false, notOpen);
+    // Night phase 16: the switch opens only with the content rules in force (Turnstile's secret set).
+    const rules = { TURNSTILE_SECRET_KEY: TEST_SECRET_PASS };
+    for (const open of ["true", " true "]) assert.equal(mayWrite({ FORGE_OPEN: open, ...rules }, "7"), true, open);
+    for (const open of ["true", " true "]) assert.equal(mayWrite({ FORGE_OPEN: open }, "7"), false, `${open} without Turnstile`);
+    assert.equal(mayWrite({ FORGE_OPEN: "true", TURNSTILE_SECRET_KEY: "short" }, "7"), false);
+    for (const notOpen of ["1", "TRUE", "yes", "false", ""]) assert.equal(mayWrite({ FORGE_OPEN: notOpen, ...rules }, "7"), false, notOpen);
     assert.equal(mayWrite({ FORGE_OPEN: "false", FORGE_OWNER_GITHUB_ID: "7" }, "7"), true);
     const p = closed();
     assert.equal(p.status, 403);

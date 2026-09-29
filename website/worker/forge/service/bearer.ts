@@ -46,6 +46,40 @@ export function tokenOf(request: Request): string | null | ForgeProblem {
 
 const unknown = () => new ForgeProblem(401, "bad_credentials", "This token is not valid: it was revoked, or it never existed. Make a new one in your settings.");
 
+// ─── bad tokens, per address (night phase 16, D10-14) ────────────────────────
+// A request with a wrong token costs one read of D1: past BAD_TOKENS_PER_MINUTE from one address, the
+// isolate refuses the next ones for the rest of the minute before any read. The address (Cloudflare's
+// CF-Connecting-IP) lives in the isolate's memory for that minute only: never written, never logged.
+
+export const BAD_TOKENS_PER_MINUTE = 20;
+const BAD_TOKENS = new Map<string, { minute: number; n: number }>();
+const BAD_KEYS = 5_000;
+
+const addressOf = (request: Request): string => request.headers.get("CF-Connecting-IP") ?? "";
+
+/** Whether this address sent too many bad tokens this minute. */
+export function tooManyBadTokens(request: Request, t: number): boolean {
+  const a = addressOf(request);
+  const w = a ? BAD_TOKENS.get(a) : undefined;
+  return !!w && w.minute === Math.floor(t / 60) && w.n >= BAD_TOKENS_PER_MINUTE;
+}
+
+/** One more bad token from this address. */
+export function badToken(request: Request, t: number): void {
+  const a = addressOf(request);
+  if (!a) return;
+  const minute = Math.floor(t / 60);
+  const w = BAD_TOKENS.get(a);
+  if (w && w.minute === minute) w.n += 1;
+  else {
+    if (BAD_TOKENS.size >= BAD_KEYS) BAD_TOKENS.clear();
+    BAD_TOKENS.set(a, { minute, n: 1 });
+  }
+}
+
+const tooMany = (t: number) =>
+  new ForgeProblem(429, "too_many_bad_tokens", "Too many requests with a wrong token from this address: wait a minute, then use a valid token.", { retryAfter: 60 - (Math.floor(t) % 60) });
+
 /** The principal of a request that carries a token, or the problem that refuses it. */
 export async function bearer(
   request: Request,
@@ -54,11 +88,19 @@ export async function bearer(
   ctx: Context,
 ): Promise<Principal | ForgeProblem | null> {
   const token = tokenOf(request);
-  if (token === null || token instanceof ForgeProblem) return token;
+  if (token === null) return token;
+  if (tooManyBadTokens(request, t)) return tooMany(t);
+  if (token instanceof ForgeProblem) {
+    badToken(request, t);
+    return token;
+  }
   if (!env.COMMUNITY || typeof env.SESSION_KEY !== "string") return new ForgeProblem(503, "not_configured", "Accounts are not set up yet.");
   const digest = await tokenDigest(token);
   const row = await first<TokenRow>(tokenByDigest(env.FORGE, digest));
-  if (!row) return unknown();
+  if (!row) {
+    badToken(request, t);
+    return unknown();
+  }
   if (row.expires_at <= t) {
     return new ForgeProblem(401, "token_expired", `This token expired on ${new Date(row.expires_at * 1000).toISOString().slice(0, 10)}: make a new one in your settings.`);
   }

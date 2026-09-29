@@ -15,7 +15,12 @@
 #      from the .pem file GitHub gave (the path is asked, the key is never shown); its public name
 #      (slug) and the owner's numeric GitHub id, stored as secrets too so that a deployment never
 #      wipes them. FORGE_OPEN is never set here: the GitHub side's writes stay closed to everyone
-#      but the owner until phase 16's content rules.
+#      but the owner until phase 16's content rules;
+#   7. night phase 16, the human check (Cloudflare Turnstile, free: create the widget first,
+#      docs/MODERATION.md "The owner's steps"): its secret key pasted the same way, never shown, a
+#      Cloudflare secret; its site key, which is public, written to the Mac's settings
+#      (OSCR_TURNSTILE_SITE_KEY) so that the nightly's build puts it in the forms. Without the secret,
+#      FORGE_OPEN opens nothing and no report can be sent.
 #
 #   cd /Volumes/Expansion/Scrapper && sh tools/setup_cloudflare.sh
 #
@@ -53,7 +58,7 @@ ask_secret() {
   value=""
 }
 
-say "1/8 Cloudflare login and packages"
+say "1/9 Cloudflare login and packages"
 if [ -x /opt/homebrew/bin/uv ]; then /opt/homebrew/bin/uv sync -q; fi
 cd "$ROOT/website"
 if ! npx wrangler whoami </dev/null >/dev/null 2>&1; then
@@ -63,7 +68,7 @@ if ! npx wrangler whoami </dev/null >/dev/null 2>&1; then
 fi
 echo "logged in"
 
-say "2/8 The databases"
+say "2/9 The databases"
 list_json() { npx wrangler d1 list --json </dev/null 2>/dev/null; }
 existing=$(list_json)
 for name in oscr_catalog oscr_search oscr_community oscr_forge; do
@@ -78,21 +83,21 @@ existing=$(list_json)
 # The four databases bound at the top of wrangler.toml (their ids are identifiers, not secrets).
 printf '%s' "$existing" | "$PY" "$ROOT/tools/bind_d1.py" "$ROOT/website/wrangler.toml"
 
-say "3/8 Their tables"
+say "3/9 Their tables"
 for name in oscr_catalog oscr_search oscr_community oscr_forge; do
   npx wrangler d1 migrations apply "$name" --remote </dev/null | tail -n 2
 done
 
-say "4/8 The site, rebuilt and put online (a few minutes)"
+say "4/9 The site, rebuilt and put online (a few minutes)"
 cd "$ROOT"
 "$PY" -m oscr --public --out data/public export
 "$PY" -c 'from pathlib import Path; from oscr import publish; print(publish.deploy_cloudflare(Path("data/public"), "'"$PROJECT"'"))'
 
-say "5/8 The search's first load"
+say "5/9 The search's first load"
 "$PY" "$ROOT/tools/bind_d1.py" --settings OSCR_D1_PUSH=remote
 "$PY" -m oscr d1 push --remote
 
-say "6/8 The server key"
+say "6/9 The server key"
 cd "$ROOT/website"
 if npx wrangler secret list </dev/null 2>/dev/null | grep -qw SESSION_KEY; then
   echo "SESSION_KEY: already set, kept"
@@ -101,14 +106,14 @@ else
   echo "SESSION_KEY: made and stored (never shown)"
 fi
 
-say "7/8 The six sign-in values"
+say "7/9 The six sign-in values"
 echo "Paste each value, then press Enter. Nothing shows while you paste: that is on purpose."
 echo "An empty answer keeps the current value."
 for name in ORCID_CLIENT_ID ORCID_CLIENT_SECRET GITHUB_CLIENT_ID GITHUB_CLIENT_SECRET GOOGLE_CLIENT_ID GOOGLE_CLIENT_SECRET; do
   ask_secret "$name"
 done
 
-say "8/8 The GitHub App (the GitHub side; register it on GitHub first: docs/FORGE.md)"
+say "8/9 The GitHub App (the GitHub side; register it on GitHub first: docs/FORGE.md)"
 echo "Paste each value from the App's settings page on GitHub, then press Enter. Nothing shows."
 echo "An empty answer keeps the current value."
 ask_secret GITHUB_APP_ID digits
@@ -136,6 +141,28 @@ else
 fi
 pem=""
 echo "FORGE_OPEN: not set, on purpose: the GitHub side opens to the public with its content rules (phase 16)."
+
+say "9/9 The human check: Cloudflare Turnstile (night phase 16; create the widget first: docs/MODERATION.md)"
+echo "Paste the widget's SECRET key, then press Enter. Nothing shows. An empty answer keeps the current value."
+ask_secret TURNSTILE_SECRET_KEY
+printf 'The widget'"'"'s SITE key (public: the forms carry it; empty keeps the current one): '
+IFS= read -r sitekey || sitekey=""
+sitekey=$(printf '%s' "$sitekey" | tr -d '[:space:]')
+SETTINGS="$HOME/.config/oscr/settings"
+if [ -z "$sitekey" ]; then
+  echo "  kept"
+elif ! printf '%s' "$sitekey" | grep -Eq '^[0-9A-Za-z_-]{10,100}$'; then
+  echo "  not stored: a site key is letters, digits, - and _"
+else
+  mkdir -p "$(dirname "$SETTINGS")"
+  touch "$SETTINGS"
+  grep -v '^OSCR_TURNSTILE_SITE_KEY=' "$SETTINGS" >"$SETTINGS.next" || true
+  printf 'OSCR_TURNSTILE_SITE_KEY=%s\n' "$sitekey" >>"$SETTINGS.next"
+  mv "$SETTINGS.next" "$SETTINGS"
+  echo "  written to the Mac's settings: every build of the nightly puts it in the forms"
+  echo "  (a build by hand: TURNSTILE_SITE_KEY=<the site key> npm run deploy, in website/)"
+fi
+sitekey=""
 
 printf '\nDone. Try https://oscr.yannbellec-b.workers.dev/account/ and https://oscr.yannbellec-b.workers.dev/search/\n'
 printf 'Then tell Claude: it records the databases bound in website/wrangler.toml.\n'

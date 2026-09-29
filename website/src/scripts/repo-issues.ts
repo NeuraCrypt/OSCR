@@ -13,6 +13,7 @@
 //
 // Everything is text nodes; like every browser script, it never names the platform.
 
+import { HUMAN_WAIT, humanToken } from "./human-check.ts";
 import { maskEmails } from "../../worker/forge/mask.ts";
 import type * as T from "../../worker/forge/types.ts";
 import { TYPE_WORDS, type IssueSummary, type ResearchType } from "../../worker/forge/service/research-core.ts";
@@ -656,7 +657,10 @@ async function mountNewIssue(slot: HTMLElement, env: CodeEnv): Promise<void> {
       }
       Object.assign(payload, { paper: paperPick.value, repo: { forge: env.info.key.forge, id: env.info.key.id, path: `${env.repo.owner}/${env.repo.name}`.toLowerCase() } });
       if (prefill.section && !payload.section) payload.section = prefill.section;
-      const res = await researchPost("/api/forge/research/open", payload);
+      // Night phase 16: a research issue passes the human check (human-check.ts).
+      const turnstile = await humanToken(form.querySelector<HTMLElement>('button[type="submit"]') ?? form);
+      if (turnstile === null) return void said.replaceChildren(el("p", { class: "warning" }, HUMAN_WAIT));
+      const res = await researchPost("/api/forge/research/open", { ...payload, turnstile });
       if (!res.ok) {
         said.replaceChildren(el("p", { class: "warning" }, problemOf(res.body)));
         return;

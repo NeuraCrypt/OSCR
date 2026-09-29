@@ -126,7 +126,7 @@ describe("reports", () => {
     assert.equal(w.forge.totals.written - before, 3, "the report, its open entry, the action row");
     // Another site, no Turnstile, the always-fail key: refused, nothing written.
     assert.equal((await anon.post("/api/forge/report", { target: `research:${issue}`, reason: "spam", turnstile: TOKEN }, { csrf: null, origin: "https://evil.example" })).status, 403);
-    assert.equal((await body(await anon.post("/api/forge/report", { target: `research:${issue}`, reason: "spam" }, { csrf: null }))).error.code, "human_check");
+    assert.equal((await body(await anon.post("/api/forge/report", { target: `research:${issue}`, reason: "spam", turnstile: "" }, { csrf: null }))).error.code, "human_check");
     w.env.TURNSTILE_SECRET_KEY = TEST_SECRET_FAIL;
     assert.equal((await body(await anon.post("/api/forge/report", { target: `research:${issue}`, reason: "spam", turnstile: TOKEN }, { csrf: null }))).error.code, "human_check");
     delete w.env.TURNSTILE_SECRET_KEY;

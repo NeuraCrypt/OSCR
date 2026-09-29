@@ -2446,3 +2446,52 @@ repository would need an index the budget does not allow. Organizations' limits 
 
 **Decision.** `research_comments` is rebuilt in 0010 with 'low-quality' among a maintainer's reasons to
 hide a comment (HIDE_REASONS). The owner's moderation stays the `moderation` table's.
+
+### D16-13. The switch: FORGE_OPEN opens only with the content rules in force
+
+**Decision.** `gate.ts` `forgeOpen(env)` = `FORGE_OPEN === "true"` **and** `rulesReady(env)` (Turnstile's
+secret set). Without the secret, `FORGE_OPEN="true"` opens nothing: the write routes stay the owner's
+(who is not asked for the check while it is not set up), and reports answer 503. Every other rule is
+code and in force whatever the switch says: reports, the queue, blocks, limits, caps, the suspension.
+The owner's steps, in order, are in NIGHT_REPORT.md: create the Turnstile widget, run
+`tools/setup_cloudflare.sh` (step 9), deploy, check a report and a comment behind the check, then set
+`FORGE_OPEN=true` (a Cloudflare variable; never in wrangler.toml, never by the setup script).
+
+### D16-14. Turnstile on every public write form of the site; the API carries its token instead
+
+**Decision.** The site's forms that publish words ask for the widget's token and the Worker verifies it
+(`requireHuman`, one `siteverify` a send): a report, an appeal, a research issue, a new research
+comment, a profile, a star list's name or description, a personal token, a webhook (its ping reaches
+an address a person names), a data-rights request. Not asked: edits and deletions of one's own words,
+stars, follows, notification states, blocks and limits (bounded by their caps), and GitHub's
+authorized actions (GitHub's own authorization, one action at a time, is the person's). A request of
+the public API carries a token made behind the check, and is not asked. The widget's script and frame
+come from challenges.cloudflare.com: the CSP of the pages with such a form allows them, nothing else.
+The site key is public and goes into the pages at build time (`TURNSTILE_SITE_KEY`, from the Mac's
+settings `OSCR_TURNSTILE_SITE_KEY` in the nightly); the secret is a Cloudflare secret. Tests use
+Cloudflare's documented test keys only, with a local stand-in of `siteverify`
+(`TURNSTILE_VERIFY_URL`, accepted on this machine only).
+
+**Deferred.** Turnstile on bursts of stars and follows (D08-17): the buttons would need the widget on
+every page; the social caps (300 writes a day, 3,000 stars, 2,000 follows) bound them meanwhile.
+
+### D16-15. Abuse limits: what exists, what was added
+
+**Decision.** Kept: the per-account caps (100 actions, 10 creations, 20 links, 300 social writes, 3,000
+stars, 2,000 follows, 50 token and webhook changes, which include pings), the 65,536 characters of a
+comment (GitHub's `BODY_CHARS`, the research tables' CHECK), attachments (1 MiB and 100 files through
+the Worker, 25 MiB a release asset, GitHub's own types), mentions (10 an event). Added: reports (20 an
+account, 50 a day without one), appeals (5), blocks (100 changes, 1,000 kept), limits (20), data-rights
+requests (3 a day, 3 open); a suspended account makes no token; an address sending 20 wrong API tokens
+in a minute is refused before any read for the rest of that minute (the address in the isolate's
+memory only).
+
+### D16-16. Retention, each night, within a budget
+
+**Decision.** `oscr/retention.py` (`oscr forge retention`, and the nightly under `OSCR_FORGE_PUSH`,
+`OSCR_RETENTION_BUDGET` rows, 2,000 by default) deletes, by key and a bounded page at a time: events
+past 3 months, notification states past 3 months not saved, webhook deliveries past 7 days and those of
+deleted webhooks, tokens expired for 30 days, interaction limits past their end, reports decided more
+than a year ago, data-rights requests answered more than 3 years ago. The moderation decisions are kept
+(their notices are public). The statuses of commits no longer in their repository need GitHub's
+answer: deferred (D16-20).

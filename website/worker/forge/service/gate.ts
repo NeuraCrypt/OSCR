@@ -3,7 +3,8 @@
 // - FORGE_OPEN (D01-1). Until phase 16's content rules, the write routes (start, act) answer only
 //   to the owner: the GitHub account whose numeric id is FORGE_OWNER_GITHUB_ID. `mayWrite` is asked
 //   at start (the GitHub identity linked to the signed-in account) and again at act (the account
-//   GitHub says authorized the action). FORGE_OPEN="true" opens them to every signed-in account.
+//   GitHub says authorized the action). FORGE_OPEN="true" opens them to every signed-in account —
+//   night phase 16: only once the content rules are in force (`rulesReady`: Turnstile's secret set).
 //   Webhooks and the signed-in reads are not gated.
 // - The per-account caps (100 authorized actions, 10 repositories created, 20 linked in 24 hours):
 //   counted from the account's action rows, two key ranges of `actions` ((yesterday, user) and
@@ -16,14 +17,24 @@
 //   is not asked, its rows count in the total the next action sees.
 
 import { CAP_OF, CAP_WORDS, FORGE_ROWS_PER_DAY, KINDS_OF, OWN_CAPS, PER_ACCOUNT_DAY, untilNextDay, utcDay, type Cap } from "./caps.ts";
+import { turnstileReady } from "./turnstile.ts";
 import { ForgeProblem, type D1Database, type ForgeServiceEnv, type RowKind } from "./types.ts";
 
 export const CLOSED_MESSAGE = "The GitHub side opens to the public with its content rules; until then, only the owner of the registry can act here.";
 
-/** Whether this GitHub account may use the write routes. Closed to everyone when neither
- *  FORGE_OPEN="true" nor FORGE_OWNER_GITHUB_ID is set. */
+/** Night phase 16: whether the content rules are all in force, so that FORGE_OPEN may open the GitHub
+ *  side to everyone. The rules, caps, reports, blocks and limits are code; the one thing the owner must
+ *  set is the human check, Turnstile's secret (turnstile.ts). Without it, FORGE_OPEN="true" opens
+ *  nothing: the write routes stay the owner's, and a report cannot be sent. */
+export const rulesReady = (env: ForgeServiceEnv): boolean => turnstileReady(env);
+
+/** Whether the GitHub side is open to everyone: FORGE_OPEN="true" AND the content rules in force. */
+export const forgeOpen = (env: ForgeServiceEnv): boolean => (env.FORGE_OPEN ?? "").trim() === "true" && rulesReady(env);
+
+/** Whether this GitHub account may use the write routes. Closed to everyone when neither the switch
+ *  (FORGE_OPEN="true", with the content rules in force: forgeOpen) nor FORGE_OWNER_GITHUB_ID is set. */
 export function mayWrite(env: ForgeServiceEnv, githubId: string | number | null | undefined): boolean {
-  if ((env.FORGE_OPEN ?? "").trim() === "true") return true;
+  if (forgeOpen(env)) return true;
   const owner = (env.FORGE_OWNER_GITHUB_ID ?? "").trim();
   if (!/^\d{1,20}$/.test(owner)) return false;
   const id = githubId === null || githubId === undefined ? "" : String(githubId).trim();

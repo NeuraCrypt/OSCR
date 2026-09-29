@@ -35,6 +35,8 @@ import {
 import { ForgeProblem, type ForgeRequest } from "./types.ts";
 import { linkedGithub } from "./identity.ts";
 import { mayWrite } from "./gate.ts";
+import { accountHidden, suspended } from "./hidden.ts";
+import { requireHuman } from "./turnstile.ts";
 
 /** GET /api/forge/tokens: the reader's tokens, the scopes in words, the limits. */
 export async function handleTokens(r: ForgeRequest): Promise<Response> {
@@ -87,6 +89,11 @@ export async function handleTokenWrite(r: ForgeRequest): Promise<Response> {
   if (op !== "create") return say(new ForgeProblem(400, "bad_payload", "Say what to do: create or revoke."));
   const p = validateToken(body);
   if (p instanceof ForgeProblem) return say(p);
+  // Night phase 16: a suspended account makes no token; a token is made behind the human check.
+  const suspendedRow = await accountHidden(r.db, s.user.id);
+  if (suspendedRow) return say(suspended(suspendedRow));
+  const human = await requireHuman(r, (body as { turnstile?: unknown }).turnstile);
+  if (human) return say(human);
   const mine = await all<TokenRow>(tokensOf(r.db, s.user.id));
   if (mine.length >= TOKENS_PER_ACCOUNT) {
     return say(new ForgeProblem(409, "too_many_tokens", `An account holds ${TOKENS_PER_ACCOUNT} tokens at most: revoke one you no longer use first.`));

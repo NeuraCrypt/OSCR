@@ -48,7 +48,7 @@ import type { User } from "../../account/store.ts";
 import { SEGMENT } from "../paths.ts";
 import type { ForgeName } from "../types.ts";
 import { PER_ACCOUNT_DAY } from "./caps.ts";
-import { dailyCaps, mayWrite } from "./gate.ts";
+import { dailyCaps, forgeOpen, mayWrite } from "./gate.ts";
 import { hiddenOne, moderationView } from "./hidden.ts";
 import { linkedGithub } from "./identity.ts";
 import { json, problem } from "./http.ts";
@@ -524,10 +524,11 @@ export async function handleMine(r: ForgeRequest): Promise<Response> {
   return json(answer);
 }
 
-/** Whether the reader's linked GitHub account may start actions (gate.ts mayWrite): FORGE_OPEN, or
- *  the owner's id. The GitHub identity is read by identities_user only when the gate is not open. */
+/** Whether the reader's linked GitHub account may start actions (gate.ts mayWrite): the switch open
+ *  (FORGE_OPEN with the content rules, forgeOpen), or the owner's id. The GitHub identity is read by
+ *  identities_user only when the gate is not open. */
 async function openTo(r: ForgeRequest, community: D1Database, userId: string): Promise<boolean> {
-  if ((r.env.FORGE_OPEN ?? "").trim() === "true") return true;
+  if (forgeOpen(r.env)) return true;
   const identity = await first<{ subject: string }>(
     community.prepare("SELECT subject FROM identities WHERE user_id = ? AND provider = 'github'").bind(userId),
   );

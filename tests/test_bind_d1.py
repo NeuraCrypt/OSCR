@@ -101,7 +101,7 @@ def test_the_setup_script_is_valid_sh_and_never_shows_a_secret():
     # Every value the forge needs is asked; FORGE_OPEN is never set.
     for name in ["GITHUB_APP_ID", "GITHUB_APP_CLIENT_ID", "GITHUB_APP_CLIENT_SECRET", "GITHUB_APP_WEBHOOK_SECRET",
                  "GITHUB_APP_SLUG", "FORGE_OWNER_GITHUB_ID", "GITHUB_APP_PRIVATE_KEY",
-                 "ORCID_CLIENT_ID", "GITHUB_CLIENT_SECRET", "GOOGLE_CLIENT_SECRET"]:
+                 "ORCID_CLIENT_ID", "GITHUB_CLIENT_SECRET", "GOOGLE_CLIENT_SECRET", "TURNSTILE_SECRET_KEY"]:
         assert name in text, name
     assert not re.search(r"secret put\s+\"?FORGE_OPEN", text)
     assert "ask_secret FORGE_OPEN" not in text

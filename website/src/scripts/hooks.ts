@@ -5,6 +5,7 @@
 // is found by the registry's layer (GET /api/forge/repo: 1 request). A secret is shown once. Like every
 // browser script, it never names the platform.
 
+import { HUMAN_WAIT, humanToken } from "./human-check.ts";
 import { deliveriesTable, hookForm, hooksList, madeSecret, readHookSubject, type DeliveryItem, type HookItem } from "../lib/automation.ts";
 import { h } from "../lib/repo-view.ts";
 import { show, toDom } from "./dom.ts";
@@ -88,8 +89,14 @@ async function draw(): Promise<void> {
     if (typeof s !== "string") return say(made, s.problem, "warning");
     const button = form.querySelector("button");
     if (button) button.disabled = true;
+    // Night phase 16: a webhook is made behind the human check (human-check.ts).
+    const turnstile = await humanToken(button ?? form);
+    if (turnstile === null) {
+      if (button) button.disabled = false;
+      return say(made, HUMAN_WAIT, "warning");
+    }
     say(made, "Pinging the address…");
-    const out = await postJson("/api/forge/hooks/write", { op: "create", subject: s, url: String(fd.get("url") ?? ""), events });
+    const out = await postJson("/api/forge/hooks/write", { op: "create", subject: s, url: String(fd.get("url") ?? ""), events, turnstile });
     if (button) button.disabled = false;
     if (!out.ok) return say(made, problemOf(out.body), "warning");
     const b = out.body as { secret: string; ping: { ok: boolean; words: string } };

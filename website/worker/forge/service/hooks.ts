@@ -30,6 +30,7 @@ import type { SignedIn } from "../../account/guard.ts";
 import { commitAutomation, mayAutomate, readJsonBody } from "./automation.ts";
 import { closed, globalCap, mayWrite } from "./gate.ts";
 import { hiddenEventFilter } from "./hidden.ts";
+import { requireHuman } from "./turnstile.ts";
 import {
   deliveriesOf,
   deliveryInsert,
@@ -298,6 +299,9 @@ export async function handleHookWrite(r: ForgeRequest): Promise<Response> {
   if (op === "create") {
     // FORGE_OPEN first: nothing is looked up, nothing sent, for an account that may not write.
     if (!mayWrite(r.env, await linkedGithub(s.db, s.user.id))) return say(closed());
+    // Night phase 16: a webhook's first ping is a request to an address a person names: the human check.
+    const human = await requireHuman(r, p.turnstile);
+    if (human) return say(human);
     const req = validateHook(p, { allowLocal: (r.env.HOOKS_ALLOW_LOCAL ?? "") === "1", siteHost: r.url.hostname });
     if (req instanceof ForgeProblem) return say(req);
     if (mine.length >= HOOKS_PER_ACCOUNT) return say(new ForgeProblem(409, "too_many_hooks", `An account holds ${HOOKS_PER_ACCOUNT} webhooks at most: delete one first.`));

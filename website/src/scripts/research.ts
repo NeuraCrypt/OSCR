@@ -14,6 +14,7 @@
 // into view trees, "#12" and "research#3" linked, email addresses masked, never HTML, never run.
 // Like every browser script, it never names the platform.
 
+import { HUMAN_WAIT, humanToken } from "./human-check.ts";
 import type { CommentView, IssueSummary, IssueView, ResearchType, Resolution } from "../../worker/forge/service/research-core.ts";
 import { HIDE_REASONS, OUTCOME_WORDS, RESOLUTION_WORDS, RESOLUTIONS_OF, TYPE_WORDS } from "../../worker/forge/service/research-core.ts";
 import { answerKey, prefillAnswers, researchForm, researchPayload, RESEARCH_FORMS, type Answers, type FormElement, type IssueTemplate } from "../lib/issue-forms.ts";
@@ -303,7 +304,13 @@ function commentForm(into: HTMLElement, r: Read): void {
   }
   const text = el("textarea", { class: "pull-text", id: "comment-text", rows: "6", "aria-label": "Your comment" });
   const said = el("div", { "aria-live": "polite" });
-  into.replaceChildren(el("section", { class: "comment-form", "aria-label": "Add a comment" }, el("h3", {}, "Add a comment"), text, el("p", {}, button("Comment", () => void send(said, "/api/forge/research/comment", { id: r.issue.id, body: text.value }), { class: "primary", id: "comment-send" })), said));
+  // Night phase 16: a new comment passes the human check (human-check.ts).
+  const sendButton: HTMLButtonElement = button("Comment", async () => {
+    const turnstile = await humanToken(sendButton);
+    if (turnstile === null) return void said.replaceChildren(el("p", { class: "warning" }, HUMAN_WAIT));
+    void send(said, "/api/forge/research/comment", { id: r.issue.id, body: text.value, turnstile });
+  }, { class: "primary", id: "comment-send" });
+  into.replaceChildren(el("section", { class: "comment-form", "aria-label": "Add a comment" }, el("h3", {}, "Add a comment"), text, el("p", {}, sendButton), said));
 }
 
 function sideActions(into: HTMLElement, r: Read): void {
@@ -435,7 +442,9 @@ async function mountNew(root: HTMLElement): Promise<void> {
       }
       Object.assign(payload, { paper: doi.value.trim(), code: code.value.trim() });
       if (prefill.section && !payload.section) payload.section = prefill.section;
-      const r = await post("/api/forge/research/open", payload);
+      const turnstile = await humanToken(form.querySelector<HTMLElement>('button[type="submit"]') ?? form);
+      if (turnstile === null) return void said.replaceChildren(el("p", { class: "warning" }, HUMAN_WAIT));
+      const r = await post("/api/forge/research/open", { ...payload, turnstile });
       if (!r.ok) {
         said.replaceChildren(el("p", { class: "warning" }, problemOf(r.body)));
         return;

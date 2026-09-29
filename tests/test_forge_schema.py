@@ -13,7 +13,7 @@ from types import SimpleNamespace
 import pytest
 from conftest import FORGE_MIGRATIONS, forge_database
 
-from oscr import catalog, cli, community, forgejobs, forgelayer, jobs, publish, social
+from oscr import catalog, cli, community, forgejobs, forgelayer, jobs, publish, retention, social
 
 ROOT = Path(__file__).resolve().parents[1]
 TABLES = {"repos", "repo_papers", "installations", "traced_paths", "actions", "deliveries", "jobs",
@@ -222,6 +222,8 @@ def test_nightly_reads_the_mirrors_and_writes_the_layer_between_the_export_and_t
     monkeypatch.setattr(forgelayer, "write", lambda con, d1, out: order.append(("layer", d1.database, out)) or "64 shards")
     # Night phase 08: the social layer, after the forge's (oscr/social.py).
     monkeypatch.setattr(social, "write", lambda forge, people, out, con=None: order.append(("social", forge.database, people.database, out)) or "64 shards")
+    # Night phase 16: the retention of what is kept for a time only, after the layer (oscr/retention.py).
+    monkeypatch.setattr(retention, "run", lambda d1, budget: order.append(("retention", d1.database, budget)) or "retention: nothing past its time")
     monkeypatch.setattr(community, "open_d1", lambda target, **kw: SimpleNamespace(database=kw.get("database")))
     out = tmp_path / "public"
     monkeypatch.setattr(cli, "settings", lambda: {})
@@ -230,16 +232,18 @@ def test_nightly_reads_the_mirrors_and_writes_the_layer_between_the_export_and_t
     order.clear()
     monkeypatch.setattr(cli, "settings", lambda: {"OSCR_FORGE_PUSH": "remote"})
     assert cli.main([*base, "nightly", "--out", str(out), "--cloudflare", "oscr"]) == 0
-    assert order == ["export", ("mirrors", "remote"), ("layer", "oscr_forge", out), ("social", "oscr_forge", None, out), "deploy"]
+    assert order == ["export", ("mirrors", "remote"), ("layer", "oscr_forge", out), ("retention", "oscr_forge", 2000),
+                     ("social", "oscr_forge", None, out), "deploy"]
     # Each failure is recorded like the others, and the deployment still happens.
     order.clear()
     monkeypatch.setattr(forgejobs, "mirrors", lambda con, **kw: (_ for _ in ()).throw(RuntimeError("GitHub is down")))
     monkeypatch.setattr(forgelayer, "write", lambda con, d1, out: (_ for _ in ()).throw(forgelayer.NotBuilt("not built yet")))
     monkeypatch.setattr(social, "write", lambda forge, people, out, con=None: (_ for _ in ()).throw(social.SocialError("not migrated")))
+    monkeypatch.setattr(retention, "run", lambda d1, budget: (_ for _ in ()).throw(RuntimeError("D1 is down")))
     with pytest.raises(SystemExit) as failed:
         cli.main([*base, "nightly", "--out", str(out), "--cloudflare", "oscr"])
     assert "Forge mirrors: GitHub is down" in str(failed.value) and "Forge layer: not built yet" in str(failed.value)
-    assert "Social layer: not migrated" in str(failed.value)
+    assert "Social layer: not migrated" in str(failed.value) and "Forge retention: D1 is down" in str(failed.value)
     assert order == ["export", "deploy"]
 
 

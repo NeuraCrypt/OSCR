@@ -62,3 +62,36 @@ export async function humanCheck(box: HTMLElement): Promise<HumanCheck | null> {
   });
   return { token: () => token, reset: () => ((token = ""), t.reset(id)) };
 }
+
+const boxes = new WeakMap<HTMLElement, Promise<HumanCheck | null>>();
+
+/** The site key the build wrote into the page (<meta name="turnstile-site-key">), or "". */
+export const siteKey = (): string => document.querySelector<HTMLMetaElement>('meta[name="turnstile-site-key"]')?.content ?? "";
+
+/** The token for one send of a form, the widget drawn just before `anchor` (its send button) on first
+ *  use. "" when the page has no site key: the Worker asks for none while Turnstile is not set up (only
+ *  the owner can write then). null when the check has not passed yet: the box says so, and the reader
+ *  sends again once it has. A token is good once: the widget starts again after each send. */
+export async function humanToken(anchor: HTMLElement): Promise<string | null> {
+  const key = siteKey();
+  if (!key) return "";
+  let pending = boxes.get(anchor);
+  if (!pending) {
+    const box = document.createElement("div");
+    box.className = "human-check";
+    box.dataset.sitekey = key;
+    anchor.before(box);
+    pending = humanCheck(box);
+    boxes.set(anchor, pending);
+  }
+  const check = await pending;
+  if (!check) return null;
+  for (let i = 0; i < 20 && !check.token(); i++) await new Promise((r) => setTimeout(r, 200));
+  const token = check.token();
+  if (!token) return null;
+  check.reset();
+  return token;
+}
+
+/** What a form says when the human check has not passed yet. */
+export const HUMAN_WAIT = "Complete the human check just above the button, then send again.";

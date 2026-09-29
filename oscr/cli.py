@@ -142,8 +142,8 @@ def _jobs(con, a: argparse.Namespace, cfg: dict[str, str], client: Client, opts:
 
 
 def _forge(con, a: argparse.Namespace, cfg: dict[str, str], client: Client) -> str:
-    """The GitHub side (night phase 01): `oscr forge poll|mirrors|layer|status` (oscr/forgejobs.py,
-    oscr/forgelayer.py; docs/FORGE.md)."""
+    """The GitHub side (night phase 01): `oscr forge poll|mirrors|layer|status|retention` (oscr/forgejobs.py,
+    oscr/forgelayer.py, night phase 16's oscr/retention.py; docs/FORGE.md)."""
     from . import forgejobs, forgelayer
     target = "remote" if a.remote else "local" if a.local else None
     if target is None and a.action != "status":
@@ -154,6 +154,11 @@ def _forge(con, a: argparse.Namespace, cfg: dict[str, str], client: Client) -> s
               "report": lambda m: print(m, flush=True)}
     if a.action == "layer":
         return forgelayer.command(con, "layer", out=Path(a.export), **common)
+    if a.action == "retention":
+        # Night phase 16: what the privacy statement keeps for a time only (oscr/retention.py).
+        from . import community, retention
+        d1 = community.open_d1(target, settings=cfg, persist_to=common["persist_to"], database="oscr_forge")
+        return retention.run(d1, budget=min(a.budget, 2_000))
     if a.action == "status":
         return "\n".join([forgejobs.command(con, "status", client=client, **common),
                           forgelayer.command(con, "status", out=Path(a.export), **common)])
@@ -370,7 +375,7 @@ def main(argv: list[str] | None = None) -> int:
 
     fg = sp.add_parser("forge", help="the GitHub side (night phase 01): the forge jobs, the public mirrors' heads, "
                                      "OSCR's static layer (docs/FORGE.md)")
-    fg.add_argument("action", choices=["poll", "mirrors", "layer", "status"])
+    fg.add_argument("action", choices=["poll", "mirrors", "layer", "status", "retention"])
     fg_where = fg.add_mutually_exclusive_group()
     fg_where.add_argument("--local", action="store_true", help="the local D1 of `wrangler dev --env local`")
     fg_where.add_argument("--remote", action="store_true",
@@ -489,6 +494,13 @@ def main(argv: list[str] | None = None) -> int:
                     print(f"{now()} forge layer: " + forgelayer.write(con, forge_d1, out), flush=True)
                 except (Exception, SystemExit) as e:
                     errors.append(f"Forge layer: {e}")
+                # Night phase 16: what is kept for a time only, deleted (oscr/retention.py).
+                from . import retention
+                try:
+                    print(f"{now()} forge " + retention.run(community.open_d1("remote", settings=cfg, database="oscr_forge"),
+                                                              budget=int(cfg.get("OSCR_RETENTION_BUDGET", "2000"))), flush=True)
+                except (Exception, SystemExit) as e:
+                    errors.append(f"Forge retention: {e}")
                 # Night phase 08: the social layer's shards and the Explore page (docs/SOCIAL.md).
                 from . import social
                 try:

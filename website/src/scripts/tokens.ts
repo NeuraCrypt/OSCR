@@ -3,6 +3,7 @@
 // /api/forge/tokens/write, with the session's CSRF token). A token is shown once, when it is made: the
 // registry keeps only its SHA-256. Like every browser script, it never names the platform.
 
+import { HUMAN_WAIT, humanToken } from "./human-check.ts";
 import { madeToken, tokenForm, tokensTable, type ScopeItem, type TokenItem } from "../lib/automation.ts";
 import { h } from "../lib/repo-view.ts";
 import { show, toDom } from "./dom.ts";
@@ -82,7 +83,13 @@ async function draw(): Promise<void> {
     const scopes = fd.getAll("scope").map(String);
     const button = form.querySelector("button");
     if (button) button.disabled = true;
-    const out = await postJson("/api/forge/tokens/write", { op: "create", name: String(fd.get("name") ?? ""), scopes, days: Number(fd.get("days") ?? 30) });
+    // Night phase 16: a token is made behind the human check (human-check.ts).
+    const turnstile = await humanToken((ev.target as HTMLFormElement).querySelector<HTMLElement>('button[type="submit"]') ?? (ev.target as HTMLElement));
+    if (turnstile === null) {
+      if (button) button.disabled = false;
+      return void made.replaceChildren(HUMAN_WAIT);
+    }
+    const out = await postJson("/api/forge/tokens/write", { op: "create", name: String(fd.get("name") ?? ""), scopes, days: Number(fd.get("days") ?? 30), turnstile });
     if (button) button.disabled = false;
     if (!out.ok) {
       made.replaceChildren(toDom(h("p", { class: "warning" }, problemOf(out.body))));
