@@ -1,7 +1,7 @@
 # Headers of the static pages (Workers static assets, developers.cloudflare.com/workers/static-assets/headers/).
 # The pages whose scripts ask the Worker for a signed-in reader hold a session's CSRF token: no other
 # site may frame them, and they run this site's own files only (no inline script or style: Astro
-# writes every script as a file, astro.config.mjs). The account page (Phase 5); /submit/, /removal/ and a
+# writes every script as a file, astro.config.mjs). The account page (Phase 5); /submit/, /removal/, /data-rights/ and a
 # paper's page (Phase 6), which holds the Code ↔ Paper reader since 2026-09-28: its browser reads the
 # paper's text from Europe PMC (www.ebi.ac.uk, connect-src), else PubMed Central's copy (NCBI's
 # E-utilities, eutils.ncbi.nlm.nih.gov), and, since 2026-09-29, a file of the authors' code the registry may not
@@ -47,6 +47,13 @@
   Referrer-Policy: same-origin
 
 /removal/
+  ! Content-Security-Policy
+  X-Frame-Options: DENY
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'; object-src 'none'
+  Referrer-Policy: same-origin
+
+# The data rights (2026-09-29): the account's own data and its requests, with the session's CSRF token.
+/data-rights/
   ! Content-Security-Policy
   X-Frame-Options: DENY
   Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'; object-src 'none'

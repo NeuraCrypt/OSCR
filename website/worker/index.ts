@@ -11,6 +11,8 @@
 //   /api/contributions, /api/submissions, /api/claims, /api/edits, /api/validations,
 //   /api/reports         what a signed-in reader asks of the registry (contributions/;
 //                        docs/CONTRIBUTIONS.md)
+//   /api/rights          the signed-in person's data rights: what the site holds about them, and
+//                        their requests (rights/; docs/CONTRIBUTIONS.md "Data rights")
 //   anything else under /api/   a JSON 404
 //   anything else        pages.ts: a paper rendered on demand, else the site's 404 page
 //
@@ -23,6 +25,7 @@ import { error, handleSearch } from "./api.ts";
 import { handleContributions } from "./contributions/index.ts";
 import type { Context, Env, Handler } from "./env.ts";
 import { handlePage } from "./pages.ts";
+import { handleRights } from "./rights/index.ts";
 
 type Route = { path: string; handle: Handler } | { prefix: string; handle: Handler };
 
@@ -32,6 +35,8 @@ const account: Handler = async (request, env, ctx) =>
 /** The contributions (Phase 6), likewise. */
 const contributions: Handler = async (request, env, ctx) =>
   (await handleContributions(request, env, ctx)) ?? error(404, "not_found", "No such route.");
+/** The data rights, likewise. */
+const rights: Handler = async (request, env, ctx) => (await handleRights(request, env, ctx)) ?? error(404, "not_found", "No such route.");
 
 const ROUTES: Route[] = [
   { path: "/api/search", handle: handleSearch },
@@ -45,6 +50,7 @@ const ROUTES: Route[] = [
   { path: "/api/edits", handle: contributions },
   { path: "/api/validations", handle: contributions },
   { path: "/api/reports", handle: contributions },
+  { path: "/api/rights", handle: rights },
 ];
 
 function route(pathname: string): Handler | undefined {

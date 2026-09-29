@@ -320,28 +320,43 @@ const toc = [
     processing, and a copy of what you gave in a reusable form; and you may object to processing based on legitimate
     interests — in particular to the keeping of your contact details, which is then erased.
   </p>
-  <p>{SITE_NAME} has no email address. Use the site itself:</p>
-  <ol class="steps">
-    <li><a href="/account/">Sign in</a> (with ORCID if you are an author: your papers are then recognized as yours,
-      which proves who you are).</li>
-    <li>Open the <a href="/removal/">removal request</a> of a paper that concerns you — from its page, "Request its
-      removal" — and choose the reason <strong>personal data</strong>.</li>
-    <li>In the justification, say what you ask: a copy of your data, a correction, the erasure of your contact details,
-      the deletion of your account, an objection. No email address is needed: the answer comes back on the request's page
-      and on your account page.</li>
-  </ol>
-  <p class="warning">
-    Mind what the request names: the rules act on that, not on the justification
-    (<a href="/policies/moderation/">how requests are decided</a>). Signed in as a verified author of the paper, your
-    request is applied at once, whatever it names; copies of the authors' code named for personal data are hidden at
-    once, whoever asks, within daily limits. A request that names the whole record or the tracing map, from anyone else, removes nothing by
-    itself: it waits for the operator, {REVIEW_DAYS} days at most. The operator can reverse what the rules did.
-  </p>
   <p>
-    For a matter that concerns your account alone, use the same form from any paper's page and say so in the
-    justification: a dedicated form will replace this path. The operator answers within one month, as the GDPR requires,
-    and may ask you to sign in with the identity concerned to confirm it is yours. You may also complain to the data
-    protection authority of the country where you live or work.
+    {SITE_NAME} has no email address. Use <a href="/data-rights/">your data and your rights</a>, signed in: it shows
+    what the site's database holds about your account (with a copy to download), and takes one request at a time. The
+    registry's machine reads the requests every ten minutes or so, and answers by itself what it can prove:
+  </p>
+  <dl class="terms">
+    <dt>Access</dt>
+    <dd>What your account holds, what the operator's computer keeps about it (the moderator's log, your requests' state,
+      the corrections attributed to you), the papers whose metadata list your ORCID iD, and — signed in with your ORCID
+      iD at orcid.org — each contact detail kept under that iD, field by field. Your email address is shown masked (its
+      first and last characters, and its domain): the site never shows or stores an email address, and the paper named
+      with it prints it in full, which is where the registry read it.</dd>
+    <dt>Erasure, objection</dt>
+    <dd>Signed in with your ORCID iD: the contact details kept under it are erased, and your iD goes on the list of people
+      whose contact details are never collected again (<a href="#contacts">above</a>). The private copy on Hugging Face
+      loses them at the next nightly publication, which rewrites its history. The two rights have the same effect
+      here.</dd>
+    <dt>Deletion of your account</dt>
+    <dd>Your account's rows are deleted: the account, its sessions (you are signed out everywhere), its linked
+      identities, its roles, its claims and every request it made. What stays, and why: the moderator's log, which names
+      the account by its random number only, 12 months (the record of how each request was decided); the rows of the
+      site's queue of requests, which hold a kind, a number, that random number and a time; what your requests changed in
+      the public records (a correction stays a correction, and the records' history on the operator's computer names its
+      author by the account's random number instead of an ORCID iD or a GitHub login); a validated map's record on
+      Zenodo, public and permanent, as a DOI is. Cloudflare's point-in-time recovery of the database keeps its earlier
+      states for 7 days.</dd>
+    <dt>Rectification, and what an account without an ORCID iD asks</dt>
+    <dd>A name, a GitHub login or a Google account proves nothing about who wrote a paper, so the registry cannot tell by
+      itself which contact details are yours: such a request, and every rectification, waits for the operator.</dd>
+  </dl>
+  <p>
+    <strong>The operator answers within one month</strong>, as the GDPR requires (article 12(3)), and the page shows the
+    date. There is no human moderator on duty at the moment, but a request about your data is never closed unanswered:
+    it stays open, at the top of the operator's list, until it is answered. The same holds for a{" "}
+    <a href="/removal/">removal request</a> made for personal data — about what a record publishes — that the rules
+    cannot decide: it waits for the operator, never closed after {REVIEW_DAYS} days as other requests are. A refusal
+    says why. You may also complain to the data protection authority of the country where you live or work.
   </p>
 
   <h2 id="transfers">Where the data is</h2>

@@ -1,0 +1,171 @@
+---
+// Your data and your rights (2026-09-29): what the registry may hold about a person, and their rights
+// under the EU's General Data Protection Regulation — access, erasure, objection, rectification, the
+// deletion of their account — asked signed in, answered on this page, never by email. Its script
+// (src/scripts/data-rights.ts) asks the Worker what the site's database holds about the account (GET
+// /api/rights, only when the browser holds a session: the hint cookie) and sends a request (POST
+// /api/rights, worker/rights/index.ts, with the rules of src/lib/rights.ts); the registry's machine
+// answers it (oscr/rights.py, in `oscr jobs poll`), or the operator within the legal month. Reached from
+// /privacy/, the account page and the removal page. One page (the file budget). science.css only.
+import Base from "../layouts/Base.astro";
+import { SITE_NAME } from "../config";
+import { POLL_MINUTES } from "../lib/moderation";
+import { DETAILS_MAX, KINDS, RIGHTS_PER_DAY } from "../lib/rights";
+import { NIGHTLY } from "../lib/removal";
+
+const providers = [
+  { name: "orcid", label: "ORCID", why: ": if you are an author, your ORCID iD is what ties your contact details to you, and the answer is automatic" },
+  { name: "github", label: "GitHub", why: "" },
+  { name: "google", label: "Google", why: "" },
+];
+const choice = (value: string) => `rights-kind-${value}`;
+---
+<Base
+  title="Your data and your rights"
+  description="See what the registry holds about you, and ask for access, erasure, objection, rectification or the deletion of your account: signed in, answered on the page, never by email."
+  breadcrumb={[{ text: "Privacy", href: "/privacy/" }, { text: "Your data and your rights" }]}
+>
+  <h1>Your data and your rights</h1>
+  <p class="summary">
+    See what {SITE_NAME} holds about you, and use your rights under the EU's General Data Protection Regulation
+    (GDPR): access, erasure, objection, rectification, the deletion of your account. You ask signed in, and the answer
+    comes to this page: {SITE_NAME} has no email address, and asks for none. The <a href="/privacy/">privacy page</a>{" "}
+    lists everything the registry holds, why, and for how long.
+  </p>
+  <noscript><p class="warning">This page runs in your browser: it needs JavaScript.</p></noscript>
+  <p id="rights-message" role="status" aria-live="polite"></p>
+
+  <section id="rights-signed-out" aria-labelledby="rights-sign-in-title" hidden>
+    <h2 id="rights-sign-in-title">Sign in to ask</h2>
+    <p>
+      A request is made signed in: it is how the registry knows that the data is yours, and where its answer comes back.
+      No email address is asked for or sent.
+    </p>
+    <ul id="rights-sign-in">
+      {providers.map((p) => (
+        <li><a data-provider={p.name} href={`/api/auth/${p.name}/start?return=/data-rights/`}>Sign in with {p.label}</a>{p.why}</li>
+      ))}
+    </ul>
+    <p class="warning">
+      Signed in with GitHub or Google only, the registry cannot tell by itself which authors' contact details are yours:
+      such a request waits for the operator, who answers it within one month. Link your ORCID iD for an automatic
+      answer.
+    </p>
+  </section>
+
+  <div id="rights-signed-in" hidden>
+    <p id="rights-who"></p>
+    <p id="rights-orcid-note" class="warning" hidden></p>
+
+    <form id="rights-form" method="post" action="/api/rights" novalidate>
+      <h2 id="rights-form-title">Ask</h2>
+      <fieldset id="rights-kind">
+        <legend>The right you ask for</legend>
+        <ul class="choices">
+          {KINDS.map(([value, text, article]) => (
+            <li>
+              <input type="radio" name="kind" id={choice(value)} value={value} />
+              <label for={choice(value)}>{text}</label>{" "}
+              <span class="muted">(GDPR, article {article})</span>
+            </li>
+          ))}
+        </ul>
+      </fieldset>
+      <p id="rights-expected" class="summary" aria-live="polite">Choose a right: this says what happens, and when.</p>
+      <p>
+        <label for="rights-details">Your words</label>{" "}
+        <span class="muted" id="rights-details-hint">— optional; for a rectification, what to correct; {DETAILS_MAX.toLocaleString("en-GB")}{" "}
+          characters at most; no email address</span><br />
+        <textarea id="rights-details" name="details" rows="4" maxlength={DETAILS_MAX * 2} aria-describedby="rights-details-count"></textarea><br />
+        <span id="rights-details-count" class="muted" aria-live="polite"></span>
+      </p>
+      <ul class="choices">
+        <li>
+          <input type="checkbox" id="rights-confirm" name="confirm" />
+          <label for="rights-confirm">This request is mine, about my own data, and I read what it does (above).</label>
+        </li>
+      </ul>
+      <p id="rights-form-error" class="warning" role="alert" hidden></p>
+      <p><button type="submit">Send the request</button></p>
+    </form>
+
+    <section id="rights-receipt" aria-labelledby="rights-receipt-title" hidden>
+      <h2 id="rights-receipt-title" tabindex="-1">Request received</h2>
+      <p id="rights-receipt-state" class="ok"></p>
+      <dl class="review" id="rights-receipt-summary"></dl>
+      <p><button type="button" id="rights-another">Ask something else</button></p>
+    </section>
+    <section aria-labelledby="rights-requests-title">
+      <h2 id="rights-requests-title">Your requests</h2>
+      <p id="rights-none">None yet.</p>
+      <div id="rights-requests"></div>
+    </section>
+
+    <section aria-labelledby="rights-held-title">
+      <h2 id="rights-held-title">What the site's database holds about your account</h2>
+      <dl class="review" id="rights-held"></dl>
+      <p>
+        <button type="button" id="rights-download">Download a copy</button>{" "}
+        <span class="muted">— a JSON file of what this page shows, the answers to your requests included, made in your
+          browser</span>
+      </p>
+    </section>
+  </div>
+
+  <h2 id="what">What {SITE_NAME} may hold about you</h2>
+  <dl class="terms">
+    <dt>Your account, if you signed in</dt>
+    <dd>The name your provider gave, your ORCID iD and GitHub login once linked, the identifiers of your linked
+      identities, your sessions (a short description of the browser, never an IP address), your roles. Shown on this
+      page once you are signed in.</dd>
+    <dt>Your requests</dt>
+    <dd>What you submitted, claimed, corrected, validated or asked to remove, with the decisions; and, on the operator's
+      computer, the moderator's log of those decisions (12 months).</dd>
+    <dt>Your contact details, if you are an author of a paper the registry read</dt>
+    <dd>What the paper publishes about how to reach you: email address, given and family names, ORCID iD, organisation,
+      postal address and affiliation — kept privately, to cite the authors of the code and to reach you about your own
+      work; never shown, never published, never used for mass email. The registry recognizes them as yours by your
+      ORCID iD only: a name, a GitHub login or a Google account proves nothing.</dd>
+    <dt>Your name in the published records</dt>
+    <dd>Your name, ORCID iD and affiliations as a paper and its public metadata publish them: that is the public record
+      of the paper, which this page does not change. To have part of a record removed, use its{" "}
+      <a href="/removal/">removal request</a>.</dd>
+  </dl>
+
+  <h2 id="how">How a request is answered</h2>
+  <ol>
+    <li>
+      {SITE_NAME}'s machine reads the requests every {POLL_MINUTES} minutes or so. It answers by itself what it can
+      prove: access (your account's data; and, signed in with your ORCID iD at orcid.org, each contact detail kept under
+      that iD, your email address masked), erasure and objection (signed in with your ORCID iD), the deletion of your
+      account.
+    </li>
+    <li>
+      What it cannot prove — a rectification, or contact details asked for by an account without an ORCID iD — waits for
+      the operator, who answers on this page <strong>within one month</strong>, as the GDPR requires (article 12(3)).
+      There is no human moderator on duty at the moment, but a request about your data is never closed unanswered: it
+      stays open until the operator answers it.
+    </li>
+    <li>
+      An erasure reaches the private copy of the contact details on Hugging Face at the next nightly publication
+      ({NIGHTLY}, the registry's local time), which rewrites that copy's history, so that no earlier version keeps you.
+    </li>
+    <li>
+      A refusal says why. You may also complain to the data protection authority of the country where you live or work.
+    </li>
+  </ol>
+
+  <h2 id="kept">What is kept of a request</h2>
+  <ul>
+    <li>The right you asked for, your words (without any email address: a text that holds one is refused), the ORCID iD of
+      your account and which ORCID proved it, the answer, the dates, and the legal deadline — with your account, like
+      your other requests.</li>
+    <li>After an erasure or an objection: your ORCID iD and a fingerprint (SHA-256) of each address found with it, never
+      the address, on the list of people whose contact details the registry never collects again.</li>
+    <li>{RIGHTS_PER_DAY} requests a day at most, one open request per right. A deleted account takes its requests with it.</li>
+  </ul>
+
+  <script>
+    import "../scripts/data-rights";
+  </script>
+</Base>

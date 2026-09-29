@@ -341,6 +341,7 @@ function syncScope() {
 
 function syncReason() {
   show("removal-incorrect", checked("reason") === "incorrect");
+  show("removal-personal", checked("reason") === "personal_data");
 }
 
 function syncCount() {

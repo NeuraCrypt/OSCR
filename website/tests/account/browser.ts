@@ -1,8 +1,10 @@
-// Test support: a browser in front of `handleAccount` (and of Phase 6's `handleContributions`), with a
-// cookie jar and the mock providers installed as `fetch`. It follows a sign-in the way a real
-// browser does: the start's redirect, the provider's page (which approves at once), the callback.
+// Test support: a browser in front of `handleAccount` (and of Phase 6's `handleContributions`, and of the
+// data rights' `handleRights`), with a cookie jar and the mock providers installed as `fetch`. It
+// follows a sign-in the way a real browser does: the start's redirect, the provider's page (which
+// approves at once), the callback.
 import { handleAccount } from "../../worker/account/index.ts";
 import { handleContributions } from "../../worker/contributions/index.ts";
+import { handleRights } from "../../worker/rights/index.ts";
 import { forgetKeys } from "../../worker/account/jwt.ts";
 import type { AccountEnv } from "../../worker/account/types.ts";
 import { fakeD1, type FakeD1 } from "./d1.ts";
@@ -75,7 +77,10 @@ export class Browser {
     if (this.jar.size) headers.set("Cookie", [...this.jar].map(([k, v]) => `${k}=${v}`).join("; "));
     const request = new Request(new URL(path, this.origin), { method: init.method ?? "GET", headers, body: init.body });
     const res =
-      (await handleAccount(request, this.env)) ?? (await handleContributions(request, this.env)) ?? new Response("a static page", { status: 299 });
+      (await handleAccount(request, this.env)) ??
+      (await handleContributions(request, this.env)) ??
+      (await handleRights(request, this.env)) ??
+      new Response("a static page", { status: 299 });
     this.keep(res);
     return res;
   }

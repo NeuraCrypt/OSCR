@@ -336,7 +336,7 @@ describe("a page that no static file answers (worker/pages.ts)", () => {
     for (const [k, v] of Object.entries(SITE_HEADERS)) assert.equal(home.get(k.toLowerCase()), v, k);
     assert.equal(home.get("strict-transport-security"), "max-age=31536000", "no includeSubDomains, no preload");
     // A page with a policy of its own has that one only, never two (the stricter would win).
-    for (const path of ["/account/", "/removal/", "/submit/", "/paper/x/", "/search/"]) {
+    for (const path of ["/account/", "/removal/", "/data-rights/", "/submit/", "/paper/x/", "/search/"]) {
       const csp = headersFor(rules, path).get("content-security-policy") ?? "";
       assert.ok(csp && !csp.includes(", "), `${path}: ${csp}`);
     }

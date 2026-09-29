@@ -497,8 +497,8 @@ footer p { margin: 0; }
 }
 .info-body h3 { font-size: 1.08em; margin: 1.4em 0 .35em; scroll-margin-top: .5em; }
 .info-body ol.steps > li { margin: .7em 0; }
-.info-body dl.terms dt { font-weight: bold; margin-top: .7em; }
-.info-body dl.terms dd { margin: .15em 0 0 1.5em; }
+dl.terms dt { font-weight: bold; margin-top: .7em; }
+dl.terms dd { margin: .15em 0 0 1.5em; }
 .info-body .note {
   margin: 1em 0; padding: .55em .9em;
   border-left: 3px solid var(--masthead); background: var(--bg-sidebar);

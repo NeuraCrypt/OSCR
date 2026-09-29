@@ -71,8 +71,30 @@ export function reviewDeadline(createdAt: number | string): Date {
 
 const dayWords = (d: Date) => d.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
 
+/** The legal deadline of a request about personal data made at `t` (Unix seconds): one month (GDPR
+ *  art. 12(3)) — the same day of the next month, or its last day when it has none (31 January → the end
+ *  of February). moderation.one_month_after computes the same (tests/fixtures/one_month.json). */
+export function oneMonthAfter(t: number): number {
+  const d = new Date(t * 1000);
+  const year = d.getUTCMonth() === 11 ? d.getUTCFullYear() + 1 : d.getUTCFullYear();
+  const month = (d.getUTCMonth() + 1) % 12;
+  const last = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+  return Date.UTC(year, month, Math.min(d.getUTCDate(), last), d.getUTCHours(), d.getUTCMinutes(), d.getUTCSeconds()) / 1000;
+}
+
+/** The deadline of a request that waits for the operator: the rules close it after REVIEW_DAYS, but a
+ *  request asked for personal data has the GDPR's month, and is never closed unanswered. */
+export function waitDeadline(createdAt: number | string, reason = ""): Date {
+  if (reason !== "personal_data") return reviewDeadline(createdAt);
+  const t = typeof createdAt === "number" ? createdAt : Math.floor(Date.parse(createdAt) / 1000);
+  return new Date(oneMonthAfter(Number.isFinite(t) ? t : Math.floor(Date.now() / 1000)) * 1000);
+}
+
 /** What will happen to a removal request, in words, for the person who sent it. */
-export function expectedWords(path: Path, createdAt: number | string): string {
+export function expectedWords(path: Path, createdAt: number | string, reason = ""): string {
+  if (path.outcome === "review" && reason === "personal_data") {
+    return `No rule can decide it alone: it waits for the operator's review, and nothing is removed meanwhile. As it is asked for personal data, the operator answers it by ${dayWords(waitDeadline(createdAt, reason))} at the latest (one month, as the GDPR requires): it is never closed unanswered. For your own contact details or your account, the page /data-rights/ answers at once.`;
+  }
   switch (path.outcome) {
     case "apply":
       return `The registry's rules apply it without waiting, as a request from ${path.rule === "report.verified_author" ? "a verified author of the paper" : "a maintainer of its code (its owner, or a public member of its organization)"}: within about ${POLL_MINUTES} minutes it is accepted, and what it names leaves the site at the next nightly publication.`;

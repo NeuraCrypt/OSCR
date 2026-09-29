@@ -30,6 +30,7 @@ no address is displayed or stored in the site, and the person can still recogniz
 from __future__ import annotations
 
 import json
+import math
 import re
 import sqlite3
 import time
@@ -419,7 +420,7 @@ def describe_waiting(items: list[dict[str, Any]], now: float | None = None) -> s
         person = ", ".join(x for x in (who.get("name"), who.get("orcid") and f"ORCID {who['orcid']}",
                                        who.get("github") and f"GitHub {who['github']}") if x) or j["user_id"]
         due = float(d.get("due") or 0)
-        left = int((due - now) // 86_400)
+        left = math.ceil((due - now) / 86_400)
         flag = f"OVERDUE by {-left} day(s)" if due and due < now else f"{left} day(s) left"
         lines = [f"data-rights request {d.get('rights')}: {d.get('kind')}, from {person} — answer by {day_words(due)} "
                  f"(GDPR, one month): {flag}",

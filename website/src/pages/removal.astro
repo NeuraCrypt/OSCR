@@ -124,6 +124,12 @@ const choice = (group: string, value: string) => `${group}-${value.replace(/_/g,
             </li>
           ))}
         </ul>
+        <p id="removal-personal" class="summary" hidden>
+          For your own data — your contact details the registry keeps privately, or your account — use{" "}
+          <a href="/data-rights/">your data and your rights</a>: access, erasure and objection are answered at once there
+          when you sign in with your ORCID iD, and nothing of the record is removed. This form removes what the record
+          publishes.
+        </p>
         <p id="removal-incorrect" class="warning" hidden>
           A wrong link, or a link given the wrong role, can be corrected rather than removed: the paper's verified authors and
           the maintainers of its code <a id="removal-correct" href="/lookup/">correct its record</a> from its page, and the
@@ -192,8 +198,10 @@ const choice = (group: string, value: string) => `${group}-${value.replace(/_/g,
       iD among its authors), or from a maintainer of the code it names (its owner, or a public member of its organization, on
       GitHub), is applied without waiting; the copies of the
       authors' code are hidden at once for copyright or personal data, pending review; any other request waits for the
-      operator, 30 days at most, and nothing is removed meanwhile. There is no human moderator on duty at the moment: a
-      request no one decided in 30 days is closed without removal, and may be asked again in a way the rules decide.
+      operator, and nothing is removed meanwhile. There is no human moderator on duty at the moment: a request no one
+      decided in 30 days is closed without removal, and may be asked again in a way the rules decide — except a request
+      made for personal data, which the operator answers within one month, as the GDPR requires, and which is never
+      closed unanswered.
     </li>
     <li>Accepted, what it names leaves {SITE_NAME} at the next nightly publication, at {NIGHTLY} (the registry's local time):
       its pages, its search, its DOI lookup and its open data. A whole record leaves every page; the copies of the authors'

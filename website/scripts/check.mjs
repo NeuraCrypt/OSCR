@@ -49,7 +49,7 @@ const json = (f) => JSON.parse(readFileSync(join(DIST, f), "utf8"));
 // 1. The fixed pages, the shells of the pages rendered on demand, and the rewrites that serve
 // an entity's shell for its address (public/_redirects).
 const FIXED = ["/", "/about/", "/help/", "/policies/", "/privacy/", "/brand/", "/labs/", "/taxonomy/", "/list/", "/sitemap.xml", "/robots.txt", "/browse/", "/authors/", "/journals/", "/institutions/", "/tools/", "/datasets/",
-  "/lookup/", "/search/", "/404.html", "/account/", "/submit/", "/removal/", "/badge.svg", "/paper/404.html",
+  "/lookup/", "/search/", "/404.html", "/account/", "/submit/", "/removal/", "/data-rights/", "/badge.svg", "/paper/404.html",
   ...ENTITY_TYPES.map((t) => `/${t}/`)];
 for (const route of FIXED) if (!exists(route)) problems.push(`missing page ${route}`);
 
@@ -212,7 +212,7 @@ for (const page of pages) {
     if (missing.length) problems.push(`${page}: no section ${missing.map((id) => `#${id}`).join(", ")}`);
   }
   // (The reader's data, a <script type="application/json">, is not run: it is allowed.)
-  if (/^\/(paper\/[^/]+|account|submit|removal)\/index\.html$/.test(page) && /<script(?![^>]*\s(?:src=|type="application\/json"))[^>]*>/.test(html)) {
+  if (/^\/(paper\/[^/]+|account|submit|removal|data-rights)\/index\.html$/.test(page) && /<script(?![^>]*\s(?:src=|type="application\/json"))[^>]*>/.test(html)) {
     problems.push(`${page}: an inline script, which its Content-Security-Policy forbids`);
   }
 }

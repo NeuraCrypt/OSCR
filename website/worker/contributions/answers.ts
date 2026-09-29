@@ -1,7 +1,7 @@
 // What the contributions' routes answer: the rows of D1 as the pages read them (times in ISO 8601,
 // JSON columns parsed, each paper with its page), and the shape of a paper's id.
 
-import { expectedWords, reportPath, reviewDeadline, SUBMISSION_WORDS, type Path } from "../../src/lib/moderation.ts";
+import { expectedWords, reportPath, SUBMISSION_WORDS, waitDeadline, type Path } from "../../src/lib/moderation.ts";
 import { removalUrl } from "../../src/lib/removal.ts";
 import { paperSlug } from "../account/index.ts";
 import type { AuthorClaimRow, EditRow, ReportRow, SubmissionRow, ValidationRow } from "./store.ts";
@@ -92,7 +92,16 @@ export function validationJson(r: ValidationRow) {
  *  knows the requester's roles, else what the row says (a maintainer is then recognized by the Mac). */
 export function expectedOf(r: ReportRow, path?: Path) {
   const p = path && typeof path === "object" ? path : reportPath(r.scope ?? "record", r.reason, r.author_verified === 1, false);
-  return { rule: p.rule, outcome: p.outcome, words: expectedWords(p, r.created_at), deadline: p.outcome === "review" ? reviewDeadline(r.created_at).toISOString() : null };
+  // Asked for personal data, a request that waits has the GDPR's month, and is never closed unanswered
+  // (oscr/moderation.py, NEVER_CLOSE).
+  const personal = p.outcome === "review" && r.reason === "personal_data";
+  const rule = personal ? "report.personal_data" : p.rule;
+  return {
+    rule,
+    outcome: p.outcome,
+    words: expectedWords(p, r.created_at, r.reason),
+    deadline: p.outcome === "review" ? waitDeadline(r.created_at, r.reason).toISOString() : null,
+  };
 }
 
 export function reportJson(r: ReportRow, path?: Path) {
