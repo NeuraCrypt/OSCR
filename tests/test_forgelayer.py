@@ -18,7 +18,7 @@ sys.path.insert(0, str(ROOT / "tools"))
 
 import make_fixture  # noqa: E402
 
-from oscr import cli, community, forgelayer  # noqa: E402
+from oscr import cli, community, forgelayer, zenodo  # noqa: E402
 from oscr import forge as forges  # noqa: E402
 
 PAPER_1, PAPER_2, PAPER_9 = (f"doi:10.5555/oscr.fixture.{n}" for n in (1, 2, 9))
@@ -148,8 +148,10 @@ def test_a_catalogue_only_repository_comes_in_with_mode_catalogue_and_its_paper(
     assert e["forge"] == "github" and e["id"] == "101" and e["mode"] == "catalogue" and e["state"] == "active"
     # head_at: the fixture's commit date, 2026-09-20 12:00 UTC.
     assert e["head"] == COMMIT and e["head_at"] == 1_789_905_600 and e["last_seen"] == int(make_fixture.READ_AT)
+    # Night phase 07: a paper with code carries its tracing map's digest, as its page shows it.
     assert e["papers"] == [{"doi": "10.5555/oscr.fixture.1", "slug": "doi_10.5555_oscr.fixture.1",
-                            "title": "A synthetic EEG study for the OSCR build test", "status": None}]
+                            "title": "A synthetic EEG study for the OSCR build test", "status": None,
+                            "map": zenodo.map_digest(zenodo.map_of(con, "doi:10.5555/oscr.fixture.1"))}]
     assert e["maps"] == 1 and e["paths"] == 2 and e["unreachable"] == []
     assert entries["oscr-fixture/catalogue-only"]["mode"] == "catalogue"
     assert entries["oscr-fixture/unlicensed"]["papers"][0]["doi"] == "10.5555/oscr.fixture.2"
@@ -187,7 +189,8 @@ def test_hidden_pending_deleted_and_private_repositories_are_left_out(tmp_path, 
     # Its papers: the one the Mac knows, with its page; one it does not know; never the off-topic one.
     assert created["papers"] == [
         {"doi": "10.5555/oscr.fixture.1", "slug": "doi_10.5555_oscr.fixture.1",
-         "title": "A synthetic EEG study for the OSCR build test", "status": "linked"},
+         "title": "A synthetic EEG study for the OSCR build test", "status": "linked",
+         "map": zenodo.map_digest(zenodo.map_of(con, PAPER_1))},
         {"doi": "10.9999/unknown", "slug": None, "title": None, "status": "proposed"}]
     assert entries["ada/vanished"]["state"] == "gone" and entries["ada/vanished"]["mode"] == "installed"
     text = json.dumps(_shards(out))
@@ -208,7 +211,8 @@ def test_a_linked_repository_is_merged_with_its_catalogue_entry_under_its_curren
     e = entries["ada-lab/eeg-analysis-2"]
     assert e["mode"] == "installed" and e["id"] == "101" and e["head"] == LATER and e["maps"] == 1
     assert e["papers"] == [{"doi": "10.5555/oscr.fixture.1", "slug": "doi_10.5555_oscr.fixture.1",
-                            "title": "A synthetic EEG study for the OSCR build test", "status": "linked"}]
+                            "title": "A synthetic EEG study for the OSCR build test", "status": "linked",
+                            "map": zenodo.map_digest(zenodo.map_of(con, PAPER_1))}]
     assert e["last_seen"] == int(T)
 
 
@@ -517,3 +521,44 @@ def test_before_its_migration_the_forge_database_has_no_research_issue(tmp_path,
     out = tmp_path / "public"
     said = forgelayer.write(con, forge_d1, out, state=state, now=T)
     assert "0 research issues" in said and "oscr-fixture/eeg-analysis" in _entries(out)
+
+
+# ---------------------------------------------------------------------------------------------
+# Releases tied to papers (night phase 07).
+
+def test_releases_tied_to_papers_come_in_with_their_versioned_map_and_only_a_real_zenodo_doi(tmp_path, forge_d1):
+    from oscr import forgejobs
+    con, state, reader = _mac(tmp_path), _state(), _reader()
+    forgelayer.resolve_ids(con, state, reader, now=T)
+    _repo(forge_d1, "101", "ada-lab", "eeg-analysis-2", mode="installed", installation="7", head=LATER)
+    shown = "a" * 64
+
+    def tie(tag: str, paper: str, version: str, digest: str = "") -> str:
+        return (f"INSERT INTO release_papers (forge, repo_id, tag, paper_id, release_id, repo_path, version, label, commit_sha, "
+                f"map_digest, status, by_user, at) VALUES ('github', '101', '{tag}', '{paper}', '9', 'ada-lab/eeg-analysis-2', "
+                f"'{version}', '', '{LATER}', '{digest}', 'linked', 'u1', 1)")
+
+    forge_d1.run([tie("v1.0.0", PAPER_1, "accepted", shown), tie("v2.0.0", PAPER_1, "published"), tie("v3.0.0", PAPER_9, "published")])
+    # What the Mac's jobs kept (oscr/forgejobs.py): a map versioned with v1.0.0 and deposited on the
+    # sandbox (a test: never shown), and one versioned with v2.0.0 and deposited on the real Zenodo.
+    state.executescript(forgejobs.STATE_SCHEMA)
+    for tag, instance, doi in (("v1.0.0", "sandbox", "10.5072/zenodo.1"), ("v2.0.0", "zenodo", "10.5281/zenodo.2")):
+        state.execute("INSERT INTO forge_map_version (target, forge, repo_id, tag, paper_id, release_commit, map_commit, digest, "
+                      "pairs, card, frozen_at, instance, doi, record_url, deposited_at) VALUES ('local', 'github', '101', ?, ?, ?, ?, "
+                      "?, 2, '{}', ?, ?, ?, ?, ?)", (tag, PAPER_1, LATER, COMMIT, "b" * 64, T, instance, doi,
+                                                     f"https://{instance}.example/records/1", T))
+    state.commit()
+    out = tmp_path / "public"
+    said = forgelayer.write(con, forge_d1, out, state=state, now=T)
+    assert "2 releases tied to papers" in said
+    e = _entries(out)["ada-lab/eeg-analysis-2"]
+    first, second = e["releases"]
+    assert first["tag"] == "v1.0.0" and first["version"] == "accepted" and first["status"] == "linked"
+    assert first["paper"] == {"doi": "10.5555/oscr.fixture.1", "slug": "doi_10.5555_oscr.fixture.1",
+                              "title": "A synthetic EEG study for the OSCR build test"}
+    assert first["commit"] == LATER and first["shown"] == shown
+    assert first["map"] == {"digest": "b" * 64, "pairs": 2, "commit": COMMIT, "at": int(T)}
+    assert first["deposit"] is None, "a sandbox deposit is a test: never in a public output"
+    assert second["deposit"] == {"doi": "10.5281/zenodo.2", "record": "https://zenodo.example/records/1"}
+    text = json.dumps(_shards(out))
+    assert "10.5072" not in text and "oscr.fixture.9" not in text and "@" not in text

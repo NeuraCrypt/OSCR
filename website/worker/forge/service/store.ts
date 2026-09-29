@@ -295,16 +295,27 @@ export function deleteInstallation(db: D1Database, forge: string, id: string): W
 /** A job for the Mac (1 row written). */
 export function insertJob(
   db: D1Database,
-  job: { kind: JobKind; forge: string; repoId: string; ref?: string; userId?: string; notBefore?: number | null; paperId?: string },
+  job: {
+    kind: JobKind;
+    forge: string;
+    repoId: string;
+    ref?: string;
+    userId?: string;
+    notBefore?: number | null;
+    paperId?: string;
+    /** A deposit's: the ORCID the author signed in with (phase 07). */
+    proof?: "orcid" | "orcid-sandbox";
+  },
   t: number,
 ): Write {
   if (job.kind === "delete_due" && (job.notBefore === undefined || job.notBefore === null)) throw new TypeError("a delete_due job needs not_before");
   if ((job.kind === "release" || job.kind === "deposit") && (!job.ref || !job.paperId)) throw new TypeError(`a ${job.kind} job needs its tag and its paper`);
+  if ((job.kind === "deposit") !== Boolean(job.proof)) throw new TypeError("a deposit job, and only it, says which ORCID the author signed in with");
   return {
     rows: 1,
     stmt: db
-      .prepare("INSERT INTO jobs (kind, forge, repo_id, ref, user_id, created_at, not_before, paper_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
-      .bind(job.kind, forgeOf(job.forge), job.repoId, job.ref ?? "", job.userId ?? "", t, job.notBefore ?? null, job.paperId ?? ""),
+      .prepare("INSERT INTO jobs (kind, forge, repo_id, ref, user_id, created_at, not_before, paper_id, proof) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)")
+      .bind(job.kind, forgeOf(job.forge), job.repoId, job.ref ?? "", job.userId ?? "", t, job.notBefore ?? null, job.paperId ?? "", job.proof ?? ""),
   };
 }
 

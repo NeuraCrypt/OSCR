@@ -220,3 +220,15 @@ def test_nightly_reads_the_mirrors_and_writes_the_layer_between_the_export_and_t
         cli.main([*base, "nightly", "--out", str(out), "--cloudflare", "oscr"])
     assert "Forge mirrors: GitHub is down" in str(failed.value) and "Forge layer: not built yet" in str(failed.value)
     assert order == ["export", "deploy"]
+
+
+def test_the_job_kinds_are_the_macs():
+    """The CHECK on jobs.kind, as migration 0006 (night phase 07) leaves it, lists oscr/forgejobs.py
+    KINDS, which the Mac answers, and website/worker/forge/service/types.ts JOB_KINDS."""
+    sql = forge_database().execute("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'jobs'").fetchone()[0]
+    start = sql.index("kind        TEXT NOT NULL CHECK (kind IN (")
+    in_sql = re.findall(r"'([a-z_]+)'", sql[start:sql.index("))", start)])
+    assert tuple(in_sql) == forgejobs.KINDS == tuple(forgejobs.HANDLERS)
+    types = (ROOT / "website" / "worker" / "forge" / "service" / "types.ts").read_text()
+    start = types.index("export const JOB_KINDS")
+    assert re.findall(r'"([a-z_]+)"', types[start:types.index("];", start)]) == in_sql

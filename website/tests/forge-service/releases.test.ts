@@ -132,6 +132,8 @@ describe("release_create", () => {
     assert.equal(tie.repo_path, "ada-fixture/eeg");
     const jobs = forgeRows(w.forge, "jobs");
     assert.deepEqual(jobs.map((j) => [j.kind, j.ref, j.paper_id]), [["release", "v1.0.0", PAPER], ["archive", "v1.0.0", ""], ["deposit", "v1.0.0", PAPER]]);
+    // Sign-in through ORCID's sandbox (the default while the platform is built): the deposit is a test.
+    assert.deepEqual(jobs.map((j) => j.proof), ["", "", "orcid-sandbox"]);
     const [action] = forgeRows(w.forge, "actions");
     assert.equal(action.kind, "release_create");
     assert.equal(action.rows, 5);

@@ -18,7 +18,21 @@ own order, no index), does the work here, and answers each job in its own row (`
   harvester verifies it again when it moved), and every commit a tracing map is pinned to is
   checked: still at the source, or not (kept in the state, `forge_commit`, for the static layer);
 - `archive`: a Software Heritage "Save Code Now" request for the repository's address, only
-  because a person asked for it (D00-15, D01-7), and Software Heritage's answer, recorded;
+  because a person asked for it (D00-15, D01-7), and Software Heritage's answer, recorded (night
+  phase 07: a release's request names its tag in `ref`; the save takes the repository's tags with it);
+- `release` (night phase 07): a release tied to a version of a paper was published. The paper's
+  tracing map is versioned with it: the map as the Mac holds it now (`zenodo.map_of`, links and
+  metadata, never the paper's text nor the code) is frozen for (the repository, the tag, the paper),
+  with the release's commit and the commit the map's lines are at, in the state (`forge_map_version`),
+  and its digest answered into the tie (`release_papers.map_digest`, one row) — the static layer
+  (oscr/forgelayer.py) shows it on the release's page;
+- `deposit` (night phase 07): the release's tracing map deposited on Zenodo, because a verified
+  author of the paper asked for it with their ORCID iD (CLAUDE.md: a DOI only for a map an author
+  validated; never the code, which the record references). The role and the ORCID iD are read again
+  from oscr_community, the map's digest must still be the one the author saw, then Phase 6's own
+  `zenodo.validate` and `zenodo.deposit_map`, with the release (its tag as the version, its commit
+  referenced), on Zenodo's sandbox unless the settings say `OSCR_ZENODO_INSTANCE=zenodo`. A deposit
+  from ORCID's sandbox (`proof`) is a test, which only Zenodo's sandbox takes;
 - `delete_due`: nothing before `not_before`; then a repository still waiting for its deletion
   is hidden (D01-8). The deletion on GitHub stays the researcher's own act (D00-10); the dashboard
   shows the due date (in-site notifications come with phase 08);
@@ -57,6 +71,7 @@ per query, never a pass over `repos`, and write one row per changed head.
 """
 from __future__ import annotations
 
+import json
 import re
 import sqlite3
 import subprocess
@@ -69,7 +84,7 @@ from urllib.parse import quote, urlsplit
 
 import httpx
 
-from . import community, jobs, links, net
+from . import community, jobs, links, net, zenodo
 from . import forge as forges
 from .community import D1, literal
 from .forge import ForgeError, ForgeReader, RepoInfo, RepoKey, RepoRef
@@ -77,7 +92,7 @@ from .forge import ForgeError, ForgeReader, RepoInfo, RepoKey, RepoRef
 #: The actions of `oscr forge` this module answers.
 ACTIONS: tuple[str, ...] = ("poll", "mirrors", "status")
 #: The kinds of `oscr_forge.jobs` (the migration's CHECK).
-KINDS: tuple[str, ...] = ("link", "push", "archive", "delete_due", "reconcile")
+KINDS: tuple[str, ...] = ("link", "push", "archive", "delete_due", "reconcile", "release", "deposit")
 #: A job that failed this many times is given up, and the person told (as oscr/jobs.py).
 MAX_ATTEMPTS = jobs.MAX_ATTEMPTS
 #: Jobs read per poll.
@@ -112,6 +127,8 @@ CREATE TABLE IF NOT EXISTS forge_job (
     attempts    INTEGER NOT NULL DEFAULT 0,
     message     TEXT NOT NULL DEFAULT '',
     updated_at  REAL NOT NULL,
+    paper_id    TEXT NOT NULL DEFAULT '',      -- phase 07: a release's or a deposit's paper
+    proof       TEXT NOT NULL DEFAULT '',      -- phase 07: a deposit's ORCID (orcid | orcid-sandbox)
     PRIMARY KEY (target, id)
 ) WITHOUT ROWID;
 CREATE TABLE IF NOT EXISTS forge_cursor (
@@ -144,6 +161,24 @@ CREATE TABLE IF NOT EXISTS forge_commit (
     checked_at  REAL NOT NULL,
     PRIMARY KEY (target, forge, repo_id, sha)
 ) WITHOUT ROWID;
+CREATE TABLE IF NOT EXISTS forge_map_version (
+    target       TEXT NOT NULL,
+    forge        TEXT NOT NULL,
+    repo_id      TEXT NOT NULL,
+    tag          TEXT NOT NULL,             -- the release's tag
+    paper_id     TEXT NOT NULL,
+    release_commit TEXT NOT NULL DEFAULT '',   -- the commit the tag names
+    map_commit   TEXT NOT NULL DEFAULT '',  -- the commit the map's lines of this repository are at
+    digest       TEXT NOT NULL,             -- zenodo.map_digest of the frozen map
+    pairs        INTEGER NOT NULL DEFAULT 0,   -- its paragraph ↔ lines pairs in this repository
+    card         TEXT NOT NULL,             -- the frozen map (links and metadata: no paper text, no code)
+    frozen_at    REAL NOT NULL,
+    instance     TEXT NOT NULL DEFAULT '',  -- a deposit's Zenodo instance (sandbox | zenodo)
+    doi          TEXT NOT NULL DEFAULT '',
+    record_url   TEXT NOT NULL DEFAULT '',
+    deposited_at REAL,
+    PRIMARY KEY (target, forge, repo_id, tag, paper_id)
+) WITHOUT ROWID;
 CREATE TABLE IF NOT EXISTS forge_archive (
     target          TEXT NOT NULL,
     job_id          INTEGER NOT NULL,
@@ -165,9 +200,15 @@ class NotBuilt(RuntimeError):
 
 
 def open_state(path: Any) -> sqlite3.Connection:
-    """The facts push's state file, with the community jobs' tables and the forge's."""
+    """The facts push's state file, with the community jobs' tables and the forge's (a state made
+    before night phase 07 gains its two columns)."""
     state = jobs.open_state(path)
     state.executescript(STATE_SCHEMA)
+    have = {r[1] for r in state.execute("PRAGMA table_info(forge_job)")}
+    for column in ("paper_id", "proof"):
+        if column not in have:
+            state.execute(f"ALTER TABLE forge_job ADD COLUMN {column} TEXT NOT NULL DEFAULT ''")
+    state.commit()
     return state
 
 
@@ -231,6 +272,13 @@ class Runner:
     budget: int = DAILY_BUDGET
     report: Callable[[str], None] = print
     now: Callable[[], float] = time.time
+    #: The Zenodo instance of a release's deposit: the sandbox while the platform is built
+    #: (CLAUDE.md); `OSCR_ZENODO_INSTANCE=zenodo` in the settings for the real one.
+    instance: str = "sandbox"
+    zenodo_community: str = "oscr"
+    platform: str = "Open Scientific Code Registry (OSCR)"
+    #: Zenodo's client for an instance, with the Mac's token for it (keychain; tests: a fake).
+    invenio: Callable[[str], zenodo.Invenio] = lambda instance: zenodo.Invenio(instance, api_token=zenodo.token(instance))
     _readers: dict[str, ForgeReader] = field(default_factory=dict, repr=False)
 
     @property
@@ -539,7 +587,8 @@ def run_archive(runner: Runner, job: dict[str, Any]) -> Outcome:
         return Outcome("failed", message=f"Software Heritage refused to save {info.ref.owner}/{info.ref.name} "
                                          f"({request or r.status}).")
     detail = ", ".join(x for x in (request, task and f"task {task}", ident and f"request {ident}") if x)
-    return Outcome("done", message=f"Software Heritage took the request to save {info.ref.owner}/{info.ref.name}"
+    tag = f", its tag {job['ref']} with it" if job.get("ref") else ""
+    return Outcome("done", message=f"Software Heritage took the request to save {info.ref.owner}/{info.ref.name}{tag}"
                                    + (f" ({detail})" if detail else "") + ".")
 
 
@@ -564,9 +613,141 @@ def run_delete_due(runner: Runner, job: dict[str, Any]) -> Outcome:
                            "your own act, from its page.")
 
 
+# ---------------------------------------------------------------------------------------
+# Releases (night phase 07): the tracing map versioned with a release; its Zenodo deposit.
+
+def _tie(runner: Runner, job: dict[str, Any]) -> dict[str, Any] | None:
+    """The release's tie to the job's paper (release_papers, by its key), or None."""
+    rows = runner.d1.query(f"SELECT * FROM release_papers WHERE {_where(job['forge'], job['repo_id'])} "
+                           f"AND tag = {literal(job['ref'])} AND paper_id = {literal(job.get('paper_id') or '')}")
+    return rows[0] if rows else None
+
+
+def _frozen(card: dict[str, Any], tie: dict[str, Any]) -> tuple[str, int]:
+    """The commit the map's lines of the tied repository are at, and how many pairs point there."""
+    repo = f"github.com/{tie['repo_path']}".lower()
+    commit = next((c.get("commit") or "" for c in card.get("code") or [] if str(c.get("repo", "")).lower() == repo), "")
+    pairs = sum(1 for a in card.get("alignments") or [] if str(a.get("repo", "")).lower() == repo)
+    return commit, pairs
+
+
+def _release_block(tie: dict[str, Any], forge: str) -> dict[str, Any]:
+    """What the frozen map says of the release it goes with (its repository's address, never a person)."""
+    return {"repo": f"https://github.com/{tie['repo_path']}" if forge in ("github", "memory") else tie["repo_path"],
+            "tag": tie["tag"], "commit": tie.get("commit_sha") or "", "version": tie.get("version") or "",
+            "label": tie.get("label") or ""}
+
+
+def _keep_version(runner: Runner, job: dict[str, Any], tie: dict[str, Any], card: dict[str, Any], digest: str,
+                  **deposit: Any) -> None:
+    map_commit, pairs = _frozen(card, tie)
+    frozen = {**card, "release": _release_block(tie, job["forge"])}
+    old = runner.state.execute("SELECT * FROM forge_map_version WHERE target = ? AND forge = ? AND repo_id = ? AND tag = ? "
+                               "AND paper_id = ?", (runner.target, job["forge"], job["repo_id"], job["ref"],
+                                                    tie["paper_id"])).fetchone()
+    kept = {k: old[k] for k in ("instance", "doi", "record_url", "deposited_at")} if old is not None else {}
+    kept.update(deposit)
+    runner.state.execute(
+        "INSERT OR REPLACE INTO forge_map_version (target, forge, repo_id, tag, paper_id, release_commit, map_commit, "
+        "digest, pairs, card, frozen_at, instance, doi, record_url, deposited_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+        (runner.target, job["forge"], job["repo_id"], job["ref"], tie["paper_id"], tie.get("commit_sha") or "",
+         map_commit, digest, pairs, json.dumps(frozen, ensure_ascii=False, sort_keys=True), runner.now(),
+         kept.get("instance") or "", kept.get("doi") or "", kept.get("record_url") or "", kept.get("deposited_at")))
+    runner.state.commit()
+
+
+def run_release(runner: Runner, job: dict[str, Any]) -> Outcome:
+    tie = _tie(runner, job)
+    if tie is None:
+        return Outcome("skipped", message=f"The release {job['ref']} is no longer tied to {job.get('paper_id')}: "
+                                          f"nothing to version.")
+    paper_id = tie["paper_id"]
+    why = jobs._out_of_scope(jobs._paper(runner.con, paper_id))
+    if why:
+        return Outcome("skipped", message=why)
+    try:
+        card = zenodo.map_of(runner.con, paper_id)
+    except zenodo.InvenioError as e:
+        return Outcome("failed", message=str(e))
+    if not card["code"]:
+        return Outcome("skipped", message="This paper has no code in the registry yet: it has no tracing map to version.")
+    digest = zenodo.map_digest(card)
+    _keep_version(runner, job, tie, card, digest)
+    map_commit, pairs = _frozen(card, tie)
+    said = [f"The tracing map of {paper_id} is versioned with the release {job['ref']}: digest {digest[:12]}, "
+            f"{pairs} paragraph–line pair{'s' if pairs != 1 else ''} in this repository."]
+    release_commit = tie.get("commit_sha") or ""
+    if map_commit and release_commit and map_commit != release_commit:
+        said.append(f"Its lines are at commit {_short(map_commit)}, the release at {_short(release_commit)}.")
+    if tie.get("map_digest") and tie["map_digest"] != digest:
+        said.append("The map changed since the page showed it: the release keeps the map as it is now.")
+    where = (f"{_where(job['forge'], job['repo_id'])} AND tag = {literal(job['ref'])} AND paper_id = {literal(paper_id)} "
+             f"AND map_digest != {literal(digest)}")
+    return Outcome("done", [f"UPDATE release_papers SET map_digest = {literal(digest)} WHERE {where}"], " ".join(said))
+
+
+def run_deposit(runner: Runner, job: dict[str, Any]) -> Outcome:
+    tie = _tie(runner, job)
+    if tie is None:
+        return Outcome("skipped", message=f"The release {job['ref']} is no longer tied to {job.get('paper_id')}: "
+                                          f"nothing to deposit.")
+    if runner.community is None:
+        return Outcome("retry", message="the author's role cannot be confirmed without oscr_community", counts=False)
+    paper_id, uid = tie["paper_id"], job.get("user_id") or ""
+    held = runner.community.query(f"SELECT 1 AS x FROM roles WHERE user_id = {literal(uid)} AND role = 'verified_author' "
+                                  f"AND scope_kind = 'paper' AND scope_id = {literal(paper_id)}")
+    if not held:
+        return Outcome("failed", message=f"Only a verified author of {paper_id} asks for the deposit of its map: "
+                                         f"the role is not held (any more).")
+    ids = runner.community.query(f"SELECT subject FROM identities WHERE user_id = {literal(uid)} AND provider = 'orcid'")
+    orcid = str(ids[0]["subject"]) if ids else ""
+    if not zenodo.orcid_is_valid(orcid):
+        return Outcome("failed", message="No ORCID iD is linked to the account any more: the map is validated with it.")
+    users = runner.community.query(f"SELECT display_name FROM users WHERE id = {literal(uid)}")
+    why = jobs._out_of_scope(jobs._paper(runner.con, paper_id))
+    if why:
+        return Outcome("failed", message=why)
+    try:
+        card = zenodo.map_of(runner.con, paper_id)
+    except zenodo.InvenioError as e:
+        return Outcome("failed", message=str(e))
+    if not card["code"]:
+        return Outcome("failed", message="This paper has no code in the registry: it has no map to deposit.")
+    digest = zenodo.map_digest(card)
+    if tie.get("map_digest") and tie["map_digest"] != digest:
+        return Outcome("failed", message="The map changed since you validated it: look at it again on the release's "
+                                         "page, then ask for the deposit again.")
+    # From ORCID's sandbox, a test, which only Zenodo's sandbox takes and no public output shows (CLAUDE.md).
+    proof = "orcid" if job.get("proof") == "orcid" else "test"
+    name = jobs.author_name(runner.con, paper_id, orcid, (users[0]["display_name"] if users else "") or "")
+    inv = runner.invenio(runner.instance)
+    try:
+        if not inv.can_write:
+            return Outcome("retry", message=f"no Zenodo token for {runner.instance} on the Mac "
+                                            f"(keychain {zenodo.keychain_service(runner.instance)})", counts=False)
+        release_card = {**card, "release": _release_block(tie, job["forge"])}
+        zenodo.validate(runner.con, paper_id, orcid=orcid, name=name, proof=proof, card=release_card)
+        deposit = zenodo.deposit_map(runner.con, inv, paper_id, platform=runner.platform, community=runner.zenodo_community,
+                                     report=lambda m: runner.report(f"  zenodo: {m}"))
+    except zenodo.InvenioError as e:
+        if "not validated by an author" in str(e):
+            return Outcome("failed", message="This validation is a test (ORCID's sandbox): the real Zenodo does not take it.")
+        if job.get("attempts", 0) + 1 >= MAX_ATTEMPTS:
+            return Outcome("failed", message=f"Zenodo refused the deposit: {e}"[:300])
+        return Outcome("retry", message=f"Zenodo: {e}"[:300])
+    finally:
+        inv.close()
+    doi = str(deposit.get("doi") or "")
+    _keep_version(runner, job, tie, card, digest, instance=runner.instance, doi=doi,
+                  record_url=str(deposit.get("url") or ""), deposited_at=runner.now())
+    where = f"on Zenodo{' (sandbox)' if runner.instance == 'sandbox' else ''}"
+    return Outcome("done", message=f"The tracing map of {paper_id}, with the release {job['ref']}, is deposited {where}"
+                                   + (f": DOI {doi}." if doi else "."))
+
+
 HANDLERS: dict[str, Callable[[Runner, dict[str, Any]], Outcome]] = {
     "link": run_link, "push": run_push, "archive": run_archive, "delete_due": run_delete_due,
-    "reconcile": run_reconcile,
+    "reconcile": run_reconcile, "release": run_release, "deposit": run_deposit,
 }
 
 
@@ -609,8 +790,14 @@ def ingest(runner: Runner) -> int:
     work to do, and the repositories they name, which the mirrors read by key (no pass over
     `repos`). Returns how many were read."""
     state, target = runner.state, runner.target
-    fresh = runner.d1.query(f"SELECT id, kind, forge, repo_id, ref, user_id, created_at, not_before, done_at FROM jobs "
-                            f"WHERE id > {_cursor(state, target)} ORDER BY id LIMIT {BATCH}")
+    columns = "id, kind, forge, repo_id, ref, user_id, created_at, not_before, done_at"
+    where = f"WHERE id > {_cursor(state, target)} ORDER BY id LIMIT {BATCH}"
+    try:
+        fresh = runner.d1.query(f"SELECT {columns}, paper_id, proof FROM jobs {where}")
+    except (community.D1Error, sqlite3.Error) as e:
+        if "no such column" not in str(e):
+            raise
+        fresh = runner.d1.query(f"SELECT {columns} FROM jobs {where}")   # oscr_forge before its migration 0006
     now = runner.now()
     for j in fresh:
         state.execute("INSERT OR IGNORE INTO forge_repo (target, forge, repo_id, learned_at) VALUES (?,?,?,?)",
@@ -618,9 +805,10 @@ def ingest(runner: Runner) -> int:
         if j["kind"] not in HANDLERS:
             continue
         state.execute("INSERT OR IGNORE INTO forge_job (target, id, kind, forge, repo_id, ref, user_id, created_at, "
-                      "not_before, status, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+                      "not_before, status, updated_at, paper_id, proof) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
                       (target, int(j["id"]), j["kind"], j["forge"], j["repo_id"], j["ref"] or "", j["user_id"] or "",
-                       int(j["created_at"]), j["not_before"], "new" if j["done_at"] is None else "done", now))
+                       int(j["created_at"]), j["not_before"], "new" if j["done_at"] is None else "done", now,
+                       j.get("paper_id") or "", j.get("proof") or ""))
     if fresh:
         state.execute("INSERT INTO forge_cursor (target, last_id) VALUES (?, ?) ON CONFLICT (target) DO UPDATE SET "
                       "last_id = excluded.last_id", (target, max(int(j["id"]) for j in fresh)))
@@ -860,8 +1048,13 @@ def _open(con: sqlite3.Connection, state: sqlite3.Connection, *, target: str | N
     if budget is None:
         budget = int(cfg.get("OSCR_COMMUNITY_BUDGET", str(community.DAILY_BUDGET)))
     readers = readers or (lambda f: forges.GitHubReader(client) if f == "github" else forges.reader(f))
+    instance = cfg.get("OSCR_ZENODO_INSTANCE", "sandbox")
+    if instance not in zenodo.INSTANCES:
+        raise SystemExit(f"OSCR_ZENODO_INSTANCE: sandbox or zenodo, not {instance!r}")
     return Runner(con, d1, state, jobs.MacHarvester(client, opts or harvest.Options(records=False)), community=people,
-                  readers=readers, post=post or _swh_post(client), budget=budget, report=report)
+                  readers=readers, post=post or _swh_post(client), budget=budget, report=report, instance=instance,
+                  zenodo_community=cfg.get("OSCR_ZENODO_COMMUNITY", "oscr"),
+                  platform=cfg.get("OSCR_PLATFORM_NAME", "Open Scientific Code Registry (OSCR)"))
 
 
 def command(con: sqlite3.Connection, action: str, *, target: str | None, folder: Path,
@@ -916,3 +1109,12 @@ def archive_answers(state: sqlite3.Connection, target: str) -> list[dict[str, An
     """Software Heritage's answers, newest first (what `status` and the tests read)."""
     return [dict(r) for r in state.execute("SELECT * FROM forge_archive WHERE target = ? ORDER BY at DESC, job_id DESC",
                                            (target,))]
+
+
+def map_versions(state: sqlite3.Connection, target: str) -> list[dict[str, Any]]:
+    """The tracing maps versioned with releases, for `target` (what the static layer and the tests
+    read), by repository, tag and paper."""
+    if not state.execute("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'forge_map_version'").fetchone():
+        return []
+    return [dict(r) for r in state.execute("SELECT * FROM forge_map_version WHERE target = ? ORDER BY forge, repo_id, tag, "
+                                           "paper_id", (target,))]

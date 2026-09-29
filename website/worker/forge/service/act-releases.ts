@@ -44,7 +44,6 @@
 // fact); a deposit needs a verified author of the paper (their role, not a maintainer's) with an ORCID
 // iD linked, as Phase 6's validation does.
 
-import { hasRole, identitiesOf } from "../../account/store.ts";
 import { GitBackendError } from "../errors.ts";
 import { BODY_CHARS, MESSAGE_BYTES } from "../limits.ts";
 import { maskEmails } from "../mask.ts";
@@ -168,13 +167,27 @@ function notTheCode(info: RepoInfo, paper: string): ForgeProblem {
   );
 }
 
+/** Whether the person holds a verified author's role for the paper (oscr_community roles, by key;
+ *  account/store.ts hasRole, read here so that the pages' bundles stay free of the accounts' code). */
+async function isAuthor(ctx: ActionContext<unknown>, paper: string): Promise<boolean> {
+  const row = await first(
+    ctx.community.prepare("SELECT 1 AS x FROM roles WHERE user_id = ? AND role = 'verified_author' AND scope_kind = 'paper' AND scope_id = ?").bind(ctx.user.id, paper),
+  );
+  return row !== null;
+}
+
+/** Which ORCID signs the registry's readers in (contributions/index.ts orcidProof): orcid.org, or its
+ *  sandbox, whose iDs are tests (a deposit from it goes to Zenodo's sandbox only, never exported). */
+export const orcidProof = (env: { ORCID_ISSUER?: string }): "orcid" | "orcid-sandbox" =>
+  (env.ORCID_ISSUER ?? "").trim().replace(/\/+$/, "") === "https://orcid.org" ? "orcid" : "orcid-sandbox";
+
 /** The deposit's rule (CLAUDE.md; Phase 6's validation): a verified author of the paper, with the
  *  ORCID iD the map is validated with. A maintainer of the code is not enough. */
 async function mayDeposit(ctx: ActionContext<unknown>, paper: string): Promise<ForgeProblem | null> {
-  if (!(await hasRole(ctx.community, ctx.user.id, "verified_author", "paper", paper))) {
+  if (!(await isAuthor(ctx, paper))) {
     return new ForgeProblem(403, "not_author", `Only a verified author of ${paper} asks for the Zenodo deposit of its tracing map: nothing was done.`);
   }
-  const orcid = (await identitiesOf(ctx.community, ctx.user.id)).find((i) => i.provider === "orcid");
+  const orcid = await first(ctx.community.prepare("SELECT 1 AS x FROM identities WHERE user_id = ? AND provider = 'orcid'").bind(ctx.user.id));
   if (!orcid) return new ForgeProblem(409, "no_orcid", "Link your ORCID iD to your account first: the map is validated with it. Nothing was done.");
   return null;
 }
@@ -418,7 +431,7 @@ export const releaseCreateSpec: ActionSpec<CreateParsed, ReleaseDone> = {
       jobs.push("archive");
     }
     if (p.deposit && p.paper && !made.draft) {
-      writes.push(insertJob(ctx.db, { ...common, kind: "deposit", paperId: p.paper.paperId }, ctx.t));
+      writes.push(insertJob(ctx.db, { ...common, kind: "deposit", paperId: p.paper.paperId, proof: orcidProof(ctx.env) }, ctx.t));
       jobs.push("deposit");
     }
     const notes: string[] = [];
@@ -775,7 +788,7 @@ export const releaseResearchSpec: ActionSpec<ResearchParsed, ResearchDone> = {
     const writer = await mayPush(c, info);
     // Who may: a person who may push, for everything but the deposit; a verified author of the paper
     // tied or untied, for their own paper; the deposit, a verified author with an ORCID iD only.
-    const authorOf = async (paper: string) => hasRole(ctx.community, ctx.user.id, "verified_author", "paper", paper);
+    const authorOf = (paper: string) => isAuthor(c, paper);
     if (p.archive && !writer) {
       throw new ForgeProblem(403, "not_maintainer", "Only a person who may push to this repository asks for its archive here; anyone can on Software Heritage's own site. Nothing was done.");
     }
@@ -850,7 +863,7 @@ export const releaseResearchSpec: ActionSpec<ResearchParsed, ResearchDone> = {
       jobs.push("archive");
     }
     if (p.deposit) {
-      writes.push(insertJob(ctx.db, { ...common, kind: "deposit", paperId: p.deposit }, ctx.t));
+      writes.push(insertJob(ctx.db, { ...common, kind: "deposit", paperId: p.deposit, proof: orcidProof(ctx.env) }, ctx.t));
       jobs.push("deposit");
     }
     const notes: string[] = [];

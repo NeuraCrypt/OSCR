@@ -11,7 +11,9 @@
 --   versioned with the release (frozen for the tag's commit, its digest checked), and `deposit`, the
 --   release's validated map deposited on Zenodo at its author's request (the sandbox unless the owner
 --   switches; never the code: CLAUDE.md). A Software Heritage request for a release is an `archive`
---   job whose `ref` is the tag. A job about one paper names it (`paper_id`).
+--   job whose `ref` is the tag. A job about one paper names it (`paper_id`); a deposit says which
+--   ORCID the author signed in with (`proof`: from ORCID's sandbox, a test that only Zenodo's sandbox
+--   takes and no public output shows, as Phase 6's validations).
 --
 -- What each write costs: a release tied to a paper writes the tie (1 row) and its `release` job
 -- (1), with the action row; a Software Heritage request or a deposit one job each. No index: a
@@ -62,9 +64,12 @@ CREATE TABLE jobs_next (
                 CHECK (length(message) <= 300 AND instr(message, '@') = 0),
     paper_id    TEXT NOT NULL DEFAULT ''           -- phase 07: the paper a `release` or `deposit` job is about
                 CHECK (paper_id = '' OR (substr(paper_id, 1, 7) = 'doi:10.' AND paper_id = lower(paper_id) AND length(paper_id) <= 210)),
+    proof       TEXT NOT NULL DEFAULT ''           -- phase 07, a deposit: the ORCID the author signed in with
+                CHECK (proof IN ('', 'orcid', 'orcid-sandbox')),   -- ('orcid-sandbox': a test, sandbox only)
     CHECK (kind != 'delete_due' OR not_before IS NOT NULL),
     CHECK ((done_at IS NULL) = (outcome = '')),
-    CHECK (kind NOT IN ('release', 'deposit') OR (ref != '' AND paper_id != ''))
+    CHECK (kind NOT IN ('release', 'deposit') OR (ref != '' AND paper_id != '')),
+    CHECK ((kind = 'deposit') = (proof != ''))
 );
 
 INSERT INTO jobs_next (id, kind, forge, repo_id, ref, user_id, created_at, not_before, done_at, outcome, message)

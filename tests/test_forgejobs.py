@@ -325,6 +325,156 @@ def test_software_heritage_busy_or_not_asked_is_tried_again_later(w):
     assert (out.retry, written, len(w.swh)) == (1, 0, 1)
 
 
+def test_an_archive_job_for_a_release_names_its_tag(w):
+    w.reader.add("oscr-fixture", "eeg-analysis", id="101", files={}, sha=SHA_A)
+    w.repo("101", "oscr-fixture", "eeg-analysis", head=SHA_A)
+    jid = w.forge.con.execute("INSERT INTO jobs (kind, forge, repo_id, ref, user_id, created_at) VALUES "
+                              "('archive', 'github', '101', 'v1.0.0', 'u_ada', ?)", (T,)).lastrowid
+    w.forge.con.commit()
+    w.poll()
+    assert "its tag v1.0.0 with it" in w.answer(jid)["message"]
+
+
+# ---------------------------------------------------------------------------------------------
+# release and deposit (night phase 07): the map versioned with a release; its Zenodo deposit.
+
+EEG = "github.com/oscr-fixture/eeg-analysis"
+
+
+def _tie(w, *, tag="v1.0.0", paper=P1, digest="", commit=SHA_A, version="accepted"):
+    w.forge.con.execute("INSERT INTO release_papers (forge, repo_id, tag, paper_id, release_id, repo_path, version, label, "
+                        "commit_sha, map_digest, status, by_user, at) VALUES ('github', '101', ?, ?, '9001', "
+                        "'oscr-fixture/eeg-analysis', ?, 'revision 2', ?, ?, 'linked', 'u_ada', ?)",
+                        (tag, paper, version, commit, digest, T))
+    w.forge.con.commit()
+
+
+def _release_job(w, kind, *, tag="v1.0.0", paper=P1, proof="", user="u_ada") -> int:
+    jid = w.forge.con.execute("INSERT INTO jobs (kind, forge, repo_id, ref, user_id, created_at, paper_id, proof) VALUES "
+                              "(?, 'github', '101', ?, ?, ?, ?, ?)", (kind, tag, user, T, paper, proof)).lastrowid
+    w.forge.con.commit()
+    return int(jid)
+
+
+def _digest(w, paper=P1):
+    from oscr import zenodo
+    return zenodo.map_digest(zenodo.map_of(w.mac, paper))
+
+
+def test_a_release_job_versions_the_papers_map_with_the_release_and_answers_its_digest(w):
+    _tie(w)
+    job = _release_job(w, "release")
+    out, written = w.poll()
+    assert (out.done, written) == (1, 2)          # the tie's digest, the answer
+    said = w.answer(job)["message"]
+    digest = _digest(w)
+    assert said.startswith(f"The tracing map of {P1} is versioned with the release v1.0.0: digest {digest[:12]}, 2 ")
+    # The fixture's map points to lines at another commit than the release's: said.
+    assert "the release at aaaaaaaaaaaa" in said
+    tie = w.forge.con.execute("SELECT map_digest FROM release_papers WHERE tag = 'v1.0.0'").fetchone()
+    assert tie["map_digest"] == digest
+    [v] = forgejobs.map_versions(w.state, "local")
+    assert (v["tag"], v["paper_id"], v["digest"], v["pairs"], v["release_commit"]) == ("v1.0.0", P1, digest, 2, SHA_A)
+    card = json.loads(v["card"])
+    assert card["release"] == {"repo": "https://github.com/oscr-fixture/eeg-analysis", "tag": "v1.0.0", "commit": SHA_A,
+                               "version": "accepted", "label": "revision 2"}
+    # Links and metadata: neither the paper's text nor the code.
+    assert "abstract" not in card["paper"] and not any("content" in f for c in card["code"] for f in c["files"])
+    # Asked again: the same map, nothing more to write.
+    again = _release_job(w, "release")
+    out, written = w.poll()
+    assert written == 1 and w.answer(again)["outcome"] == "done"
+
+
+def test_a_release_job_says_when_the_map_changed_since_the_page_and_skips_an_untied_or_off_topic_paper(w):
+    _tie(w, digest="f" * 64)
+    job = _release_job(w, "release")
+    w.poll()
+    assert "The map changed since the page showed it" in w.answer(job)["message"]
+    untied = _release_job(w, "release", tag="v9")
+    w.poll()
+    assert w.answer(untied)["outcome"] == "skipped"
+    _tie(w, tag="v2", paper=P9)
+    off = _release_job(w, "release", tag="v2", paper=P9)
+    w.poll()
+    assert w.answer(off)["outcome"] == "skipped"
+    assert "scope" in w.answer(off)["message"]
+
+
+def _author(w, uid="u_ada", orcid=ADA):
+    w.role(uid, "verified_author", P1)
+    w.people.con.execute("INSERT INTO identities (provider, subject, user_id, linked_at) VALUES ('orcid', ?, ?, ?)",
+                         (orcid, uid, T))
+    w.people.con.commit()
+
+
+def _zenodo(w, token="test-token"):
+    import httpx
+    from test_jobs import FakeZenodo
+
+    from oscr import zenodo
+    fake = FakeZenodo()
+    zenodo.INTERVAL_S = 0
+    w.runner.invenio = lambda instance: zenodo.Invenio(instance, api_token=token, transport=httpx.MockTransport(fake))
+    return fake
+
+
+def test_a_deposit_job_deposits_the_release_map_on_the_sandbox_as_a_test_with_the_release(w):
+    fake = _zenodo(w)
+    _author(w)
+    _tie(w, digest=_digest(w))
+    job = _release_job(w, "deposit", proof="orcid-sandbox")
+    out, written = w.poll()
+    assert (out.done, written) == (1, 1)
+    said = w.answer(job)["message"]
+    assert said == f"The tracing map of {P1}, with the release v1.0.0, is deposited on Zenodo (sandbox): DOI 10.5072/zenodo.r1."
+    # Phase 6's own validation: the author's ORCID iD, as a test (ORCID's sandbox), which only the sandbox takes.
+    v = w.mac.execute("SELECT orcid, proof, name FROM validation WHERE article_id = ?", (P1,)).fetchone()
+    assert (v["orcid"], v["proof"], v["name"]) == (ADA, "test", "Fixture, Ada")
+    metadata = fake.drafts[0]["metadata"]
+    assert metadata["version"] == "v1.0.0"
+    assert metadata["title"].endswith("(release v1.0.0)")
+    related = {(r["identifier"], r["relation_type"]["id"]) for r in metadata["related_identifiers"]}
+    assert ("10.5555/oscr.fixture.1", "issupplementto") in related
+    assert (f"https://github.com/oscr-fixture/eeg-analysis/tree/{SHA_A}", "references") in related
+    assert "the accepted manuscript" in metadata["description"] and "never" not in metadata["description"].lower()
+    creators = [c["person_or_org"] for c in metadata["creators"]]
+    assert {"scheme": "orcid", "identifier": ADA} in [i for c in creators for i in c.get("identifiers", [])]
+    assert creators[-1] == {"type": "organizational", "name": "Open Scientific Code Registry (OSCR)"}
+    # The map itself is the deposited file; the code is never redeposited.
+    assert fake.maps and fake.maps[0]["release"]["tag"] == "v1.0.0"
+    [kept] = forgejobs.map_versions(w.state, "local")
+    assert (kept["instance"], kept["doi"]) == ("sandbox", "10.5072/zenodo.r1")
+
+
+def test_a_deposit_job_refuses_without_the_authors_role_their_orcid_or_the_map_they_saw(w):
+    fake = _zenodo(w)
+    _tie(w, digest=_digest(w))
+    norole = _release_job(w, "deposit", proof="orcid-sandbox")
+    w.poll()
+    assert w.answer(norole)["outcome"] == "failed" and "verified author" in w.answer(norole)["message"]
+    w.role("u_ada", "verified_author", P1)
+    noorcid = _release_job(w, "deposit", proof="orcid-sandbox")
+    w.poll()
+    assert w.answer(noorcid)["outcome"] == "failed" and "ORCID" in w.answer(noorcid)["message"]
+    w.people.con.execute("INSERT INTO identities (provider, subject, user_id, linked_at) VALUES ('orcid', ?, 'u_ada', ?)", (ADA, T))
+    w.people.con.commit()
+    w.forge.con.execute("UPDATE release_papers SET map_digest = ?", ("e" * 64,))
+    w.forge.con.commit()
+    changed = _release_job(w, "deposit", proof="orcid-sandbox")
+    w.poll()
+    assert w.answer(changed)["outcome"] == "failed" and "The map changed" in w.answer(changed)["message"]
+    assert fake.calls == []
+    # No token on the Mac: waits, without counting an attempt.
+    w.forge.con.execute("UPDATE release_papers SET map_digest = ?", (_digest(w),))
+    w.forge.con.commit()
+    _zenodo(w, token="")
+    waiting = _release_job(w, "deposit", proof="orcid-sandbox")
+    out, _ = w.poll()
+    assert out.retry == 1 and w.answer(waiting)["outcome"] == ""
+    assert w.state.execute("SELECT attempts FROM forge_job WHERE id = ?", (waiting,)).fetchone()["attempts"] == 0
+
+
 # ---------------------------------------------------------------------------------------------
 # delete_due: the end of a grace period hides; the deletion stays the researcher's.
 

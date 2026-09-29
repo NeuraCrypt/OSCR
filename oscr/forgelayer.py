@@ -59,6 +59,17 @@ who wrote them by account (no ``author_id``). Left out: an issue about a reposit
 layer, or about a paper the Mac holds off-topic or withdrawn. Every string goes through
 ``entities.scrub``.
 
+**Releases** (night phase 07, ``releases``). A layer entry gains ``releases``: its releases tied to a
+version of a paper (D1 ``release_papers``, read when ``d1`` is given, by its key), each with the
+paper, the version and its label, the commit the tag named, whether the tie is ``linked`` or
+``proposed``, and the tracing map the Mac versioned with it (oscr/forgejobs.py ``forge_map_version``:
+its digest, its pairs in this repository, the commit its lines are at). A Zenodo DOI appears only for
+a deposit on the real Zenodo: a sandbox deposit is a test and stays out of every public output
+(CLAUDE.md). The release itself (its title, notes, files) is GitHub's and never copied here. Each
+listed paper that has code in the registry also carries its tracing map's digest (``map``,
+``zenodo.map_digest``, as the paper's page shows it): the release form ties a release to the map the
+person saw.
+
     oscr forge layer --local|--remote   the traced paths pushed, then the shards written
     oscr forge status                   what each target holds, the ids, the last runs
     oscr nightly                        calls ``write`` between the public export and the
@@ -79,7 +90,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from . import catalog, community, entities
+from . import catalog, community, entities, zenodo
 from . import forge as forges
 
 #: The actions of ``oscr forge`` this module answers.
@@ -92,6 +103,10 @@ LAYER = Path("forge") / "layer"
 RESEARCH = Path("forge") / "research"
 #: Research issues a repository's layer entry lists at most, the newest first.
 RESEARCH_PER_REPO = 200
+#: Releases tied to papers a repository's layer entry lists at most (night phase 07).
+RELEASES_PER_REPO = 200
+#: The versions of a paper a release accompanies (website/worker/forge/service/act-releases.ts).
+PAPER_VERSIONS: tuple[str, ...] = ("preprint", "submitted", "accepted", "published", "correction")
 #: The forge of the catalogue's repositories that come into the layer.
 FORGE = "github"
 HOST = "github.com"
@@ -523,10 +538,10 @@ def push_traced(con: sqlite3.Connection, d1: community.D1, state: sqlite3.Connec
 # ---------------------------------------------------------------------------------------
 # The static layer.
 
-def _forge_rows(d1: community.D1, table: str, columns: str) -> list[dict[str, Any]]:
+def _forge_rows(d1: community.D1, table: str, columns: str, keys: tuple[str, ...] | None = None) -> list[dict[str, Any]]:
     """Every GitHub row of ``table``, read in key order, a page at a time (no scan of other forges)."""
     rows: list[dict[str, Any]] = []
-    keys = ("repo_id",) if table == "repos" else ("repo_id", "paper_id")
+    keys = keys or (("repo_id",) if table == "repos" else ("repo_id", "paper_id"))
     after: tuple[str, ...] = ("",) * len(keys)
     while True:
         # The key's order: (repo_id) > (a), or (repo_id, paper_id) > (a, b).
@@ -822,6 +837,79 @@ def attach_research(entries: dict[str, dict[str, Any]], issues: dict[int, dict[s
             entry["research"] = by_path[path][:RESEARCH_PER_REPO]
 
 
+def releases(con: sqlite3.Connection, d1: community.D1 | None, state: sqlite3.Connection | None) -> dict[str, list[dict[str, Any]]]:
+    """The releases tied to papers, by repository id: what a layer entry lists (night phase 07).
+    Without ``d1``, none; before oscr_forge's migration 0006, none. A paper the Mac holds off-topic or
+    withdrawn is left out."""
+    if d1 is None:
+        return {}
+    try:
+        ties = _forge_rows(d1, "release_papers", "repo_id, tag, paper_id, version, label, commit_sha, map_digest, status",
+                           ("repo_id", "tag", "paper_id"))
+    except (community.D1Error, sqlite3.Error) as e:
+        if "no such table" in str(e):
+            return {}
+        raise LayerError(f"D1 did not answer for the releases: {e}") from None
+    versions: dict[tuple[str, str, str], sqlite3.Row] = {}
+    if state is not None and _table(state, "forge_map_version"):
+        for r in state.execute("SELECT * FROM forge_map_version WHERE target = ? AND forge = ?", (d1.target, FORGE)):
+            versions[(r["repo_id"], r["tag"], r["paper_id"])] = r
+    pages = _pages(con)
+    in_scope = {r["id"]: r for r in con.execute(f"SELECT id, doi, title FROM article WHERE {catalog.IN_SCOPE}")}
+    out: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    for t in ties:
+        a = in_scope.get(t["paper_id"])
+        if a is None or t["version"] not in PAPER_VERSIONS:
+            continue
+        v = versions.get((t["repo_id"], t["tag"], t["paper_id"]))
+        frozen = None
+        if v is not None:
+            frozen = {"digest": v["digest"], "pairs": int(v["pairs"]), "commit": _sha(v["map_commit"]),
+                      "at": _seconds(v["frozen_at"])}
+        deposit = None
+        if v is not None and v["instance"] == "zenodo" and v["doi"]:
+            deposit = {"doi": v["doi"], "record": v["record_url"] or None}
+        out[t["repo_id"]].append({
+            "tag": t["tag"],
+            "paper": {"doi": a["doi"] or t["paper_id"].removeprefix("doi:"),
+                      "slug": catalog.slug(t["paper_id"]) if t["paper_id"] in pages else None, "title": _title(a["title"])},
+            "version": t["version"], "label": t["label"] or "", "status": t["status"],
+            "commit": _sha(t["commit_sha"]), "shown": t["map_digest"] or None, "map": frozen, "deposit": deposit,
+        })
+    return {k: v[:RELEASES_PER_REPO] for k, v in out.items()}
+
+
+def attach_releases(entries: dict[str, dict[str, Any]], rels: dict[str, list[dict[str, Any]]]) -> None:
+    """Each layer entry's releases tied to papers, by its repository id."""
+    for entry in entries.values():
+        if entry.get("id") and entry["id"] in rels:
+            entry["releases"] = entities.scrub(rels[entry["id"]])
+
+
+def attach_maps(con: sqlite3.Connection, entries: dict[str, dict[str, Any]]) -> None:
+    """Each listed paper with code in the registry: its tracing map's digest (``map``), as its page
+    shows it (oscr/paperpage.py): the release form ties a release to the map the person saw."""
+    digests: dict[str, str | None] = {}
+
+    def digest(slug: str | None, doi: str) -> str | None:
+        paper_id = f"doi:{doi.lower()}"
+        if slug is None:
+            return None
+        if paper_id not in digests:
+            has_code = con.execute("SELECT 1 FROM link WHERE article_id = ? AND role = 'code' LIMIT 1", (paper_id,)).fetchone()
+            try:
+                digests[paper_id] = zenodo.map_digest(zenodo.map_of(con, paper_id)) if has_code else None
+            except zenodo.InvenioError:
+                digests[paper_id] = None
+        return digests[paper_id]
+
+    for entry in entries.values():
+        for p in entry.get("papers") or []:
+            d = digest(p.get("slug"), str(p.get("doi") or ""))
+            if d:
+                p["map"] = d
+
+
 def research_summary_keys() -> tuple[str, ...]:
     return ("id", "paper", "repo", "code_url", "type", "title", "state", "close_reason", "resolution", "resolution_ref",
             "labels", "locked", "pinned", "author", "author_via", "author_role", "comments", "created_at", "updated_at",
@@ -883,17 +971,21 @@ def write(con: sqlite3.Connection, d1: community.D1 | None, out: Path, *, state:
         try:
             entries, left_out = layer(con, d1, state)
             issues = research(con, d1)
+            rels = releases(con, d1, state)
         except LayerError:
             _write_shards(out, {f"{n:02d}": {} for n in range(SHARDS)})
             _write_shards(out, {f"{n:02d}": {} for n in range(SHARDS)}, RESEARCH)
             raise
         attach_research(entries, issues)
+        attach_releases(entries, rels)
+        attach_maps(con, entries)
         folder = _write_shards(out, shards(entries))
         _write_shards(out, research_shards(issues), RESEARCH)
         catalogue_only = sum(1 for e in entries.values() if e["mode"] == "catalogue")
         summary = (f"{len(entries)} repositories in {SHARDS} shards ({catalogue_only} from the catalogue only, "
                    f"{len(entries) - catalogue_only} linked through OSCR; {left_out} left out: waiting for deletion, "
-                   f"hidden, deleted or private); {len(issues)} research issues → {folder}")
+                   f"hidden, deleted or private); {len(issues)} research issues; "
+                   f"{sum(len(v) for v in rels.values())} releases tied to papers → {folder}")
         if state is not None:
             state.execute("INSERT INTO forgelayer_run (at, what, summary) VALUES (?, 'layer', ?)",
                           (now if now is not None else time.time(), summary))
