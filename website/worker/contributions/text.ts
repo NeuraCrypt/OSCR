@@ -3,8 +3,10 @@
 // address: one typed in is removed before anything is stored, and so is any at sign (the schema
 // refuses one, as it does in a name).
 
-/** An email address, also written with spaces or brackets around the at sign ("name [at] lab.org"). */
-const ADDRESS = /[^\s@<>()[\]{},;:]+\s*(?:[@＠]|[[({]\s*at\s*[\])}])\s*[^\s@<>()[\]{},;:.]+(?:\s*(?:\.|[[({]\s*dot\s*[\])}])\s*[^\s@<>()[\]{},;:.]+)+/gi;
+// ADDRESS: an email address, also written with spaces or brackets around the at sign ("name [at]
+// lab.org"); the same rule as the removal request's (src/lib/removal.ts), which refuses a
+// justification that holds one instead of removing it.
+import { ADDRESS } from "../../src/lib/removal.ts";
 /** Control characters but the line feed, and the characters that reorder or hide text. */
 const CONTROL = /[\u0000-\u0009\u000b-\u001f\u007f-\u009f\u200b-\u200f\u2028-\u202e\u2066-\u2069]/g;
 

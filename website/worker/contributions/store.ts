@@ -59,9 +59,19 @@ export interface ReportRow {
   target_id: string;
   reason: string;
   details: string;
+  /** Who asked, what to remove, the evidence and the confirmations (migration 3): '' / 'record' /
+   *  0 for a request made before it. */
+  requester_role: string;
+  author_verified: number;
+  scope: string;
+  scope_repo: string;
+  scope_path: string;
+  evidence_url: string;
+  confirmed: number;
   status: string;
   message: string;
   created_at: number;
+  updated_at: number | null;
   decided_at: number | null;
 }
 
@@ -90,7 +100,9 @@ export const LIST = 50;
 const SUBMISSION = "id, doi, code_urls, note, checks, status, revisions, paper_id, author, draft, message, created_at, updated_at";
 const EDIT = "id, paper_id, as_role, repo, changes, note, status, version, message, created_at, decided_at";
 const VALIDATION = "id, paper_id, orcid, proof, map_digest, status, instance, doi, record_url, message, created_at, decided_at";
-const REPORT = "id, target_kind, target_id, reason, details, status, message, created_at, decided_at";
+const REPORT =
+  "id, target_kind, target_id, reason, details, requester_role, author_verified, scope, scope_repo, scope_path, evidence_url, " +
+  "confirmed, status, message, created_at, updated_at, decided_at";
 
 /** The account page's lists, as statements sent in one batch. Each reads the account's rows
  *  through its table's index, newest first. */
@@ -255,25 +267,42 @@ export function reportOf(db: D1Database, userId: string, paperId: string): Promi
   return ofPaper.report(db, userId, paperId).first<ReportRow>();
 }
 
+/** A removal request as the Worker records it (src/lib/removal.ts checked it). */
+export type ReportFields = {
+  reason: string;
+  details: string;
+  role: string;
+  authorVerified: boolean;
+  scope: string;
+  repo: string;
+  path: string;
+  evidenceUrl: string;
+};
+
 /** 3 rows written: the request, its index entry, the job. */
-export async function createReport(
-  db: D1Database,
-  a: { userId: string; paperId: string; reason: string; details: string; now: number },
-): Promise<number> {
+export async function createReport(db: D1Database, a: ReportFields & { userId: string; paperId: string; now: number }): Promise<number> {
   const [inserted] = await db.batch([
     db
-      .prepare("INSERT INTO reports (user_id, target_kind, target_id, reason, details, created_at) VALUES (?, 'paper', ?, ?, ?, ?)")
-      .bind(a.userId, a.paperId, a.reason, a.details, a.now),
+      .prepare(
+        "INSERT INTO reports (user_id, target_kind, target_id, reason, details, requester_role, author_verified, scope, scope_repo, " +
+          "scope_path, evidence_url, confirmed, created_at) VALUES (?, 'paper', ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)",
+      )
+      .bind(a.userId, a.paperId, a.reason, a.details, a.role, a.authorVerified ? 1 : 0, a.scope, a.repo, a.path, a.evidenceUrl, a.now),
     enqueueLast(db, "report", a.userId, a.now),
   ]);
   return Number(inserted?.meta?.last_row_id ?? 0);
 }
 
-/** An open request asked again: its reason and details replaced. 2 rows written (the row, the
+/** An open request completed: everything it says replaced, and when. 2 rows written (the row, the
  *  job). Returns false when it was decided meanwhile. */
-export async function updateReport(db: D1Database, a: { id: number; userId: string; reason: string; details: string; now: number }): Promise<boolean> {
+export async function updateReport(db: D1Database, a: ReportFields & { id: number; userId: string; now: number }): Promise<boolean> {
   const [updated] = await db.batch([
-    db.prepare("UPDATE reports SET reason = ?, details = ? WHERE id = ? AND user_id = ? AND status = 'open'").bind(a.reason, a.details, a.id, a.userId),
+    db
+      .prepare(
+        "UPDATE reports SET reason = ?, details = ?, requester_role = ?, author_verified = ?, scope = ?, scope_repo = ?, scope_path = ?, " +
+          "evidence_url = ?, confirmed = 1, updated_at = ? WHERE id = ? AND user_id = ? AND status = 'open'",
+      )
+      .bind(a.reason, a.details, a.role, a.authorVerified ? 1 : 0, a.scope, a.repo, a.path, a.evidenceUrl, a.now, a.id, a.userId),
     db
       .prepare("INSERT INTO jobs (kind, ref, user_id, created_at) SELECT 'report', id, user_id, ? FROM reports WHERE id = ? AND user_id = ? AND status = 'open'")
       .bind(a.now, a.id, a.userId),

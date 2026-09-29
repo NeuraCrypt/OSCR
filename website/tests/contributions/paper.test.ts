@@ -5,7 +5,7 @@ import assert from "node:assert/strict";
 import { afterEach, beforeEach, test } from "node:test";
 import { everyText, rows } from "../account/d1.ts";
 import { orcidProof } from "../../worker/contributions/index.ts";
-import { ada, ADA, benOnGithub, body, contributions, DIGEST, EEG, P1, P2, P3, UNLICENSED, type Contributions } from "./world.ts";
+import { ada, ADA, benOnGithub, body, contributions, DIGEST, EEG, P1, P2, P3, removal, UNLICENSED, type Contributions } from "./world.ts";
 
 let w: Contributions;
 beforeEach(() => {
@@ -30,7 +30,7 @@ test("a paper's page learns who reads it and what they may do there", async () =
   assert.equal((await state(b, P2)).author, false);
   // Once asked, the page shows each request's state.
   await b.post("/api/validations", { paper_id: P1, map_digest: DIGEST });
-  await b.post("/api/reports", { paper_id: P1, reason: "author_request", details: "" });
+  await b.post("/api/reports", removal({ paper_id: P1 }));
   s = await state(b, P1);
   assert.equal(s.validation.status, "queued");
   assert.equal(s.report.status, "open");
@@ -219,38 +219,30 @@ test("a verified author by the owner's decision validates too (the Mac checks th
 });
 
 // ---------------------------------------------------------------------------------------------
-// Removal requests.
+// Removal requests (the page /removal/; every rule of the form: removal.test.ts).
 
-test("a removal request from any record: open, for the owner; asked again, updated", async () => {
+test("a removal request from any record: open, for the owner; completed while open; decided, it stays", async () => {
   const ben = await benOnGithub(w);
-  const res = await ben.post("/api/reports", { paper_id: P3, reason: "personal_data", details: "The record shows my phone: +33 6 12 34 56 78, and mail ben@lab.example.org." });
+  const res = await ben.post("/api/reports", removal({ paper_id: P3, role: "named_person", reason: "personal_data" }));
   assert.equal(res.status, 202);
   const [row] = rows(w.db, "reports");
-  assert.equal(row.status, "open");
-  assert.ok(!String(row.details).includes("@"));
+  assert.deepEqual([row.status, row.requester_role, row.scope, row.confirmed, row.author_verified], ["open", "named_person", "record", 1, 0]);
   assert.deepEqual(jobs(), [`report:${row.id}`]);
-  const again = await ben.post("/api/reports", { paper_id: P3, reason: "incorrect", details: "" });
+  const again = await ben.post("/api/reports", removal({ paper_id: P3, role: "named_person", reason: "incorrect" }));
   assert.equal(again.status, 200);
   assert.equal((await body(again)).updated, true);
   assert.equal(rows(w.db, "reports")[0].reason, "incorrect");
   assert.equal(jobs().length, 2);
   // Decided: it stays decided.
   w.db.sqlite.prepare("UPDATE reports SET status = 'rejected', message = 'The record is correct.' WHERE id = ?").run(row.id as number);
-  const decided = await ben.post("/api/reports", { paper_id: P3, reason: "incorrect" });
+  const decided = await ben.post("/api/reports", removal({ paper_id: P3 }));
   assert.equal(decided.status, 409);
   assert.equal((await body(decided)).report.message, "The record is correct.");
 });
 
-test("a removal request says why", async () => {
-  const b = await ada(w);
-  assert.equal((await body(await b.post("/api/reports", { paper_id: P1, reason: "spam" }))).error.code, "bad_reason");
-  assert.equal((await body(await b.post("/api/reports", { paper_id: P1, reason: "other", details: "no" }))).error.code, "no_details");
-  assert.equal((await b.post("/api/reports", { paper_id: P1, reason: "other", details: "The paper was withdrawn by the journal." })).status, 202);
-});
-
 test("the account page lists what the account asked", async () => {
   const b = await ada(w);
-  await b.post("/api/reports", { paper_id: P3, reason: "copyright" });
+  await b.post("/api/reports", removal({ paper_id: P3, reason: "copyright" }));
   await b.post("/api/validations", { paper_id: P1, map_digest: DIGEST });
   await b.post("/api/edits", { paper_id: P1, changes: [{ op: "remove", repo: "github.com/a/b" }] });
   const listed = await body(await b.fetch("/api/contributions"));
@@ -259,5 +251,6 @@ test("the account page lists what the account asked", async () => {
     [0, 1, 1, 1],
   );
   assert.equal(listed.reports[0].url, "/paper/doi_10.5555_oscr.fixture.3/");
+  assert.equal(listed.reports[0].removal_url, "/removal/?paper=doi%3A10.5555%2Foscr.fixture.3");
   assert.deepEqual(listed.limits, { submissions: 10, edits: 20, validations: 10, reports: 10, claims: 10 });
 });

@@ -41,8 +41,9 @@ const html = (body: string | null, status: number, extra: Record<string, string>
   });
 
 /** A file of the site, through the assets (no Worker request). html_handling may answer a
- *  "/x.html" with a redirect to "/x": followed once. */
-async function asset(assets: Assets, url: URL, path: string): Promise<Response> {
+ *  "/x.html" with a redirect to "/x": followed once. (Also the removal requests' way to read a
+ *  paper's facts, worker/contributions/index.ts.) */
+export async function asset(assets: Assets, url: URL, path: string): Promise<Response> {
   const res = await assets.fetch(new Request(new URL(path, url)));
   const moved = res.headers.get("Location");
   if (res.status >= 300 && res.status < 400 && moved) return assets.fetch(new Request(new URL(moved, url)));

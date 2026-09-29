@@ -7,7 +7,7 @@ import { ORIGIN } from "../account/browser.ts";
 import { rows } from "../account/d1.ts";
 import { handleContributions } from "../../worker/contributions/index.ts";
 import worker from "../../worker/index.ts";
-import { ada, body, contributions, DIGEST, P1, type Contributions } from "./world.ts";
+import { ada, body, contributions, DIGEST, P1, removal, type Contributions } from "./world.ts";
 
 let w: Contributions;
 beforeEach(() => {
@@ -73,7 +73,7 @@ test("a paper's id has the registry's shape", async () => {
 
 test("every write needs the session's CSRF token and the site's Origin", async () => {
   const b = await ada(w);
-  const report = { paper_id: P1, reason: "incorrect", details: "The code link is not the authors' code." };
+  const report = removal({ reason: "incorrect", details: "The code link is not the authors' code, but a student's copy." });
   let res = await b.post("/api/reports", report, { csrf: null });
   assert.equal(res.status, 403);
   assert.equal((await body(res)).error.code, "bad_csrf");
@@ -128,7 +128,7 @@ test("development metrics: the D1 figures of each answer, only when asked", asyn
   const plain = await b.fetch("/api/contributions");
   assert.equal(plain.headers.get("X-D1-Rows-Written"), null);
   b.env = { ...b.env, ACCOUNT_DEV_METRICS: "1" };
-  const measured = await b.post("/api/reports", { paper_id: P1, reason: "copyright", details: "" });
+  const measured = await b.post("/api/reports", removal());
   assert.equal(measured.status, 202);
   assert.ok(Number(measured.headers.get("X-D1-Queries")) > 0);
 });

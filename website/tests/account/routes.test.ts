@@ -128,7 +128,9 @@ test("development metrics: the D1 figures of each answer, only when asked", asyn
 test("the page to come back to", () => {
   assert.equal(returnPath(null), "/account/");
   assert.equal(returnPath("/paper/doi_10.1_x/"), "/paper/doi_10.1_x/");
-  for (const bad of ["https://evil.example/", "//evil.example/", "/\\evil.example", "/api/auth/orcid/start", "account/", "/a b/", "/x?y=1"]) {
+  // A query is kept (the removal page's ?paper=…: tests/contributions/removal.test.ts).
+  assert.equal(returnPath("/x?y=1"), "/x?y=1");
+  for (const bad of ["https://evil.example/", "//evil.example/", "/\\evil.example", "/api/auth/orcid/start", "account/", "/a b/", "/x?y=1#z"]) {
     assert.equal(returnPath(bad), "/account/", bad);
   }
 });

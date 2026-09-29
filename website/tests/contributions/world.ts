@@ -4,6 +4,8 @@
 // github.com/oscr-fixture/eeg-analysis is paper 1's code.
 import { world, type Browser, type World } from "../account/browser.ts";
 import { addFacts } from "../account/d1.ts";
+import type { ContributionsEnv } from "../../worker/contributions/index.ts";
+import { MockAssets } from "./assets.ts";
 import { MockPlaces } from "./places.ts";
 
 export const ADA = "0000-0000-0000-001X";
@@ -18,10 +20,14 @@ export const DIGEST = "ab".repeat(32);
 
 export interface Contributions extends World {
   places: MockPlaces;
+  /** The site's own files (the Worker's ASSETS binding): the pages and records a removal names. */
+  assets: MockAssets;
 }
 
 export function contributions(overrides: Parameters<typeof world>[0] = {}): Contributions {
   const w = world(overrides);
+  const assets = new MockAssets();
+  (w.env as ContributionsEnv).ASSETS = assets;
   const providers = globalThis.fetch;
   const places = new MockPlaces();
   places.dois.add("10.5555/oscr.fixture.1").add("10.5555/oscr.fixture.7").add("10.5555/oscr.fixture.8");
@@ -48,7 +54,7 @@ export function contributions(overrides: Parameters<typeof world>[0] = {}): Cont
       [UNLICENSED, P2],
     ],
   });
-  return { ...w, places };
+  return { ...w, places, assets };
 }
 
 /** Ada, signed in with ORCID: a verified author of papers 1 and 3. */
@@ -70,4 +76,22 @@ export async function benOnGithub(w: World): Promise<Browser> {
 // deno-lint-ignore no-explicit-any
 export async function body(res: Response): Promise<Record<string, any>> {
   return (await res.json()) as Record<string, unknown>;
+}
+
+/** A removal request as the page /removal/ sends it, complete and valid: the whole record, from its
+ *  author, with a justification and both confirmations. */
+export function removal(overrides: Record<string, unknown> = {}): Record<string, unknown> {
+  return {
+    paper_id: P1,
+    role: "author",
+    scope: "record",
+    repo: "",
+    path: "",
+    reason: "copyright",
+    details: "This record reproduces material under an agreement that does not allow it.",
+    evidence_url: "",
+    confirm_accurate: true,
+    confirm_review: true,
+    ...overrides,
+  };
 }
