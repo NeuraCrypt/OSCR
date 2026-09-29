@@ -242,3 +242,45 @@ export async function seedCodeTour(org: GitSession, repo: T.RepoRef): Promise<vo
   const v2 = await org.git.resolve(repo, "main");
   await org.git.createBranch(repo, "feature/epochs-v2", v2);
 }
+
+/** Phase 04: a pull request from a fork, reviewed, with a suggestion and a reply — what the pull
+ *  request pages show (the screenshots), and a CODEOWNERS file. Bob forks the study's repository
+ *  and proposes a Hann window in band_power (the lines the paper's map links: its Methods'
+ *  paragraph); Ada, who owns the Python files, suggests a change; Bob answers. Returns the numbers. */
+export async function seedPulls(ada: GitSession, bob: GitSession, repo: T.RepoRef): Promise<{ issue: number; pull: number }> {
+  const main = await ada.git.resolve(repo, "main");
+  await ada.git.createCommit(repo, {
+    branch: "main",
+    expectedHead: main,
+    message: "Name the owners of the analysis code",
+    changes: [{ op: "put", path: ".github/CODEOWNERS", content: te.encode("# The analysis code's owners\n*.py @ada-fixture\ndocs/ @ada-fixture\n") }],
+  });
+  const issue = await ada.issues.create(repo, { title: "band_power ignores the window the Methods name", body: "The Methods use a Hann window; the code relies on SciPy's default." });
+  const { repo: fork } = await bob.repos.fork(repo);
+  const base = await bob.git.resolve(fork.ref, "main");
+  const current = new TextDecoder().decode((await bob.git.readFile(fork.ref, base, "analysis.py")).bytes);
+  const changed = current.replace(
+    '    """Mean power in the band [lo, hi] Hz, by Welch\'s method."""\n    f, pxx = welch(x, fs=fs, nperseg=2 * fs)\n',
+    '    """Mean power in the band [lo, hi] Hz, by Welch\'s method with a Hann window."""\n    f, pxx = welch(x, fs=fs, nperseg=2 * fs, window="hann")\n',
+  );
+  await bob.git.createCommit(fork.ref, { branch: "hann-window", expectedHead: null, createFrom: base, message: "Use a Hann window in band_power, as the Methods say", changes: [{ op: "put", path: "analysis.py", content: te.encode(changed) }] });
+  const pull = await bob.pulls.create(repo, {
+    title: "Use a Hann window in band_power",
+    head: `${fork.ref.owner}:hann-window`,
+    base: "main",
+    body: `Fixes #${issue.number}.\n\nWelch's method with the Hann window the paper's Methods name, rather than SciPy's default.\n\n- [x] The tests pass.\n- [ ] The alpha ratio of Figure 2 checked again.`,
+    maintainerCanModify: true,
+  });
+  const head = (await ada.pulls.get(repo, pull.number)).head.sha;
+  const line = changed.split("\n").findIndex((l) => l.includes('window="hann"')) + 1;
+  await ada.pulls.review(repo, pull.number, {
+    event: "COMMENT",
+    commit: head,
+    body: "Thank you. One suggestion, so that the window is said where it is used.",
+    comments: [{ path: "analysis.py", line, side: "RIGHT", body: 'Say which paragraph this follows:\n```suggestion\n    f, pxx = welch(x, fs=fs, nperseg=2 * fs, window="hann")  # Methods, spectral analysis\n```' }],
+  });
+  const first = (await ada.pulls.comments(repo, pull.number)).items[0];
+  await bob.pulls.reply(repo, pull.number, first.id, "Good idea: apply it when you merge.");
+  await ada.issues.comment(repo, pull.number, "The paper's Figure 2 uses band_power: this changes a line its tracing map links. I will re-run the figure before merging.");
+  return { issue: issue.number, pull: pull.number };
+}

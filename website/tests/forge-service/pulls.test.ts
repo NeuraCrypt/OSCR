@@ -321,6 +321,31 @@ describe("pull_merge, pull_update, pull_revert", () => {
   });
 });
 
+describe("suggestions applied on a fork's pull request (Allow edits by maintainers)", () => {
+  test("Ada commits Bob's suggestion to his fork's branch while the pull request allows it; refused when it does not", async () => {
+    const b = await signIn(w);
+    const id = await repository();
+    const bobId = githubId(w, "bob-fixture");
+    // Bob's fork and branch, made through the double as Bob.
+    const bobSession = () => w.backend.session({ kind: "user", token: w.backend.issueToken(bobId) });
+    const { repo: fork } = await bobSession().repos.fork(REF);
+    const base = await bobSession().git.resolve(fork.ref, "main");
+    const head = (await bobSession().git.createCommit(fork.ref, { branch: "tweak", expectedHead: null, createFrom: base, message: "Tweak", changes: [put("analysis.py", "a = 1\nb = 5\nc = 3\n")] })).sha;
+    const pr = await bobSession().pulls.create(REF, { title: "Tweak", head: "bob-fixture:tweak", base: "main", maintainerCanModify: true });
+    const payload = { branch: "tweak", base: head, message: "Apply suggestion from code review", coAuthors: [{ login: "bob-fixture", id: bobId }], changes: [{ op: "put", path: "analysis.py", text: "a = 1\nb = 25\nc = 3\n" }] };
+    const done = await authorize(w, b, { kind: "commit", repo: { forge: "memory", owner: "bob-fixture", name: "eeg" }, branch: "tweak", expectedHead: head, payload, back: `/r/ada-fixture/eeg/pull/${pr.number}/files` });
+    assert.equal(done.act?.status, 200, JSON.stringify(done.actBody));
+    assert.equal(text((await ada().git.readFile(fork.ref, "tweak", "analysis.py")).bytes), "a = 1\nb = 25\nc = 3\n");
+    assert.match((await ada().git.commit(fork.ref, done.actBody!.result.sha)).message, /Co-authored-by: bob-fixture <\d+\+bob-fixture@users\.noreply\.github\.com>/);
+    // The pull request no longer allows it: GitHub refuses, said with the offer to propose.
+    w.backend.repos.get(id)!.issues.get(pr.number)!.pull!.maintainerCanModify = false;
+    const now = await ada().git.resolve(fork.ref, "tweak");
+    const refused = await authorize(w, b, { kind: "commit", repo: { forge: "memory", owner: "bob-fixture", name: "eeg" }, branch: "tweak", expectedHead: now, payload: { ...payload, base: now }, back: "/" });
+    assert.equal(refused.act?.status, 403, JSON.stringify(refused.actBody));
+    assert.equal(refused.actBody?.error.offer, "propose");
+  });
+});
+
 describe("the payloads (validate, describe)", () => {
   test("pull_open", () => {
     const ok = validatePullOpen({ base: "main", head: "bob:fix-1", title: " Fix it ", body: "a\r\nb", reviewers: ["ada"] }) as PullOpenParsed;

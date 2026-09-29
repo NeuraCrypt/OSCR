@@ -19,7 +19,7 @@
 // FAKE_CLIENT_SECRET), never real ones.
 import { createServer } from "node:http";
 import { FakeGitHub } from "./fake-github.ts";
-import { seedCodeTour } from "./fake-github-seed.ts";
+import { seedCodeTour, seedPulls } from "./fake-github-seed.ts";
 import { MemoryBackend } from "./memory.ts";
 
 const port = Number(process.argv[2] ?? 9490);
@@ -54,6 +54,8 @@ await org.git.createBranch(eegRef, "old-idea", head);
 // Phase 02: the files and history the code views show (tests/forge/fake-github-seed.ts).
 await seedCodeTour(org, eegRef);
 await org.repos.setTopics(eegRef, ["eeg", "neuroscience"]);
+// Phase 04: a pull request from Bob's fork, reviewed with a suggestion (the pull request pages).
+const pulls = await seedPulls(org, double.session({ kind: "user", token: bob.token() }), eegRef);
 const empty = await org.repos.create({ name: "empty-repo", visibility: "public" });
 await org.repos.transfer(empty.ref, { newOwner: "oscr-fixture" });
 await org.repos.create({ name: "compendium", visibility: "public", autoInit: true, isTemplate: true, description: "A research compendium: code, data and environment" });
@@ -72,7 +74,7 @@ const HOSTS: Record<string, string> = { api: "api.github.com", web: "github.com"
 
 async function answer(method: string, url: URL, headers: Headers, body: Uint8Array): Promise<Response> {
   if (url.pathname === "/control/seed") {
-    return Response.json({ ada: { id: ada.user.id, login: "ada-fixture" }, bob: { id: bob.user.id, login: "bob-fixture" }, repos: ["oscr-fixture/eeg-analysis", "oscr-fixture/empty-repo", "ada-fixture/compendium"] });
+    return Response.json({ ada: { id: ada.user.id, login: "ada-fixture" }, bob: { id: bob.user.id, login: "bob-fixture" }, repos: ["oscr-fixture/eeg-analysis", "oscr-fixture/empty-repo", "ada-fixture/compendium"], pulls });
   }
   if (url.pathname === "/control" && method === "POST") {
     const c = JSON.parse(new TextDecoder().decode(body) || "{}") as { login?: string; offline?: boolean };

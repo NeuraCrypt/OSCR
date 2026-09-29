@@ -11,7 +11,10 @@
 //   pull request itself is phase 04's (the result names its base and head: `pullRequest`);
 // - "propose changes": when GitHub says the person may not write to the repository, and the page
 //   allowed it (`propose`), GitHub forks the repository into the person's account and the commit
-//   goes on a new branch of the fork, made at the same head (objects are shared in a fork network).
+//   goes on a new branch of the fork, made at the same head (objects are shared in a fork network);
+//   without `propose`, the commit is tried all the same and GitHub decides (phase 04: a maintainer's
+//   edit of a fork's pull request branch, "Allow edits by maintainers"), its refusal said with the
+//   offer to propose;
 // - a merge (phase 04, a conflict resolved in the browser: `mergeParent`) is a commit with two
 //   parents on the branch itself, [the head the page saw, mergeParent], through the Git data API;
 //   its changes are the resolved files and the files only the other side changed (they may be none:
@@ -310,10 +313,9 @@ export const commitSpec: ActionSpec<CommitParsed, CommitDone> = {
     let branch = p.newBranch ?? p.branch;
     let createFrom: string | undefined = p.newBranch ? p.base : undefined;
     let proposed = false;
-    if (!mayWrite) {
-      if (!p.propose) {
-        throw new ForgeProblem(403, "forbidden", "GitHub says your account may not write to this repository. Propose the change instead: GitHub makes your own copy (a fork) and the change goes on a branch there.", { offer: "propose" });
-      }
+    const refused = () =>
+      new ForgeProblem(403, "forbidden", "GitHub says your account may not write to this repository. Propose the change instead: GitHub makes your own copy (a fork) and the change goes on a branch there.", { offer: "propose" });
+    if (!mayWrite && p.propose) {
       // Propose changes: the person's fork (GitHub makes it, or finds the one they have), a new
       // branch there at the head the page saw.
       const fork = await ctx.session.repos.fork(info.ref);
@@ -337,6 +339,9 @@ export const commitSpec: ActionSpec<CommitParsed, CommitDone> = {
         message,
       });
     } catch (e) {
+      // Without write on the repository, GitHub may still take the commit: a maintainer's edit of a
+      // fork's pull request branch (phase 04, "Allow edits by maintainers"). Its refusal is said.
+      if (!mayWrite && !proposed && e instanceof GitBackendError && (e.code === "forbidden" || e.code === "not_found")) throw refused();
       if (proposed && e instanceof GitBackendError && (e.code === "not_found" || e.code === "invalid")) {
         throw new ForgeProblem(409, "fork_not_ready", "GitHub is still copying the repository into your account: wait a minute, then commit again. Your change is kept in this browser.");
       }

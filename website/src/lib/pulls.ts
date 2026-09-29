@@ -23,7 +23,7 @@
 
 import type * as T from "../../worker/forge/types.ts";
 import { type Owner, ownerInWords, ownersOfChange, type CodeOwners } from "./codeowners.ts";
-import { repoPath, type RepoCoords } from "./forge.ts";
+import { DRAFT_PREFIX, repoPath, type RepoCoords } from "./forge.ts";
 import type { Hunk } from "./history.ts";
 
 // ─── addresses ───────────────────────────────────────────────────────────────
@@ -630,7 +630,9 @@ export function commentRange(hunks: readonly Hunk[], side: "LEFT" | "RIGHT", sta
 
 // ─── what the browser keeps: the pending review, the files viewed ────────────
 
-export const REVIEW_PREFIX = "oscr-review:";
+/** A pending review is one of the drafts the callback page drops once GitHub took it (forge.ts
+ *  DRAFT_PREFIX), and only then. */
+export const REVIEW_PREFIX = `${DRAFT_PREFIX}review:`;
 export const VIEWED_PREFIX = "oscr-viewed:";
 /** A month, like the editor's drafts. */
 export const KEPT_SECONDS = 30 * 24 * 3600;

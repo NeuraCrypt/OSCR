@@ -5,7 +5,7 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 import { parseCodeowners } from "../../src/lib/codeowners.ts";
-import { parseRepoPath, repoPath } from "../../src/lib/forge.ts";
+import { isDraftKey, parseRepoPath, repoPath } from "../../src/lib/forge.ts";
 import { hunksOf } from "../../src/lib/history.ts";
 import {
   applySuggestions,
@@ -32,6 +32,7 @@ import {
   pullsPath,
   readPendingReview,
   readViewed,
+  reviewKey,
   researchTemplate,
   reviewsSummary,
   searchQuery,
@@ -262,6 +263,8 @@ describe("suggestions", () => {
 describe("what the browser keeps", () => {
   test("the pending review and the files viewed, per pull request", () => {
     const s = new MemStore();
+    // The callback page drops it once GitHub took the review (one of the drafts it may drop).
+    assert.ok(isDraftKey(reviewKey(REPO, 7)));
     assert.equal(readPendingReview(s, REPO, 7, 100), null);
     assert.ok(writePendingReview(s, REPO, 7, { commit: SHA, comments: [{ path: "a.py", line: 2, side: "RIGHT", body: "?" }], body: "", at: 100 }));
     assert.equal(readPendingReview(s, REPO, 7, 200)?.comments.length, 1);

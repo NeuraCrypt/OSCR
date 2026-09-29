@@ -56,13 +56,25 @@ import { type CodeEnv, codeViews, failed, readRefs, repoRef, resolveRef, sourceU
 const gh = repoRef;
 
 /** What a view of diffs needs: the two sides' commits, the mode, the whitespace choice. */
-interface DiffContext {
+export interface DiffContext {
   env: CodeEnv;
   /** The commit of the old side (a parent, the merge base, the base), or null for a root commit. */
   oldRev: string | null;
   newRev: string;
   mode: DiffMode;
   hideWhitespace: boolean;
+  /** Phase 04 (a pull request's files): the number cells name their lines, and the page is told
+   *  when a file's diff is drawn (its comments go under their lines). */
+  hooks?: FileHooks;
+}
+
+/** What a pull request's Files changed adds to the diffs (phase 04, repo-pull-files.ts). */
+export interface FileHooks {
+  /** Extra parts of a file's header (the "Viewed" box). */
+  header?(f: T.FileChangeSummary, index: number): El | null;
+  /** A file's diff was drawn (again, after more context): its section, the file, its index, and the
+   *  hunks of the pull request's own patch (the lines that take comments). */
+  filled?(section: HTMLElement, f: T.FileChangeSummary, index: number, patchHunks: Hunk[]): void;
 }
 
 /** Extra blocks under a commit's header (E4: the tracing-map links the commit changed). */
@@ -168,7 +180,7 @@ function imageDiff(oldUrl: string | null, newUrl: string | null): El {
 }
 
 /** Renders one file's diff into its block: the table from the hunks, or what the file is. */
-async function fillFile(block: HTMLElement, ctx: DiffContext, f: T.FileChangeSummary, context: number | null): Promise<void> {
+async function fillFile(block: HTMLElement, ctx: DiffContext, f: T.FileChangeSummary, context: number | null, index = 0): Promise<void> {
   const body = block.querySelector<HTMLElement>(".file-body");
   if (!body) return;
   const oldPath = f.previousPath ?? f.path;
@@ -204,7 +216,7 @@ async function fillFile(block: HTMLElement, ctx: DiffContext, f: T.FileChangeSum
   const expandable = f.status !== "added" && f.status !== "removed";
   show(
     body,
-    diffTable(hunks, ctx.mode, nodes, `Changes to ${f.path}`),
+    diffTable(hunks, ctx.mode, nodes, `Changes to ${f.path}`, ctx.hooks ? `diff-${index + 1}-` : undefined),
     expandable
       ? h(
           "p",
@@ -215,6 +227,7 @@ async function fillFile(block: HTMLElement, ctx: DiffContext, f: T.FileChangeSum
         )
       : null,
   );
+  ctx.hooks?.filled?.(block, f, index, parsePatch(f.patch));
 }
 
 function wireImageDiff(body: HTMLElement): void {
@@ -244,9 +257,15 @@ function wireImageDiff(body: HTMLElement): void {
 }
 
 /** The files of a commit or a comparison: the tree of changed files, then each file's diff. */
-async function mountFiles(into: HTMLElement, ctx: DiffContext, files: T.FileChangeSummary[], more: string | null): Promise<void> {
+export async function mountFiles(into: HTMLElement, ctx: DiffContext, files: T.FileChangeSummary[], more: string | null): Promise<void> {
   const blocks = files.map((f, i) =>
-    h("section", { class: "file-diff", id: `diff-${i + 1}` }, fileHeader(ctx.env.repo, f.status === "removed" ? ctx.oldRev : ctx.newRev, f, i), h("div", { class: "file-body", "aria-live": "polite" }, h("p", null, "Reading…"))),
+    h(
+      "section",
+      { class: "file-diff", id: `diff-${i + 1}` },
+      fileHeader(ctx.env.repo, f.status === "removed" ? ctx.oldRev : ctx.newRev, f, i),
+      ctx.hooks?.header?.(f, i) ?? null,
+      h("div", { class: "file-body", "aria-live": "polite" }, h("p", null, "Reading…")),
+    ),
   );
   show(
     into,
@@ -264,7 +283,7 @@ async function mountFiles(into: HTMLElement, ctx: DiffContext, files: T.FileChan
     const s = sections[i];
     if (!s || s.dataset.filled) return;
     s.dataset.filled = "1";
-    void fillFile(s, ctx, files[i], null);
+    void fillFile(s, ctx, files[i], null, i);
   };
   sections.slice(0, 30).forEach((_, i) => fill(i));
   if (sections.length > 30 && "IntersectionObserver" in globalThis) {
@@ -280,7 +299,7 @@ async function mountFiles(into: HTMLElement, ctx: DiffContext, files: T.FileChan
     if (!more || !section) return;
     const i = sections.indexOf(section);
     if (i < 0) return;
-    void fillFile(section, ctx, files[i], more === "all" ? Number.POSITIVE_INFINITY : Number(more));
+    void fillFile(section, ctx, files[i], more === "all" ? Number.POSITIVE_INFINITY : Number(more), i);
   });
   into.querySelector<HTMLInputElement>("#file-filter")?.addEventListener("input", (ev) => {
     const q = (ev.target as HTMLInputElement).value.trim().toLowerCase();
@@ -317,7 +336,7 @@ function unifiedOf(a: string, b: string): string {
   return out.join("\n");
 }
 
-const diffOptions = (env: CodeEnv): { mode: DiffMode; hideWhitespace: boolean } => {
+export const diffOptions = (env: CodeEnv): { mode: DiffMode; hideWhitespace: boolean } => {
   const p = new URLSearchParams(env.search);
   return { mode: p.get("diff") === "split" ? "split" : "unified", hideWhitespace: p.get("w") === "1" };
 };

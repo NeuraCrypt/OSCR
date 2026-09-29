@@ -43,7 +43,7 @@ export function signInLine(text: string): HTMLElement {
 }
 
 /** One action: the Worker's own sentence confirmed in `box`, then GitHub. A problem is said there. */
-export async function confirmAction(box: HTMLElement, d: Declared | { problem: string }): Promise<void> {
+export async function confirmAction(box: HTMLElement, d: Declared | { problem: string }, keep: { drafts?: string[] } = {}): Promise<void> {
   if ("problem" in d) {
     box.replaceChildren(el("p", { class: "warning" }, d.problem));
     box.scrollIntoView({ block: "nearest" });
@@ -54,7 +54,7 @@ export async function confirmAction(box: HTMLElement, d: Declared | { problem: s
     box.replaceChildren(who.signIn ? signInLine(who.message) : el("p", { class: "warning" }, who.message));
     return;
   }
-  showConfirm(box, d.sentence, () => startAction(d.input, d.sentence, { csrf: who.csrf }));
+  showConfirm(box, d.sentence, () => startAction(d.input, d.sentence, { csrf: who.csrf }, keep));
   box.scrollIntoView({ block: "nearest" });
 }
 

@@ -84,12 +84,19 @@ export async function pullFrame(slot: HTMLElement, env: CodeEnv, number: number,
     return null;
   }
   document.title = `${pr.title} · #${pr.number} · ${env.repo.owner}/${env.repo.name}`;
-  show(slot, pullHeader(env.repo, pr, mergeBox(pr, null, null)), pullTabsNav(env.repo, pr, tab), h("div", { class: "record pull-record" }, h("div", { class: "body", id: "pull-main" }), h("div", { class: "sidebar", id: "pull-side" })));
+  // Files changed and the conflicts take the page's whole width (the diffs have their own tree).
+  const wide = tab === "files" || tab === "conflicts";
+  show(
+    slot,
+    pullHeader(env.repo, pr, mergeBox(pr, null, null)),
+    pullTabsNav(env.repo, pr, tab),
+    wide ? h("div", { class: "pull-wide", id: "pull-main" }) : h("div", { class: "record pull-record" }, h("div", { class: "body", id: "pull-main" }), h("div", { class: "sidebar", id: "pull-side" })),
+  );
   return {
     env,
     pr,
     main: slot.querySelector<HTMLElement>("#pull-main") as HTMLElement,
-    side: slot.querySelector<HTMLElement>("#pull-side") as HTMLElement,
+    side: slot.querySelector<HTMLElement>("#pull-side") ?? document.createElement("div"),
     back: pullPath(env.repo, number, tab),
     signedIn: signedInHint(),
   };

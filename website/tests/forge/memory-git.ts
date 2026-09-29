@@ -34,6 +34,22 @@ function vp(page: T.PageRequest | undefined): void {
   if (cursor !== null && !/^\d{1,5}$/.test(cursor)) throw invalid("not a page cursor");
 }
 
+/** A fork's branch a maintainer of the pull request's base may commit to (GitHub's "Allow edits by
+ *  maintainers"), or null. */
+function maintainerEdit(c: Call, ref: T.RepoRef, branch: string, existing: boolean): MemRepo | null {
+  const b = c.b;
+  const r = b.find(ref);
+  if (!r || !existing || atLeast(c.permission(r), "write")) return null;
+  for (const x of b.repos.values()) {
+    if (x.deleted || x.id === r.id) continue;
+    for (const i of x.issues.values()) {
+      const p = i.pull;
+      if (p && i.state === "open" && p.headRepoId === r.id && p.headRef === branch && p.maintainerCanModify && atLeast(c.permission(x), "write")) return r;
+    }
+  }
+  return null;
+}
+
 export function gitOps(c: Call): GitOps {
   const b = c.b;
   const store = b.store;
@@ -343,7 +359,9 @@ export function gitOps(c: Call): GitOps {
         (input.parents === undefined || (input.parents.length === 1 && input.parents[0] === expected)) &&
         input.changes.every((ch) => ch.op !== "move" && !(ch.op === "put" && ch.executable));
       c.enter("git.createCommit", { act: "write", graphql: ordinary });
-      const r = c.repo(ref, "write");
+      // "Allow edits by maintainers" (phase 04): a person who may write to a pull request's base may
+      // commit to its head branch on a fork, while the pull request is open and allows it.
+      const r = maintainerEdit(c, ref, input.branch, input.createFrom === undefined) ?? c.repo(ref, "write");
       const current = r.branches.get(input.branch) ?? null;
       const orphan = input.parents !== undefined && input.parents.length === 0;
       if (input.createFrom !== undefined) {

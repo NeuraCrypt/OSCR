@@ -179,21 +179,33 @@ const lineCell = (l: DiffLine | null, side: "old" | "new", nodes?: SideNodes): E
   return h("td", { class: `code ${l.kind}` }, h("span", { class: "sign", "aria-hidden": "true" }, sign), l.kind === "note" ? h("em", null, l.text) : shown ?? (l.text ? [l.text] : []));
 };
 
-const num = (n: number | null, kind: string) => h("td", { class: `num ${kind}` }, n === null ? "" : String(n));
+/** A line's number cell. With `anchor` (phase 04, a pull request's files), the cell names its side
+ *  and line (data-side L or R, data-line) and carries an id ("<anchor>R12"), for comments and links. */
+const num = (n: number | null, kind: string, anchor?: { prefix: string; side: "L" | "R" }) =>
+  h(
+    "td",
+    anchor && n !== null ? { class: `num ${kind}`, id: `${anchor.prefix}${anchor.side}${n}`, "data-side": anchor.side, "data-line": String(n) } : { class: `num ${kind}` },
+    n === null ? "" : String(n),
+  );
 
 /** A diff as a table: unified (old number, new number, the line) or split (old number, old line,
- *  new number, new line). A hunk's header is a row of its own. */
-export function diffTable(hunks: readonly Hunk[], mode: DiffMode, nodes?: SideNodes, label = "Changes"): El {
+ *  new number, new line). A hunk's header is a row of its own. `anchors` (phase 04): the prefix of
+ *  the number cells' ids, which then name their side and line. */
+export function diffTable(hunks: readonly Hunk[], mode: DiffMode, nodes?: SideNodes, label = "Changes", anchors?: string): El {
   const rows: El[] = [];
+  const at = (side: "L" | "R") => (anchors ? { prefix: anchors, side } : undefined);
   for (const hk of hunks) {
     const header = `@@ -${hk.oldStart},${hk.oldLines} +${hk.newStart},${hk.newLines} @@${hk.section ? ` ${hk.section}` : ""}`;
     rows.push(h("tr", { class: "hunk" }, h("td", { colspan: mode === "split" ? "4" : "3" }, header)));
     if (mode === "unified") {
-      for (const l of hk.lines) rows.push(h("tr", { class: l.kind }, num(l.old, l.kind), num(l.new, l.kind), lineCell(l, l.kind === "del" ? "old" : "new", nodes)));
+      // A context line takes comments on the new side, as on GitHub; a deleted line on the old one.
+      for (const l of hk.lines) {
+        rows.push(h("tr", { class: l.kind }, num(l.old, l.kind, l.kind === "del" ? at("L") : undefined), num(l.new, l.kind, l.kind === "del" ? undefined : at("R")), lineCell(l, l.kind === "del" ? "old" : "new", nodes)));
+      }
     } else {
       for (const r of splitRows(hk)) {
         rows.push(
-          h("tr", null, num(r.left?.old ?? null, r.left?.kind ?? "empty"), lineCell(r.left, "old", nodes), num(r.right?.new ?? null, r.right?.kind ?? "empty"), lineCell(r.right, "new", nodes)),
+          h("tr", null, num(r.left?.old ?? null, r.left?.kind ?? "empty", at("L")), lineCell(r.left, "old", nodes), num(r.right?.new ?? null, r.right?.kind ?? "empty", at("R")), lineCell(r.right, "new", nodes)),
         );
       }
     }

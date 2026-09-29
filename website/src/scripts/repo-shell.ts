@@ -59,6 +59,7 @@ import "./repo-upload.ts";
 import "./repo-templates.ts";
 import "./repo-pulls.ts";
 import "./repo-pull.ts";
+import "./repo-pull-files.ts";
 import { mountForkStatus } from "./repo-forks.ts";
 import { codePanel, quickSetup, useTemplate, wireCopy } from "./repo-code-panel.ts";
 import { mountBranches } from "./repo-branches.ts";
