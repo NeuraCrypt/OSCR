@@ -37,6 +37,11 @@ class Context:
     _clients: dict[str, Any] = field(default_factory=dict)
 
     @property
+    def git(self) -> gitlocal.Git:
+        """git with this run's environment (the person's configuration, or a test's own)."""
+        return gitlocal.Git(self.env)
+
+    @property
     def hosts(self) -> Hosts:
         if self._hosts is None:
             self._hosts = Hosts(self.config.dir)
@@ -53,15 +58,15 @@ class Context:
             if not r:
                 raise UsageError(f"“{clean_line(asked)}” is not a repository: write owner/name.")
             return r
-        top = gitlocal.toplevel(self.cwd)
+        top = self.git.toplevel(self.cwd)
         if top is not None:
-            saved = gitlocal.config_get(top, DEFAULT_REPO_KEY)
+            saved = self.git.config_get(top, DEFAULT_REPO_KEY)
             if saved:
                 r = gitlocal.parse_repo(saved, gh_host)
                 if r:
                     return r
             found = []
-            for name, url in gitlocal.remotes(top):
+            for name, url in self.git.remotes(top):
                 r = gitlocal.parse_repo(url, gh_host)
                 if r and r.host == gh_host:
                     found.append((REMOTE_ORDER.index(name) if name in REMOTE_ORDER else len(REMOTE_ORDER), name, r))

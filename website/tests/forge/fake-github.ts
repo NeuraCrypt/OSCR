@@ -452,10 +452,73 @@ export class FakeGitHub {
     return new Call(this.double, x.who);
   }
 
+  // ─── the device flow (night phase 14: the command line's GitHub sign-in) ───
+  // GitHub's device flow for a GitHub App: the public client id only, no secret. The person approves on
+  // github.com/login/device; here the test approves, refuses or lets a code expire (approveDevice).
+  /** Device codes → their state. */
+  readonly devices = new Map<string, { userCode: string; state: "pending" | "approved" | "denied" | "expired" | "used"; login: string | null; lastPoll: number }>();
+  /** Refresh tokens → the person's login. */
+  readonly refreshTokens = new Map<string, string>();
+  private deviceSeq = 0;
+
+  /** The person's decision on github.com/login/device: the pending codes (or the one named) approved as
+   *  `login`, refused, or expired. The codes it changed. */
+  approveDevice(action: "approve" | "deny" | "expire", login = "", userCode = ""): string[] {
+    const changed: string[] = [];
+    for (const d of this.devices.values()) {
+      if (d.state !== "pending" || (userCode && d.userCode !== userCode)) continue;
+      d.state = action === "approve" ? "approved" : action === "deny" ? "denied" : "expired";
+      d.login = action === "approve" ? login : null;
+      changed.push(d.userCode);
+    }
+    return changed;
+  }
+
+  private userToken(login: string): Record<string, unknown> {
+    const user = [...this.double.accounts.values()].find((a) => a.login === login && a.type === "user");
+    if (!user) return { error: "access_denied" };
+    const refresh = `ghr_fake${++this.deviceSeq}x${user.id}`;
+    this.refreshTokens.set(refresh, login);
+    return { access_token: this.double.issueToken(user.id), expires_in: 28_800, refresh_token: refresh, refresh_token_expires_in: 15_811_200, token_type: "bearer", scope: "" };
+  }
+
+  private device(url: URL, form: URLSearchParams): Response | null {
+    if (url.pathname === "/login/device/code") {
+      if (form.get("client_id") !== this.client.id) return reply({ error: "incorrect_client_credentials" }, 401);
+      const n = ++this.deviceSeq;
+      const code = `fakedevice${n}x${Math.floor(Math.random() * 1e9)}`;
+      const userCode = `${String(1000 + n).slice(-4)}-${String(Math.floor(Math.random() * 9000) + 1000)}`;
+      this.devices.set(code, { userCode, state: "pending", login: null, lastPoll: 0 });
+      return reply({ device_code: code, user_code: userCode, verification_uri: `${this.double.web}/login/device`, expires_in: 900, interval: 5 });
+    }
+    const grant = form.get("grant_type");
+    if (grant === "urn:ietf:params:oauth:grant-type:device_code") {
+      if (form.get("client_id") !== this.client.id) return reply({ error: "incorrect_client_credentials" });
+      const d = this.devices.get(form.get("device_code") ?? "");
+      if (!d || d.state === "used") return reply({ error: "incorrect_device_code", error_description: "The device_code provided is not valid." });
+      if (d.state === "pending") return reply({ error: "authorization_pending" });
+      if (d.state === "denied") return reply({ error: "access_denied" });
+      if (d.state === "expired") return reply({ error: "expired_token" });
+      d.state = "used";
+      return reply(this.userToken(d.login ?? ""));
+    }
+    if (grant === "refresh_token" && !form.get("client_secret")) {
+      // A device-flow client renews with its public client id and the refresh token.
+      if (form.get("client_id") !== this.client.id) return reply({ error: "incorrect_client_credentials" });
+      const login = this.refreshTokens.get(form.get("refresh_token") ?? "");
+      if (!login) return reply({ error: "bad_refresh_token", error_description: "The refresh token passed is incorrect or expired." });
+      this.refreshTokens.delete(form.get("refresh_token") ?? "");
+      return reply(this.userToken(login));
+    }
+    return null;
+  }
+
   // github.com: the OAuth code exchange.
   private async web(method: string, url: URL, body: Uint8Array): Promise<Response> {
-    if (method !== "POST" || url.pathname !== "/login/oauth/access_token") return reply({ message: "Not Found" }, 404);
+    if (method !== "POST" || !["/login/oauth/access_token", "/login/device/code"].includes(url.pathname)) return reply({ message: "Not Found" }, 404);
     const form = new URLSearchParams(new TextDecoder().decode(body));
+    const device = this.device(url, form);
+    if (device) return device;
     if (form.get("client_id") !== this.client.id || form.get("client_secret") !== this.client.secret) return reply({ error: "incorrect_client_credentials" });
     try {
       const auth = this.double.auth as NonNullable<MemoryBackend["auth"]>;

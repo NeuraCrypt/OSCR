@@ -16,7 +16,8 @@
 // GET /control/seed: the people and repositories made at start. POST /control {"login": "…"}: who
 // approves next. POST /control {"offline": true}: every answer becomes 503 (the degraded state).
 // POST /control/install {"account": "…"}: the App installed on that account (night phase 10's check
-// runs), its installation's id answered.
+// runs), its installation's id answered. POST /control/device {"action": "approve"|"deny"|"expire",
+// "login"?, "user_code"?}: the person's decision on the device flow's page (night phase 14).
 // Development values only: the App's client id and secret are the e2e's own (FAKE_CLIENT_ID,
 // FAKE_CLIENT_SECRET), never real ones.
 import { createServer } from "node:http";
@@ -87,6 +88,13 @@ async function answer(method: string, url: URL, headers: Headers, body: Uint8Arr
   if (url.pathname === "/control/install" && method === "POST") {
     const c = JSON.parse(new TextDecoder().decode(body) || "{}") as { account?: string };
     return Response.json({ id: double.install(c.account ?? "oscr-fixture") });
+  }
+  // Night phase 14: the person's decision on github.com/login/device for the command line's device flow:
+  // {action: "approve" | "deny" | "expire", login?, user_code?}; the codes it changed.
+  if (url.pathname === "/control/device" && method === "POST") {
+    const c = JSON.parse(new TextDecoder().decode(body) || "{}") as { action?: string; login?: string; user_code?: string };
+    const action = c.action === "deny" || c.action === "expire" ? c.action : "approve";
+    return Response.json({ changed: fake.approveDevice(action, c.login ?? login, c.user_code ?? "") });
   }
   if (url.pathname === "/control" && method === "POST") {
     const c = JSON.parse(new TextDecoder().decode(body) || "{}") as { login?: string; offline?: boolean };

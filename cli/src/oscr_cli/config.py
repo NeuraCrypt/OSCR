@@ -97,6 +97,8 @@ class Config:
     dir: Path
     env: Mapping[str, str]
     data: dict[str, Any]
+    #: A host for this run only (--hostname), over the setting and OSCR_HOST.
+    host_override: str | None = None
 
     @classmethod
     def load(cls, env: Mapping[str, str]) -> Config:
@@ -163,7 +165,7 @@ class Config:
     # ── the host ──
     @property
     def host(self) -> str:
-        return normal_host(self.get("host"))
+        return normal_host(self.host_override or self.get("host"))
 
     @property
     def site_name(self) -> str:

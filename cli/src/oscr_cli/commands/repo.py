@@ -19,18 +19,18 @@ EXTRA: list[Any] = []
 
 
 def _set_default(ctx: Any, args: argparse.Namespace) -> int:
-    top = gitlocal.toplevel(ctx.cwd)
+    top = ctx.git.toplevel(ctx.cwd)
     if top is None:
         raise UsageError("Run this inside a clone: the default is kept in the clone's own git configuration.")
     if args.view:
-        saved = gitlocal.config_get(top, DEFAULT_REPO_KEY)
+        saved = ctx.git.config_get(top, DEFAULT_REPO_KEY)
         if not saved:
             ctx.io.say("No default in this clone: the remotes decide (oscr help repository).")
             return 0
         ctx.io.print(saved)
         return 0
     if args.unset:
-        gitlocal.git(["config", "--local", "--unset", DEFAULT_REPO_KEY], cwd=top, check=False)
+        ctx.git.run(["config", "--local", "--unset", DEFAULT_REPO_KEY], cwd=top, check=False)
         ctx.io.say("The default is unset: the remotes decide again.")
         return 0
     if not args.target:
@@ -38,7 +38,7 @@ def _set_default(ctx: Any, args: argparse.Namespace) -> int:
     r = gitlocal.parse_repo(args.target, ctx.config.github_host)
     if r is None:
         raise UsageError(f"“{args.target}” is not a repository: write owner/name.")
-    gitlocal.config_set(top, DEFAULT_REPO_KEY, r.full if r.host == ctx.config.github_host else f"{r.host}/{r.full}")
+    ctx.git.config_set(top, DEFAULT_REPO_KEY, r.full if r.host == ctx.config.github_host else f"{r.host}/{r.full}")
     ctx.io.say(f"This clone's commands now go to {r.full}.")
     return 0
 

@@ -12,6 +12,7 @@ from typing import Any
 
 import pytest
 
+from oscr_cli import keyring
 from oscr_cli import main as entry
 
 
@@ -53,6 +54,30 @@ class Runner:
         code = entry.main(list(argv), env=e, stdout=out, stderr=err, stdin=io.StringIO(stdin), cwd=cwd or self.tmp,
                           opener=self.opener, keyring=self.keyring)
         return Result(code, out.getvalue(), err.getvalue())
+
+
+@pytest.fixture(autouse=True)
+def isolated(tmp_path_factory: pytest.TempPathFactory, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Every test, and every process it starts, sees a throwaway home: never the person's git
+    configuration, keychain settings or credentials (the tool itself passes its own environment on)."""
+    home = tmp_path_factory.mktemp("home")
+    monkeypatch.setenv("HOME", str(home))
+    monkeypatch.setenv("GIT_CONFIG_GLOBAL", str(home / ".gitconfig"))
+    monkeypatch.setenv("GIT_CONFIG_NOSYSTEM", "1")
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(home / ".config"))
+    for name in ("OSCR_TOKEN", "OSCR_GITHUB_TOKEN", "GH_TOKEN", "OSCR_HOST", "OSCR_REPO", "OSCR_KEYCHAIN", "OSCR_CONFIG_DIR"):
+        monkeypatch.delenv(name, raising=False)
+    # The person's own keychain is never reached from a test: only the fake, the plain file, or a
+    # throwaway keychain file a test makes itself.
+    real_choose = keyring.choose
+
+    def guarded(config, env, *, insecure=False):  # type: ignore[no-untyped-def]
+        k = real_choose(config, env, insecure=insecure)
+        if isinstance(k, keyring.SecretService) or (isinstance(k, keyring.MacKeychain) and not k.keychain):
+            raise AssertionError("a test reached the system's own keychain")
+        return k
+
+    monkeypatch.setattr(keyring, "choose", guarded)
 
 
 @pytest.fixture
