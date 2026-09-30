@@ -4,8 +4,8 @@ Decided by the owner on 2026-09-26; measured the same day on the private databas
 (17,095 files with text, 459 repositories, 327 papers with the authors' code).
 
 > **DISPLAY vs. BULK COPY (owner's decision 2026-09-29).** Two things must not be confused.
-> The **site's reader shows every paper's code**, whatever its licence — even a repository with
-> none — from OSCR's own copy (`oscr/catalog.py` `script_lots`). The site serves the text in lots
+> The **site's reader shows every paper's code**, whatever its licence, even a repository with
+> none, from OSCR's own copy (`oscr/catalog.py` `script_lots`). The site serves the text in lots
 > keyed by the file's **SHA-256 and deduplicated** (`public/scripts/NN.json`, `catalog.N_LOTS` = 256),
 > with the per-repository facts the site is built from in `scriptmeta/NN.json` (never served).
 > The **licence still gates the COPIES that LEAVE**: the Hugging Face scripts dataset described
@@ -57,19 +57,19 @@ recorded but unverified licence (34 MIT and 16 CC BY on forges without a recogni
 BY archives, 5 "other-open" archives, a few more); like every other repository they are now shown from
 OSCR's own copy on the site, and like every unverified licence they still do not leave in bulk.
 
-## Shown from the source — now a fallback (decided 2026-09-29)
+## Shown from the source, now a fallback (decided 2026-09-29)
 
 Originally, scripts without a verified redistributable licence were displayed **without any copy**: a
 reader's browser fetched such a file itself, checked it, and showed it. Later the same day the owner
 decided the site should show **every** paper's code from OSCR's own copy (the digest lots above), so
 this path became a **graceful fallback**: it runs only when a digest lot unexpectedly lacks a file. It
-is described here because the machinery — the facts, the origins, the browser checks — is unchanged and
+is described here because the machinery (the facts, the origins, the browser checks) is unchanged and
 still guards what leaves the page. The public page `/policies/code/` explains the reader to readers and
 authors.
 
 **Only facts leave the Mac** (`catalog.script_lots`): for each readable file of a held-back
 repository, its path, language, kind, lines, `size` and `sha256` (the file's `digest` column: the
-SHA-256 of its **bytes**, computed when it was read — for a notebook too, whose text the Mac keeps by
+SHA-256 of its **bytes**, computed when it was read, for a notebook too, whose text the Mac keeps by
 cells), and for the repository `source` = `{via, url, at}` from `catalog.source_of`: where a browser
 fetches a file (a template with `{path}`, `{file}` or `{sha256}`), and the pinned version (a commit,
 a Zenodo record). The tracing maps' line numbers were public already.
@@ -83,7 +83,7 @@ a Zenodo record). The tracing maps' line numbers were public already.
 | huggingface.co | `huggingface.co/<repo, its case kept>/raw/<commit>/<path>` | commit |
 | zenodo.org | `zenodo.org/api/records/<id>/files/<file>/content`, a file of the record itself | the record (a published record's files never change) |
 | any other forge (a GitLab of its own, Framagit, GIN…), a file inside a Zenodo archive | Software Heritage, `archive.softwareheritage.org/api/1/content/sha256:<digest>/raw/` | the digest itself |
-| OSF, PMC's supplementary files | nothing: their answers carry no `Access-Control-Allow-Origin` | — |
+| OSF, PMC's supplementary files | nothing: their answers carry no `Access-Control-Allow-Origin` | n/a |
 
 Checked read-only on 2026-09-29 with `curl -sI -H "Origin: https://oscr.yannbellec-b.workers.dev"`:
 every host above answers a simple GET with `Access-Control-Allow-Origin` (`*`, or the site's origin
@@ -159,8 +159,8 @@ The copies (a verified license) are 2,120 repositories and 129,038 files.
 | huggingface.co | 9 (+1) | 28 (+1) | Hugging Face, at the commit (1 through Software Heritage) |
 
 In all: **77,436 files** fetched from their own host at the pinned version, **3,439** through
-Software Heritage — found there for 9 of 20 repositories sampled at random (2026-09-29), so roughly
-half of those will show and the others will say "no longer serves it" —, and **4,773** not fetched
+Software Heritage, found there for 9 of 20 repositories sampled at random (2026-09-29), so roughly
+half of those will show and the others will say "no longer serves it", and **4,773** not fetched
 (4,126 on OSF, 184 of PMC, 463 over 1 MB), which the reader links to at their source.
 
 ## The license audit (2026-09-27)

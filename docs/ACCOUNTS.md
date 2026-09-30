@@ -68,7 +68,7 @@ Schema: `migrations/d1-community/0001_accounts.sql`. Times are Unix seconds.
 
 - `paper_orcid`: the ORCID iDs (with a valid check digit) of the authors of the papers that
   have a page (decisions D2 and D7: authors' code, code on request, data only; never an
-  off-topic paper), from `paper_author`, the public metadata the paper page shows — never from
+  off-topic paper), from `paper_author`, the public metadata the paper page shows, never from
   the private contact table; with the page's slug and the title (contact details stripped).
 - `repo_owner`: the owners of those papers' code repositories, on the forges whose addresses
   name an owner (github.com, gitlab.com and GitLab instances, bitbucket.org, codeberg.org,
@@ -146,7 +146,7 @@ Error answers are `{"error": {"code", "message"}}`: `signed_out` (401), `bad_ori
    be an ORCID iD with a valid check digit, and match the token answer's `orcid`. GitHub: `GET
    /user` with the token.
 5. The identity finds its account, or a new one is made. **A flow started while signed in links
-   the identity to that account** — only if the same session is still there at the callback,
+   the identity to that account**, only if the same session is still there at the callback,
    and never an identity another account holds (`identity_in_use`), nor a second one of a
    provider (`provider_already_linked`). A flow started signed out never links.
 6. A new session: a new random id, the browser's previous session deleted. Then the author
@@ -170,7 +170,7 @@ stored nowhere, new at each sign-in; `/me` gives it to the page); an `Origin` eq
 
 **Author verification**, automatic: at every sign-in of an account with an ORCID iD, and on
 request (`POST /api/account/authorship`, "Check my papers again"), the account's
-`verified_author` roles become exactly the papers `paper_orcid` lists for its iD — two
+`verified_author` roles become exactly the papers `paper_orcid` lists for its iD, two
 statements whatever the number of papers. A role a moderator grants is never touched.
 
 **Maintainer verification**, on request (`POST /api/account/maintainer`): the repository must
@@ -214,7 +214,7 @@ Rows read: 15 for `/api/account/me`, 16 for a first ORCID sign-in, 17 for a retu
 
 **The share of the day.** D1's free plan writes 100,000 rows a day for the whole account. Proposed:
 the catalogue's projection (Phase 3) 80,000, this facts push 10,000, the Worker's own writes the
-remaining 10,000 — some 2,000 new accounts or 5,000 returning sign-ins a day. The facts' first
+remaining 10,000, some 2,000 new accounts or 5,000 returning sign-ins a day. The facts' first
 load at the full neuro stock (150–270k ORCID-paper pairs) then takes two to four weeks of pushes;
 after that, only deltas.
 

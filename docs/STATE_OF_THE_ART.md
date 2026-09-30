@@ -101,18 +101,18 @@ Figures [verified] unless stated.
 | Cloudflare D1 / R2 / Pages | 5 GB / 10 GB / 25 MiB per file | D1: 100,000 writes a day | caveats |
 | Vercel Hobby | 1 cron a day, ± 59 min | a function without git | no |
 | Netlify | scheduled functions of 30 s | too short | no |
-| Deno Deploy | Classic closed on 2026-07-20 | — | no |
-| Render / Railway / Fly.io / Koyeb | no free cron / a trial / no free tier any more / no free compute any more | — | no |
+| Deno Deploy | Classic closed on 2026-07-20 | n/a | no |
+| Render / Railway / Fly.io / Koyeb | no free cron / a trial / no free tier any more / no free compute any more | n/a | no |
 | Northflank | 2 cron jobs, a verified card [unverified in detail] | "not for production" | caveats |
 | Google Cloud | an e2-micro VM, 1 GB of egress a month | card required | caveats |
 | AWS | 6 months of credits since 2025-07-15 | the account is closed afterwards unless it switches to paid | caveats |
 | Oracle Always Free | 2 OCPU / 12 GB | **reclaims idle VMs**: exactly our profile | no |
 | Azure | Container Apps jobs in the free offer | card [unverified] | caveats |
 | Modal | $30 a month offered; our estimated cost $0.5 to 1.7 a month | card [unverified] | yes / caveats |
-| PythonAnywhere | **no free scheduled task since 2026-01-15**; internet on an allow-list | — | no |
+| PythonAnywhere | **no free scheduled task since 2026-01-15**; internet on an allow-list | n/a | no |
 | Streamlit Community Cloud | sleeps after 12 h | no scheduler | no |
-| Datasette Lite | reads a database served with CORS (GitHub Pages does) | — | yes |
-| Turso / Neon / Supabase / MotherDuck | 5 GB / 0.5 GB / pauses / 10 GB | — | caveats |
+| Datasette Lite | reads a database served with CORS (GitHub Pages does) | n/a | yes |
+| Turso / Neon / Supabase / MotherDuck | 5 GB / 0.5 GB / pauses / 10 GB | n/a | caveats |
 | Tailscale Funnel / Cloudflare Quick Tunnel / ngrok | expose the Mac | beta / tests only / 1 GB a month | caveats, useless with Pages |
 
 ### 2.2 Three zero-cost architectures

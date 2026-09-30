@@ -142,7 +142,7 @@ All of them go through a laboratory.
 | the site (catalogue + script lots) | **GitHub Pages** | 1 GB of site, 100 GB per month (soft) |
 | the site, beyond 1 GB | **Cloudflare Pages** | 20,000 files, 25 MiB per file |
 | the browsable data | **a Hugging Face dataset** (viewer + SQL console) | "best-effort" public storage, 10,000 files per folder, a few thousand commits |
-| the durable archive, with a DOI | **Zenodo** (a monthly snapshot, 50 GB per record) + **Software Heritage** (the code) | — |
+| the durable archive, with a DOI | **Zenodo** (a monthly snapshot, 50 GB per record) + **Software Heritage** (the code) | n/a |
 
 > **Superseded by the project rules** ([CLAUDE.md](../CLAUDE.md)): Zenodo DOIs are reserved
 > for tracing maps validated by an author, so the catalogue is not deposited on Zenodo; the
