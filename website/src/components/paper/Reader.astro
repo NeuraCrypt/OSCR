@@ -7,11 +7,11 @@
 // LEFT, the paper: its text is NOT in this page; the reader's browser loads it from Europe PMC,
 // else from PubMed Central (src/scripts/reader-paper.ts). RIGHT, the authors' code: the list of its files and one file,
 // the one with the most matches, written here by the build (plain; the browser colors it); the
-// others are fetched on demand from /scripts/NN.json. A file whose license does not allow
-// republishing it has no text here: the reader's browser fetches it from where its authors published
-// it, at the pinned version, and shows it when its SHA-256 is the registry's (src/lib/source.ts);
-// otherwise the reader says why and links to it at the source, which is otherwise reached only
-// through the file's menu.
+// others are fetched on demand by their SHA-256 from a digest lot (/scripts/NN.json, deduplicated).
+// Since 2026-09-29 every paper's code is shown from OSCR's own copy, whatever its licence; the email
+// addresses are masked (catalog.mask_emails). If a lot unexpectedly lacks a file, the browser falls
+// back to fetching it from where its authors published it, at the pinned version, and shows it when
+// its SHA-256 is the registry's (src/lib/source.ts).
 import { SITE_NAME } from "../../config";
 import { alignmentOf, europePmcUrl, lot2, lotEntry, plural, shortName, type Article } from "../../lib/catalog";
 import { languageOf, sizeInWords } from "../../lib/code";

@@ -25,10 +25,12 @@ export type LotFileIn = {
   truncated: boolean;
   note: string;
   source_url: string;
-  /** A file held back for its license: the SHA-256 of its bytes and their number (the export's
-   *  facts), and "swh" when only Software Heritage gives it. */
+  /** A file OSCR has a copy of: the SHA-256 of its original bytes, their number, and the lot its
+   *  text lives in (`text_lot`, keyed by sha256). "swh" when only Software Heritage can fetch it as
+   *  a fallback. A withheld, binary, note or digest-less file carries none. */
   sha256?: string;
   size?: number | null;
+  text_lot?: string;
   via?: string;
 };
 export type RepoIn = {
@@ -89,9 +91,11 @@ export type ReaderFile = {
   note: string;
   /** Its address at the source, when the repository's prefix does not give it. */
   source: string;
-  /** Held back for its license: the SHA-256 of its bytes ("" when unknown or withheld), and "swh"
-   *  when only Software Heritage gives it. */
+  /** A file OSCR has a copy of: the SHA-256 of its bytes ("" when unknown or withheld) and the lot
+   *  its text lives in (`textLot`, keyed by that sha256); the reader fetches it from there. "swh"
+   *  when only Software Heritage can fetch it as a fallback. */
   sha256: string;
+  textLot: string;
   via: string;
   pairs: number[];
 };
@@ -184,28 +188,34 @@ export function readerFiles(repos: RepoIn[]): { repos: ReaderRepo[]; files: Read
       note: e?.files.find((f) => f.kind === "note")?.note ?? "",
       sourcePrefix: rule.prefix,
       sourceSame: rule.same,
-      source: e && !e.published ? sourceFacts(e.source) : null,
+      // The source is a graceful FALLBACK now (the reader fetches a copy's text from its digest lot;
+      // the source is used only when a lot unexpectedly lacks it): kept whenever the export gives it.
+      source: e ? sourceFacts(e.source) : null,
     });
     for (const f of list) {
       const derived = rule.same || (rule.prefix ? rule.prefix + encodePath(f.path) : "");
       const index = files.length;
       const text = e?.published ? f.text : null;
       const why = whyOf(!!e?.published, f);
-      const held = why === "license" && typeof f.sha256 === "string" && /^[0-9a-f]{64}$/.test(f.sha256);
+      const digest = typeof f.sha256 === "string" && /^[0-9a-f]{64}$/.test(f.sha256) ? f.sha256 : "";
+      // OSCR has a copy iff the file has a text lot; the reader fetches its text from there by sha256.
+      const copy = text !== null && !!digest && !!f.text_lot;
+      const held = why === "license" && !!digest;               // a legacy "shown from the source" file
       files.push({
         repo: i,
         path: f.path,
         language: f.language,
         kind: f.kind,
         lines: f.lines ?? (text !== null ? splitLines(text).length : null),
-        bytes: text !== null ? new TextEncoder().encode(text).length : held && typeof f.size === "number" ? f.size : null,
+        bytes: text !== null ? new TextEncoder().encode(text).length : (copy || held) && typeof f.size === "number" ? f.size : null,
         text: text !== null,
         truncated: !!f.truncated,
         why,
         note: f.note,
         source: f.source_url && f.source_url !== derived ? f.source_url : "",
-        sha256: held ? f.sha256! : "",
-        via: held && f.via === "swh" ? "swh" : "",
+        sha256: copy || held ? digest : "",
+        textLot: copy ? f.text_lot! : "",
+        via: (copy || held) && f.via === "swh" ? "swh" : "",
         pairs: [],
       });
       if (text !== null) texts.set(index, text);
@@ -242,10 +252,11 @@ export function mapPairs(pairs: PairIn[], repos: ReaderRepo[], files: ReaderFile
     });
 }
 
-/** A file the reader's browser may show from its source: held back for its license, with its digest,
- *  in a repository whose files can be fetched. */
+/** A file the reader's browser may fetch from its source (its digest to check it against, in a
+ *  repository whose files can be fetched): the fallback used when a digest lot lacks a copy's text,
+ *  and the legacy "shown from the source" path. */
 export const fromSource = (repos: readonly Pick<ReaderRepo, "source">[], f: Pick<ReaderFile, "why" | "sha256" | "repo">) =>
-  f.why === "license" && f.sha256 !== "" && !!repos[f.repo]?.source?.via;
+  f.sha256 !== "" && !!repos[f.repo]?.source?.via;
 
 /** The file shown first: the one with the most pairs (the earliest pair breaks a tie), else the
  *  first script whose text is here (or can be shown from its source), else any such file, else the

@@ -4,10 +4,11 @@
 // LEFT, the paper (reader-paper.ts): its text is fetched from Europe PMC (else PubMed Central)
 // by this browser, only while its pane is shown; a button hides the pane (the choice is kept in this browser).
 // RIGHT, the authors' code: the list of its files (file-tree.ts) and the viewer (code-view.ts).
-// The file shown first is written into the page by the build; the others are fetched from the
-// lot of their repository (/scripts/NN.json). A file the registry may not copy is fetched by this
-// browser from where its authors published it, at the pinned version, and shown only when its
-// SHA-256 is the registry's (lib/source.ts); its pairs are drawn then, and only then.
+// Since 2026-09-29 every paper's code is shown from OSCR's own copy, whatever its licence: the file
+// shown first is written into the page by the build; the others are fetched by their SHA-256 from a
+// digest lot (/scripts/NN.json, deduplicated). If a lot unexpectedly lacks a file, the browser falls
+// back to fetching it from where its authors published it and shows it only when its SHA-256 is the
+// registry's (lib/source.ts).
 //
 // A pair joins paragraph p-<i> and the lines start..end of a file: the same color on both
 // sides. Clicking one side brings the other into view and marks both `.is-active`; the legend,
@@ -25,7 +26,7 @@ import { codeView, scrollInto } from "./code-view";
 import { fileTree } from "./file-tree";
 import { paperPane } from "./reader-paper";
 
-type LotData = Record<string, { files: { path: string; text: string | null }[] }>;
+type LotData = Record<string, { text: string }>;
 type Side = "legend" | "paper" | "code";
 
 const byId = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T | null;
@@ -118,6 +119,7 @@ function start(data: ReaderData) {
 
   /* ---------- The files ---------- */
 
+  // The scripts' text, keyed by the file's sha256 and deduplicated (one lot per `textLot`).
   const lots = new Map<string, Promise<LotData>>();
   function lot(n: string): Promise<LotData> {
     if (!lots.has(n)) {
@@ -179,17 +181,19 @@ function start(data: ReaderData) {
       return true;
     }
     view.loading(i);
-    const repo = data.repos[f.repo];
     let text: string | null = null;
     let failure = "";
     try {
-      text = (await lot(repo.lot))[repo.repo]?.files.find((x) => x.path === f.path)?.text ?? null;
+      text = (await lot(f.textLot))[f.sha256]?.text ?? null;
       if (text === null) failure = "it is not among the published files";
     } catch (err) {
-      failure = `the files of its repository did not load: ${(err as Error).message}`;
+      failure = `the scripts did not load: ${(err as Error).message}`;
     }
     if (mine !== ticket) return false;
     if (text === null) {
+      // A graceful fallback for the rare case a lot lacks the file: fetch it from its source, verify
+      // its fingerprint, and show it — otherwise say why and link to it (src/lib/source.ts).
+      if (fromSource(data.repos, f)) return showFromSource(i, mine);
       view.showAway(i, failure);
       return false;
     }

@@ -1,13 +1,16 @@
 // The harvester's public export → the data of the site.
 //
 // The source is the folder named by CATALOG_DIR (default ../data/public), ALWAYS
-// exported in public mode: it holds the text of scripts only when their license
-// allows republishing it, and not a single sentence of any paper. A catalog that
-// is not public is refused.
+// exported in public mode: it holds the text of every paper's code (shown from OSCR's own copy
+// since 2026-09-29, its email addresses masked), and not a single sentence of any paper. A
+// catalog that is not public is refused.
 //
 //   catalog.json      → src/data/catalog.json        (read at build time)
 //   alignments/NN.json → src/data/alignments/NN.json (read at build time)
-//   scripts/NN.json   → public/scripts/NN.json       (fetched by the reader on demand)
+//   scripts/NN.json   → public/scripts/NN.json       (the scripts' text, keyed by sha256 and
+//                                                     deduplicated, fetched by the reader on demand)
+//   scriptmeta/NN.json → src/data/scriptmeta/NN.json (read at build time: the per-repository facts
+//                                                     the site is built from — never served)
 //   entities/*.json   → src/data/entities/*.json     (read at build time: authors, journals,
 //                                                     institutions, tools, datasets, categories)
 //   lookup/NN.json    → public/lookup/NN.json        (fetched by the DOI lookup page)
@@ -83,10 +86,15 @@ if (existsSync(`${source}/alignments`)) {
 }
 if (dropped) console.warn(`${dropped} evidence terms longer than ${MAX_TERM} characters were dropped.`);
 
-// The lots of scripts, fetched on demand by the reader (one file per lot).
+// The scripts' text, keyed by the file's SHA-256 and deduplicated (oscr/catalog.py), fetched on
+// demand by the reader (one file per lot). The per-repository FACTS the site is built from
+// (scriptmeta/, keyed by repository) are read at build time and never served.
 rmSync("public/scripts", { recursive: true, force: true });
 if (existsSync(`${source}/scripts`)) cpSync(`${source}/scripts`, "public/scripts", { recursive: true });
 else mkdirSync("public/scripts", { recursive: true });
+rmSync("src/data/scriptmeta", { recursive: true, force: true });
+if (existsSync(`${source}/scriptmeta`)) cpSync(`${source}/scriptmeta`, "src/data/scriptmeta", { recursive: true });
+else mkdirSync("src/data/scriptmeta", { recursive: true });
 
 // The entities, read at build time. An export older than Phase 2 has none: their pages
 // are then built empty.

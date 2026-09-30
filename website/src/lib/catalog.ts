@@ -67,8 +67,12 @@ export type Article = {
   page_lot?: number;
 };
 
-/** A file of a lot of scripts. `text` is null when the license of the repository
- *  does not allow republishing it; `kind` "note" is a remark, not a file. */
+/** A file of a repository. The per-repository FACTS (src/data/scriptmeta/NN.json) carry every field
+ *  but `text`: since 2026-09-29 the text lives in a digest lot (public/scripts/NN.json, keyed by
+ *  sha256, deduplicated). `lotEntry` fills `text` back in from that lot for the one file a paper's
+ *  page inlines; the others stay null here and are fetched by the reader on demand. A file OSCR has
+ *  a copy of carries its `sha256`, its `size` and the lot of its text (`text_lot`); a withheld,
+ *  binary, note or digest-less file carries none. `kind` "note" is a remark, not a file. */
 export type LotFile = {
   path: string;
   language: string;
@@ -78,8 +82,20 @@ export type LotFile = {
   truncated: boolean;
   note: string;
   source_url: string;
+  sha256?: string;
+  size?: number | null;
+  text_lot?: string;
+  via?: string;
 };
-export type LotEntry = { repo: string; commit: string; license: string; published: boolean; files: LotFile[] };
+export type LotEntry = {
+  repo: string;
+  commit: string;
+  license: string;
+  published: boolean;
+  files: LotFile[];
+  source?: unknown;
+  redistributable?: string;
+};
 
 /** A match computed by the harvester: paragraph `paragraph` of the paper (its index
  *  among the <p> of the JATS <body>) ↔ lines start_line..end_line of a file. */
@@ -205,16 +221,35 @@ export function europePmcUrl(a: Article): string {
   return `https://europepmc.org/search?query=${encodeURIComponent(`DOI:"${a.doi}"`)}`;
 }
 
-/** The files of a repository, read in its lot (public/scripts/NN.json) at build time. */
+/** The FACTS of a repository's files, read in its facts lot (src/data/scriptmeta/NN.json) at build
+ *  time. The text itself is in the digest lots (public/scripts/NN.json, keyed by sha256): read it
+ *  with `lotText`, for the one file the reader inlines into the page. */
 const lots = new Map<number, Record<string, LotEntry>>();
 export function lotEntry(d: Repo): LotEntry | undefined {
   if (!lots.has(d.lot)) {
-    const path = `public/scripts/${lot2(d.lot)}.json`;
+    const path = `src/data/scriptmeta/${lot2(d.lot)}.json`;
     const lot: Record<string, LotEntry> = existsSync(path) ? JSON.parse(readFileSync(path, "utf8")) : {};
-    for (const e of Object.values(lot)) for (const f of e.files) f.source_url = webUrl(f.source_url);
+    for (const e of Object.values(lot))
+      for (const f of e.files) {
+        f.source_url = webUrl(f.source_url);
+        // The text lives in the digest lots; fill it back in so the build can inline the first file
+        // (the reader fetches the others itself). null when OSCR keeps no copy of this file.
+        f.text = f.text_lot && f.sha256 ? lotText(f.text_lot, f.sha256) ?? null : null;
+      }
     lots.set(d.lot, lot);
   }
   return lots.get(d.lot)![d.repo];
+}
+
+/** The text of one file, read from its digest lot (public/scripts/NN.json, keyed by sha256) at build
+ *  time: for the file the reader inlines into a paper's page. undefined when the lot has no copy. */
+const textLots = new Map<string, Record<string, { text: string }>>();
+export function lotText(textLot: string, sha256: string): string | undefined {
+  if (!textLots.has(textLot)) {
+    const path = `public/scripts/${textLot}.json`;
+    textLots.set(textLot, existsSync(path) ? JSON.parse(readFileSync(path, "utf8")) : {});
+  }
+  return textLots.get(textLot)![sha256]?.text;
 }
 
 /** The pairs of a paper (src/data/alignments/NN.json), sorted by pair number. */
