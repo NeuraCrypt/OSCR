@@ -314,19 +314,31 @@ if (everyRoute) {
   }
 }
 
-// 6b. No em dash (U+2014) in any built HTML. The em dash reads as AI-generated text and hurts
-// the project's scientific credibility, so it is banned from every visible OSCR text (CLAUDE.md,
-// the website's style). Proper ASCII punctuation is used instead (a comma, a colon, parentheses).
-// The same ban is enforced on the Mac's Python by tests/test_no_em_dash.py. This runs on every
-// `npm run check`, not only with --every-route.
+// 6b. No em dash (U+2014) in OSCR's OWN text. The em dash reads as AI-generated text and hurts
+// the project's scientific credibility, so it is banned from every text the registry itself writes
+// (CLAUDE.md, the website's style): a comma, a colon or parentheses instead. The same ban is
+// enforced on the Mac's Python by tests/test_no_em_dash.py.
+//
+// It scans the SOURCE the registry authors (src/**: .astro, .ts, .svelte), NOT the built HTML: a
+// paper's own title, abstract or availability statement is the authors' words, faithfully kept, so
+// an author who wrote an em dash keeps it (src/data/** holds that harvested content, excluded here).
+// Runs on every `npm run check`, not only with --every-route.
 const EM_DASH = "—";
-for (const f of files) {
-  if (!f.endsWith(".html")) continue;
-  const text = readFileSync(join(DIST, f.slice(1)), "utf8");
-  if (!text.includes(EM_DASH)) continue;
-  const hits = text.split("\n").map((l, i) => (l.includes(EM_DASH) ? i + 1 : 0)).filter(Boolean);
-  problems.push(`em dash (U+2014) in ${f}, line ${hits.join(", ")}: banned from visible text (use a comma, colon or parentheses)`);
-}
+const scanForDash = (dir) => {
+  for (const e of readdirSync(dir, { withFileTypes: true })) {
+    const p = join(dir, e.name);
+    if (e.isDirectory()) {
+      if (p === "src/data") continue; // harvested author content, kept verbatim
+      scanForDash(p);
+    } else if (/\.(astro|ts|svelte)$/.test(e.name)) {
+      const text = readFileSync(p, "utf8");
+      if (!text.includes(EM_DASH)) continue;
+      const hits = text.split("\n").map((l, i) => (l.includes(EM_DASH) ? i + 1 : 0)).filter(Boolean);
+      problems.push(`em dash (U+2014) in ${p}, line ${hits.join(", ")}: banned from the registry's own text (use a comma, colon or parentheses)`);
+    }
+  }
+};
+scanForDash("src");
 
 // 7. The budget, folder by folder.
 const folders = new Map();
