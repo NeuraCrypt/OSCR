@@ -373,6 +373,8 @@ def main(argv: list[str] | None = None) -> int:
     rp.add_argument("--days", type=int, default=0, help="with --auto-log: only the last N days (default: all)")
     community_target(rp)
 
+    sp.add_parser("watchdog", help="restart a hung harvester, and run a missed nightly publication (launchd, every 10 min)")
+
     n = sp.add_parser("nightly", help="the publication: public catalogue, then Hugging Face and the website")
     n.add_argument("--out", default="data/public", help="a separate folder, only ever generated in public mode")
     n.add_argument("--dataset", default=cfg.get("OSCR_HF_DATASET", ""), help="Hugging Face user/dataset (empty: send nothing)")
@@ -380,6 +382,10 @@ def main(argv: list[str] | None = None) -> int:
                    help="Cloudflare Pages project to rebuild and put online (empty: none)")
 
     a = p.parse_args(argv)
+    if a.command == "watchdog":
+        from . import watchdog
+        print(f"{time.strftime('%Y-%m-%d %H:%M')} {watchdog.run()}", flush=True)
+        return 0
     if a.command == "dashboard":
         from . import dashboard
         db.open_db(a.db).close()  # creates or updates the schema, then read-only
@@ -442,6 +448,14 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"{harvest.align_pending(con, client, force=a.force, deadline=deadline)} papers aligned")
         elif a.command == "nightly":
             now = lambda: time.strftime("%Y-%m-%d %H:%M")  # noqa: E731
+            # One publication at a time (the 04:17 run, or the watchdog's catch-up): the lock is
+            # held until this process ends.
+            from . import watchdog
+            lock = watchdog.acquire_lock()
+            if lock is None:
+                print(f"{now()} another publication is running: nothing to do", flush=True)
+                return 0
+            watchdog.mark("attempt")
             out = Path(a.out)
             print(f"{now()} public catalogue → {catalog.generate(con, out, public=True)}", flush=True)
             from . import publish
@@ -490,6 +504,8 @@ def main(argv: list[str] | None = None) -> int:
                                                          platform=cfg.get("OSCR_PLATFORM_NAME", "OSCR")), flush=True)
                 except (Exception, SystemExit) as e:
                     errors.append(f"Contacts on Hugging Face: {e}")
+            # It ran to its end: an upload that failed is said below and tried again tomorrow.
+            watchdog.mark("success")
             if errors:
                 raise SystemExit("\n".join(errors))
         elif a.command == "enrich":
