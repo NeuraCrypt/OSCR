@@ -110,12 +110,15 @@ A page of the website puts a paper and its authors' code side by side.
   against 325 by number alone), and the pane says so. A failure keeps links to doi.org and
   Europe PMC and a button that tries again. The pane can be hidden, a choice kept in the
   browser.
-- **Right, the code.** One view is prerendered at build time; the others are fetched on
-  demand from the lot of their repository (`/scripts/NN.json`). A script whose license does
-  not allow republication is not copied: the reader's browser fetches it from where its authors
-  published it, at the verified commit or record, and shows it only when its SHA-256 is the one
-  the Mac computed ("shown from the source": [SCRIPT_STORAGE.md](SCRIPT_STORAGE.md), the public
-  page `/policies/code/`); otherwise the reader says why and links to it at the source.
+- **Right, the code.** Since 2026-09-29 every paper's code is shown from OSCR's own copy,
+  whatever its licence. One view is prerendered at build time; the others are fetched on demand
+  by their **SHA-256** from a digest lot (`/scripts/NN.json`, keyed by sha256 and deduplicated;
+  the per-repository facts the build reads are in `src/data/scriptmeta/`). Email addresses are
+  masked (`catalog.mask_emails`). If a digest lot unexpectedly lacks a file, the reader falls
+  back to fetching it from where its authors published it, at the verified commit or record, and
+  shows it only when its SHA-256 is the one the Mac computed ("shown from the source":
+  [SCRIPT_STORAGE.md](SCRIPT_STORAGE.md), the public page `/policies/code/`). The licence still
+  gates only the COPIES that leave (the Hugging Face dataset, the public database), not display.
 - **The pairs** come from `alignments/NN.json`, read at build time. A pair joins paragraph
   number *i* (the index of a `<p>` among all the `<p>` of the JATS `<body>`, in document
   order, which the browser computes the same way) and a line range of one file: the same
@@ -356,11 +359,13 @@ Checked on 2026-09-26 in Cloudflare's documentation; the full table, with source
 | Hugging Face | public datasets free ("best-effort"); byte ranges with CORS | the open data, and the script blocks |
 | Zenodo | 50 GB per record; 60 requests per minute without a token | a map weighs a few KB |
 
-**The scripts' text.** Today, 32 lots in `public/scripts/`. Decided on 2026-09-26
-([SCRIPT_STORAGE.md](SCRIPT_STORAGE.md)): deduplicated, zstd, Parquet blocks on a public
-Hugging Face dataset, read by the reader in the browser with range requests (~78 KB per
-script), with an index in D1. Measured: 155 MB of text become 25.6 MB; ~3.3 GB at the full
-neuro stock, of which ~2.3 GB are public.
+**The scripts' text.** On the site, 256 lots in `public/scripts/`, keyed by the file's SHA-256
+and deduplicated (`catalog.N_LOTS`); the per-repository facts the build reads are in
+`src/data/scriptmeta/`. Since 2026-09-29 every file is shown, whatever its licence (the largest
+lot ~10.6 MiB of JSON on the whole stock, under the 25 MiB Workers asset limit; a test asserts no
+lot overflows). The separate BULK store for redistributable copies — decided on 2026-09-26
+([SCRIPT_STORAGE.md](SCRIPT_STORAGE.md)): deduplicated, zstd, Parquet blocks on a public Hugging
+Face dataset, read with range requests — stays licence-gated.
 
 ## Planned platform
 

@@ -83,27 +83,37 @@ license audit: `docs/SCRIPT_STORAGE.md`; code: `oscr/scriptstore.py`, `oscr scri
    every night). The reader reads the row it needs in the browser, with HTTP range requests
    (hyparquet).
 
-- **Only verified licenses leave the Mac.** A file is published when its repository's
-  license allows redistribution AND is confirmed by the repository's own license file (for
-  an archive without one: by its record). A license inferred from a README sentence,
-  "other-open" without a license file, or no license: the file stays on the Mac, and the
-  site shows it from its source (below) or links to it there, at the verified commit.
-- The scripts dataset is published **only once the license filter is applied and verified**:
-  done on 2026-09-27 (`oscr scripts audit`; figures in `docs/SCRIPT_STORAGE.md`). Any change
-  to the filter is audited again before the next publication. The site's lots and the public
-  database apply the same audited filter (`catalog.copyable`, since 2026-09-29).
-- **Shown from the source** (decided 2026-09-29): a file held back for its license is still never
-  copied (no text in the site's lots, the public database or the Hugging Face dataset), but the
-  reader's **browser** fetches it from where its authors published it, at the pinned commit or
+- **All code is DISPLAYED, the licence gates only the COPIES that leave (decided 2026-09-29,
+  reversing the earlier "only verified licences leave for display" rule).** The reader shows every
+  paper's code from OSCR's own copy, whatever its licence — even a repository with none. On the
+  **site**:
+  - the scripts' text is served in lots keyed by the file's **SHA-256 and deduplicated** (each
+    unique file once): `public/scripts/NN.json` (`catalog.N_LOTS` = 256; the largest ~10.6 MiB of
+    JSON on the whole stock, under the 25 MiB Workers asset limit; a test asserts no lot overflows).
+  - the per-repository **facts** the site is built from move to `scriptmeta/NN.json` (keyed by
+    repository, read at build time, never served): each file's path, language, size, lines, digest
+    and the lot of its text (`text_lot`). The build inlines the first file; the reader fetches the
+    others by SHA-256 from the digest lots (`oscr/catalog.py` `script_lots`, `_digest_lots`,
+    `_repo_facts`; `website/src/lib/catalog.ts` `lotEntry`, `lotText`; `src/scripts/reader.ts`).
+  - **email masking** (`catalog.mask_emails`, one shared fixture `tests/fixtures/mask_emails.json`)
+    and **withheld** exclusion (a removal request: no text, no digest) still apply everywhere text
+    is shown.
+- **Only verified licences leave the Mac as a COPY.** The BULK outputs — the Hugging Face scripts
+  dataset (`OpenScientificCodeRegistry/Database`, `oscr/scriptstore.py`, unchanged), `scripts.jsonl`,
+  the `mirror`, and the public database (`oscr_public.db`) — publish a file only when its repository's
+  licence allows redistribution AND is confirmed by its own licence file (for an archive without one:
+  by its record). A licence inferred from a README sentence, "other-open" without a licence file, or
+  no licence: the file is still SHOWN on the site, but it does not leave in bulk (`catalog.copyable`,
+  `PUBLISHABLE`; audited with `oscr scripts audit`, figures in `docs/SCRIPT_STORAGE.md`; re-audited
+  before each publication).
+- **Shown from the source** stays only as a graceful **fallback**: if a digest lot unexpectedly lacks
+  a file, the reader's browser fetches it from where its authors published it, at the pinned commit or
   record (GitHub, GitLab.com, Bitbucket, Codeberg, Hugging Face, Zenodo; any other forge, and a file
   inside a Zenodo archive, from Software Heritage by digest; OSF and PMC's files stay at the source),
-  checks its SHA-256 against `file.digest` (`crypto.subtle`), masks its email addresses as
-  `catalog.mask_emails` does (one shared fixture, `tests/fixtures/mask_emails.json`), and shows it with a
-  notice (where from, no copy kept, rights with the authors, `/policies/code/`, the removal page).
-  Only facts leave: path, language, size, lines, digest, pinned version, where to fetch
-  (`catalog.source_of`). A mismatch, an error, over 1 MB or binary: said in words, no pair drawn.
-  What a removal request withheld is neither given a fetch nor fetched. The paper page's
-  `connect-src` lists those origins only (`src/lib/source.ts`, `public/_headers`, `worker/pages.ts`).
+  checks its SHA-256 against `file.digest` (`crypto.subtle`), masks its email addresses, and shows it
+  with a notice. A mismatch, an error, over 1 MB or binary: said in words. What a removal request
+  withheld is neither given a fetch nor fetched. The paper page's `connect-src` lists those origins
+  only (`catalog.source_of`, `src/lib/source.ts`, `public/_headers`, `worker/pages.ts`).
 
 ## Accounts (Phase 5)
 
@@ -267,8 +277,9 @@ menus in `website/src/lib/info.ts`, the layout `src/components/Info.astro`):
   abstract and its availability statements are shown in full only under an open license
   (decision D1; otherwise a summary and a link). The sentences that decided a link's verdict
   stay in the private database.
-- A file whose license does not allow redistribution is never published: its text stays
-  on the Mac; the reader's browser may show it from its source (see "Script copies").
+- A file whose license does not allow redistribution is still SHOWN on the site, from OSCR's own
+  copy (decided 2026-09-29; see "Script copies"), but it never leaves as a redistributable COPY:
+  not the Hugging Face scripts dataset, not the public database.
 - No mass email to the authors: they come to us.
 - The Hugging Face dataset `opsecsystems/oscr-catalog` stays **private** until decided
   otherwise.
