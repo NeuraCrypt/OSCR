@@ -31,7 +31,7 @@ const toc = [
 >
   <p class="lead" slot="lead">
     The reader is the first section of a paper's page when its authors' code was read: the paper on the left, the code
-    on the right, and between them the matches that {SITE_NAME} computed — which paragraph of the paper goes with which
+    on the right, and between them the matches that {SITE_NAME} computed, which paragraph of the paper goes with which
     lines of code.
   </p>
 
@@ -60,7 +60,7 @@ const toc = [
 
   <h2 id="pairs">Matches and their colours</h2>
   <p>
-    A match joins one paragraph of the paper and a range of lines of one file. Both sides take the same colour — six
+    A match joins one paragraph of the paper and a range of lines of one file. Both sides take the same colour, six
     colours used in turn, so that neighbouring matches differ: a light tint on the paragraph and on its lines, with a thin
     mark in the paragraph's margin and in the code's gutter. The match you are reading turns a stronger shade, on both
     sides, with a wider mark. The rest of the code keeps its white ground and its syntax colours.
@@ -69,7 +69,7 @@ const toc = [
     <li>Click a coloured paragraph: its lines come into view, in the code pane.</li>
     <li>Click coloured lines: their paragraph comes into view, in the paper pane.</li>
     <li>"The matches", above the panes, unfolds the list of every match: the paragraph's section, the file and its
-      lines, the score, and the evidence — a few short technical terms that both sides share (identifiers, constants,
+      lines, the score, and the evidence, a few short technical terms that both sides share (identifiers, constants,
       tool names), never a sentence of the paper. Each entry opens its match on both sides.</li>
   </ul>
   <p>
@@ -101,7 +101,7 @@ const toc = [
   <h2 id="files">The files, and the tools of a file</h2>
   <ul>
     <li><strong>Files</strong> opens or closes the list of the code's files: the matched files first, then the
-      repository's folders, with a filter. A file that cannot be shown here — neither copied nor shown from its source —
+      repository's folders, with a filter. A file that cannot be shown here, neither copied nor shown from its source,
       is in italics.</li>
     <li><strong>Wrap</strong> wraps long lines instead of scrolling sideways.</li>
     <li><strong>Copy</strong> copies the whole file; line numbers are never part of what you copy.</li>
@@ -120,14 +120,14 @@ const toc = [
   <p>
     A file's text is shown from {SITE_NAME}'s copy only when its repository's licence allows it. Otherwise{" "}
     {SITE_NAME} keeps no copy, and <strong>your browser</strong> fetches the file from where its authors published it, at the
-    verified commit or record — GitHub, GitLab.com, Bitbucket, Codeberg, Hugging Face or Zenodo, or Software Heritage for
+    verified commit or record, GitHub, GitLab.com, Bitbucket, Codeberg, Hugging Face or Zenodo, or Software Heritage for
     the other forges and for a file inside a Zenodo archive. It checks that the file's SHA-256 fingerprint is the one{" "}
     {SITE_NAME} computed, hides its email addresses, and only then shows it and draws its matches, under a notice that
     says where it comes from and that no copy is kept. Without JavaScript, it is not fetched.
   </p>
   <p>
     A file whose fingerprint differs, that does not answer, is larger than {limit} or is not text, is not shown: the
-    reader says why in words and links to it — and to the exact lines of each match — at the source. So do the files of
+    reader says why in words and links to it, and to the exact lines of each match, at the source. So do the files of
     hosts that do not let another site's page read them (OSF, PubMed Central's supplementary files). These requests go
     from your browser to the host directly: it sees your address, as when you open the file there
     (<a href="/privacy/#browser">the privacy page</a>). The rules are in the{" "}

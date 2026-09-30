@@ -35,7 +35,7 @@ export const PAPER_HEADERS: Readonly<Record<string, string>> = {
 const CACHE = "public, max-age=600";
 
 /** The headers public/_headers gives every file of the site (its "/*" block, 2026-09-29): the
- *  Worker's pages get them too — the 404 page as they are, a paper's page with PAPER_HEADERS over
+ *  Worker's pages get them too, the 404 page as they are, a paper's page with PAPER_HEADERS over
  *  them (its own policy in place of the strict one). A test checks that they agree. */
 export const SITE_HEADERS: Readonly<Record<string, string>> = {
   "X-Content-Type-Options": "nosniff",
@@ -86,7 +86,7 @@ export function fillShell(shell: string, view: View): string | null {
   const end = shell.lastIndexOf("</main>");
   if (start < 0 || end < start || !/<title>[^<]*<\/title>/.test(shell)) return null;
   const site = shell.match(/<meta name="application-name" content="([^"]*)"/)?.[1] ?? "";
-  const title = `${esc(view.title)}${site ? ` — ${site}` : ""}`;
+  const title = `${esc(view.title)}${site ? `: ${site}` : ""}`;
   const attr = (name: string, value: string) => (s: string) =>
     s.replace(new RegExp(`(<meta (?:name|property)="${name}" content=")[^"]*(")`), (_, a: string, b: string) => `${a}${esc(value)}${b}`);
   const scripts = (shell.slice(start, end).match(SCRIPT) ?? []).join("");

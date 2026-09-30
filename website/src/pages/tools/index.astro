@@ -18,7 +18,7 @@ import { tools, toolUrl } from "../../lib/entities";
   <ul>
     {tools.map((t) => (
       <li>
-        <a href={toolUrl(t.id)}>{t.name}</a>{t.kind && ` (${t.kind})`} — {plural(t.counts.papers, "paper")},{" "}
+        <a href={toolUrl(t.id)}>{t.name}</a>{t.kind && ` (${t.kind})`}, {plural(t.counts.papers, "paper")},{" "}
         {plural(t.counts.repositories, "repository", "repositories")}
       </li>
     ))}

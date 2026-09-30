@@ -112,7 +112,7 @@ function rowHtml(r: Row, n: number, searchable: boolean): string {
     : "";
   const page = paperUrl(r.slug);
   const head = `<span class="num">[${n}]</span> `;
-  const journal = line("Journal", esc(r.journal || "—"));
+  const journal = line("Journal", esc(r.journal || "n/a"));
   if (r.code.length === 0) {
     return (
       `<dt${keys}>${head}${a(`doi:${r.doi}`, page)} [${a("paper", doiUrl(r.doi))}` +
@@ -289,9 +289,9 @@ function journal(e: JournalRecord, rows: Record<string, StoredRow>): View {
     `<h1>${esc(e.title)}</h1>`,
     `<p class="summary">${esc(plural(e.counts.with_code, "paper"))} with their authors' code out of ${esc(plural(e.counts.read, "paper"))} read in this journal` +
       `${others > 0 ? `; ${esc(number(others))} more with code on request or data only` : ""}.</p>`,
-    line("ISSN", esc(e.issn || "—")),
-    line("eISSN", esc(e.eissn || "—")),
-    line("Publisher", esc(e.publisher || "—")),
+    line("ISSN", esc(e.issn || "n/a")),
+    line("eISSN", esc(e.eissn || "n/a")),
+    line("Publisher", esc(e.publisher || "n/a")),
     papersHtml(e, e.counts.papers, rows),
   ].join("");
   return { title: e.title, description: `The papers of ${e.title} with their code, code on request or data only.`, crumb: e.title, html };
@@ -463,8 +463,8 @@ const options = (list: readonly [string, string][], selected = "") =>
   list.map(([value, text]) => `<option value="${esc(value)}"${value === selected ? " selected" : ""}>${esc(text)}</option>`).join("");
 
 /** The Contribute section of a paper rendered on demand: the same ids and forms as the static
- *  pages' (Contribute.astro), so that the same script (src/scripts/paper-actions.ts) runs them —
- *  claim the paper, correct its links — and the same link to the removal request page (/removal/).
+ *  pages' (Contribute.astro), so that the same script (src/scripts/paper-actions.ts) runs them,
+ *  claim the paper, correct its links, and the same link to the removal request page (/removal/).
  *  The tracing map's validation and the badge stay on the static pages, which show the map. */
 function contribute(p: PaperRecord): string {
   const back = `/paper/${p.slug}/`;
@@ -571,7 +571,7 @@ export function paperView(p: PaperRecord): View {
   const overview = [
     `<section id="overview"><h2>Overview</h2>`,
     authorsHtml,
-    line("Journal", p.journal.text ? a(p.journal.text, p.journal.href) : "—"),
+    line("Journal", p.journal.text ? a(p.journal.text, p.journal.href) : "n/a"),
     p.published ? line("Published", esc(/^\d{4}-\d{2}-\d{2}$/.test(p.published) ? dateInWords(p.published) : dayInWords(p.published))) : "",
     p.type ? line("Type", esc(p.type)) : "",
     line("Status", statusWords(p.status)),
@@ -615,7 +615,7 @@ export function paperView(p: PaperRecord): View {
           .map(
             (l) =>
               `<li>${href(l.url) ? `<a class="code" href="${esc(href(l.url))}">${wrap(l.repo)}</a>` : `<span class="code">${wrap(l.repo)}</span>`}` +
-              `${l.repository ? ` — ${esc(l.repository)}` : ""}</li>`,
+              `${l.repository ? `, ${esc(l.repository)}` : ""}</li>`,
           )
           .join("") +
         `</ul>`

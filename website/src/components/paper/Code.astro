@@ -1,7 +1,7 @@
 ---
-// Each repository of a paper's authors' code — state, license, commit, languages, files,
+// Each repository of a paper's authors' code, state, license, commit, languages, files,
 // Software Heritage, what it holds (README, CITATION.cff, environment, tests, CI, notebooks),
-// the tools found in it and the history of its availability checks —, and the code
+// the tools found in it and the history of its availability checks, and the code
 // availability statement (decision D1). On the page of a paper whose code was read, the
 // section is "Repositories" (#repositories), under the Code ↔ Paper reader (#code), and each
 // file links into the reader; otherwise it is the page's Code section (#code). The source
@@ -130,14 +130,14 @@ const kinds = new Set(p?.availability.statements.map((s) => s.kind) ?? []);
                   <li>{x.note}</li>
                 ) : reader ? (
                   <li>
-                    <a class="code" href={readHere(r.repo, x.path)}><Wrap text={x.path} /></a> — {x.language || "text"}
+                    <a class="code" href={readHere(r.repo, x.path)}><Wrap text={x.path} /></a>, {x.language || "text"}
                     {x.lines ? `, ${plural(x.lines, "line")}` : ""}
                     {matches(r.repo, x.path) > 0 && `, ${plural(matches(r.repo, x.path), "match", "matches")}`}
                     {x.text === null && (fetchable(x) ? ", shown from its source" : ", not shown here")}
                   </li>
                 ) : (
                   <li>
-                    <a class="code" href={x.source_url || r.url}><Wrap text={x.path} /></a> — {x.language || "text"}
+                    <a class="code" href={x.source_url || r.url}><Wrap text={x.path} /></a>, {x.language || "text"}
                     {x.lines ? `, ${plural(x.lines, "line")}` : ""}
                   </li>
                 ),

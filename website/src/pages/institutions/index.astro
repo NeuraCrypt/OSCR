@@ -26,7 +26,7 @@ const sorted = [...institutions].sort((x, y) => x.name.localeCompare(y.name));
     <ul>
       {sorted.map((i) => (
         <li>
-          <a href={institutionUrl(i.id)}>{i.name}</a>{countryName(i.country ?? "") && ` (${countryName(i.country ?? "")})`} —{" "}
+          <a href={institutionUrl(i.id)}>{i.name}</a>{countryName(i.country ?? "") && ` (${countryName(i.country ?? "")})`},{" "}
           {plural(i.counts.papers, "paper")}
           {i.counts.with_code > 0 && `, ${number(i.counts.with_code)} with code`}
         </li>

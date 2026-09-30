@@ -1,5 +1,5 @@
 // "Shown from the source" (decided 2026-09-29; docs/SCRIPT_STORAGE.md, /policies/code/): a file of the
-// authors' code whose license does not allow copying it is never copied by the registry — no text in
+// authors' code whose license does not allow copying it is never copied by the registry, no text in
 // the site's lots, its open data or its Hugging Face dataset. The reader's own browser fetches it from
 // where its authors published it, at the version the registry verified (a commit, a Zenodo record),
 // checks that its SHA-256 is the one the registry's machine computed from the same bytes, and only

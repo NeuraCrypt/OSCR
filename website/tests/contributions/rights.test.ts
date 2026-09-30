@@ -65,7 +65,7 @@ describe("a request's rules", () => {
     const orcid = { orcid: ADA, proof: "orcid" as const };
     const sandbox = { orcid: ADA, proof: "orcid-sandbox" as const };
     const none = { orcid: "", proof: "" as const };
-    assert.match(expectedWords("access", orcid, t), /field by field — your email address masked/);
+    assert.match(expectedWords("access", orcid, t), /field by field, your email address masked/);
     assert.match(expectedWords("access", sandbox, t), /shows no contact detail to them/);
     assert.match(expectedWords("access", none, t), /cannot tell by itself.*by 29 October 2026 at the latest.*never closed unanswered/);
     assert.match(expectedWords("erasure", orcid, t), /are erased.*never collects again.*rewrites its history/);

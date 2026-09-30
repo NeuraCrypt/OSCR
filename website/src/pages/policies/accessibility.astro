@@ -1,5 +1,5 @@
 ---
-// Policy: accessibility — what the site does (science.css, the markup of the pages), what is known
+// Policy: accessibility, what the site does (science.css, the markup of the pages), what is known
 // not to work well yet, and how to report a barrier. No formal audit has been made: none is claimed.
 import Info from "../../components/Info.astro";
 import { SITE_NAME, SOURCE_URL } from "../../config";
@@ -49,15 +49,15 @@ const toc = [
     <li><strong>Motion</strong>: the only animation, a loading bar, stops when your system asks for reduced motion.</li>
     <li><strong>Images</strong>: the logo and the badge have text alternatives; the site has no image that carries
       information without words.</li>
-    <li><strong>Without JavaScript</strong>: every static page — a paper's record, the lists, the categories, the
-      information pages — reads whole.</li>
+    <li><strong>Without JavaScript</strong>: every static page, a paper's record, the lists, the categories, the
+      information pages, reads whole.</li>
   </ul>
 
   <h2 id="limits">Known limits</h2>
   <ul>
     <li>The search, the DOI lookup, the pages of authors, journals, institutions, tools and datasets, the forms and the
       reader's paper pane need JavaScript.</li>
-    <li>The Code ↔ Paper reader — two panes that scroll on their own, colour-paired highlights — is the most complex part
+    <li>The Code ↔ Paper reader (two panes that scroll on their own, colour-paired highlights) is the most complex part
       of the site and has not been tested with screen readers in depth; the list of matches and the file's source links
       are the accessible way through it.</li>
     <li>The six colours of the matches are told apart by colour only on the page; their order and number are in the list

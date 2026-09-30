@@ -1,7 +1,7 @@
 // The page /data-rights/, in the reader's browser (src/pages/data-rights.astro): what the site's
 // database holds about the signed-in account (GET /api/rights, only when the browser holds a session:
 // the `__Host-oscr_signed_in` hint cookie), the account's requests with their answers, and a new
-// request — one right, the person's words, one confirmation — checked here with the Worker's own rules
+// request (one right, the person's words, one confirmation) checked here with the Worker's own rules
 // (src/lib/rights.ts), then sent (POST /api/rights, with the session's CSRF token), then its receipt:
 // what happens, and by when. Everything is written as text nodes, never as HTML. Like every browser
 // script, it never names the platform: "the registry".
@@ -237,12 +237,12 @@ function renderAnswer(a: Answer): HTMLElement[] {
     );
     for (const item of c.listed ?? []) {
       const dl = element("dl", "review");
-      const rows: Row[] = [["Paper", paperLink(item.paper)], ["Author No.", [String(item.position || "—")]]];
+      const rows: Row[] = [["Paper", paperLink(item.paper)], ["Author No.", [String(item.position || "n/a")]]];
       rows.push(["Tied to you by", [item.tied_by === "orcid" ? "your ORCID iD, which the paper gives" : "your address, under your family name (the paper gives no iD)"]]);
       for (const [key, label] of FIELDS) {
         const v = item.fields[key];
         if (key === "corresponding") rows.push([label, [v ? "yes" : "no"]]);
-        else rows.push([label, [v ? String(v) : "—", key === "email" && v ? " (masked)" : ""]]);
+        else rows.push([label, [v ? String(v) : "n/a", key === "email" && v ? " (masked)" : ""]]);
       }
       rows.push(["Read from", [`${SOURCES[item.source] ?? item.source}, on ${item.found}`]]);
       rowsInto(dl, rows);
@@ -254,7 +254,7 @@ function renderAnswer(a: Answer): HTMLElement[] {
   if (a.authorship) {
     const p = a.authorship;
     out.push(element("h4", "", "The papers whose public metadata list your ORCID iD"));
-    out.push(element("p", "", p.papers ? `${plural(p.papers, "paper")} — the public record, as each paper's page shows it.` : "None."));
+    out.push(element("p", "", p.papers ? `${plural(p.papers, "paper")}, the public record, as each paper's page shows it.` : "None."));
     if (p.listed?.length) {
       const ul = element("ul", "");
       for (const x of p.listed) ul.append(element("li", "", ...paperLink(x)));
@@ -305,7 +305,7 @@ function renderRequests(list: Asked[]) {
     ...list.map((r) => {
       const section = element("section", "");
       section.id = `request-${r.id}`;
-      section.append(element("h3", "", `${capital(KIND_WORDS[r.kind] ?? r.kind)} — request No. ${r.id}`));
+      section.append(element("h3", "", `${capital(KIND_WORDS[r.kind] ?? r.kind)}, request No. ${r.id}`));
       const dl = element("dl", "review");
       // Its heading names it: the list starts with when it was sent.
       rowsInto(dl, requestRows(r).slice(1));
@@ -331,8 +331,8 @@ function syncKind() {
     byId("rights-details-hint"),
     "muted",
     kind === "rectification"
-      ? `— what to correct, and how (${RECTIFICATION_MIN} characters at least, ${number(DETAILS_MAX)} at most); no email address`
-      : `— optional; ${number(DETAILS_MAX)} characters at most; no email address`,
+      ? `(what to correct, and how: ${RECTIFICATION_MIN} characters at least, ${number(DETAILS_MAX)} at most; no email address)`
+      : `(optional; ${number(DETAILS_MAX)} characters at most; no email address)`,
   );
 }
 

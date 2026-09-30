@@ -30,7 +30,7 @@ const toc = [
   <h2 id="what">What a map is</h2>
   <p>
     Every paper with its authors' code has one, shown in its page's Map section. The harvester builds it from what it
-    verified; an author of the paper can confirm it. A map is small — a few kilobytes of links and metadata — and holds{" "}
+    verified; an author of the paper can confirm it. A map is small, a few kilobytes of links and metadata, and holds{" "}
     <strong>neither the text of the paper nor the code</strong>: it points to them.
   </p>
 
@@ -39,7 +39,7 @@ const toc = [
     <li><strong>The paper</strong>: its DOI, title, journal, date and authors.</li>
     <li><strong>The code</strong>, for each repository the paper cites as its authors' code: its address, its state at
       the last check, its licence, the commit recorded and its date, its type, whether Software Heritage archived it,
-      the level of evidence reached, where in the paper it was found, and its files — each file's path, language and
+      the level of evidence reached, where in the paper it was found, and its files, each file's path, language and
       digest (a SHA-256 of its text), so that anyone can tell later whether a file is still the one that was there.</li>
     <li><strong>The matches</strong>: for each, the paragraph's number (its position among the paragraphs of the paper's
       open-access XML), its section's title, the file, the lines, the function or block, the score, the evidence terms
@@ -52,7 +52,7 @@ const toc = [
     <li><strong>Proposed.</strong> The harvester makes it, and the paper's page shows it, marked "proposed by the
       machine", without a DOI.</li>
     <li><strong>Validated.</strong> An author of the paper, signed in with the ORCID iD the paper lists, reads it and
-      validates it — after correcting its links if needed (<a href="/help/validate/">how</a>).</li>
+      validates it, after correcting its links if needed (<a href="/help/validate/">how</a>).</li>
     <li><strong>Deposited.</strong> The validated map is deposited on Zenodo, in the registry's community, and receives a
       DOI, which the page and the author's account show. The record links it to the paper (<code>IsSupplementTo</code>)
       and to the code at the validated commit (<code>References</code>); its creators are the author and the platform
@@ -69,8 +69,8 @@ const toc = [
   <h2 id="digest">The digest</h2>
   <p>
     The page carries the digest of the map it shows: the SHA-256 of its content, leaving out the day it was proposed and
-    who validated it. A validation carries that digest back. If the harvester changed the map in the meantime — a new
-    commit, a new match — the validation is not deposited, and the author is asked to look again: the map that receives
+    who validated it. A validation carries that digest back. If the harvester changed the map in the meantime, a new
+    commit, a new match, the validation is not deposited, and the author is asked to look again: the map that receives
     a DOI is always the one the author saw.
   </p>
 
@@ -78,7 +78,7 @@ const toc = [
   <p>
     A map may be withheld at an accepted <a href="/help/removal/">removal request</a>: its section then says so, with
     neither digest, matches, validations nor DOI on the site, in the open data or in the search. A DOI already given
-    stays on Zenodo — a DOI is permanent — but the site no longer shows it.
+    stays on Zenodo, a DOI is permanent, but the site no longer shows it.
   </p>
 
   <h2 id="format">The format</h2>

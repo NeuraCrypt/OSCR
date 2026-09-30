@@ -1,5 +1,5 @@
 ---
-// The Versions section of a paper's page: the history of its record, newest first — when
+// The Versions section of a paper's page: the history of its record, newest first, when
 // each version was stored, by whom, and what changed in its public facts. The texts (the
 // abstract, the availability statements) and the classification's raw values are not part
 // of it: the export keeps only VERSION_FIELDS (oscr/paperpage.py).
@@ -11,7 +11,7 @@ interface Props {
 }
 const { p } = Astro.props;
 const versions = p?.versions ?? [];
-const value = (v: string | number | undefined) => (v === undefined || v === "" ? "—" : `${v}`);
+const value = (v: string | number | undefined) => (v === undefined || v === "" ? "n/a" : `${v}`);
 /** Who made a version that is not the harvester's, by their role only (Phase 6). */
 const BY: Record<string, string> = {
   author: " (a correction by a verified author)",

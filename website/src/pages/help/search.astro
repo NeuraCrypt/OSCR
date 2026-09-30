@@ -18,7 +18,7 @@ const toc = [
 ---
 <Info
   title="Searching and the DOI lookup"
-  description={`How to search ${SITE_NAME}'s catalogue — fields, query language, filters, exports, the daily quota — and how the DOI lookup answers for any paper read.`}
+  description={`How to search ${SITE_NAME}'s catalogue (fields, query language, filters, exports, the daily quota) and how the DOI lookup answers for any paper read.`}
   group="help"
   path="/help/search/"
   parents={[{ text: "Help", href: "/help/" }]}
@@ -41,7 +41,7 @@ const toc = [
   <h2 id="page">The search page</h2>
   <p>
     <a href="/search/">The search page</a> runs a search only when you ask: when you submit the form, choose a filter,
-    change page or open a shared address. Typing never searches — every search counts against a daily quota shared by
+    change page or open a shared address. Typing never searches, every search counts against a daily quota shared by
     every reader (<a href="#quota">below</a>). The address is the whole state of a search
     (<code>/search/?q=eeg&amp;modality=eeg&amp;sort=newest</code>): copy it to share or keep a search; Back and Forward
     replay the searches you made.
@@ -65,8 +65,8 @@ const toc = [
     </table>
   </div>
   <p>
-    A query holds at most 500 characters, 24 words or phrases and 4 prefixes. What cannot be read as written — an
-    unclosed quote, a prefix too short — is corrected, and the page says how. Words are matched whole, ranked with the
+    A query holds at most 500 characters, 24 words or phrases and 4 prefixes. What cannot be read as written, an
+    unclosed quote, a prefix too short, is corrected, and the page says how. Words are matched whole, ranked with the
     title first, then identifiers, keywords, MeSH terms, authors, repositories and tools, the journal, and the abstract
     last.
   </p>
@@ -78,9 +78,9 @@ const toc = [
 
   <h2 id="advanced">Advanced search</h2>
   <p>
-    The page's "Advanced search" is a form — all of these words, this exact phrase, any of these words, none of these
+    The page's "Advanced search" is a form, all of these words, this exact phrase, any of these words, none of these
     words, in the title, an author, a journal, a tool used in the code, a keyword or MeSH term, a code repository, an
-    identifier, publication dates and a status — that writes the query in the language above and shows it before it
+    identifier, publication dates and a status, that writes the query in the language above and shows it before it
     runs, so you can learn the language from it.
   </p>
 
@@ -114,15 +114,15 @@ const toc = [
     The search runs on Cloudflare's free plan, which allows a fixed number of dynamic requests a day for the whole site,
     and a fixed number of database rows read. When they are spent, the page says it plainly: the search has used its
     daily quota, try again tomorrow (the quota starts again at midnight UTC). Browse, the lists, every paper's page and
-    the DOI lookup keep working: they are static files, which cost no request. A search you repeat — Back, Forward, the
-    same link — is served by your browser for ten minutes without asking again.
+    the DOI lookup keep working: they are static files, which cost no request. A search you repeat, Back, Forward, the
+    same link, is served by your browser for ten minutes without asking again.
   </p>
   <p>Other messages: "unavailable" when the database does not answer (try later), "not available yet" before it is set up.</p>
 
   <h2 id="lookup">The DOI lookup</h2>
   <p>
     <a href="/lookup/">The lookup</a> answers for every paper {SITE_NAME} has read in its scope, including the many
-    without a page (no code, or only metadata read). Paste a DOI — with or without <code>https://doi.org/</code> — and
+    without a page (no code, or only metadata read). Paste a DOI, with or without <code>https://doi.org/</code>, and
     it says whether the paper was read, on which day, what was found, and links to its page when it has one. A DOI it
     does not know was not read: either the paper is not open access in Europe PMC, or the harvest has not reached it
     yet, or it is outside the scope. You can <a href="/submit/">submit</a> it.

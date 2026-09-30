@@ -385,9 +385,9 @@
               </dt>
               <dd>
                 <div class="title">{#each highlight(d.title, terms) as part}{#if part.mark}<mark>{part.text}</mark>{:else}{part.text}{/if}{/each}</div>
-                <div class="line"><span class="label">Journal:</span> {d.journal || "—"}</div>
+                <div class="line"><span class="label">Journal:</span> {d.journal || "n/a"}</div>
                 {#if !byDate}
-                  <div class="line"><span class="label">Published:</span> {d.published ? dateInWords(d.published) : "—"}</div>
+                  <div class="line"><span class="label">Published:</span> {d.published ? dateInWords(d.published) : "n/a"}</div>
                 {/if}
                 {#if d.code.length}
                   <div class="line">

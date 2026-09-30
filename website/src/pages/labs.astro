@@ -1,7 +1,7 @@
 ---
 // Labs (2026-09-29), on the model of arXiv Labs: what is experimental on the site, the open data
 // and how to query it (Parquet by range requests), the tracing maps' format, the site's own files and
-// its search API, the badge — and, clearly marked, what is in development on branches not merged
+// its search API, the badge, and, clearly marked, what is in development on branches not merged
 // (the GitHub-side hosting layer, the researchers' command line, the public API with tokens, the
 // non-executing checks: the night/* branches, docs/NIGHT_REPORT.md there).
 import Info from "../components/Info.astro";
@@ -67,7 +67,7 @@ const toc = [
 >
   <p class="lead" slot="lead">
     {SITE_NAME} is young, and much of it is an experiment in how research code can be found, read and cited. This page
-    gathers what is experimental, how to build on the registry's data, and what is being built — marked as such.
+    gathers what is experimental, how to build on the registry's data, and what is being built, marked as such.
   </p>
 
   <h2 id="now">Experiments you can use today</h2>
@@ -101,7 +101,7 @@ const toc = [
   <h2 id="parquet">Reading one script with range requests</h2>
   <p>
     The blocks are cut for the browser: a reader fetches a block's footer once, then only the row group that holds the
-    file it wants — about 78 KB for one script — by HTTP range requests, which Hugging Face answers with the headers a
+    file it wants, about 78 KB for one script, by HTTP range requests, which Hugging Face answers with the headers a
     page on another site needs. With <a href="https://github.com/hyparam/hyparquet">hyparquet</a> and its zstd
     decompressor:
   </p>
@@ -155,7 +155,7 @@ const toc = [
 
   <h2 id="search-api">The search's API</h2>
   <p>
-    The search page asks <code>GET /api/search</code>, which anyone may call — each call counts against the site's daily
+    The search page asks <code>GET /api/search</code>, which anyone may call, each call counts against the site's daily
     free quota, so call it sparingly:
   </p>
   <pre>{`${site}api/search?q=eeg&modality=eeg&sort=newest&page=1&size=20
@@ -183,27 +183,27 @@ ${site}api/search?q=tool:mne&format=csv        (the first 500 results, CSV or JS
     <dt>A research layer over GitHub</dt>
     <dd>Researchers' repositories would stay in their own GitHub accounts, operated through a GitHub App with their
       consent, one authorization at a time, and read in {SITE_NAME}'s own viewer: the code with its tracing maps' lines in
-      colour, editing in the browser, pull requests and releases linked to the paper's versions, and research issues —
-      an error in the code, a mismatch between code and paper, a failed reproduction — attached to a paper and its map.
+      colour, editing in the browser, pull requests and releases linked to the paper's versions, and research issues,
+      an error in the code, a mismatch between code and paper, a failed reproduction, attached to a paper and its map.
       GitHub would be the storage, and the last resort for what the registry cannot show.</dd>
     <dt>The <code>oscr</code> command line for researchers</dt>
     <dd>A program for the terminal, standard-library Python only, that links a repository to its paper, checks it as the
       registry does, traces its lines to the paragraphs of the Methods, produces a citation, and works with the GitHub
-      repository — never running the code it reads. Not published yet.</dd>
+      repository, never running the code it reads. Not published yet.</dd>
     <dt>A public API with tokens</dt>
-    <dd>Versioned read and write routes under <code>/api/v1/</code>, by personal tokens only — shown once, stored as a
-      digest, each with its rights and an expiry — with limits per token and a reference built from the routes
+    <dd>Versioned read and write routes under <code>/api/v1/</code>, by personal tokens only, shown once, stored as a
+      digest, each with its rights and an expiry, with limits per token and a reference built from the routes
       themselves.</dd>
     <dt>Checks that never run the code</dt>
     <dd>On a repository's pull requests and at any commit: its licence, an environment file saying how the code runs
       again, its link to the paper's DOI, a usable CITATION.cff, the files its tracing maps point to, file sizes, a README
-      that says how to run it — read as text, nothing built, installed or executed; a change fails only when it breaks
+      that says how to run it, read as text, nothing built, installed or executed; a change fails only when it breaks
       what a paper relies on.</dd>
   </dl>
 
   <h2 id="feedback">Feedback</h2>
   <p>
-    {SITE_NAME} has no email address. About a paper — a wrong match, a missed link, a misjudged repository — use that
+    {SITE_NAME} has no email address. About a paper (a wrong match, a missed link, a misjudged repository) use that
     paper's own forms, signed in: a correction and its note reach the operator (<a href="/help/correct/">how</a>). About
     the experiments themselves, an idea or a bug, open an issue on the <a href={`${SOURCE_URL}/issues`}>project's
     GitHub</a>.

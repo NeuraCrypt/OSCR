@@ -1,6 +1,6 @@
-// The sitemap (2026-09-29): every page a search engine may index — the fixed and information pages,
+// The sitemap (2026-09-29): every page a search engine may index, the fixed and information pages,
 // the list by date, the categories, the entity lists, every paper with a page (built ahead of time or
-// rendered on demand), every author, journal, institution, tool and dataset — as paths, then split
+// rendered on demand), every author, journal, institution, tool and dataset, as paths, then split
 // into shards of SITEMAP_URLS addresses at most (the protocol's limit is 50,000): /sitemaps/NN.xml,
 // listed by /sitemap.xml. At most SITEMAP_SHARDS files, whatever the catalogue's size; the forms
 // (account, submission, removal) and the 404 pages are left out.

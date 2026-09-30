@@ -1,8 +1,8 @@
 ---
 // The taxonomy (2026-09-29), on the model of arXiv's category taxonomy: the registry's scope, then
-// the categories it classifies papers by — the harvester's own vocabulary (oscr/vocabulary/
+// the categories it classifies papers by, the harvester's own vocabulary (oscr/vocabulary/
 // categories.json, oscr/classify.py) with each value's definition and its count in the build's
-// export — then OpenAlex's topics and the papers' types, as counted. One page.
+// export, then OpenAlex's topics and the papers' types, as counted. One page.
 import Info from "../components/Info.astro";
 import { SITE_NAME } from "../config";
 import { catalog, number, withCode, withPage } from "../lib/catalog";
@@ -62,7 +62,7 @@ const toc = [
   </dl>
   <p>
     <strong>How papers come in.</strong> The harvester asks Europe PMC for the open-access papers whose full text it holds
-    and whose title or abstract names a neuroscience term — EEG, MEG, fMRI, intracranial recordings, spike sorting,
+    and whose title or abstract names a neuroscience term, EEG, MEG, fMRI, intracranial recordings, spike sorting,
     calcium imaging, electrophysiology, brain–computer interfaces, neuroimaging, fNIRS, transcranial magnetic or deep
     brain stimulation, neural oscillations, the connectome, diffusion MRI, neurons, neural, cortex, cortical,
     hippocampus, brain. The query is broad on purpose, and catches papers that are not neuroscience ("neural network",
@@ -71,7 +71,7 @@ const toc = [
   <p>
     <strong>Why off-topic papers stay out.</strong> A paper judged out of scope stays on the operator's computer: it has
     no page, is in no list, search, lookup or dataset, and counts in no figure. Harvesting broadly and filtering after
-    keeps the registry complete for its field without letting unrelated papers dilute its rates — a decision of 27
+    keeps the registry complete for its field without letting unrelated papers dilute its rates, a decision of 27
     September 2026. {number(f.articles)} papers read are in scope today.
   </p>
 
@@ -133,7 +133,7 @@ const toc = [
       marked ambiguous rather than guessed.</li>
     <li><strong>The operator's labels win.</strong> Where the operator has labelled a paper by hand, the label overrides
       the rules; a sample of such labels serves to measure them.</li>
-    <li><strong>A local model for the ambiguous cases</strong> — once one has been compared with the operator's labels
+    <li><strong>A local model for the ambiguous cases</strong>: once one has been compared with the operator's labels
       and chosen. It runs on the operator's computer, and uses its graphics processor only between 01:00 and 07:00. None
       is in use yet.</li>
     <li><strong>What is shown.</strong> A category appears on the site when the operator or a model set it, or the rules
@@ -143,7 +143,7 @@ const toc = [
 
   <h2 id="openalex">OpenAlex's topics</h2>
   <p>
-    OpenAlex, an open index of research, gives each paper a primary topic within its own hierarchy — domain, field,
+    OpenAlex, an open index of research, gives each paper a primary topic within its own hierarchy, domain, field,
     subfield, topic. {SITE_NAME} shows it on each paper's page as OpenAlex gives it; it is not the registry's
     classification. {topics > 0
       ? `Among the papers with a page, ${number(topics)} have one:`
@@ -168,8 +168,8 @@ const toc = [
 
   <h2 id="types">Types of papers</h2>
   <p>
-    The papers read in scope, by their type as the publisher declares it. The registry's rates — the share of papers
-    with their authors' code — are computed on research articles only (research articles, brief reports, methods
+    The papers read in scope, by their type as the publisher declares it. The registry's rates, the share of papers
+    with their authors' code, are computed on research articles only (research articles, brief reports, methods
     articles, data papers, rapid communications, short reports): reviews, conference abstracts, case reports and notices
     rarely have code of their own.
   </p>

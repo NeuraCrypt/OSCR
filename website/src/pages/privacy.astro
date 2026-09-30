@@ -1,6 +1,6 @@
 ---
 // Privacy (2026-09-29, required for the public launch): every personal datum the registry holds,
-// read from the code — the accounts and requests (migrations/d1-community/), the cookies
+// read from the code, the accounts and requests (migrations/d1-community/), the cookies
 // (website/worker/account/), the reader's browser requests (the paper pages' policy, public/_headers;
 // a file shown from its source: src/lib/source.ts), the automatic moderator's log and lookups
 // (oscr/moderation.py, oscr/jobs.py: data/community/state.db), the authors' contact details
@@ -36,14 +36,14 @@ const toc = [
 ---
 <Info
   title="Privacy"
-  description={`Every personal datum ${SITE_NAME} holds — visitors, accounts, requests, authors' published records and their privately kept contact details — why, where, for how long, and your rights.`}
+  description={`Every personal datum ${SITE_NAME} holds (visitors, accounts, requests, authors' published records and their privately kept contact details) why, where, for how long, and your rights.`}
   group="policies"
   path="/privacy/"
   toc={toc}
 >
   <p class="lead" slot="lead">
     This page lists every piece of personal data {SITE_NAME} holds or causes to be processed, read from its code rather
-    than written from memory: what it is, why, where it lives, for how long, and how to exercise your rights — without
+    than written from memory: what it is, why, where it lives, for how long, and how to exercise your rights, without
     an email address, since the registry has none. Last updated: {UPDATED}.
   </p>
 
@@ -51,11 +51,11 @@ const toc = [
   <ul>
     <li>Reading the site needs no account, sets no cookie, and runs no analytics, advertising or third-party tracker.</li>
     <li>Signing in (ORCID, GitHub or Google) asks for <strong>no email address</strong>; the registry keeps your public
-      handles, your roles and your requests — never a password or a provider's token.</li>
+      handles, your roles and your requests, never a password or a provider's token.</li>
     <li>The records show authors as their papers publish them: names, ORCID iDs, affiliations. Never an email address or
       a telephone number.</li>
-    <li><strong>The operator does keep, privately, the contact details that papers publish for their authors</strong> —
-      email addresses included — to cite the authors of the code and to reach an author about their own work. They are
+    <li><strong>The operator does keep, privately, the contact details that papers publish for their authors</strong>,
+      email addresses included, to cite the authors of the code and to reach an author about their own work. They are
       never shown, never published, never used for mass email, and an author signed in with their ORCID iD sees them and
       has them erased at once on <a href="/data-rights/">your data and your rights</a> (<a href="#contacts">below</a>).</li>
     <li>When you open a paper's Code ↔ Paper reader, your browser fetches the paper from Europe PMC or NCBI directly, and
@@ -84,7 +84,7 @@ const toc = [
     The site is hosted by Cloudflare, on its Workers platform. To deliver each page, Cloudflare's network necessarily
     processes your IP address, the address you ask for and what your browser sends with it (its user agent, its
     language). {SITE_NAME}'s own code keeps no log of visits: its pages are static files, and the few requests that run
-    its code — the search, sign-in, requests, the pages of older papers, a missing page — are answered without writing
+    its code (the search, sign-in, requests, the pages of older papers, a missing page) are answered without writing
     who asked. Cloudflare processes that traffic under its own policy, for delivery and security; its responses may ask
     your browser to report network errors to Cloudflare. No other service sees your visit, except those your browser
     contacts on the pages listed below.
@@ -103,7 +103,7 @@ const toc = [
       the paper's identifier, as when you read the paper on their sites. Hiding the paper pane before it loads avoids
       the request.</li>
     <li><strong>A file of the authors' code shown from its source</strong>: {SITE_NAME}'s copies come from the site
-      itself, but a file whose licence allows no copy is fetched by your browser from its host, at the verified commit —
+      itself, but a file whose licence allows no copy is fetched by your browser from its host, at the verified commit,
       GitHub (<code>raw.githubusercontent.com</code>), GitLab.com (<code>gitlab.com</code>), Bitbucket
       (<code>bitbucket.org</code>), Codeberg (<code>codeberg.org</code>), Hugging Face (<code>huggingface.co</code>),
       Zenodo (<code>zenodo.org</code>), or Software Heritage (<code>archive.softwareheritage.org</code>) for the other
@@ -132,7 +132,7 @@ const toc = [
   </div>
   <p>
     These are strictly necessary for a service you ask for: they need no consent banner, and the site has none. The
-    reader also remembers, in your browser's local storage, three display choices — the paper pane hidden, long lines
+    reader also remembers, in your browser's local storage, three display choices, the paper pane hidden, long lines
     wrapped, the list of files open or closed. They stay on your device and are never sent.
   </p>
 
@@ -143,7 +143,7 @@ const toc = [
     your ORCID iD and GitHub login once linked; when it was created. For each linked identity: the provider and its
     identifier for you (your ORCID iD; GitHub's account number; Google's opaque identifier). For each session: the
     SHA-256 of its cookie's identifier, when it began, expires and was last seen (to the hour), and a short
-    description of the browser such as "Firefox on macOS" — never the full user agent, never an IP address. Your roles
+    description of the browser such as "Firefox on macOS", never the full user agent, never an IP address. Your roles
     (verified author of a paper, maintainer of a repository), who granted them (the automatic checks, the moderator's
     rules or the operator) and when.
   </p>
@@ -178,7 +178,7 @@ const toc = [
       (the rules' or the operator's).</dd>
     <dt>A data-rights request</dt>
     <dd>the right you asked for, your words, the ORCID iD of your account's ORCID identity and whether orcid.org or its
-      sandbox proved it, its status, its legal deadline (one month), and the answer — for access, what is held, field by
+      sandbox proved it, its status, its legal deadline (one month), and the answer, for access, what is held, field by
       field, every email address masked (<a href="#rights">below</a>).</dd>
   </dl>
   <p>
@@ -188,10 +188,10 @@ const toc = [
   </p>
   <ul>
     <li><strong>Each request's state</strong>: its status and attempts, and, for a request that waits for the operator,
-      what the operator needs to decide — its texts (note, statement, justification, evidence link) and your account's
+      what the operator needs to decide, its texts (note, statement, justification, evidence link) and your account's
       name, ORCID iD and GitHub login.</li>
     <li><strong>The moderator's log</strong>: every decision on a removal request, a submission, a claim or a data-rights
-      request, by the rules or by the operator — when, the request's number, your account's identifier, the paper (or the repository), the
+      request, by the rules or by the operator, when, the request's number, your account's identifier, the paper (or the repository), the
       rule that decided and what it decided, with what the rule weighed: for a removal request, what it names, why, who
       you said you are, whether you are a verified author, the repositories you maintain, and a fingerprint of your
       justification (so that the same words sent again are recognized), never its text; for a submission, what proved
@@ -202,7 +202,7 @@ const toc = [
   <p>
     To decide a claim, the rules read the works of your public ORCID record, by your iD; to decide a submission, the web
     links of the public ORCID records of the paper's authors. And for an applied correction, the operator's computer
-    keeps who made it (your ORCID iD or GitHub login) in the record's history — which the pages never show: they say "a
+    keeps who made it (your ORCID iD or GitHub login) in the record's history, which the pages never show: they say "a
     verified author".
   </p>
 
@@ -225,11 +225,11 @@ const toc = [
   <p>
     Papers publish how to reach their authors. For the papers it reads, {SITE_NAME} keeps, for each author, what the
     paper itself (its full text) and its Europe PMC record publish: given and family names, ORCID iD, email address,
-    organization, postal address, affiliation, whether the author is the corresponding one — linked to the paper, its
+    organization, postal address, affiliation, whether the author is the corresponding one, linked to the paper, its
     DOI, title, journal and date.
   </p>
   <ul>
-    <li><strong>Why</strong>: to cite the authors of the code correctly, and to reach an author about their own work —
+    <li><strong>Why</strong>: to cite the authors of the code correctly, and to reach an author about their own work,
       their tracing map, a correction, a removal.</li>
     <li><strong>Never</strong>: shown on the site, published in any public output (the public exports drop the whole
       table), used for mass email, sold or shared.</li>
@@ -238,7 +238,7 @@ const toc = [
       software refuses to send it to a dataset that is not private.</li>
     <li><strong>How long</strong>: as long as the paper is in the registry's database; erased on request. After an
       erasure or an objection, the registry keeps your ORCID iD, and a fingerprint (SHA-256) of each address found with
-      it — never the address — on a list of people whose contact details it never collects again; the private copy on
+      it, never the address, on a list of people whose contact details it never collects again; the private copy on
       Hugging Face is published again without you at the next nightly publication, and its history rewritten so that no
       earlier version keeps you.</li>
     <li><strong>Your rights</strong>: an author may see what is kept about them, have it corrected, have it erased, and
@@ -247,8 +247,8 @@ const toc = [
 
   <h2 id="operator">On the operator's computer</h2>
   <p>
-    The harvester's database, on the operator's own computer, holds everything above that comes from papers — their
-    public metadata, their authors, the contact details — along with the full texts it read (never published), the
+    The harvester's database, on the operator's own computer, holds everything above that comes from papers, their
+    public metadata, their authors, the contact details, along with the full texts it read (never published), the
     history of every record with who corrected it, the state of the requests it answered with the moderator's log
     (<a href="#requests">above</a>), and the list of authors who asked not to be kept. Copies of the database that the
     operator makes by hand before a change of its structure stay on that computer's disks; an erasure does not edit them
@@ -283,7 +283,7 @@ const toc = [
   <p>
     The harvester also reads, about papers and code, OpenAlex, Crossref, DataCite, doi.org, the Retraction Watch data,
     Software Heritage and the forges and archives the papers cite; the site asks doi.org and the cited forges whether a
-    submitted DOI and links exist. They receive identifiers of papers and repositories, not data about visitors — except
+    submitted DOI and links exist. They receive identifiers of papers and repositories, not data about visitors, except
     the hosts your browser fetches a file from, above.
   </p>
 
@@ -314,7 +314,7 @@ const toc = [
     <dd>Processing your requests to deliver pages and keep the service secure: the operator's legitimate interest in
       running the registry (GDPR, article 6(1)(f)).</dd>
     <dt>Accounts and requests</dt>
-    <dd>Signing you in and answering what you ask — a submission, a correction, a validation, a claim, a removal: the
+    <dd>Signing you in and answering what you ask, a submission, a correction, a validation, a claim, a removal: the
       service you request (article 6(1)(b)).</dd>
     <dt>Authors in the published records</dt>
     <dd>Showing who wrote a paper and its code, from what the paper and its public metadata publish: the legitimate
@@ -334,7 +334,7 @@ const toc = [
   <p>
     Under the GDPR you may ask for access to the data about you, its correction, its erasure, the restriction of its
     processing, and a copy of what you gave in a reusable form; and you may object to processing based on legitimate
-    interests — in particular to the keeping of your contact details, which is then erased.
+    interests, in particular to the keeping of your contact details, which is then erased.
   </p>
   <p>
     {SITE_NAME} has no email address. Use <a href="/data-rights/">your data and your rights</a>, signed in: it shows
@@ -344,8 +344,8 @@ const toc = [
   <dl class="terms">
     <dt>Access</dt>
     <dd>What your account holds, what the operator's computer keeps about it (the moderator's log, your requests' state,
-      the corrections attributed to you), the papers whose metadata list your ORCID iD, and — signed in with your ORCID
-      iD at orcid.org — each contact detail kept under that iD, field by field. Your email address is shown masked (its
+      the corrections attributed to you), the papers whose metadata list your ORCID iD, and, signed in with your ORCID
+      iD at orcid.org, each contact detail kept under that iD, field by field. Your email address is shown masked (its
       first and last characters, and its domain): the site never shows or stores an email address, and the paper named
       with it prints it in full, which is where the registry read it.</dd>
     <dt>Erasure, objection</dt>
@@ -370,7 +370,7 @@ const toc = [
     <strong>The operator answers within one month</strong>, as the GDPR requires (article 12(3)), and the page shows the
     date. There is no human moderator on duty at the moment, but a request about your data is never closed unanswered:
     it stays open, at the top of the operator's list, until it is answered. The same holds for a{" "}
-    <a href="/removal/">removal request</a> made for personal data — about what a record publishes — that the rules
+    <a href="/removal/">removal request</a> made for personal data, about what a record publishes, that the rules
     cannot decide: it waits for the operator, never closed after {REVIEW_DAYS} days as other requests are. A refusal
     says why. You may also complain to the data protection authority of the country where you live or work.
   </p>

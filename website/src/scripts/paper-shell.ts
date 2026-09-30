@@ -24,7 +24,7 @@ function show(view: View, found: boolean) {
   if (!main) return;
   main.innerHTML = view.html;
   const site = document.querySelector<HTMLMetaElement>('meta[name="application-name"]')?.content ?? "";
-  document.title = site ? `${view.title} — ${site}` : view.title;
+  document.title = site ? `${view.title}: ${site}` : view.title;
   const crumb = document.getElementById("crumb");
   if (crumb) crumb.textContent = view.crumb;
   if (view.description) document.querySelector<HTMLMetaElement>('meta[name="description"]')?.setAttribute("content", view.description);

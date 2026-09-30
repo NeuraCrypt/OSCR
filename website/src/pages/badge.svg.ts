@@ -1,5 +1,5 @@
-// The registry's badge (Phase 6): ONE static image for every paper — the site holds at most 20,000
-// files, so there is no badge per paper — a flat rectangle, never a rounded pill, with the
+// The registry's badge (Phase 6): ONE static image for every paper, the site holds at most 20,000
+// files, so there is no badge per paper, a flat rectangle, never a rounded pill, with the
 // platform's name (SITE_NAME) and what it says of the paper. The README's snippet makes it a link
 // to the paper's page (src/components/paper/Contribute.astro).
 import type { APIRoute } from "astro";

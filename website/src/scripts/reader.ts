@@ -192,7 +192,7 @@ function start(data: ReaderData) {
     if (mine !== ticket) return false;
     if (text === null) {
       // A graceful fallback for the rare case a lot lacks the file: fetch it from its source, verify
-      // its fingerprint, and show it — otherwise say why and link to it (src/lib/source.ts).
+      // its fingerprint, and show it, otherwise say why and link to it (src/lib/source.ts).
       if (fromSource(data.repos, f)) return showFromSource(i, mine);
       view.showAway(i, failure);
       return false;

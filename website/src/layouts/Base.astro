@@ -20,7 +20,7 @@ const {
   description = "The code published by the authors of open-access neuroscience papers: found in the paper, verified at the source.",
   breadcrumb = [],
 } = Astro.props;
-const fullTitle = title ? `${title} — ${SITE_NAME}` : SITE_TAGLINE === SITE_NAME ? SITE_NAME : `${SITE_NAME} — ${SITE_TAGLINE}`;
+const fullTitle = title ? `${title}: ${SITE_NAME}` : SITE_TAGLINE === SITE_NAME ? SITE_NAME : `${SITE_NAME}: ${SITE_TAGLINE}`;
 // The ways in besides the catalogue, in the masthead (science.css `.masthead nav`).
 const sections = [
   { text: "Search", href: "/search/" },

@@ -1,7 +1,7 @@
 // The rules of public/_headers, read the way Workers static assets apply them
 // (developers.cloudflare.com/workers/static-assets/headers/; the asset worker's
 // attachCustomHeaders): every rule whose pattern matches the path, in the order of the file; for
-// each, the headers it removes ("! Name") first, then those it sets — a header an earlier rule set
+// each, the headers it removes ("! Name") first, then those it sets, a header an earlier rule set
 // is appended to, joined with a comma. Shared by the tests (the Worker's pages must agree) and by
 // scripts/check.mjs (each page's inline scripts and styles against its policy). Reads no file.
 
