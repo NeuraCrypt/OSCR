@@ -85,7 +85,7 @@ license audit: `docs/SCRIPT_STORAGE.md`; code: `oscr/scriptstore.py`, `oscr scri
 
 - **All code is DISPLAYED, the licence gates only the COPIES that leave (decided 2026-09-29,
   reversing the earlier "only verified licences leave for display" rule).** The reader shows every
-  paper's code from OSCR's own copy, whatever its licence — even a repository with none. On the
+  paper's code from OSCR's own copy, whatever its licence, even a repository with none. On the
   **site**:
   - the scripts' text is served in lots keyed by the file's **SHA-256 and deduplicated** (each
     unique file once): `public/scripts/NN.json` (`catalog.N_LOTS` = 256; the largest ~10.6 MiB of
@@ -98,9 +98,9 @@ license audit: `docs/SCRIPT_STORAGE.md`; code: `oscr/scriptstore.py`, `oscr scri
   - **email masking** (`catalog.mask_emails`, one shared fixture `tests/fixtures/mask_emails.json`)
     and **withheld** exclusion (a removal request: no text, no digest) still apply everywhere text
     is shown.
-- **Only verified licences leave the Mac as a COPY.** The BULK outputs — the Hugging Face scripts
+- **Only verified licences leave the Mac as a COPY.** The BULK outputs, the Hugging Face scripts
   dataset (`OpenScientificCodeRegistry/Database`, `oscr/scriptstore.py`, unchanged), `scripts.jsonl`,
-  the `mirror`, and the public database (`oscr_public.db`) — publish a file only when its repository's
+  the `mirror`, and the public database (`oscr_public.db`), publish a file only when its repository's
   licence allows redistribution AND is confirmed by its own licence file (for an archive without one:
   by its record). A licence inferred from a README sentence, "other-open" without a licence file, or
   no licence: the file is still SHOWN on the site, but it does not leave in bulk (`catalog.copyable`,
@@ -142,11 +142,11 @@ What signed-in readers ask of the registry (`website/worker/contributions/`, `os
 - **Submission**: a DOI and 1–5 code links, checked at once in the Worker (the DOI is registered,
   each link answers, and points to a place the registry knows: the Worker fetches nothing else).
   The license is the Mac's to read. The Mac harvests the paper into a draft; the submitter reviews,
-  corrects, publishes — at once when their ORCID iD is among the paper's authors, otherwise when the
+  corrects, publishes, at once when their ORCID iD is among the paper's authors, otherwise when the
   moderator's rules tie each link to the paper (below). An off-topic paper stays out (D7).
 - **Edition**: a record's links only (code, data, tools), never markup, by a verified author of the
   paper or a maintainer of its code (their own repository). Every correction is a new version
-  (`link_edit`, kept across rescans); who made it stays on the Mac — the pages say its role only.
+  (`link_edit`, kept across rescans); who made it stays on the Mac, the pages say its role only.
 - **Validation**: a verified author, with the ORCID iD of their linked identity, validates the map
   the page showed (its digest; a map that changed since is not deposited). Deposit on the **Zenodo
   sandbox** unless `OSCR_ZENODO_INSTANCE=zenodo`. While sign-in uses ORCID's sandbox, a validation
@@ -156,7 +156,7 @@ What signed-in readers ask of the registry (`website/worker/contributions/`, `os
 - **Takedown**: one page, `/removal/?paper=…`, linked from every record (signed in until Turnstile):
   who asks, what (the record, the scripts' copies, a repository, a file, the tracing map), why, a
   justification without an email address, two confirmations, a review before sending. Decided by the
-  moderator's rules (below); accepted, it leaves every public output at the next nightly — the record
+  moderator's rules (below); accepted, it leaves every public output at the next nightly, the record
   (`article.withdrawn`) or only what it names (`withheld`: neither copied nor shown from the source).
 - **The automatic moderator** (decided 2026-09-29: no human moderator on duty; `oscr/moderation.py`,
   run by `oscr jobs poll`; the public page `/policies/moderation/`). Rules first, in the safe direction,
@@ -252,6 +252,12 @@ menus in `website/src/lib/info.ts`, the layout `src/components/Info.astro`):
   - neither Tailwind nor a component library.
 - As the header of `science.css` says: no dark theme by default, no pills, no decorative
   uppercase.
+- **The em dash (U+2014, the long dash) is banned from every visible text** (it reads as
+  AI-generated text): use proper ASCII punctuation instead (a comma, a colon, or parentheses, by
+  the sense).
+  `npm run check` (which scans the built HTML) and `tests/test_no_em_dash.py` (which scans the
+  Mac's `oscr/` and `tools/` source) enforce it; only a line that strips em dashes OUT of
+  harvested data may keep the character, marked `# emdash-ok`.
 - A style need that `science.css` does not cover gets a rule there, never a workaround in a
   component.
 - The markup follows the classes of `science.css`:
