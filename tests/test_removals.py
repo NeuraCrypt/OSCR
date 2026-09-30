@@ -41,12 +41,21 @@ def ask(w, **values) -> int:
 
 
 def export(w, tmp_path) -> dict:
-    """The public export (as `oscr nightly` writes it) and the public database."""
+    """The public export (as `oscr nightly` writes it) and the public database. The scripts' text is
+    keyed by sha256 (deduplicated) in `scripts/`; `lots` re-joins it to the per-repository facts of
+    `scriptmeta/`, so a file carries its `text` again (None when the site keeps no copy of it)."""
     folder = tmp_path / "public"
     catalog.generate(w.mac, folder, public=True)
-    lots = {}
+    digest: dict = {}
     for f in (folder / "scripts").glob("*.json"):
-        lots.update(json.loads(f.read_text()))
+        for sha, e in json.loads(f.read_text()).items():
+            digest[sha] = e["text"]
+    lots = {}
+    for f in (folder / "scriptmeta").glob("*.json"):
+        for repo, entry in json.loads(f.read_text()).items():
+            for fi in entry["files"]:
+                fi["text"] = digest.get(fi["sha256"]) if "sha256" in fi else None
+            lots[repo] = entry
     papers = {}
     for f in (folder / "papers").glob("*.json"):
         papers.update(json.loads(f.read_text()))
@@ -151,8 +160,9 @@ def test_one_repositorys_copies(w, tmp_path):
     out = export(w, tmp_path)
     assert set(texts(out["lots"], EEG).values()) == {None}
     assert out["db"].execute("SELECT DISTINCT note FROM file WHERE repo = ?", (EEG,)).fetchall() == [(catalog.NOTE_WITHHELD,)]
-    # Another paper's repository is not touched (it was never copied: no license).
-    assert out["lots"][UNLICENSED]["files"][0]["note"] == catalog.NOTE_NO_LICENSE
+    # Another paper's repository is not touched: it is still shown from OSCR's own copy (since
+    # 2026-09-29 the licence no longer gates display), only this one's copies were withheld.
+    assert all(texts(out["lots"], UNLICENSED).values())
 
 
 def test_one_file(w, tmp_path):

@@ -26,11 +26,13 @@ def test_the_fixture_catalogue_is_up_to_date(tmp_path):
     assert _load(fresh) == _load(make_fixture.OUT)
 
 
-def test_the_fixture_is_public_and_copies_no_unlicensed_code():
+def test_the_fixture_is_public_and_shows_every_repository_but_copies_only_licensed_ones():
     catalog = json.loads((make_fixture.OUT / "catalog.json").read_text())
     assert catalog["public"] is True
+    # The site's digest lots SHOW every repository, licensed or not (2026-09-29): both the licensed
+    # code and the unlicensed code are there. (The bulk outputs stay licence-gated: test_contents.)
     text = "".join(f.read_text() for f in (make_fixture.OUT / "scripts").glob("*.json"))
-    assert "disp('run')" not in text and "band_power" in text
+    assert "band_power" in text and "disp('run')" in text
 
 
 def _everything() -> str:

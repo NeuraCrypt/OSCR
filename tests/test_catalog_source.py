@@ -128,30 +128,35 @@ def _entry(lots: dict, key: str) -> dict:
     return lots[catalog.lot_of(key)][key]
 
 
-def test_a_held_back_repository_publishes_facts_never_its_text(tmp_path):
+def test_an_unlicensed_repository_is_shown_from_oscrs_own_copy(tmp_path):
+    """Since 2026-09-29 the licence no longer gates DISPLAY: every file is shown from OSCR's own
+    copy, its text keyed by its SHA-256 in a digest lot (`text_lot`). Email addresses are masked, a
+    removal request still withholds, and `copyable` (False here) is kept only for the bulk outputs.
+    A source is still exported, as a fallback for when a digest lot lacks a file."""
     con = _world(tmp_path)
     lots = catalog.script_lots(con, public=True)
-    held = _entry(lots, "github.com/lab/code")
-    assert held["published"] is False and held["redistributable"] == "no"
-    assert held["source"] == {"via": "github", "url": f"https://raw.githubusercontent.com/lab/code/{SHA}/{{path}}", "at": SHA}
-    files = {f["path"]: f for f in held["files"]}
-    assert all(f["text"] is None for f in files.values())
+    shown = _entry(lots, "github.com/lab/code")
+    assert shown["published"] is True and shown["copyable"] is False and shown["redistributable"] == "no"
+    assert shown["source"] == {"via": "github", "url": f"https://raw.githubusercontent.com/lab/code/{SHA}/{{path}}", "at": SHA}
+    files = {f["path"]: f for f in shown["files"]}
+    # run.py: shown from OSCR's copy, its email masked; its digest keys the text lot.
+    assert files["run.py"]["text"] == "print('hi')  # [email hidden]\n"
     assert (files["run.py"]["sha256"], files["run.py"]["size"], files["run.py"]["lines"]) == (DIGEST, 30, 1)
-    # Its size is a fact; the reader refuses to fetch past SOURCE_MAX_BYTES, and says so.
-    assert files["big.py"]["size"] == catalog.SOURCE_MAX_BYTES + 1
-    # No digest, no fetch: a file read before digests were kept, and a binary one.
-    assert "sha256" not in files["old.py"] and "sha256" not in files["fig.mlx"]
-    # Nothing of the text anywhere, not even the address it holds.
-    assert "me@lab.org" not in json.dumps(lots) and "print('hi')" not in json.dumps(lots)
-    # A copied repository is as before: its text, no source.
+    assert files["run.py"]["text_lot"] == f"{catalog.lot_of(DIGEST):02d}"
+    assert "email addresses hidden" in files["run.py"]["note"] and "me@lab.org" not in json.dumps(lots)
+    # big.py past SOURCE_MAX_BYTES is stored too — every file is shown.
+    assert files["big.py"]["text"] == "x = 1\n" and files["big.py"]["sha256"] == "c" * 64
+    # A binary file has no text; a file read before digests were kept keeps its text but no lot key.
+    assert files["fig.mlx"]["text"] is None and "sha256" not in files["fig.mlx"]
+    assert files["old.py"]["text"] == "y = 2\n" and "sha256" not in files["old.py"]
+    # A verified, copyable repository: same text, and it leaves as a copy too.
     copied = _entry(lots, "github.com/lab/open")
-    assert copied["published"] is True and "source" not in copied
+    assert copied["published"] is True and copied["copyable"] is True
     assert {f["path"]: f["text"] for f in copied["files"]}["ok.py"] == "z = 3\n"
-    assert not any("sha256" in f for f in copied["files"])
-    # OSF: facts, and the reason the browser cannot fetch it.
+    # OSF: shown from OSCR's copy, with the fallback reason the browser cannot fetch it.
     osf = _entry(lots, "osf:abcde")
     assert osf["source"] == {"via": "", "why": "osf"}
-    assert osf["files"][0]["sha256"] == "f" * 64
+    assert osf["files"][0]["sha256"] == "f" * 64 and osf["files"][0]["text"] == "a <- 1\n"
 
 
 def test_what_a_removal_request_withheld_is_neither_listed_as_fetchable_nor_fetched(tmp_path):
@@ -191,28 +196,30 @@ def test_the_copy_filter_is_the_audited_one(tmp_path):
         ("github.com/lab/open", "LICENSE"), ("github.com/lab/open", "ok.py")]
 
 
-def test_a_license_its_repository_does_not_confirm_is_not_copied_anywhere(tmp_path):
-    """A license known from a README's sentence (recorded 'MIT', no license file): neither the site's
-    lots, nor the public database, nor the Hugging Face dataset copy its text — the same rule for the
-    three since 2026-09-29. The reader shows its files from their source."""
+def test_a_license_its_repository_does_not_confirm_is_not_copied_in_bulk(tmp_path):
+    """A license known from a README's sentence (recorded 'MIT', no license file): the site's reader
+    still SHOWS it from OSCR's own copy (the licence no longer gates display), but it does not leave
+    as a redistributable COPY — neither the public database nor the Hugging Face dataset — until its
+    own license file confirms it (2026-09-29, `copyable`)."""
     con = _world(tmp_path)
     con.execute("UPDATE repository SET license = 'MIT', redistributable = 'yes' WHERE repo = 'github.com/lab/code'")
     con.commit()
     entry = _entry(catalog.script_lots(con, public=True), "github.com/lab/code")
-    assert entry["published"] is False and entry["source"]["via"] == "github"
+    # Shown from OSCR's copy, but not copyable in bulk (no license file yet).
+    assert entry["published"] is True and entry["copyable"] is False
     files = {f["path"]: f for f in entry["files"]}
-    assert files["run.py"]["text"] is None and files["run.py"]["note"] == catalog.NOTE_UNVERIFIED
-    assert files["run.py"]["sha256"] == DIGEST
+    assert files["run.py"]["text"] == "print('hi')  # [email hidden]\n" and files["run.py"]["sha256"] == DIGEST
     assert "github.com/lab/code" not in {r["repo"] for r, _, _ in scriptstore._publishable(con)}
     catalog.public_db(con, tmp_path / "public.db")
     pub = sqlite3.connect(tmp_path / "public.db")
     assert pub.execute("SELECT COUNT(*) FROM file WHERE repo = 'github.com/lab/code' AND text IS NOT NULL").fetchone()[0] == 0
     assert pub.execute("SELECT note FROM file WHERE path = 'run.py'").fetchone()[0] == catalog.NOTE_UNVERIFIED
-    # Its license file arrives: copied everywhere, and no longer fetched from the source.
+    # Its license file arrives: it becomes copyable, and leaves in bulk too.
     con.execute("INSERT INTO file (repo, path, version, language, kind, size, lines, digest, text) VALUES "
                 "('github.com/lab/code', 'LICENSE', ?, 'License', 'doc', 80, 3, '', ?)", (SHA, MIT))
     con.commit()
     entry = _entry(catalog.script_lots(con, public=True), "github.com/lab/code")
-    assert entry["published"] is True and "source" not in entry
+    assert entry["published"] is True and entry["copyable"] is True
+    assert "github.com/lab/code" in {r["repo"] for r, _, _ in scriptstore._publishable(con)}
     # The facts are there: digest, size, lines, the pinned version.
     assert pub.execute("SELECT digest, size, lines, version FROM file WHERE path = 'run.py'").fetchone() == (DIGEST, 30, 1, SHA)
