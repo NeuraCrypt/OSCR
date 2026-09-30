@@ -12,7 +12,7 @@ These are JSON files: they can be versioned, published as they are on a
 Hugging Face dataset or a GitHub repository, and read without the harvester.
 
 **The snapshot** (option `--snapshots`) keeps an archive of the repository at
-the verified commit, with its SHA-256 digest — the remedy against link rot. It
+the verified commit, with its SHA-256 digest, the remedy against link rot. It
 is only taken if the license allows redistribution (`redistributable =
 yes`): a repository without a license remains a LINK and a commit, never a copy.
 """

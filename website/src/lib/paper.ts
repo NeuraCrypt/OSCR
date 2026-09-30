@@ -109,7 +109,7 @@ export type Change = {
   reordered?: boolean;
 };
 /** `by`: "harvester", or the role of the person whose correction made it (Phase 6): "author",
- *  "maintainer", "submitter" — never who. */
+ *  "maintainer", "submitter", never who. */
 export type Version = { version: number; date: string; by: string; first: boolean; changes: Change[] };
 export type Citation = { apa: string; bibtex: string; ris: string; csl: Record<string, unknown> };
 export type Similar = { slug: string; score: number; reasons: string };

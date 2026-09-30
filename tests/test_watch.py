@@ -84,7 +84,7 @@ def test_an_error_page_fits_on_one_line_in_the_log(tmp_path, monkeypatch):
     harvest.watch(con, Client(offline=True), "neuro", harvest.Options(), iterations=1, report=messages.append)
     assert len(messages) == 1 and "\n" not in messages[0]
     assert messages[0].endswith(" ! Outage: Europe PMC /search: HTTP 503 — "
-                                "503 Service Temporarily Unavailable nginx — resuming in 2 min")
+                                "503 Service Temporarily Unavailable nginx, resuming in 2 min")
 
 
 class DownClient:

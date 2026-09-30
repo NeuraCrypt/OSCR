@@ -68,7 +68,7 @@ read before.
   included).
 - **OpenAlex** (schema 7, `oscr/migrations/0007_openalex.sql`): the key comes from the macOS
   keychain (`org.oscr.openalex`, or `OPENALEX_API_KEY`) and travels only in the
-  `Authorization` header to api.openalex.org — never in a URL, the cache, a log or an error.
+  `Authorization` header to api.openalex.org, never in a URL, the cache, a log or an error.
   Only single lookups are made (free; $1 of credit a day covers the paid calls OSCR does not
   make); each day's calls and spending are kept from OpenAlex's own headers (`openalex.Budget`),
   and a second 429 stops OpenAlex until midnight UTC. New papers are looked up during their
@@ -110,12 +110,15 @@ A page of the website puts a paper and its authors' code side by side.
   against 325 by number alone), and the pane says so. A failure keeps links to doi.org and
   Europe PMC and a button that tries again. The pane can be hidden, a choice kept in the
   browser.
-- **Right, the code.** One view is prerendered at build time; the others are fetched on
-  demand from the lot of their repository (`/scripts/NN.json`). A script whose license does
-  not allow republication is not copied: the reader's browser fetches it from where its authors
-  published it, at the verified commit or record, and shows it only when its SHA-256 is the one
-  the Mac computed ("shown from the source": [SCRIPT_STORAGE.md](SCRIPT_STORAGE.md), the public
-  page `/policies/code/`); otherwise the reader says why and links to it at the source.
+- **Right, the code.** Since 2026-09-29 every paper's code is shown from OSCR's own copy,
+  whatever its licence. One view is prerendered at build time; the others are fetched on demand
+  by their **SHA-256** from a digest lot (`/scripts/NN.json`, keyed by sha256 and deduplicated;
+  the per-repository facts the build reads are in `src/data/scriptmeta/`). Email addresses are
+  masked (`catalog.mask_emails`). If a digest lot unexpectedly lacks a file, the reader falls
+  back to fetching it from where its authors published it, at the verified commit or record, and
+  shows it only when its SHA-256 is the one the Mac computed ("shown from the source":
+  [SCRIPT_STORAGE.md](SCRIPT_STORAGE.md), the public page `/policies/code/`). The licence still
+  gates only the COPIES that leave (the Hugging Face dataset, the public database), not display.
 - **The pairs** come from `alignments/NN.json`, read at build time. A pair joins paragraph
   number *i* (the index of a `<p>` among all the `<p>` of the JATS `<body>`, in document
   order, which the browser computes the same way) and a line range of one file: the same
@@ -208,11 +211,11 @@ catalogue's listing of the static pages is its too).
 | an author, journal, institution, tool or dataset | none: one shell per type (`/author/`, …) and a fixed number of `/records/<type>/NN.json` per type (`SHARDS`: 1,024 for the authors, 512 institutions, 256 tools, 128 journals, 128 datasets) | `public/_redirects` rewrites `/author/<orcid>/` to the shell (status 200, the address kept), whose script fetches the shard and renders the entity (`src/scripts/entity.ts`) | 0 (1 for a key whose shard does not exist: its 404) |
 | the lists of the entities (`/authors/` and a page a letter, `/journals/`, `/institutions/`, `/tools/`, `/datasets/`) | 1 each, 27 for the authors' letters | static, a link to every entity, no cap | 0 |
 | the DOI lookup | 256 `/lookup/NN.json` | the page's script fetches one shard | 0 |
-| an address no file answers | — | the Worker serves `404.html` with the status 404 | 1 |
+| an address no file answers | n/a | the Worker serves `404.html` with the status 404 | 1 |
 
 - **The budget holds whatever the catalogue's size**: at most 6,000 files of papers (one each since
   the reader is on the paper's page; two before), and `FIXED_FILES_MAX` (3,500 since 2026-09-29) for
-  everything else — the 2,304 record shards, 256 lookup shards, 256 lots of scripts, the category pages
+  everything else, the 2,304 record shards, 256 lookup shards, 256 lots of scripts, the category pages
   (`MAX_CATEGORIES`, 200), the list by date (`LIST_PAGES_MAX`, 200), the sitemap's shards
   (`SITEMAP_SHARDS`, 32), the information pages, the brand's files and the bundles: 9,500 at most,
   under the check's margin of 15,000 and the 20,000 limit.
@@ -228,16 +231,16 @@ catalogue's listing of the static pages is its too).
   README badge, whose data are in the build's lots. It shows the record: title, integrity notices,
   authors (their pages), journal, date, type, status, DOI, license, institutions, categories, each
   repository of the code with its license and state, the tools, the datasets and data links, the
-  links to the paper and to Europe PMC, and the Contribute section of the static pages — claim,
-  correction of its links, removal request — run by the same script (`paper-actions.ts`).
+  links to the paper and to Europe PMC, and the Contribute section of the static pages, claim,
+  correction of its links, removal request, run by the same script (`paper-actions.ts`).
 - **An entity's page lists its 200 most recent papers** (`ENTITY_ROWS_MAX`) and at most 300 links
   of each kind (`LINKS_MAX`: a tool's repositories, an institution's authors); past that (a tool
   such as NumPy), it says how many more there are and links to the search.
 - **Without JavaScript**, an entity's shell says that it needs it and links to the list, which is
   static; an older paper's page is whole HTML from the Worker.
 - **The owner's switch** (wrangler.toml): with `not_found_handling = "404-page"`, no page costs a
-  Worker request — the assets serve `/paper/404.html` for a missing `/paper/…`, and its script
-  renders the older paper in the browser — but with the status 404, which search engines do not
+  Worker request, the assets serve `/paper/404.html` for a missing `/paper/…`, and its script
+  renders the older paper in the browser, but with the status 404, which search engines do not
   index, and every other missing address gets the site's 404 page.
 
 ## The paper's page (Phase 4)
@@ -293,7 +296,7 @@ Its life:
 1. **Proposed** by the harvester. It is visible on the website, without a DOI.
 2. **Validated** by an author, signed in with their ORCID (Phase 6: the paper's Contribute
    section). The page carries the map's digest (`zenodo.map_digest`) and the validation brings it
-   back: the map kept is the one the author saw — if it changed since, the Mac asks the author to
+   back: the map kept is the one the author saw, if it changed since, the Mac asks the author to
    look again. While the site signs in with ORCID's sandbox, a validation is a test (`proof =
    'test'`), which only Zenodo's sandbox takes.
 3. **Deposited** on Zenodo, in the community, by the Mac's job runner (`oscr jobs poll`; by hand:
@@ -356,11 +359,13 @@ Checked on 2026-09-26 in Cloudflare's documentation; the full table, with source
 | Hugging Face | public datasets free ("best-effort"); byte ranges with CORS | the open data, and the script blocks |
 | Zenodo | 50 GB per record; 60 requests per minute without a token | a map weighs a few KB |
 
-**The scripts' text.** Today, 32 lots in `public/scripts/`. Decided on 2026-09-26
-([SCRIPT_STORAGE.md](SCRIPT_STORAGE.md)): deduplicated, zstd, Parquet blocks on a public
-Hugging Face dataset, read by the reader in the browser with range requests (~78 KB per
-script), with an index in D1. Measured: 155 MB of text become 25.6 MB; ~3.3 GB at the full
-neuro stock, of which ~2.3 GB are public.
+**The scripts' text.** On the site, 256 lots in `public/scripts/`, keyed by the file's SHA-256
+and deduplicated (`catalog.N_LOTS`); the per-repository facts the build reads are in
+`src/data/scriptmeta/`. Since 2026-09-29 every file is shown, whatever its licence (the largest
+lot ~10.6 MiB of JSON on the whole stock, under the 25 MiB Workers asset limit; a test asserts no
+lot overflows). The separate BULK store for redistributable copies, decided on 2026-09-26
+([SCRIPT_STORAGE.md](SCRIPT_STORAGE.md)): deduplicated, zstd, Parquet blocks on a public Hugging
+Face dataset, read with range requests, stays licence-gated.
 
 ## Planned platform
 

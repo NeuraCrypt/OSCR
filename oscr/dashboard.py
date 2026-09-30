@@ -1,6 +1,6 @@
 """The local dashboard: the database's table, and nothing else.
 
-A small server, standard library only, which READS the database live — nothing to
+A small server, standard library only, which READS the database live, nothing to
 regenerate: what the harvester wrote is there at the next reload. It listens on
 127.0.0.1 only (the machine itself) and offers no write.
 
@@ -168,7 +168,7 @@ def handler(db_path: Path) -> type[BaseHTTPRequestHandler]:
 
 def serve(db_path: Path, port: int = 8790, host: str = "127.0.0.1") -> None:
     server = ThreadingHTTPServer((host, port), handler(db_path))
-    print(f"Dashboard: http://{host}:{port}  (database: {db_path}) — Ctrl+C to stop", flush=True)
+    print(f"Dashboard: http://{host}:{port}  (database: {db_path}), Ctrl+C to stop", flush=True)
     try:
         server.serve_forever()
     except KeyboardInterrupt:

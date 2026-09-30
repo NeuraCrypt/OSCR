@@ -220,7 +220,7 @@ async function paperState(request: Request, env: ContributionsEnv, url: URL, t: 
 
 /** The repositories an account maintains as a maintainer the moderator's rules trust
  *  (lib/moderation.ts, maintainerTrusted): its owner or a public member of its organization on GitHub,
- *  or made one by the owner — not a contributor. One read, of the account's verified maintainer claims
+ *  or made one by the owner, not a contributor. One read, of the account's verified maintainer claims
  *  (which keep how GitHub showed it), when it holds a maintainer role. */
 async function trustedRepos(db: D1Database, userId: string, roles: Role[]): Promise<Set<string>> {
   const held = roles.filter((x) => x.role === "maintainer" && x.scope_kind === "repo");

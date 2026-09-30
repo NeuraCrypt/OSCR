@@ -13,7 +13,7 @@ what we extracted from it.
 **What it does not send.** No contact address by default. Crossref serves requests
 that carry one better (the "polite pool"); it is up to the user to give it, through the
 `OSCR_CONTACT` variable. OpenAlex no longer has a polite pool: it wants the owner's API
-key (`openalex_key`), sent as a header, never in a URL — the cache, the logs and the
+key (`openalex_key`), sent as a header, never in a URL, the cache, the logs and the
 error messages only ever see URLs.
 """
 from __future__ import annotations
@@ -37,12 +37,12 @@ import httpx
 #: Minimum interval between two requests to the same host, in seconds.
 #: Europe PMC sustained 1.4 requests/s without throttling (measured 2026-09-25);
 #: Zenodo limits guests to 60 requests/minute; the anonymous GitHub API grants
-#: only 60 per hour — it is only called with a token.
+#: only 60 per hour, it is only called with a token.
 INTERVALS: dict[str, float] = {
     "www.ebi.ac.uk": 0.75,
     "api.crossref.org": 0.5,
     "api.datacite.org": 0.5,
-    # Zenodo: 60/min AND 2,000/h for a guest — the hourly limit is the one that bites.
+    # Zenodo: 60/min AND 2,000/h for a guest, the hourly limit is the one that bites.
     "zenodo.org": 1.8,
     "api.github.com": 0.8,
     "api.osf.io": 0.5,
@@ -190,7 +190,7 @@ class Client:
                                   headers={"User-Agent": ua})
         self._last: dict[str, float] = {}
         self._lock = threading.Lock()
-        #: Requests actually sent, per host — the network cost of a pass.
+        #: Requests actually sent, per host, the network cost of a pass.
         self.requests: dict[str, int] = {}
 
     def close(self) -> None:
@@ -223,7 +223,7 @@ class Client:
             method: str = "GET", patient: bool = True) -> Response:
         """A polite GET (or HEAD). `ttl_s=None`: no cache; `float('inf')`: keep
         forever (a full text). `patient=False`: an exhausted quota (429, or 403
-        with zero quota left) returns the response instead of waiting — for a
+        with zero quota left) returns the response instead of waiting, for a
         service this pass can do without."""
         key = str(httpx.URL(url, params=params)) if params else url
         if self.cache is not None and ttl_s is not None and method == "GET":
@@ -306,7 +306,7 @@ class Client:
 
     def download_archive(self, url: str, max_bytes: int) -> IO[bytes] | None:
         """A code archive, through the DISK beyond 1 MB: a 60 MB zip went through
-        memory twice (the chunks, then their join) — that was the 280 MB peak of
+        memory twice (the chunks, then their join), that was the 280 MB peak of
         the pass. The caller closes it (`with`)."""
         f = tempfile.SpooledTemporaryFile(max_size=1_000_000)
         if not self._stream(url, max_bytes, f):

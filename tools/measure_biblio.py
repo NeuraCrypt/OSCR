@@ -86,7 +86,7 @@ def main() -> None:
         t = time.perf_counter()
         try:
             record = biblio.from_jats(xml)
-        except Exception as e:  # noqa: BLE001 — a measurement reports failures, it does not stop
+        except Exception as e:  # noqa: BLE001, a measurement reports failures, it does not stop
             errors.append((path.name, repr(e)))
             continue
         dt = time.perf_counter() - t
@@ -113,7 +113,7 @@ def main() -> None:
         inner["papers with a funder id"] += any(x["funder_id"] for x in record["funding"])
 
     n = sum(papers.values())
-    print(f"{n} cached full texts ({len(errors)} errors) — "
+    print(f"{n} cached full texts ({len(errors)} errors), "
           + ", ".join(f"{FLAVOUR_NAMES[f]} {papers[f]} ({papers[f] / n:.0%})" for f in FLAVOURS))
     print(f"parsing: {parse_s:.1f} s in total, {1000 * parse_s / max(n, 1):.1f} ms per text; "
           "slowest " + ", ".join(f"{name[:12]} {1000 * dt:.0f} ms" for dt, name in slowest))

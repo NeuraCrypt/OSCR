@@ -20,7 +20,7 @@ const toc = [
 ---
 <Info
   title="Accessing the data"
-  description={`${SITE_NAME}'s open data: the authors' scripts as Parquet on Hugging Face, the site's JSON files, the tracing maps on Zenodo — and what stays private.`}
+  description={`${SITE_NAME}'s open data: the authors' scripts as Parquet on Hugging Face, the site's JSON files, the tracing maps on Zenodo, and what stays private.`}
   group="help"
   path="/help/data/"
   parents={[{ text: "Help", href: "/help/" }]}
@@ -85,7 +85,7 @@ WHERE language = 'Python' ORDER BY lines DESC LIMIT 10;`}</pre>
   <h2 id="browser">In a browser, one script at a time</h2>
   <p>
     The blocks are laid out so that one script can be read without the rest: a reader fetches the block's footer once,
-    then the one row group (64 rows) that holds the file — about 78 KB for a script shown — with HTTP range requests,
+    then the one row group (64 rows) that holds the file, about 78 KB for a script shown, with HTTP range requests,
     which Hugging Face answers with the CORS headers a page needs. <a href="/labs/#parquet">Labs</a> shows how, with
     the <code>hyparquet</code> library.
   </p>
@@ -103,7 +103,7 @@ WHERE language = 'Python' ORDER BY lines DESC LIMIT 10;`}</pre>
 
   <h2 id="site">The site's own files</h2>
   <p>
-    What the pages show comes from static JSON files anyone may fetch — the DOI lookup's 256 shards, the records of
+    What the pages show comes from static JSON files anyone may fetch, the DOI lookup's 256 shards, the records of
     authors, journals, institutions, tools, datasets and older papers. They change every night, their layout may change
     with the site, and they are meant for the site's pages first: for bulk use, prefer the datasets. Their addresses and
     fields are listed on <a href="/labs/#site-files">Labs</a>.

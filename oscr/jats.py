@@ -15,7 +15,7 @@ therefore keeps:
 - the path of section TITLES, from the widest to the nearest;
 - the LOCATION: body, availability section, references, table, notes,
   supplementary material, acknowledgements;
-- for a reference, the NAMES of the cited authors — cited software written by
+- for a reference, the NAMES of the cited authors, cited software written by
   the paper's own authors is their own code.
 
 Publishers put the availability statement in six different places: a titled
@@ -316,7 +316,7 @@ def sentence_around(text: str, anchor: str, margin: int = 400) -> str:
     if i < 0:
         return text[:margin]
     # URLs are masked: their dots do not end sentences. But the punctuation that
-    # follows the URL does: "(…dryad.np5hqc00n). All code…" (PMC12723408) — the
+    # follows the URL does: "(…dryad.np5hqc00n). All code…" (PMC12723408), the
     # URL expression swallows it, so it is given back.
     def _mask(m: re.Match[str]) -> str:
         u = m.group(0)

@@ -6,7 +6,7 @@ database, can be searched, and compared with the script generated from the
 paper. An archive is downloaded and opened elsewhere.
 
 **What is kept.** Scripts (the extensions of `repos.SCRIPT_EXTENSIONS`), plus
-the README and the LICENSE at the root — without the license, we would not know
+the README and the LICENSE at the root, without the license, we would not know
 whether the text may be republished. A Jupyter notebook becomes text "by cells"
 (jupytext's percent format): its outputs, images included, often weigh a
 hundred times its code and cannot be read.
@@ -73,7 +73,7 @@ def notebook_to_text(raw: str) -> str:
 
 
 def decode(data: bytes) -> str:
-    """UTF-8, else Windows-1252, else Latin-1 — never the U+FFFD replacement character.
+    """UTF-8, else Windows-1252, else Latin-1, never the U+FFFD replacement character.
 
     Many MATLAB scripts are written on Windows: their accented comments are not
     UTF-8. Decoding them as UTF-8 with replacement damaged them, and the
@@ -126,8 +126,8 @@ def from_folder(root: Path, paths: list[str]) -> list[dict[str, Any]]:
 
 
 def from_zip(source: bytes | IO[bytes]) -> list[dict[str, Any]]:
-    """The scripts of a zip archive — a GitHub release deposited on Zenodo, the
-    "Source code 1" of an eLife paper —, as bytes or as an open file. The common
+    """The scripts of a zip archive, a GitHub release deposited on Zenodo, the
+    "Source code 1" of an eLife paper, as bytes or as an open file. The common
     top folder (`owner-repo-v1.0/`) is removed from the paths."""
     try:
         z = zipfile.ZipFile(io.BytesIO(source) if isinstance(source, (bytes, bytearray)) else source)

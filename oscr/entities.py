@@ -96,7 +96,7 @@ def strip_contacts(text: str) -> str:
     out = re.sub(r"[<(\[{]\s*[>)\]}]", " ", out)            # brackets left empty
     out = re.sub(r"\s+([,;.:])", r"\1", out)
     out = re.sub(r"([,;:])(?:\s*[,;:.])+", r"\1", out)
-    return re.sub(r"\s{2,}", " ", out).strip(" \t\n,;:.-–—")
+    return re.sub(r"\s{2,}", " ", out).strip(" \t\n,;:.-–—")  # emdash-ok: strips em dashes off harvested names
 
 
 def has_contact(text: str) -> bool:

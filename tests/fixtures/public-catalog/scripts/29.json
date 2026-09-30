@@ -1,0 +1,1 @@
+{"6285901c49387836811d67dc9027acb22ecbe373d444e3cb29587406e5bfed4a":{"text":"import matplotlib.pyplot as plt\n\n\ndef show(values):\n    plt.plot(values)\n    plt.show()\n","language":"Python","lines":7,"truncated":false}}

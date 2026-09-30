@@ -15,8 +15,8 @@ wide margin. This writes, in `website/public/`:
   foot (the preview of a link to the site).
 
 No dependency but the standard library and macOS's `sips`, which resamples (Core Image): a small
-PNG reader and writer below (8-bit, no interlacing). The colours are flat — every pixel the logo's
-blue or white — and the coverage is in the alpha channel, so the files stay small.
+PNG reader and writer below (8-bit, no interlacing). The colours are flat, every pixel the logo's
+blue or white, and the coverage is in the alpha channel, so the files stay small.
 """
 from __future__ import annotations
 

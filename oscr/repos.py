@@ -2,7 +2,7 @@
 
 **Why git rather than the GitHub API.** The anonymous API grants 60 requests
 per hour: a pass over 200 papers exhausts it. The git protocol has no such
-ceiling and speaks to EVERY forge the same way — GitHub, GitLab, Codeberg,
+ceiling and speaks to EVERY forge the same way, GitHub, GitLab, Codeberg,
 G-Node GIN, Hugging Face. Two commands are enough:
 
     git ls-remote <url> HEAD                         does the repository exist? its commit
@@ -12,10 +12,10 @@ G-Node GIN, Hugging Face. Two commands are enough:
 
 then `git show HEAD:LICENSE` and `git show HEAD:README.md` fetch only those two
 files. With a token (`GITHUB_TOKEN`), the API adds the stars and the creation
-date — useful to recognize a long-established public tool.
+date, useful to recognize a long-established public tool.
 
 **Archives** (Zenodo, OSF, figshare) have an open API that gives the TYPE of
-the resource — software or dataset —, its files and its license. It is what
+the resource, software or dataset, its files and its license. It is what
 decides when the paper only says "available at Zenodo".
 
 **What is not kept.** The clone is deleted after reading. Links rot (5.4% per
@@ -133,7 +133,7 @@ def normalize_license(name: str) -> str:
 
 
 def redistributable(spdx: str) -> str:
-    """yes | with_conditions | no | unknown — to decide on a snapshot."""
+    """yes | with_conditions | no | unknown, to decide on a snapshot."""
     if not spdx:
         return "no"           # no license: all rights reserved, link only
     if spdx in _OPEN or spdx == "other-open":
@@ -299,7 +299,7 @@ def _inventory(files: list[str]) -> dict[str, Any]:
     """Count the scripts. Two cases where the count does not tell the truth:
 
     - a ZIP with no script beside it (`vignetteAnalysis.zip` on OSF): the code
-      may be inside, we do not know — `n_scripts` is `None`;
+      may be inside, we do not know, `n_scripts` is `None`;
     - a BIDS dataset (`dataset_description.json`, `sub-XX` folders): its few
       conversion scripts do not make it a code repository
       (`nemardatasets/on007524`: 3 scripts out of 2,141 files).

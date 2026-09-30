@@ -2,7 +2,7 @@
 // The Overview section of a paper's page: its bibliographic record (oscr/paperpage.py) and,
 // only under the licenses of decision D1, its abstract. The authors link to their pages and
 // to their ORCID records; an affiliation is the institution's text, never an address. What
-// OpenAlex adds — the institutions by ROR id, the topic, the open-access status, a preprint —
+// OpenAlex adds, the institutions by ROR id, the topic, the open-access status, a preprint,
 // says so.
 import { dateInWords, dayInWords, europePmcUrl, plural, status, type Article } from "../../lib/catalog";
 import { countryName } from "../../lib/format";
@@ -93,7 +93,7 @@ const pmcid = (a.fulltext_id || a.pmcid || "").toUpperCase();
   )}
 
   <div class="line">
-    <span class="label">Journal:</span> {journal ? <a href={journal}>{a.journal || "—"}</a> : a.journal || "—"}{where.length > 0 && `, ${where.join(", ")}`}
+    <span class="label">Journal:</span> {journal ? <a href={journal}>{a.journal || "n/a"}</a> : a.journal || "n/a"}{where.length > 0 && `, ${where.join(", ")}`}
   </div>
   {dates.length > 0 && <div class="line"><span class="label">Dates:</span> {dates.join("; ")}</div>}
   {(o?.type || o?.language) && (

@@ -252,7 +252,7 @@ def test_the_operator_decides_what_waits_and_reverses_what_the_rules_did(w, tmp_
     # Reverse the automatic hide: the copy comes back, the requester reads why.
     assert cli.main([*base, "reports", "reverse", str(hidden), "--local", "--message", "The file is MIT, copying it is allowed.",
                      *folder]) == 0
-    assert "reversed — 1 withdrawal(s) undone" in capsys.readouterr().out
+    assert "reversed, 1 withdrawal(s) undone" in capsys.readouterr().out
     assert withheld(w) == []
     assert (w.row("reports", hidden)["status"], w.row("reports", hidden)["message"]) == (
         "rejected", "The file is MIT, copying it is allowed.")

@@ -1,7 +1,7 @@
 """The automatic moderator (decided 2026-09-29): there is no human moderator on duty, so what the
 site's readers ask is decided by published rules (the public page /policies/moderation/,
-docs/CONTRIBUTIONS.md "Moderation"), in the safe direction — hiding is automatic when in doubt,
-publishing needs a verified identity or checks that pass — and nothing waits forever.
+docs/CONTRIBUTIONS.md "Moderation"), in the safe direction, hiding is automatic when in doubt,
+publishing needs a verified identity or checks that pass, and nothing waits forever.
 
 Where it runs: the Mac's `oscr jobs poll` (every ten minutes under launchd, `org.oscr.jobs`), which
 reads each request as before (oscr/jobs.py) and asks the rules here instead of queueing it for the
@@ -12,15 +12,15 @@ suites read tests/fixtures/moderation_rules.json).
 | request | rule | what happens |
 |---|---|---|
 | removal, from a verified author of the paper | `report.verified_author` | applied at once, whatever it names |
-| removal of copies (a repository, a file, the paper's scripts) by a trusted maintainer of that code | `report.maintainer` | applied at once, to the repositories they maintain — trusted: its owner or a public member of its organization on GitHub, or made one by the owner; a mere contributor is not |
-| removal of copies, for copyright or personal data, by anyone else | `report.hide_at_once` | hidden at once, pending the operator's review (who may restore it) — at most 3 an account and 30 in all a day, and not a justification repeated 3 times in 7 days |
+| removal of copies (a repository, a file, the paper's scripts) by a trusted maintainer of that code | `report.maintainer` | applied at once, to the repositories they maintain, trusted: its owner or a public member of its organization on GitHub, or made one by the owner; a mere contributor is not |
+| removal of copies, for copyright or personal data, by anyone else | `report.hide_at_once` | hidden at once, pending the operator's review (who may restore it), at most 3 an account and 30 in all a day, and not a justification repeated 3 times in 7 days |
 | any other removal (a whole record, a tracing map, another reason) | `report.review` | waits for the operator, 30 days at most; then closed without removal, with how to ask again |
 | the same, asked for personal data | `report.personal_data` | waits for the operator, who must answer within one month (GDPR art. 12(3)); never closed by the rules, flagged in the operator's list |
 | a submission published by someone not among the paper's authors | `submission.corroborated` / `submission.review` → `submission.expired` | published when each code link is cited by the paper's own text or metadata, or its owner is proven one of its authors (an author's public ORCID record links the account; or a verified author of the paper maintains it, as owner or organization member); else waits for the operator, 30 days at most, then refused with how to ask again. A README citing the paper and a GitHub display name are never proof: anyone can write them |
 | a draft not published | `submission.draft_expired` | refused after 30 days (it can be corrected and published again) |
-| an author claim | `claim.paper_metadata`, `claim.crossref_orcid`, `claim.expired` | verified when the paper lists the claimant's ORCID iD, or when Crossref's automatic update put the paper in the claimant's ORCID record (the publisher deposited the iD with the paper; checked again daily) — never a work the claimant added themselves or through a search wizard; else closed after 30 days, with how to claim again |
+| an author claim | `claim.paper_metadata`, `claim.crossref_orcid`, `claim.expired` | verified when the paper lists the claimant's ORCID iD, or when Crossref's automatic update put the paper in the claimant's ORCID record (the publisher deposited the iD with the paper; checked again daily), never a work the claimant added themselves or through a search wizard; else closed after 30 days, with how to claim again |
 | a maintainer claim GitHub did not settle | `claim.expired` | closed after 30 days, with how to be checked again |
-| corrections of links, validations of maps | `edit.untrusted_maintainer` | already restricted to verified authors and maintainers by the Worker; applied by the Mac — except a correction as a maintainer who is only a contributor of the repository, refused |
+| corrections of links, validations of maps | `edit.untrusted_maintainer` | already restricted to verified authors and maintainers by the Worker; applied by the Mac, except a correction as a maintainer who is only a contributor of the repository, refused |
 
 Every automatic decision is logged with its rule (`moderation_log` in data/community/state.db:
 `oscr reports list --auto-log`, and the same for claims and submissions); the owner's commands keep
@@ -30,8 +30,8 @@ each poll's sweep deletes older entries, and the job runner's settled requests o
 
 No free text a reader types reaches a public page: notes, statements, justifications and evidence
 links are read by the operator only (and lose their email addresses). The one name a reader's account
-can put in public — the creator of a tracing map deposited on Zenodo, when the paper does not list
-the validator's ORCID iD — goes through `public_name`. So no language model is used.
+can put in public, the creator of a tracing map deposited on Zenodo, when the paper does not list
+the validator's ORCID iD, goes through `public_name`. So no language model is used.
 """
 from __future__ import annotations
 
@@ -347,7 +347,7 @@ class MacEvidence:
 
 def crossref_listed(works: dict[str, Any], doi: str) -> bool:
     """Whether an ORCID record's works (the public API's /works) hold `doi` as added by Crossref's
-    automatic update — its own client, asserting on no one's behalf. Not a work the person added, nor
+    automatic update, its own client, asserting on no one's behalf. Not a work the person added, nor
     one a search wizard added at the person's request."""
     for group in works.get("group") or []:
         ids = ((group.get("external-ids") or {}).get("external-id") or [])
@@ -400,7 +400,7 @@ def verified_author(runner: Runner, user: dict[str, Any] | None, paper: str) -> 
 
 def trusted_maintainer(via: str, decided_by: str, granted_by: str) -> bool:
     """A maintainer the rules trust (website/src/lib/moderation.ts, maintainerTrusted): made one by the
-    owner, or shown by GitHub as the repository's owner or a public member of its organization — not a
+    owner, or shown by GitHub as the repository's owner or a public member of its organization, not a
     contributor, nor the author of a commit: one merged pull request makes one."""
     return granted_by == "owner" or decided_by == "owner" or via in TRUSTED_VIA
 
@@ -529,7 +529,7 @@ def submission_path(links_: list[dict[str, bool]]) -> Path:
     """What the rules do with a non-author's submission, from what shows each code link to be the
     paper's (website/src/lib/moderation.ts, submissionPath): published when every link is cited by the
     paper itself (`cited`) or its owner is proven one of the paper's authors (`owner_author`). A README
-    citing the paper, a GitHub display name bearing an author's: never enough — the submitter can
+    citing the paper, a GitHub display name bearing an author's: never enough, the submitter can
     write both."""
     if links_ and all(x.get("cited") or x.get("owner_author") for x in links_):
         return Path("submission.corroborated", "publish")
@@ -582,7 +582,7 @@ def corroboration(runner: Runner, article_id: str, link: links.Link) -> dict[str
     return {"cited": bool(cited), "owner_author": bool(owner), "why": cited or owner, "hint": hint}
 
 
-REVIEW_SUBMISSION = ("Waits for the operator's review, until {deadline} at most: {missing} — the paper does not cite "
+REVIEW_SUBMISSION = ("Waits for the operator's review, until {deadline} at most: {missing}, the paper does not cite "
                      "{it}, and nothing proves that {its} owner is one of its authors (a README citing the paper, or a "
                      "display name, proves nothing: anyone can write them). There is no human moderator on duty at the "
                      "moment; unreviewed, it is closed on that day.")
@@ -641,9 +641,9 @@ def decide_submission(runner: Runner, job: dict[str, Any], row: dict[str, Any], 
 
 VERIFIED_CLAIM = ("Verified by the registry's rules: {why}. You may now correct this paper's record, validate its map and "
                   "have your removal requests applied at once.")
-EXPIRED_AUTHOR_CLAIM = ("Closed: in {days} days, nothing could show that you are one of this paper's authors — the paper does not "
+EXPIRED_AUTHOR_CLAIM = ("Closed: in {days} days, nothing could show that you are one of this paper's authors, the paper does not "
                         "list your ORCID iD, and Crossref did not add the paper to your ORCID record (a work you add yourself "
-                        "proves nothing) — and the registry has no human moderator on duty. Sign in with the ORCID iD the paper "
+                        "proves nothing), and the registry has no human moderator on duty. Sign in with the ORCID iD the paper "
                         "lists; or allow Crossref's automatic update in your ORCID record, so that the paper comes into it once "
                         "its publisher deposited your iD, then claim it again: the rules check it at once, and again each day.")
 EXPIRED_MAINTAINER_CLAIM = ("Closed: in {days} days, nothing could show that you maintain this repository, and the registry has no "
@@ -841,7 +841,7 @@ def reverse_report(runner: Runner, report_id: int, message: str = "") -> str:
                     f"WHERE id = {int(report_id)} AND status = 'accepted'"])
     log(runner.state, runner.target, "report", int(report_id), "owner.reversed", "reversed", user_id=r["user_id"],
         paper=r["target_id"], detail={"restored": back}, now=runner.now())
-    return f"request {report_id} on {r['target_id']}: reversed — {back} withdrawal(s) undone, back at the next nightly"
+    return f"request {report_id} on {r['target_id']}: reversed, {back} withdrawal(s) undone, back at the next nightly"
 
 
 def reverse_claim(runner: Runner, claim_id: int, message: str = "") -> str:
@@ -895,4 +895,4 @@ def reverse_submission(runner: Runner, submission_id: int, message: str = "") ->
                     f"WHERE id = {int(submission_id)} AND status = 'published'"])
     log(runner.state, runner.target, "submission", int(submission_id), "owner.reversed", "reversed", user_id=s["user_id"],
         paper=paper, detail={"removed": removed}, now=runner.now())
-    return f"submission {submission_id} ({s['doi']}): reversed — {', '.join(removed) + ' removed' if removed else 'no link to remove'}"
+    return f"submission {submission_id} ({s['doi']}): reversed, {', '.join(removed) + ' removed' if removed else 'no link to remove'}"

@@ -1,8 +1,8 @@
 // The automatic moderator, as the site tells it (decided 2026-09-29; the public page
 // /policies/moderation/). No human moderator is on duty: the registry's machine decides with
 // published rules (oscr/moderation.py), in the safe direction, and nothing waits forever. This module
-// holds the base rules for a removal request — the same as the machine's, both test suites reading
-// tests/fixtures/moderation_rules.json — so that the page and the Worker tell the requester what will
+// holds the base rules for a removal request, the same as the machine's, both test suites reading
+// tests/fixtures/moderation_rules.json, so that the page and the Worker tell the requester what will
 // happen. The machine adds guards the page cannot see (a limit of hides a day, a justification sent
 // many times, the operator's earlier no): then a request waits for the operator instead.
 //
@@ -61,7 +61,7 @@ export function submissionPath(links: readonly LinkProof[]): Path {
 
 /** What happens to a submission published by someone the paper does not list among its authors. */
 export const SUBMISSION_WORDS =
-  `The registry's rules publish it within about ${POLL_MINUTES} minutes only when each code link is cited by the paper itself (its text, or the metadata its publisher deposited), or its owner is proven one of the paper's authors (an author's public ORCID record links that GitHub account, or a verified author of the paper owns it). A README citing the paper, or a display name, proves nothing: anyone can write them. Otherwise it waits for the operator's review, ${REVIEW_DAYS} days at most — there is no human moderator on duty at the moment — and is then closed with how to ask again.`;
+  `The registry's rules publish it within about ${POLL_MINUTES} minutes only when each code link is cited by the paper itself (its text, or the metadata its publisher deposited), or its owner is proven one of the paper's authors (an author's public ORCID record links that GitHub account, or a verified author of the paper owns it). A README citing the paper, or a display name, proves nothing: anyone can write them. Otherwise it waits for the operator's review, ${REVIEW_DAYS} days at most, there is no human moderator on duty at the moment, and is then closed with how to ask again.`;
 
 /** The day the rules close a request that waits, from its time (Unix seconds or an ISO date). */
 export function reviewDeadline(createdAt: number | string): Date {
@@ -72,7 +72,7 @@ export function reviewDeadline(createdAt: number | string): Date {
 const dayWords = (d: Date) => d.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
 
 /** The legal deadline of a request about personal data made at `t` (Unix seconds): one month (GDPR
- *  art. 12(3)) — the same day of the next month, or its last day when it has none (31 January → the end
+ *  art. 12(3)), the same day of the next month, or its last day when it has none (31 January → the end
  *  of February). moderation.one_month_after computes the same (tests/fixtures/one_month.json). */
 export function oneMonthAfter(t: number): number {
   const d = new Date(t * 1000);

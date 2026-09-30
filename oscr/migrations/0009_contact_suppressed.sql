@@ -1,5 +1,5 @@
 -- Data rights (2026-09-29, the page /data-rights/, oscr/rights.py): the authors whose contact details
--- the registry must never collect again — one who asked for their erasure, or objected to their
+-- the registry must never collect again, one who asked for their erasure, or objected to their
 -- keeping. contacts.write drops what matches before it stores a paper's rows, and contacts.table
 -- (the rows of the private dataset) drops it too. Private: catalog.public_db drops this table.
 --

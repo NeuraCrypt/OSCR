@@ -5,11 +5,14 @@ mode:
 
 - `catalog.json`: every paper, its status and its authors' code with the level of
   evidence (found → alive → inventoried → imported), the method families, the
-  repositories — the website is built from it;
-- `scripts/NN.json`: the TEXT of the scripts, repository by repository, in lots loaded
-  on demand by the reader; for a repository whose license does not allow copying it, only
-  facts (each file's digest and size, and where a reader's browser fetches it at the pinned
-  version: "shown from the source", `source_of`);
+  repositories, the website is built from it;
+- `scripts/NN.json`: the TEXT of the scripts, in lots keyed by the file's SHA-256 and
+  DEDUPLICATED (each unique file stored once), loaded on demand by the reader. Since the
+  owner's decision of 2026-09-29 every paper's code is shown from OSCR's own copy, whatever
+  its license: the license no longer gates DISPLAY (`script_lots`);
+- `scriptmeta/NN.json`: the per-repository FACTS the site is built from (keyed by
+  repository, `lot_of(repo)`): each file's path, language, size, lines, digest and the lot
+  of its text (`text_lot`), never the text itself. Read at build time only, never served;
 - `alignments/NN.json`: the paper ↔ code matches of each paper, for the reader;
 - in public mode, `entities/`, `lookup/` (oscr/entities.py) and `papers/NN.json`, the
   sections of each paper's page (oscr/paperpage.py);
@@ -18,9 +21,12 @@ mode:
 - `oscr_public.db`: the SQLite database without excerpts, for Datasette or a service.
 
 **What never leaves.** No excerpt of a paper's text (the `excerpt` column stays in the
-private database), and in public mode no text of a script whose license does not allow
-republishing it: the reader lists those files and links each one at the source, at the
-verified commit. Development tests (test validations, sandbox DOIs) never leave either.
+private database). Every email address in a shown script is masked (`mask_emails`), and
+what a removal request withheld is neither copied nor shown. The DISPLAY (the site's lots
+and the reader) shows every file from OSCR's own copy; the BULK outputs that leave as a
+redistributable copy, `scripts.jsonl`, the Hugging Face scripts dataset (`_mirror`,
+`oscr/scriptstore.py`) and the public database (`public_db`), stay license-gated
+(`copyable`). Development tests (test validations, sandbox DOIs) never leave either.
 """
 from __future__ import annotations
 
@@ -41,32 +47,26 @@ from . import methods
 
 #: Script texts and matches are served in LOTS, loaded on demand: the pages stay light,
 #: and a static host serves them as they are.
-#: Lots of the scripts' text and of the matches: a Workers static asset may not exceed
-#: 25 MiB. 32 lots reached 30 MiB with 4,226 papers (2026-09-27); 128 reached 25.5 MiB on
-#: 2026-09-29, so 256, and a text budget per lot (below) that holds whatever the stock.
+#: The text lots are keyed by the file's SHA-256 and DEDUPLICATED (each unique file once). A
+#: Workers static asset may not exceed 25 MiB; at 256 lots the largest holds ~10.6 MiB of JSON
+#: on the whole neuro stock (280k files, 227k unique; docs/SCRIPT_STORAGE.md), with room to grow.
+#: Since the owner's decision of 2026-09-29 every file is stored, whatever its license: a test
+#: asserts no lot overflows (tests/test_catalog_source.py).
 N_LOTS: int = 256
-#: At most this much text per repository on the site: beyond it, files are listed with a
-#: link to the source. One toolbox (1,714 files, 23.6 MB of text) filled a lot by itself.
-#: The Hugging Face copy of the scripts keeps everything.
-MAX_SITE_TEXT_PER_REPO: int = 8_000_000
-#: At most this much text in one lot of the site: past it, the lot's further files are listed
-#: with a link to the source, like a repository past its own budget. Characters, not bytes: 16
-#: million keep a lot under the 25 MiB limit with JSON's overhead and multi-byte characters.
-MAX_SITE_TEXT_PER_LOT: int = 16_000_000
 
-#: The licenses under which a script's text is republished. Without a license, code is
-#: "all rights reserved": it is shown at the source, not here. A license of these kinds is not
-#: enough: it must be VERIFIED, by the repository's own license file or, for an archive without one,
-#: by its record (scriptstore.verified_license, the licence audit's rule: CLAUDE.md, "Script
-#: copies"); `copyable` applies both.
+#: The licenses under which a script's text may LEAVE as a redistributable copy, the bulk
+#: outputs only (`scripts.jsonl`, the Hugging Face dataset `_mirror`, the public database): its
+#: license allows redistribution AND is verified. Since 2026-09-29 this no longer gates DISPLAY
+#: (the site's lots and the reader): every file is shown from OSCR's own copy.
 PUBLISHABLE: frozenset[str] = frozenset({"yes", "with_conditions"})
 
 
 def copyable(con: sqlite3.Connection, d: sqlite3.Row) -> bool:
-    """Whether a repository's text may leave the Mac: its license allows redistribution AND is
-    verified — the same rule for the site's lots, the public database and the Hugging Face dataset.
-    (Until 2026-09-29 the site's lots and the public database took the recorded license alone, a
-    README's sentence included.)"""
+    """Whether a repository's text may leave the Mac as a redistributable COPY: its license allows
+    redistribution AND is verified, by the repository's own license file or, for an archive without
+    one, by its record (scriptstore.verified_license, the licence audit's rule: CLAUDE.md, "Script
+    copies"). Since 2026-09-29 this gates the BULK outputs (scripts.jsonl, the Hugging Face dataset,
+    the public database) only, never the DISPLAY, which shows every file from OSCR's own copy."""
     from .scriptstore import verified_license
     return d["redistributable"] in PUBLISHABLE and verified_license(con, d) is not None
 
@@ -394,7 +394,7 @@ def catalog_data(con: sqlite3.Connection) -> dict[str, Any]:
         "SELECT DISTINCT source FROM article WHERE scanned_at IS NOT NULL")})
     scope = {
         "sources": "Europe PMC, Crossref, DataCite" if "europepmc" in sources else
-                   ("local corpus, DataCite" if sources else "—"),
+                   ("local corpus, DataCite" if sources else "n/a"),
         "from": min(dates) if dates else "", "to": max(dates) if dates else "",
         "queries": "; ".join(_passes(con)),
     }
@@ -493,57 +493,43 @@ def mask_emails(text: str) -> str:
 
 
 def script_lots(con: sqlite3.Connection, public: bool) -> dict[int, dict[str, Any]]:
-    """The scripts' text, repository by repository, split into lots.
+    """The scripts, repository by repository, split into lots by `lot_of(repo)`.
 
-    In `public` mode, the text of a repository whose license does not allow
-    republishing is REMOVED: the reader shows the file list and a link to each file at
-    the source, at the verified commit. For such a repository, the entry says where a reader's
-    browser may fetch each file itself (`source`, catalog.source_of) and each file's facts: its
-    digest (`sha256`, of its bytes) and size — never its text. What a removal request withheld
-    gets neither: it is not fetched.
+    Since 2026-09-29 (owner's decision) every file's text is shown from OSCR's own copy,
+    whatever the repository's license: the license no longer gates DISPLAY. Each file's entry
+    carries its `text` (email-masked in public mode), its `sha256` (of its original bytes), its
+    `size` and, when it has a copy, the lot of its text `text_lot` (`lot_of(sha256)`); the text
+    itself is written once per unique digest into the digest lots (`_digest_lots`).
+
+    `published` is True when the reader shows the repository's files from OSCR's copy (always,
+    unless the whole repository was withheld at a removal request). `copyable` says whether the
+    text may LEAVE as a redistributable copy, the bulk outputs (`_scripts_jsonl`, `_mirror`, the
+    public database) read it; the display ignores it. `source` (public mode) is where a reader's
+    browser may fetch a file itself, kept as a graceful FALLBACK for the rare case where a digest
+    lot is missing a file. What a removal request withheld keeps neither text nor digest.
     """
     lots: dict[int, dict[str, Any]] = defaultdict(dict)
-    lot_shown: dict[int, int] = defaultdict(int)
     repos = {r["repo"]: r for r in con.execute("SELECT * FROM repository")}
-    # The copies withheld at a removal request leave the public outputs, like an unlicensed text.
+    # The copies withheld at a removal request leave the public outputs.
     held = withheld(con) if public else Withheld()
     for repo in [r["repo"] for r in con.execute(f"SELECT DISTINCT repo FROM file WHERE repo IN ({PUBLIC_REPOS})")]:
         d = repos.get(repo)
         if d is None:
             continue
-        published = (not public) or (repo not in held.repos and copyable(con, d))
-        withdrawn_note = (NOTE_WITHHELD if repo in held.repos else NOTE_NO_LICENSE if not d["license"] else
-                          NOTE_UNVERIFIED if d["redistributable"] in PUBLISHABLE else NOTE_LICENSE)
-        # Shown from the source: a repository held back for its license only (not one withheld).
-        source = source_of(d) if not published and repo not in held.repos else None
+        repo_withheld = public and repo in held.repos
+        published = not repo_withheld
+        can_copy = copyable(con, d)
+        source = source_of(d) if public and not repo_withheld else None
         try:
             listed = set(json.loads(d["files"] or "[]")) if source and source.get("via") == "zenodo" else set()
         except ValueError:
             listed = set()
         files = []
-        shown = 0
-        lot = lot_of(repo)
         for f in con.execute("SELECT * FROM file WHERE repo = ? ORDER BY kind DESC, path", (repo,)):
-            text, note = (f["text"], f["note"]) if published else (None, withdrawn_note)
-            facts: dict[str, Any] = {}
-            if (source is not None and f["kind"] != "note" and f["text"] is not None and (repo, f["path"]) not in held.files
-                    and re.fullmatch(r"[0-9a-f]{64}", f["digest"] or "")):
-                facts = {"sha256": f["digest"], "size": f["size"]}
-                via = file_via(source, f["path"], listed) if source.get("via") else ""
-                if via:
-                    facts["via"] = via
-            if published and (repo, f["path"]) in held.files:
-                text, note = None, NOTE_WITHHELD
-            if not published and (repo, f["path"]) in held.files:
-                note = NOTE_WITHHELD
-            if public and text:
-                shown += len(text)
-                if shown > MAX_SITE_TEXT_PER_REPO:
-                    text, note = None, "too large a repository to show every file here: read it at the source"
-                elif lot_shown[lot] + len(text) > MAX_SITE_TEXT_PER_LOT:
-                    text, note = None, "too much text in this part of the site to show every file here: read it at the source"
-                else:
-                    lot_shown[lot] += len(text)
+            file_withheld = public and (repo, f["path"]) in held.files
+            is_note = f["kind"] == "note"
+            text = None if (repo_withheld or file_withheld or is_note) else f["text"]
+            note = NOTE_WITHHELD if (repo_withheld or file_withheld) else (f["note"] or "")
             if text and "�" in text:
                 # The replacement character is already in the ORIGINAL ("S�ren" in
                 # legendflex.m): the database keeps it as is, the export says so.
@@ -554,17 +540,55 @@ def script_lots(con: sqlite3.Connection, public: bool) -> dict[int, dict[str, An
                 if masked != text:
                     text = masked
                     note = (note + "; " if note else "") + "email addresses hidden (read the original at the source)"
+            facts: dict[str, Any] = {}
+            # A file OSCR has a copy of: its digest keys its text lot (deduplicated) and lets the
+            # reader fetch it. A withheld, binary, note or digest-less file has none.
+            if text is not None and re.fullmatch(r"[0-9a-f]{64}", f["digest"] or ""):
+                facts = {"sha256": f["digest"], "size": f["size"], "text_lot": f"{lot_of(f['digest']):02d}"}
+                via = file_via(source, f["path"], listed) if source and source.get("via") else ""
+                if via:
+                    facts["via"] = via
             files.append({
                 "path": f["path"], "language": f["language"], "kind": f["kind"], "lines": f["lines"],
                 "text": text, "truncated": bool(f["truncated"]), "note": note,
-                "source_url": file_url(d, f["path"]) if f["kind"] != "note" else "", **facts})
+                "source_url": file_url(d, f["path"]) if not is_note else "", **facts})
         entry = {"repo": repo, "commit": d["commit_id"] or "", "license": d["license"] or "",
-                 "published": published, "files": files}
+                 "published": published, "copyable": can_copy, "files": files}
         if source is not None:
             entry["redistributable"] = d["redistributable"]
             entry["source"] = source
-        lots[lot][repo] = entry
+        lots[lot_of(repo)][repo] = entry
     return lots
+
+
+def _digest_lots(scripts: dict[int, dict[str, Any]]) -> dict[int, dict[str, Any]]:
+    """The scripts' TEXT, keyed by SHA-256 and deduplicated: each unique file is stored once, in
+    `lot_of(sha256)`. `{ sha256: {text, language, lines, truncated} }`. A withheld, binary, note or
+    digest-less file has no `sha256` in `script_lots`, so it is never stored here."""
+    lots: dict[int, dict[str, Any]] = defaultdict(dict)
+    for lot in scripts.values():
+        for entry in lot.values():
+            for f in entry["files"]:
+                sha = f.get("sha256")
+                if not sha or f["text"] is None:
+                    continue
+                lots[lot_of(sha)].setdefault(sha, {
+                    "text": f["text"], "language": f["language"], "lines": f["lines"],
+                    "truncated": f["truncated"]})
+    return lots
+
+
+def _repo_facts(scripts: dict[int, dict[str, Any]]) -> dict[int, dict[str, Any]]:
+    """The per-repository FACTS the site is built from, keyed by repository (`lot_of(repo)`): every
+    field of `script_lots` but the text of each file (which lives in the digest lots) and the
+    internal `copyable` flag. Read at build time only, never served."""
+    out: dict[int, dict[str, Any]] = defaultdict(dict)
+    for lot, entries in scripts.items():
+        for repo, entry in entries.items():
+            facts = {k: v for k, v in entry.items() if k not in ("files", "copyable")}
+            facts["files"] = [{k: v for k, v in f.items() if k != "text"} for f in entry["files"]]
+            out[lot][repo] = facts
+    return out
 
 
 def alignment_lots(con: sqlite3.Connection) -> dict[int, dict[str, Any]]:
@@ -586,23 +610,26 @@ def alignment_lots(con: sqlite3.Connection) -> dict[int, dict[str, Any]]:
 
 
 def generate(con: sqlite3.Connection, folder: Path, *, public: bool = False, mirror: Path | None = None) -> Path:
-    """Write the catalogue, its lots, its tables and the public database — and, when
+    """Write the catalogue, its lots, its tables and the public database, and, when
     asked, the mirror of the republishable scripts. Returns the path of catalog.json."""
     folder.mkdir(parents=True, exist_ok=True)
     d = catalog_data(con)
     d["public"] = public
-    for name, lots in (("scripts", script_lots(con, public)), ("alignments", alignment_lots(con))):
+    scripts = script_lots(con, public)
+    alignments = alignment_lots(con)
+    # The digest lots (the scripts' text, keyed by sha256, deduplicated), the per-repository facts
+    # the site is built from, and the paper ↔ code matches: each in its own folder of lots.
+    for name, lots in (("scripts", _digest_lots(scripts)), ("scriptmeta", _repo_facts(scripts)),
+                       ("alignments", alignments)):
         (folder / name).mkdir(parents=True, exist_ok=True)
         for old in (folder / name).glob("*.json"):
             old.unlink()
         for n, content in lots.items():
             (folder / name / f"{n:02d}.json").write_text(json.dumps(content, ensure_ascii=False, separators=(",", ":")))
-        if name == "scripts":
-            _scripts_jsonl(lots, folder / "scripts.jsonl")
-            if mirror is not None:
-                _mirror(con, lots, mirror)
-        else:
-            _alignments_jsonl(con, lots, folder / "alignments.jsonl")
+    _scripts_jsonl(scripts, folder / "scripts.jsonl")
+    if mirror is not None:
+        _mirror(con, scripts, mirror)
+    _alignments_jsonl(con, alignments, folder / "alignments.jsonl")
     if public:
         # The website's navigation: entities/, lookup/, and each paper's page and its links;
         # then the sections of each paper's page, papers/NN.json (Phase 4).
@@ -644,10 +671,14 @@ def _repositories_csv(con: sqlite3.Connection, path: Path) -> None:
 
 
 def _scripts_jsonl(lots: dict[int, dict[str, Any]], path: Path) -> None:
-    """One script per line — the format a Hugging Face dataset displays and queries."""
+    """One script per line, the format the Hugging Face dataset displays and queries. A BULK
+    output: only the text that may LEAVE as a redistributable copy (a `copyable` repository), never
+    the display's unlicensed copies."""
     with path.open("w") as f:
         for content in lots.values():
             for repo in content.values():
+                if not repo.get("copyable"):
+                    continue
                 for fi in repo["files"]:
                     if fi["text"] is None:
                         continue
@@ -683,7 +714,8 @@ def _mirror(con: sqlite3.Connection, lots: dict[int, dict[str, Any]], root: Path
     for content in lots.values():
         for repo, entry in content.items():
             d = repos.get(repo)
-            if d is None or d["redistributable"] not in PUBLISHABLE:
+            # A BULK output (it feeds the Hugging Face dataset): only what may LEAVE as a copy.
+            if d is None or not entry.get("copyable"):
                 continue
             base = root / slug(repo)
             for fi in entry["files"]:

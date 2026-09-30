@@ -1,6 +1,6 @@
 """Finding a paper's code: gather the links, judge their role, one verdict per repository.
 
-The same repository often comes back several times in a paper — in the
+The same repository often comes back several times in a paper, in the
 Methods, in the availability section, in the references. Each mention is
 judged on its own (`role.judge`), then the verdicts for the same repository
 are merged: the most convincing mention is kept, and the others are counted.
@@ -37,7 +37,7 @@ class Candidate:
     confidence: str
     margin: float
     found_by: str                         # text:<location> | crossref | datacite | github …
-    excerpt: str = ""                     # the sentence — internal use, never published
+    excerpt: str = ""                     # the sentence, internal use, never published
     section: str = ""
     reasons: list[str] = field(default_factory=list)
     scores: dict[str, float] = field(default_factory=dict)
@@ -92,7 +92,7 @@ def merge(a: list[Candidate], b: list[Candidate]) -> list[Candidate]:
     """Merge two lists of candidates: the same repository keeps its best verdict.
 
     Except in one case: one path says "code", another "data" for the SAME
-    archive. Both are true — the archive holds both —, and code is what we are
+    archive. Both are true, the archive holds both, and code is what we are
     after. For eLife 10.7554/elife.92344, the text says "the source code, are
     deposited in Dryad" and DataCite types the Dryad deposit "Dataset": the
     highest score (DataCite, 3.3 against 2.8) overrode the text, and the library

@@ -139,7 +139,7 @@ class Invenio:
                     for e in d.get("errors", []) if isinstance(e, dict))
             except ValueError:
                 detail = r.text[:200]
-            raise InvenioError(f"{method} {path}: HTTP {r.status_code} — {detail}")
+            raise InvenioError(f"{method} {path}: HTTP {r.status_code}, {detail}")
         return r
 
     def _json(self, method: str, path: str, **kw: Any) -> dict[str, Any]:
@@ -322,7 +322,7 @@ def deposit_payload(card: dict[str, Any], validations: list[sqlite3.Row], *, pla
     today = time.strftime("%Y-%m-%d")
     repos = "".join(f"<li><a href=\"{html.escape(c['url'])}\">{html.escape(c['repo'])}</a>"
                     f"{' @ ' + html.escape(c['commit'][:12]) if c['commit'] else ''}"
-                    f"{' — ' + html.escape(c['license']) if c['license'] else ''}</li>" for c in card["code"])
+                    f"{', ' + html.escape(c['license']) if c['license'] else ''}</li>" for c in card["code"])
     n_pairs = len(card.get("alignments") or [])
     description = (
         f"<p>Code tracing map for the paper <em>{html.escape(paper['title'])}</em> "

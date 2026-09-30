@@ -131,7 +131,7 @@ const toc = [
         each paper is classified, first by rules over its title, keywords, MeSH terms, subjects, abstract and journal,
         each rule saying which term fired. A paper judged off-topic stays on the operator's computer: out of the site,
         the search, the open data and every figure (<a href="/taxonomy/#scope">the scope</a>). The same rules place a
-        paper in categories — modality, organism, population, subfield — that the <a href="/browse/">Browse</a> pages
+        paper in categories (modality, organism, population, subfield) that the <a href="/browse/">Browse</a> pages
         and the <a href="/taxonomy/">taxonomy</a> list. The operator's own labels win over the rules; the cases the rules
         find ambiguous are meant for a local model, run only between 01:00 and 07:00, once it has been compared with
         those labels.
@@ -141,8 +141,8 @@ const toc = [
       <h3>Finding code links in the paper's own text</h3>
       <p>
         Every link in the full text is collected with where it was seen: the availability statement, the methods, a
-        table, the references, the supplementary material, the notes. Each mention is judged on its own — the authors'
-        code, their data, or a third-party tool they used — with the reasons for the verdict, and the verdicts for the
+        table, the references, the supplementary material, the notes. Each mention is judged on its own, the authors'
+        code, their data, or a third-party tool they used, with the reasons for the verdict, and the verdicts for the
         same repository are merged. A sentence saying the code is "available on request" is recorded as such. The
         sentences that decided a verdict stay in the private database: the site shows where a link was found, never the
         paper's words.
@@ -164,7 +164,7 @@ const toc = [
       <h3>The licence check</h3>
       <p>
         The licence is read from the repository's own licence file, at its root (for an archive, a licence file in it or
-        else its record's licence). Licences name each other in passing — the GPL mentions the Affero GPL — so the
+        else its record's licence). Licences name each other in passing, the GPL mentions the Affero GPL, so the
         licence whose text comes first wins. A licence mentioned only in a README sentence is recorded, but it is not
         enough for the open dataset's copies. A repository without a licence is "all rights reserved": its files are
         never copied; the reader's browser fetches each one from its source, at the verified commit, and shows it only
@@ -179,7 +179,7 @@ const toc = [
         several repositories is stored once, under the SHA-256 of its text), compressed with zstd and stored as Parquet
         blocks in the public Hugging Face dataset <a href="https://huggingface.co/datasets/OpenScientificCodeRegistry/Database">OpenScientificCodeRegistry/Database</a>,
         with one manifest per repository (its commit, its licence, and where each file lies). A published block never
-        changes. The blocks are cut so that a browser can read a single script with HTTP range requests — about 78 KB
+        changes. The blocks are cut so that a browser can read a single script with HTTP range requests, about 78 KB
         for one script shown. The site's pages hide any email address written in the code. Which files are copied,
         which are shown from their source without a copy, and when the reader sends you to the source instead, is the{" "}
         <PageLink href="/policies/code/">code policy</PageLink>'s subject.
@@ -189,20 +189,20 @@ const toc = [
       <h3>The Code ↔ Paper reader and its tracing maps</h3>
       <p>
         For a paper whose code was read, the harvester pairs paragraphs of the paper with lines of the code (method{" "}
-        <code>lexical-v1</code>): both are reduced to technical terms — word stems, identifiers, constants, tool names,
-        figure numbers — and a pair is kept only when several rare terms agree, so that a shared common word counts for
+        <code>lexical-v1</code>): both are reduced to technical terms, word stems, identifiers, constants, tool names,
+        figure numbers, and a pair is kept only when several rare terms agree, so that a shared common word counts for
         nothing. A wrong highlight costs the reader more than a missing one. The <a href="/help/reader/">reader</a> puts
         the paper and the code side by side, each pair in one colour on both sides. The paper's text is fetched by your
         browser from Europe PMC (or PubMed Central's copy) when you open the reader; {SITE_NAME} never stores it. All of it
-        — where the code is, the commit, the licence, the files and their digests, how the links were found, the
-        matches — makes the paper's <a href="/help/maps/">tracing map</a>.
+       , where the code is, the commit, the licence, the files and their digests, how the links were found, the
+        matches, makes the paper's <a href="/help/maps/">tracing map</a>.
       </p>
     </li>
     <li>
       <h3>An author's validation</h3>
       <p>
         A map made by the machine is a proposal. An author of the paper, signed in with the ORCID iD the paper lists,
-        can validate it — or first correct its links. The page carries a digest of the map it shows; the validation
+        can validate it, or first correct its links. The page carries a digest of the map it shows; the validation
         carries it back, so the map kept is exactly the one the author saw. If it changed in between, the author is
         asked to look again.
       </p>
@@ -211,7 +211,7 @@ const toc = [
       <h3>A DOI, for validated maps only</h3>
       <p>
         A validated map is deposited on Zenodo, the free repository run by CERN, and receives a DOI. The DOI is on the
-        map — its links and metadata — never on the authors' code, which stays in their repository. The record is{" "}
+        map, its links and metadata, never on the authors' code, which stays in their repository. The record is{" "}
         <code>IsSupplementTo</code> the paper and <code>References</code> the code at the validated commit; its creators
         are the validating author, with their ORCID iD, and the platform. A map the machine proposed never receives a
         DOI (<a href="/policies/doi/">the DOI policy</a>).
@@ -233,7 +233,7 @@ const toc = [
       Sign-in asks ORCID, GitHub or Google for an identity, never for an address. No form accepts one: the texts you
       type lose any address before they are stored. Notifications stay in the site. The site shows no author's email
       address, even inside their code. This keeps readers and authors out of mailing lists, and keeps a whole class of
-      personal data — and of mistakes — out of the registry. (The operator does keep, privately, the contact details
+      personal data, and of mistakes, out of the registry. (The operator does keep, privately, the contact details
       that papers themselves publish for their authors: <a href="/privacy/#contacts">the privacy page</a> says what,
       where and why.)
     </dd>
@@ -255,7 +255,7 @@ const toc = [
     <dt>GitHub only as a last resort.</dt>
     <dd>
       The code is read here, beside the paper: a paper's page opens on the reader, and the listing's code links lead
-      to it. The forge is the source of truth and is always linked, but last — for what the reader cannot show, and to
+      to it. The forge is the source of truth and is always linked, but last, for what the reader cannot show, and to
       check the original. Nothing depends on one forge: GitLab, Codeberg, Zenodo, OSF and the others are read the
       same way. And the registry asks GitHub for no permission: sign-in with GitHub requests no scope, and the badge is
       added by the author in GitHub's own editor.
@@ -363,7 +363,7 @@ const toc = [
   </p>
 
   <h2 id="limits">Limits</h2>
-  <p>What {SITE_NAME} does not do, or not yet — said plainly, since a registry is only as useful as its honesty:</p>
+  <p>What {SITE_NAME} does not do, or not yet, said plainly, since a registry is only as useful as its honesty:</p>
   <ul>
     <li><strong>Coverage.</strong> Only open-access papers whose full text Europe PMC holds, matched by its neuroscience
       query; papers without a full text there are read from their metadata only. The harvest goes back in time month
@@ -381,7 +381,7 @@ const toc = [
     <li><strong>Moderation.</strong> There is no human moderator on duty: published rules decide removal requests,
       submissions and claims, on the operator's computer. What they cannot decide waits for the operator,{" "}
       {REVIEW_DAYS} days at most, and is then closed (<PageLink href="/policies/moderation/">how requests are
-      decided</PageLink>) — except a request about personal data, which the operator answers within one month, as the
+      decided</PageLink>), except a request about personal data, which the operator answers within one month, as the
       GDPR requires, and which is never closed unanswered (<a href="/data-rights/">your data and your rights</a>).</li>
     <li><strong>Not built yet:</strong> unlinking an identity from an account, signing out of every browser at once,
       discussions, reproduction reports, and notifications beyond the account page.</li>
@@ -416,7 +416,7 @@ const toc = [
   <h2 id="contact">Feedback and contact</h2>
   <p>{SITE_NAME} has no email address, on purpose. To reach the operator:</p>
   <ul>
-    <li>about a paper's record — a missing or wrong link, authorship, a map — use the paper's{" "}
+    <li>about a paper's record (a missing or wrong link, authorship, a map) use the paper's{" "}
       <a href="/help/correct/">Contribute section</a>, signed in;</li>
     <li>to ask for something to be removed, the <a href="/help/removal/">removal request</a>;</li>
     <li>to add a paper, <a href="/submit/">submit it</a>;</li>

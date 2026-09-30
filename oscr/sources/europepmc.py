@@ -132,7 +132,7 @@ def search(client: Client, q: str, *, cursor: str = "*", size: int = 100
         "resultType": "core", "sort": "FIRST_PDATE_D asc"})
     if not r.ok:
         error = Outage if is_transient(r.status) else RuntimeError
-        raise error(f"Europe PMC /search: HTTP {r.status} — {r.text[:200]}")
+        raise error(f"Europe PMC /search: HTTP {r.status}, {r.text[:200]}")
     d = r.json()
     arts = [_article(x) for x in d.get("resultList", {}).get("result", [])]
     return arts, d.get("nextCursorMark", ""), int(d.get("hitCount", 0))

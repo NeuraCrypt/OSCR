@@ -22,7 +22,7 @@ import { authorLetters, authors } from "../../lib/entities";
   ) : (
     <ul>
       {authorLetters.map((g) => (
-        <li id={`letter-${g.letter}`}><a href={`/authors/${g.slug}/`}>{g.letter}</a> — {plural(g.authors.length, "author")}</li>
+        <li id={`letter-${g.letter}`}><a href={`/authors/${g.slug}/`}>{g.letter}</a>, {plural(g.authors.length, "author")}</li>
       ))}
     </ul>
   )}

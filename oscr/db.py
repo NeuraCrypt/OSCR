@@ -9,7 +9,7 @@ opens it as is.
 - `article`: a scanned paper, identified by its DOI (or its PMCID);
 - `link`: every repository it cites, with its ROLE (authors' code, data, third-party
   tool) and the reasons for the verdict;
-- `repository`: what verification found at the end of the link — alive or dead,
+- `repository`: what verification found at the end of the link, alive or dead,
   commit, license, number of scripts;
 - `file`: the TEXT of each repository's scripts, at the verified commit;
 - `script`: the LIBRARY. One row per paper, origin and repository, with its LEVEL

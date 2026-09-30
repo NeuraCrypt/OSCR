@@ -24,6 +24,6 @@ const title = g.letter === "Other" ? "Authors: other names" : `Authors: ${g.lett
     {authorLetters.map((x, i) => <>{i > 0 && " "}{x.slug === g.slug ? <strong>{x.letter}</strong> : <a href={`/authors/${x.slug}/`}>{x.letter}</a>}</>)}
   </p>
   <ul>
-    {g.authors.map((a) => <li><a href={authorUrl(a.orcid)}>{inIndex(a)}</a> — {counted(a)}</li>)}
+    {g.authors.map((a) => <li><a href={authorUrl(a.orcid)}>{inIndex(a)}</a>, {counted(a)}</li>)}
   </ul>
 </Base>

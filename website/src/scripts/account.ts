@@ -213,7 +213,7 @@ function showSignedIn(me: Me) {
       if (c.status === "verified") li.append(statusWords(`verified${c.via && via[c.via] ? `, ${via[c.via]}` : ""}`, "ok"));
       else if (c.status === "pending") li.append(statusWords("waiting (30 days at most)", "warning"));
       else li.append(statusWords("rejected", "warning"));
-      if (c.message) li.append(document.createTextNode(` — ${c.message}`));
+      if (c.message) li.append(document.createTextNode(`, ${c.message}`));
       return li;
     }),
   );
@@ -345,7 +345,7 @@ function submissionItem(s: Submission): HTMLElement {
       box.append(para("", "Its links, as the registry verified them:"));
       const ul = document.createElement("ul");
       for (const l of links) {
-        const li = item({ href: l.url, text: l.key }, ` — ${l.role === "data" ? "data" : "code"}, ${SOURCES[l.source] ?? l.source}: `);
+        const li = item({ href: l.url, text: l.key }, `, ${l.role === "data" ? "data" : "code"}, ${SOURCES[l.source] ?? l.source}: `);
         li.append(statusWords(STATES[l.state] ?? l.state, l.state === "alive" ? "ok" : "warning"));
         li.append(document.createTextNode(`${l.license ? `; license ${l.license}` : "; no license"}${l.scripts != null ? `; ${l.scripts} script${l.scripts === 1 ? "" : "s"}` : ""}`));
         ul.append(li);
@@ -406,7 +406,7 @@ function reportItem(r: Asked): HTMLLIElement {
     ` (${REASON_WORDS[r.reason ?? ""] ?? r.reason}): `,
   );
   li.append(statusWords(w, tone));
-  if (r.message) li.append(document.createTextNode(` — ${r.message}`));
+  if (r.message) li.append(document.createTextNode(`, ${r.message}`));
   return li;
 }
 
@@ -415,7 +415,7 @@ function askedItem(what: string, a: Asked, words: Record<string, [string, "ok" |
   const li = item(what, { href: a.url, text: a.paper_id }, ...extra, ": ");
   li.append(statusWords(w, tone));
   // The registry's words, unless the line already says it all.
-  if (a.message && !quiet) li.append(document.createTextNode(` — ${a.message}`));
+  if (a.message && !quiet) li.append(document.createTextNode(`, ${a.message}`));
   return li;
 }
 

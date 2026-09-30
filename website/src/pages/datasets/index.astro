@@ -29,7 +29,7 @@ const repositories = [...groups.entries()].sort((x, y) => y[1].length - x[1].len
       <ul>
         {list.map((d) => (
           <li>
-            <a href={datasetUrl(d.id)}><Wrap text={datasetName(d)} /></a>{d.title && <> · <span class="code"><Wrap text={d.id} /></span></>} — cited by{" "}
+            <a href={datasetUrl(d.id)}><Wrap text={datasetName(d)} /></a>{d.title && <> · <span class="code"><Wrap text={d.id} /></span></>}, cited by{" "}
             {plural(d.counts.papers, "paper")}
           </li>
         ))}

@@ -2,7 +2,7 @@
 // read from the site's own files (its record, or the top of its static page: src/lib/removal.ts,
 // no Worker request); who is signed in and what they asked about this paper (GET
 // /api/contributions/paper, only when the browser holds a session: the `__Host-oscr_signed_in` hint
-// cookie); then the request in three steps — the form, checked here with the Worker's own rules; its
+// cookie); then the request in three steps, the form, checked here with the Worker's own rules; its
 // review, where nothing has been sent yet; "Confirm and send" (POST /api/reports, with the session's
 // CSRF token), and the receipt: what the registry's rules will do with it (src/lib/moderation.ts).
 // Revisited, the page shows the request's state and the decision's
@@ -206,7 +206,7 @@ function summary(dl: HTMLElement | null, r: Shown, lead: Row[] = []) {
   items.push(["You are", [capital(ROLE_WORDS[r.role] ?? r.role), r.role === "author" ? (r.author_verified ? " (verified: your ORCID iD is among its authors)" : " (not verified: your ORCID iD is not among its authors)") : ""]]);
   items.push(["To remove", [capital(SCOPE_WORDS[r.scope] ?? r.scope), r.scope === "repository" ? `: ${r.repo}` : r.scope === "file" ? `: ${r.path}, in ${r.repo}` : ""]]);
   items.push(["Why", [reasonLabel(r.reason)]]);
-  items.push(["Justification", [r.details || "—"], "text"]);
+  items.push(["Justification", [r.details || "n/a"], "text"]);
   items.push(["Evidence", [r.evidence_url ? { href: r.evidence_url, text: r.evidence_url } : "none"]]);
   items.push(["Confirmations", [r.confirmed ? "The information is accurate; you read how requests are decided." : "not given (a request made before this page)"]]);
   dl.replaceChildren(...items.flatMap(([label, parts, cls]) => [element("dt", "", label), element("dd", cls ?? "", ...parts)]));

@@ -5,7 +5,7 @@ it; but they write the DOI in the README so that the paper gets cited. Measured
 2026-09-25: for eLife 10.7554/eLife.100605, the GitHub search "DOI in the
 README" returns exactly the authors' two repositories; for MEG-SCANS, the
 author's repository and two data mirrors. For papers of the week, nothing
-yet — the README is not up to date. This path mostly serves OLDER papers.
+yet, the README is not up to date. This path mostly serves OLDER papers.
 
 **The trap.** A README that cites the DOI may be the authors', a
 reimplementation by others, or a reading list ("awesome-…"). "Authors' code" is

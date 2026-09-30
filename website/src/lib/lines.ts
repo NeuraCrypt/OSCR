@@ -19,7 +19,7 @@ export function splitLines(text: string): string[] {
 export const pairClass = (pair: number) => `pair-${((((pair - 1) % 6) + 6) % 6) + 1}`;
 
 /** A range that covers the whole file, or nearly (90 % of its lines at least): it ties the
- *  paragraph to the file, not to given lines — a weak match. */
+ *  paragraph to the file, not to given lines, a weak match. */
 export function wholeFile(start: number, end: number, lines: number | null | undefined): boolean {
   if (!lines || lines < 1) return false;
   const covered = Math.min(end, lines) - Math.max(start, 1) + 1;

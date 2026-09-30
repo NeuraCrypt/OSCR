@@ -49,7 +49,7 @@ export function automatic(kind: string, who: Asker): boolean {
   return false;
 }
 
-/** What will happen to a request, and when, in words — before it is sent and on its receipt. */
+/** What will happen to a request, and when, in words, before it is sent and on its receipt. */
 export function expectedWords(kind: string, who: Asker, createdAt: number): string {
   const soon = `within about ${POLL_MINUTES} minutes, when the registry's machine next reads the requests`;
   const due = `by ${day(dueAt(createdAt))} at the latest (one month, as the GDPR requires)`;
@@ -62,7 +62,7 @@ export function expectedWords(kind: string, who: Asker, createdAt: number): stri
       if (who.proof !== "orcid") {
         return `What the registry holds about your account, and the papers that list your ORCID iD, are shown here ${soon}. You signed in with ORCID's sandbox, whose iDs are tests: the registry shows no contact detail to them.`;
       }
-      return `The answer comes to this page ${soon}: what the registry holds about your account, the papers that list your ORCID iD, and each contact detail it keeps under that iD, field by field — your email address masked (the site never shows or stores one): the paper it was read in prints it in full.`;
+      return `The answer comes to this page ${soon}: what the registry holds about your account, the papers that list your ORCID iD, and each contact detail it keeps under that iD, field by field, your email address masked (the site never shows or stores one): the paper it was read in prints it in full.`;
     case "erasure":
     case "objection":
       if (!who.orcid) {

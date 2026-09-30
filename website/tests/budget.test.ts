@@ -213,7 +213,7 @@ describe("the markup", () => {
     assert.equal(v.crumb, "doi:10.5555/oscr.fixture.2");
     // The data links other than the datasets', and the Contribute section of the static pages, with
     // the ids their script (src/scripts/paper-actions.ts) reads.
-    assert.ok(v.html.includes(`<h3>Data links</h3><ul><li><a class="code" href="https://osf.io/abcde/">osf:abcde</a> — OSF</li></ul>`));
+    assert.ok(v.html.includes(`<h3>Data links</h3><ul><li><a class="code" href="https://osf.io/abcde/">osf:abcde</a>, OSF</li></ul>`));
     assert.ok(v.html.includes(`<section id="contribute" data-paper="doi:10.5555/oscr.fixture.2" data-doi="10.5555/oscr.fixture.2" data-digest="" data-back="/paper/doi_10.5555_oscr.fixture.2/">`));
     for (const id of ["contribute-status", "contribute-signed-out", "contribute-signed-in", "contribute-who", "claim-block", "claim-state",
       "claim-form", "claim-statement", "edit-block", "edit-form", "edit-links", "edit-add", "edit-add-role", "edit-note", "edit-state",
@@ -262,13 +262,13 @@ const PAPER: PaperRecord = {
 };
 
 const SHELL =
-  `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Paper — OSCR</title>` +
+  `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Paper: OSCR</title>` +
   `<meta name="description" content="A paper."><meta name="application-name" content="OSCR">` +
   `<meta property="og:title" content="Paper"><meta property="og:description" content="A paper."></head><body>` +
   `<nav class="breadcrumb" aria-label="Breadcrumb"><a href="/">OSCR</a> › <a href="/">Catalogue</a> › <span id="crumb">Paper</span></nav>` +
   `<main><div id="paper"><h1>Paper</h1><script type="module" src="/_astro/paper-shell.js"></script></div></main>` +
   `<footer>OSCR</footer></body></html>`;
-const NOT_FOUND = "<!doctype html><title>Page not found — OSCR</title><main><h1>Page not found</h1></main>";
+const NOT_FOUND = "<!doctype html><title>Page not found: OSCR</title><main><h1>Page not found</h1></main>";
 
 /** The Worker's static assets: a few files, and html_handling's redirect of "/x.html" to "/x". */
 function assets(files: Record<string, string>): Assets & { asked: string[] } {
@@ -300,7 +300,7 @@ describe("a page that no static file answers (worker/pages.ts)", () => {
     const res = await handlePage(get(`/paper/${PAPER.slug}/`), files);
     assert.equal(res.status, 200);
     const html = await res.text();
-    assert.ok(html.includes("<title>A synthetic study whose code has no license — OSCR</title>"));
+    assert.ok(html.includes("<title>A synthetic study whose code has no license: OSCR</title>"));
     assert.ok(html.includes(`<span id="crumb">doi:10.5555/oscr.fixture.2</span>`));
     assert.ok(html.includes(`<meta property="og:title" content="A synthetic study whose code has no license">`));
     assert.ok(html.includes(`<main><div class="record"><div class="body"><h1>`));
@@ -396,7 +396,7 @@ describe("a page that no static file answers (worker/pages.ts)", () => {
 
   it("fills a shell with escaped text, and refuses one that lacks what it replaces", () => {
     const out = fillShell(SHELL, { title: `A "quoted" <title> & $1 $&`, description: "d <x>", crumb: "c & c", html: "<p>body</p>" })!;
-    assert.ok(out.includes("<title>A &quot;quoted&quot; &lt;title&gt; &amp; $1 $&amp; — OSCR</title>"));
+    assert.ok(out.includes("<title>A &quot;quoted&quot; &lt;title&gt; &amp; $1 $&amp;: OSCR</title>"));
     assert.ok(out.includes(`<meta name="description" content="d &lt;x&gt;">`));
     assert.ok(out.includes(`<span id="crumb">c &amp; c</span>`));
     assert.ok(out.includes(`<main><p>body</p><script type="module" src="/_astro/paper-shell.js"></script></main>`));

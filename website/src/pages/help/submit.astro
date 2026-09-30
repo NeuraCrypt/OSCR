@@ -23,7 +23,7 @@ const toc = [
   toc={toc}
 >
   <p class="lead" slot="lead">
-    {SITE_NAME} finds most papers by itself. When it has missed one — or missed part of its code — anyone signed in can
+    {SITE_NAME} finds most papers by itself. When it has missed one, or missed part of its code, anyone signed in can
     submit it: a DOI and the links to the authors' code. The registry then treats it as it treats every paper.
   </p>
 
@@ -37,12 +37,12 @@ const toc = [
 
   <h2 id="steps">Step by step</h2>
   <ol class="steps">
-    <li><a href="/account/">Sign in</a> — with ORCID if you are an author: you are then recognized at once.</li>
+    <li><a href="/account/">Sign in</a>, with ORCID if you are an author: you are then recognized at once.</li>
     <li>On <a href="/submit/">the submission page</a>, give the paper's DOI and one to five links to its authors' code,
       one a line, and, if you wish, a note for the operator (without an email address: any address is removed).</li>
     <li>The site checks the DOI and the links at once and records your submission, or tells you in words what is wrong.</li>
-    <li>{SITE_NAME}'s harvester reads the paper as it reads every paper, verifies each link at its source — its commit,
-      its licence, its scripts — and matches the code with the paper's paragraphs.</li>
+    <li>{SITE_NAME}'s harvester reads the paper as it reads every paper, verifies each link at its source, its commit,
+      its licence, its scripts, and matches the code with the paper's paragraphs.</li>
     <li>A <strong>draft</strong> of the record comes back to your account page. Review it; correct the links if need be
       (the harvester reads them again); then publish.</li>
     <li>When your ORCID iD is among the paper's authors, the record is published at once. Otherwise the registry's rules
@@ -58,7 +58,7 @@ const toc = [
   <ul>
     <li><strong>The DOI is registered</strong>: asked of doi.org's own index.</li>
     <li><strong>Each link points to a place the registry knows</strong>: a forge (GitHub, GitLab, Codeberg, Bitbucket,
-      GIN…), an archive (Zenodo, OSF, figshare, Software Heritage, Code Ocean, Hugging Face…) or a data repository — the
+      GIN…), an archive (Zenodo, OSF, figshare, Software Heritage, Code Ocean, Hugging Face…) or a data repository, the
       same rule as the harvester's. Any other address is refused, and the site fetches nothing else.</li>
     <li><strong>Each link answers</strong>: a link that answers "not found" or "gone" refuses the submission; a slow or
       failing server is left to the harvester to judge.</li>
@@ -69,7 +69,7 @@ const toc = [
   <p>
     The draft is the record exactly as it would be published: the paper's metadata, each repository with its state,
     licence and commit, and the number of matches. You may correct its links up to ten times. Published, your links
-    become corrections of the record — a new version, which the Versions section records as a correction, without your
+    become corrections of the record, a new version, which the Versions section records as a correction, without your
     name. A draft's matches need the paper's full text from Europe PMC; without it, they come after publication. A
     draft not published within {REVIEW_DAYS} days is closed; correcting it from your account page (its links are kept)
     makes it a draft again.
@@ -81,7 +81,7 @@ const toc = [
     <li>a link points to a place the registry does not know;</li>
     <li>you already submitted this DOI (one submission per account and paper);</li>
     <li>the paper is not neuroscience: it stays out of {SITE_NAME}, whatever its code (<a href="/taxonomy/#scope">the scope</a>);</li>
-    <li>you are not among the paper's authors, nothing proves its links to be the paper's, and the operator refuses it —
+    <li>you are not among the paper's authors, nothing proves its links to be the paper's, and the operator refuses it,
       or no one reviews it within {REVIEW_DAYS} days, and it is closed with how to ask again; either way, you read why on
       your account page;</li>
     <li>the operator, reviewing what the rules published, finds it wrong: its links then leave the record.</li>

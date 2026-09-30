@@ -1,5 +1,5 @@
 """Data rights (2026-09-29): what a signed-in person asks about the data the registry holds on them,
-under the EU's General Data Protection Regulation — the page /data-rights/, the D1 table `rights`
+under the EU's General Data Protection Regulation, the page /data-rights/, the D1 table `rights`
 (migrations/d1-community/0004_data_rights.sql), answered here by `oscr jobs poll` (oscr/jobs.py). There
 is no human moderator on duty, so the Mac answers by itself what it can prove, in the safe direction,
 and hands the rest to the operator with its legal deadline: a request is never closed unanswered.
@@ -19,8 +19,8 @@ and the Mac checks it again against the account's identity). Nothing else ties a
 sure: a name, a GitHub login or a display name never does.
 
 **The email address.** The site's database holds no email address (every text column refuses an at
-sign). So the access answer shows each address masked — its first and last characters, and its domain
-— and says where it was read: the paper itself, which publishes it in full. That keeps the promise that
+sign). So the access answer shows each address masked, its first and last characters, and its domain
+, and says where it was read: the paper itself, which publishes it in full. That keeps the promise that
 no address is displayed or stored in the site, and the person can still recognize theirs.
 
     oscr rights list                              what waits for the operator, with the legal deadline
@@ -62,7 +62,7 @@ def day_words(t: float) -> str:
 
 
 def mask_email(email: str) -> str:
-    """An address as the access answer shows it: "j…e at fib.fr" — never the address, never an at sign."""
+    """An address as the access answer shows it: "j…e at fib.fr", never the address, never an at sign."""
     local, _, domain = (email or "").partition("@")
     if not local or not domain:
         return ""
@@ -422,7 +422,7 @@ def describe_waiting(items: list[dict[str, Any]], now: float | None = None) -> s
         due = float(d.get("due") or 0)
         left = math.ceil((due - now) / 86_400)
         flag = f"OVERDUE by {-left} day(s)" if due and due < now else f"{left} day(s) left"
-        lines = [f"data-rights request {d.get('rights')}: {d.get('kind')}, from {person} — answer by {day_words(due)} "
+        lines = [f"data-rights request {d.get('rights')}: {d.get('kind')}, from {person}, answer by {day_words(due)} "
                  f"(GDPR, one month): {flag}",
                  f"    why it waits: {d.get('why', '')}"]
         if d.get("details"):

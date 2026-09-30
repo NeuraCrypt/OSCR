@@ -6,7 +6,7 @@ And a Methods section routinely cites the MNE-Python or EEGLAB repository:
 counting these links as "native code" would fill the library with the same ten
 toolboxes, and the catalog would say that everybody publishes their code.
 
-**How it judges.** Three roles are scored together, each by READABLE clues — no
+**How it judges.** Three roles are scored together, each by READABLE clues, no
 model, no learned weight:
 
 - the host prior (GitHub → code, OpenNeuro → data, PyPI → tool);
@@ -19,7 +19,7 @@ model, no learned weight:
   resources table, a reference whose authors are the paper's own.
 
 Every clue that counted is kept in `reasons`: a verdict can be re-read, and a
-wrong verdict is fixed by naming the clue that misled it — not by blindly
+wrong verdict is fixed by naming the clue that misled it, not by blindly
 tweaking a threshold.
 """
 from __future__ import annotations
@@ -98,7 +98,7 @@ TOOL = re.compile(
     r"|toolbox|plug-?in|library|package|open-source|version|v\d+\.\d+|RRID"
     r"|downloaded (?:\S+ ){0,4}from)\b", re.I)
 #: A package NAMED in lower case: "from the ppm R package, available on GitHub
-#: (link)" (PMC12645806) — the sentence describes the use of a package.
+#: (link)" (PMC12645806), the sentence describes the use of a package.
 NAMED_PACKAGE = re.compile(
     r"\b(?:the|from the|using the|with the|in the)\s+[\w.\-]+\s+(?:R |Python |MATLAB |Julia )?"
     r"(?:package|toolbox|library|module|plugin|plug-in)\b", re.I)
@@ -107,8 +107,8 @@ NAMED_PACKAGE = re.compile(
 CITATION = re.compile(r"([A-Z][A-Za-z\u00C0-\u00FF'\-]+)(?: et al\.?| and [A-Z][A-Za-z\u00C0-\u00FF'\-]+"
                       r"| & [A-Z][A-Za-z\u00C0-\u00FF'\-]+)?,?\s+(?:19|20)\d{2}[a-z]?\b")
 #: A TOOL NAME right before the link: "NeuroPycon (link)", "mTRF-Toolbox9
-#: (link)". Only names shaped like software names are kept — an inner capital,
-#: a digit or a hyphen —, not "Code (link)".
+#: (link)". Only names shaped like software names are kept, an inner capital,
+#: a digit or a hyphen, not "Code (link)".
 TOOL_NAME_BEFORE = re.compile(
     r"(?<![\w-])([A-Za-z]*[A-Z][a-z0-9]*[A-Z0-9\-][\w\-+.]*)(?:\s+(?:software|toolbox|package"
     r"|library|toolkit|plugin|app))?\s*\d*\s*[:(\[]?\s*$")
@@ -243,8 +243,8 @@ def segment(sentence: str, anchor: str) -> str:
     A sentence with several links shares its nouns out: "The raw data are
     available at (osf), and the analysis code at (github)". A link's segment
     runs from the end of the previous link to the first break (comma,
-    semicolon, "and") after it. A segment without any noun — the tail of an
-    enumeration, "… on GitHub at: (A) & (B)" — inherits the start of the
+    semicolon, "and") after it. A segment without any noun, the tail of an
+    enumeration, "… on GitHub at: (A) & (B)", inherits the start of the
     sentence, which carries the shared noun.
     """
     i = sentence.find(anchor) if anchor else -1

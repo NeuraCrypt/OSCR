@@ -164,7 +164,7 @@ button.scripts { font: inherit; font-size: 13px; color: var(--accent); backgroun
   function counts() {
     api("/api/stats").then(function (e) {
       if (e.error) { $("counts").textContent = e.error; return; }
-      var updated = e.updated ? new Date(e.updated * 1000).toLocaleString("en-GB", {dateStyle: "short", timeStyle: "short"}) : "—";
+      var updated = e.updated ? new Date(e.updated * 1000).toLocaleString("en-GB", {dateStyle: "short", timeStyle: "short"}) : "n/a";
       var backfill = Object.keys(e.backfill || {}).map(function (d) {
         var m = e.backfill[d].split("-");
         return new Date(+m[0], +m[1] - 1, 1).toLocaleDateString("en-US", {month: "long", year: "numeric"});
@@ -188,17 +188,17 @@ button.scripts { font: inherit; font-size: 13px; color: var(--accent); backgroun
   }
   function row(a) {
     rows[a.id] = a;
-    var doi = a.doi ? '<a class="mono" href="https://doi.org/' + esc(a.doi) + '" target="_blank" rel="noopener">' + esc(a.doi) + "</a>" : '<span class="empty">—</span>';
+    var doi = a.doi ? '<a class="mono" href="https://doi.org/' + esc(a.doi) + '" target="_blank" rel="noopener">' + esc(a.doi) + "</a>" : '<span class="empty">n/a</span>';
     var repos = a.code.map(function (c) {
       return '<a class="mono" href="' + esc(c.url) + '" target="_blank" rel="noopener" title="' + esc(c.repo) + '">' + esc(c.repo) + "</a>";
     }).join("");
-    var licenses = a.code.map(function (c) { return "<span>" + esc(c.license || (c.state === "alive" ? "no license" : "—")) + "</span>"; }).join("");
+    var licenses = a.code.map(function (c) { return "<span>" + esc(c.license || (c.state === "alive" ? "no license" : "n/a")) + "</span>"; }).join("");
     var n = a.code.reduce(function (t, c) { return t + (c.n || 0); }, 0);
-    return "<tr><td class=\"date\">" + esc(a.published) + "</td><td>" + doi + '</td><td class="title">' + esc(a.title || "—") +
+    return "<tr><td class=\"date\">" + esc(a.published) + "</td><td>" + doi + '</td><td class="title">' + esc(a.title || "n/a") +
       '<div class="journal">' + esc(a.journal) + '</div></td><td><span class="status s-' + esc(a.status) + '">' + esc(STATUSES[a.status] || a.status) +
-      '</span></td><td class="repo"><div class="stack">' + (repos || '<span class="empty">—</span>') + '</div></td><td class="license"><div class="stack">' +
-      (licenses || '<span class="empty">—</span>') + "</div></td><td>" +
-      (n ? '<button type="button" class="scripts" data-id="' + esc(a.id) + '">' + nf(n) + " ›</button>" : '<span class="empty">—</span>') +
+      '</span></td><td class="repo"><div class="stack">' + (repos || '<span class="empty">n/a</span>') + '</div></td><td class="license"><div class="stack">' +
+      (licenses || '<span class="empty">n/a</span>') + "</div></td><td>" +
+      (n ? '<button type="button" class="scripts" data-id="' + esc(a.id) + '">' + nf(n) + " ›</button>" : '<span class="empty">n/a</span>') +
       (a.pairs ? '<span class="pairs">' + nf(a.pairs) + " matches</span>" : "") + "</td></tr>";
   }
   function load(append) {

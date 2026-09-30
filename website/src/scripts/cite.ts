@@ -1,4 +1,4 @@
-// The copy buttons of a paper's page — its Cite section, and the badge's snippets (Phase 6) — in
+// The copy buttons of a paper's page (its Cite section, and the badge's snippets (Phase 6)) in
 // the reader's browser. Progressive: without JavaScript, each text is plain text to select; with
 // it, a button after each one copies it, or selects it when the browser does not allow copying.
 // The result is said in the section's own status line ([data-copy-status]). Like every browser

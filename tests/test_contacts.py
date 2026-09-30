@@ -1,5 +1,6 @@
 """The authors' contact details: collected from what the paper publishes, kept private,
 sent only to a private dataset, never in a public output."""
+import json
 import sqlite3
 from types import SimpleNamespace
 
@@ -130,42 +131,28 @@ def _license_file(con, repo: str) -> None:
                 (repo,))
 
 
-def test_a_huge_repository_shows_only_part_of_its_text_on_the_site(tmp_path, monkeypatch):
-    monkeypatch.setattr(catalog, "MAX_SITE_TEXT_PER_REPO", 50)
-    con = _db_with_contacts(tmp_path)
-    con.execute("INSERT INTO repository (repo, url, host, kind, state, license, redistributable) VALUES "
-                "('github.com/big/toolbox', 'https://github.com/big/toolbox', 'github.com', 'forge', 'alive', "
-                "'MIT', 'yes')")
-    con.execute("INSERT INTO link (article_id, repo, url, host, kind, role, confidence, found_by) VALUES "
-                "('doi:10.1/c', 'github.com/big/toolbox', 'https://github.com/big/toolbox', 'github.com', 'forge', "
-                "'code', 'high', 'text:availability')")
-    for i in range(3):
-        con.execute("INSERT INTO file (repo, path, version, language, kind, size, lines, text) VALUES "
-                    "('github.com/big/toolbox', ?, 'c', 'Python', 'script', 30, 1, ?)", (f"f{i}.py", "x" * 30))
-    _license_file(con, "github.com/big/toolbox")
-    con.commit()
-    lots = catalog.script_lots(con, public=True)
-    files = lots[catalog.lot_of("github.com/big/toolbox")]["github.com/big/toolbox"]["files"]
-    assert [(f["path"], f["text"] is not None) for f in files] == [
-        ("f0.py", True), ("f1.py", False), ("f2.py", False), ("LICENSE", False)]
-    assert "read it at the source" in files[2]["note"]
-
-
-def test_a_lot_of_the_site_stays_under_its_text_budget(tmp_path, monkeypatch):
-    monkeypatch.setattr(catalog, "MAX_SITE_TEXT_PER_LOT", 70)
-    monkeypatch.setattr(catalog, "N_LOTS", 1)          # every repository in the same lot
+def test_the_digest_lots_deduplicate_and_stay_under_a_safe_size(tmp_path):
+    """Since 2026-09-29 the scripts' text is keyed by SHA-256 and DEDUPLICATED: the very same file
+    in two repositories is stored once. No lot may approach the 25 MiB Cloudflare asset limit — a
+    bug (grouping too much text) would show here, and the site is built against it too."""
     con = _db_with_contacts(tmp_path)
     for name in ("one", "two"):
         repo = f"github.com/lab/{name}"
-        con.execute("INSERT INTO repository (repo, url, host, kind, state, license, redistributable) VALUES "
-                    "(?, ?, 'github.com', 'forge', 'alive', 'MIT', 'yes')", (repo, "https://" + repo))
+        con.execute("INSERT INTO repository (repo, url, host, kind, state, license, redistributable, commit_id) "
+                    "VALUES (?, ?, 'github.com', 'forge', 'alive', 'MIT', 'yes', 'c')", (repo, "https://" + repo))
         con.execute("INSERT INTO link (article_id, repo, url, host, kind, role, confidence, found_by) VALUES "
                     "('doi:10.1/c', ?, ?, 'github.com', 'forge', 'code', 'high', 'text:availability')",
                     (repo, "https://" + repo))
-        con.execute("INSERT INTO file (repo, path, version, language, kind, size, lines, text) VALUES "
-                    "(?, 'a.py', 'c', 'Python', 'script', 40, 1, ?)", (repo, "x" * 40))
+        # The very same bytes in both repositories: one digest, stored once.
+        con.execute("INSERT INTO file (repo, path, version, language, kind, size, lines, digest, text) VALUES "
+                    "(?, 'a.py', 'c', 'Python', 'script', 40, 1, ?, ?)", (repo, "a" * 64, "x" * 40))
         _license_file(con, repo)
     con.commit()
-    files = [f for r in catalog.script_lots(con, public=True)[0].values() for f in r["files"]]
-    assert sum(len(f["text"] or "") for f in files) <= 70
-    assert any(f["text"] is None and "this part of the site" in f["note"] for f in files)
+    catalog.generate(con, tmp_path / "out", public=True)
+    lots: dict = {}
+    for p in (tmp_path / "out" / "scripts").glob("*.json"):
+        lots.update(json.loads(p.read_text()))
+        assert p.stat().st_size <= 20 * 1024 * 1024, p.name          # far under 25 MiB
+    # The shared file's digest appears once, with its text (and its metadata, not the repository's).
+    assert list(lots) == ["a" * 64]
+    assert lots["a" * 64] == {"text": "x" * 40, "language": "Python", "lines": 1, "truncated": False}

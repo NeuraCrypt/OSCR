@@ -21,7 +21,7 @@ const sorted = [...journals].sort((x, y) => x.title.localeCompare(y.title));
   <ul>
     {sorted.map((j) => (
       <li>
-        <a href={journalUrl(j.id)}>{j.title}</a> — {number(j.counts.with_code)} with code out of{" "}
+        <a href={journalUrl(j.id)}>{j.title}</a>, {number(j.counts.with_code)} with code out of{" "}
         {plural(j.counts.read, "paper")} read
       </li>
     ))}

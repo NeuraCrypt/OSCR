@@ -34,8 +34,8 @@ const toc = [
 
   <h2 id="where">Where to ask</h2>
   <p>
-    Every paper's page links to its removal request — "Request removal" in its sidebar, "Request its removal" in its
-    Contribute section — which opens <code>/removal/?paper=…</code> for that paper. You can also open{" "}
+    Every paper's page links to its removal request, "Request removal" in its sidebar, "Request its removal" in its
+    Contribute section, which opens <code>/removal/?paper=…</code> for that paper. You can also open{" "}
     <a href="/removal/">the removal page</a> and name the paper by its DOI. Signed out, the page offers to sign in (with
     ORCID, an author is recognized at once) and brings you back.
   </p>
@@ -64,10 +64,10 @@ const toc = [
 
   <h2 id="why">Why</h2>
   <p>
-    Copyright or licence; personal data; wrongly attributed, or not your work; a retracted paper; an incorrect record — in
+    Copyright or licence; personal data; wrongly attributed, or not your work; a retracted paper; an incorrect record, in
     which case the page first suggests <a href="/help/correct/">correcting it</a>, which is faster, but lets you ask all
-    the same; or another reason. For your own data — the contact details the registry keeps privately, or your account
-    — use <a href="/data-rights/">your data and your rights</a> instead: nothing of the record is removed, and access,
+    the same; or another reason. For your own data, the contact details the registry keeps privately, or your account
+   , use <a href="/data-rights/">your data and your rights</a> instead: nothing of the record is removed, and access,
     erasure and objection are answered at once when you sign in with your ORCID iD.
   </p>
 
@@ -77,7 +77,7 @@ const toc = [
       request is answered in the site, never by email.</li>
     <li>An optional <strong>evidence link</strong> (https only): a licence, a notice, a statement.</li>
     <li>Two <strong>confirmations</strong>: that the information is accurate; and that you understand how requests are
-      decided and what can follow — the rules may apply the request at once, hide copies at once pending review, or leave
+      decided and what can follow, the rules may apply the request at once, hide copies at once pending review, or leave
       it to the operator, who may accept it, in whole or in part, refuse it, or reverse what the rules did.</li>
   </ul>
 
@@ -86,7 +86,7 @@ const toc = [
     The page checks the request with the site's own rules, then shows a summary of everything; nothing is sent before
     "Confirm and send". The receipt gives the request's number, its status (open) and what the rules will do with it.
     Coming back to the page shows the request: while it is open you may complete it (it keeps its number); once decided,
-    it shows the decision and its words — the rules' or the operator's. Your account page lists your requests.
+    it shows the decision and its words, the rules' or the operator's. Your account page lists your requests.
   </p>
 
   <h2 id="decision">The decision, and when it takes effect</h2>
@@ -99,14 +99,14 @@ const toc = [
     <li>from a <strong>verified author</strong> of the paper (your ORCID iD among its authors, or your claim verified):
       applied at once, whatever it names;</li>
     <li>for the copies of a repository you maintain as its <strong>owner</strong> or a public member of its
-      organization, on GitHub (or as a maintainer the operator made): applied at once — a contributor's request follows
+      organization, on GitHub (or as a maintainer the operator made): applied at once, a contributor's request follows
       the rules for anyone;</li>
     <li>for copies of the authors' code, for <strong>copyright or personal data</strong>, from anyone: hidden at once,
-      pending the review of the operator, who may restore them — at most {HIDE_PER_ACCOUNT} such requests an account and{" "}
+      pending the review of the operator, who may restore them, at most {HIDE_PER_ACCOUNT} such requests an account and{" "}
       {HIDE_PER_DAY} in all a day; a justification sent with {CAMPAIGN} requests or more in {CAMPAIGN_DAYS} days, or a
       request the operator already refused, waits instead;</li>
-    <li>anything else — a whole record, a tracing map, another reason: nothing is removed; the request waits for the
-      operator, {REVIEW_DAYS} days at most, and is then closed without removal, with how to ask again — except a request
+    <li>anything else, a whole record, a tracing map, another reason: nothing is removed; the request waits for the
+      operator, {REVIEW_DAYS} days at most, and is then closed without removal, with how to ask again, except a request
       made for personal data, which the operator answers within one month, as the GDPR requires, and which is never
       closed unanswered.</li>
   </ul>
@@ -117,14 +117,14 @@ const toc = [
   </p>
   <p class="note">
     What cannot be undone elsewhere: a copy already published in a Parquet block on Hugging Face stays in that block (a
-    published block never changes) — the manifest that points to it is withdrawn, so no reader finds it; a map's DOI
-    already given stays on Zenodo — a DOI is permanent — though the site no longer shows it.
+    published block never changes), the manifest that points to it is withdrawn, so no reader finds it; a map's DOI
+    already given stays on Zenodo, a DOI is permanent, though the site no longer shows it.
   </p>
 
   <h2 id="limits">Limits</h2>
   <ul>
     <li>One request per account and record, which you may complete while it is open. Accepted, it is not asked again;
-      refused or closed, it can be asked again only in a way the rules decide at once — as a verified author, as a
+      refused or closed, it can be asked again only in a way the rules decide at once, as a verified author, as a
       maintainer of the code it names, or for the copies only, for copyright or personal data.</li>
     <li>A request names at most one repository or one file; for more, choose the paper's scripts or the whole record, or
       say it in the justification.</li>

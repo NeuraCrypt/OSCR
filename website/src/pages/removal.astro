@@ -125,7 +125,7 @@ const choice = (group: string, value: string) => `${group}-${value.replace(/_/g,
           ))}
         </ul>
         <p id="removal-personal" class="summary" hidden>
-          For your own data — your contact details the registry keeps privately, or your account — use{" "}
+          For your own data (your contact details the registry keeps privately, or your account) use{" "}
           <a href="/data-rights/">your data and your rights</a>: access, erasure and objection are answered at once there
           when you sign in with your ORCID iD, and nothing of the record is removed. This form removes what the record
           publishes.
@@ -139,13 +139,13 @@ const choice = (group: string, value: string) => `${group}-${value.replace(/_/g,
 
       <p>
         <label for="removal-details">Justification</label>{" "}
-        <span class="muted">— what is wrong, and where; {DETAILS_MIN} to {DETAILS_MAX.toLocaleString("en-GB")} characters; no email address</span><br />
+        <span class="muted">(what is wrong, and where; {DETAILS_MIN} to {DETAILS_MAX.toLocaleString("en-GB")} characters; no email address)</span><br />
         <textarea id="removal-details" name="details" rows="7" maxlength={DETAILS_MAX * 2} aria-describedby="removal-details-count"></textarea><br />
         <span id="removal-details-count" class="muted" aria-live="polite"></span>
       </p>
       <p>
         <label for="removal-evidence">A link to evidence</label>{" "}
-        <span class="muted">— optional; a web page that starts with https://</span><br />
+        <span class="muted">(optional; a web page that starts with https://)</span><br />
         <input id="removal-evidence" name="evidence_url" type="text" inputmode="url" maxlength={EVIDENCE_MAX} placeholder="https://"
           autocomplete="off" spellcheck="false" />
       </p>
@@ -199,7 +199,7 @@ const choice = (group: string, value: string) => `${group}-${value.replace(/_/g,
       GitHub), is applied without waiting; the copies of the
       authors' code are hidden at once for copyright or personal data, pending review; any other request waits for the
       operator, and nothing is removed meanwhile. There is no human moderator on duty at the moment: a request no one
-      decided in 30 days is closed without removal, and may be asked again in a way the rules decide — except a request
+      decided in 30 days is closed without removal, and may be asked again in a way the rules decide, except a request
       made for personal data, which the operator answers within one month, as the GDPR requires, and which is never
       closed unanswered.
     </li>

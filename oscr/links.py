@@ -9,12 +9,12 @@ link is reduced to a NORMALIZED form (`github.com/owner/repo`, `zenodo:123`),
 which is the key to everything else.
 
 **Why a host KIND.** A link does not say what it carries, but its host often
-does: GitHub carries code, OpenNeuro data, PyPI a published package — almost
+does: GitHub carries code, OpenNeuro data, PyPI a published package, almost
 always a third-party tool. Zenodo, OSF and figshare carry both: for them the
 kind stays `archive`, and their record (resource type) decides at verification.
 
-The kind is only a prior. The ROLE of the link in the paper — the authors'
-code, their data, or a tool they used — is decided in `role.py`, from the
+The kind is only a prior. The ROLE of the link in the paper, the authors'
+code, their data, or a tool they used, is decided in `role.py`, from the
 sentence that carries it.
 """
 from __future__ import annotations

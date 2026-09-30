@@ -41,7 +41,7 @@ from oscr import catalog, db, enrich, find, links  # noqa: E402
 from oscr.align import METHOD  # noqa: E402
 
 OUT = ROOT / "tests" / "fixtures" / "public-catalog"
-KEEP = ("catalog.json", "scripts", "alignments", "entities", "lookup", "papers")
+KEEP = ("catalog.json", "scripts", "scriptmeta", "alignments", "entities", "lookup", "papers")
 COMMIT = "0" * 40
 #: When every fixture paper was read (2026-09-25 12:00 UTC): the lookup says it, and it
 #: must not change from one build to the next.
@@ -176,10 +176,11 @@ def database(path: Path) -> sqlite3.Connection:
           {"state": "alive", "http_status": 200, "license": "MIT", "redistributable": "yes",
            "commit_id": COMMIT, "commit_date": "2026-09-20T12:00:00+00:00", "n_files": 3, "n_scripts": 2,
            "languages": {"Python": 2}, "files": ["LICENSE", "analysis.py", "plot.py"]},
-          [{"path": p, "language": lang, "kind": kind, "size": len(t), "lines": t.count("\n") + 1, "digest": "",
-            "text": t} for p, lang, kind, t in (("LICENSE", "License", "doc", MIT),
-                                                ("analysis.py", "Python", "script", ANALYSIS),
-                                                ("plot.py", "Python", "script", PLOT))],
+          [{"path": p, "language": lang, "kind": kind, "size": len(t.encode()), "lines": t.count("\n") + 1,
+            "digest": hashlib.sha256(t.encode()).hexdigest(), "text": t}
+           for p, lang, kind, t in (("LICENSE", "License", "doc", MIT),
+                                    ("analysis.py", "Python", "script", ANALYSIS),
+                                    ("plot.py", "Python", "script", PLOT))],
           data=("10.5555/oscr.fixture.data.1",))
     db.mark_scanned(con, a, has_fulltext=True, has_statement=True, code_on_request=False,
                     data_on_request=False, families=["Spectral & time-frequency"], methods=["Welch PSD"])
@@ -190,13 +191,14 @@ def database(path: Path) -> sqlite3.Connection:
                       "analysis.py", 6, 10, "band_power", 0.8, '["band power", "Welch", "8–12 Hz"]', METHOD, 0.0),
                      (a, 2, 5, "Results", "github.com/oscr-fixture/eeg-analysis", "plot.py", 4, 6, "show", 0.6,
                       '["plot"]', METHOD, 0.0)])
-    # 2. A paper whose code has no license: listed, linked, never copied.
+    # 2. A paper whose code has NO license: since 2026-09-29 it is still SHOWN from OSCR's own copy
+    #    (the licence no longer gates display), but it never leaves as a redistributable COPY, not
+    #    the public database, not the Hugging Face dataset. Its file has a real digest, so it is
+    #    shown from a digest lot; a source is exported too, as a fallback.
     b = _paper(con, 2, "A synthetic study whose code has no license")
     _code(con, b, "https://github.com/oscr-fixture/unlicensed",
           {"state": "alive", "http_status": 200, "license": "", "redistributable": "no", "commit_id": COMMIT,
            "n_files": 1, "n_scripts": 1, "languages": {"MATLAB": 1}, "files": ["run.m"]},
-          # Its digest (of the file's bytes) is published: a reader's browser fetches the file from GitHub
-          # itself, at the commit, and shows it only when the digests agree ("shown from the source").
           [{"path": "run.m", "language": "MATLAB", "kind": "script", "size": 12, "lines": 1,
             "digest": hashlib.sha256(b"disp('run')\n").hexdigest(), "text": "disp('run')\n"}])
     db.mark_scanned(con, b, has_fulltext=True, has_statement=True, code_on_request=False,
@@ -312,7 +314,7 @@ def _phase4(con, a: str, b: str, c: str, d: str, x: str) -> None:
     _record(con, d, statements=(("data", "Data availability statement",
                                  "The invented recordings are deposited at https://doi.org/10.5555/oscr.fixture.data.1."),),
             type="data-paper", language="en", references_count=1)
-    # 9: off-topic — none of it may leave.
+    # 9: off-topic, none of it may leave.
     _record(con, x, abstract=OFF_TOPIC["abstract"], statements=(("data", "Data availability", OFF_TOPIC["statement"]),))
     con.execute("INSERT INTO integrity_notice (article_id, kind, notice_id, source, date, reasons) VALUES "
                 "(?, 'retraction', ?, 'retraction-watch', '2026-09-25', '')", (x, OFF_TOPIC["notice"]))

@@ -1,6 +1,6 @@
 ---
 // The Similar section of a paper's page: up to ten papers with a page that share the most
-// with it — the tools found in the code, categories, datasets, cited references, authors —,
+// with it, the tools found in the code, categories, datasets, cited references, authors,
 // ranked by the export (oscr/paperpage.py), each with its reasons in words. The listing is
 // the catalogue's (science.css: dl.listing).
 import { recordUrl, withPage, type Article } from "../../lib/catalog";
@@ -35,7 +35,7 @@ const similar = (p?.similar ?? [])
             </dt>
             <dd>
               <div class="title"><Wrap text={s.a.title} /></div>
-              <div class="line"><span class="label">Journal:</span> {s.a.journal || "—"}</div>
+              <div class="line"><span class="label">Journal:</span> {s.a.journal || "n/a"}</div>
               <div class="line"><span class="label">In common:</span> {s.reasons.replace(/^shares /, "")}</div>
             </dd>
           </>

@@ -71,21 +71,36 @@ def con(tmp_path):
     c.close()
 
 
-def _lots(folder):
-    lots = {}
+def _meta(folder):
+    """The per-repository FACTS (scriptmeta/NN.json, keyed by repository), the site is built from."""
+    meta = {}
+    for f in (folder / "scriptmeta").glob("*.json"):
+        meta.update(json.loads(f.read_text()))
+    return meta
+
+
+def _texts(folder):
+    """The scripts' text (scripts/NN.json, keyed by sha256, deduplicated)."""
+    texts = {}
     for f in (folder / "scripts").glob("*.json"):
-        lots.update(json.loads(f.read_text()))
-    return lots
+        for sha, e in json.loads(f.read_text()).items():
+            texts[sha] = e["text"]
+    return texts
 
 
-def test_in_public_mode_an_unlicensed_repository_publishes_no_text(con, tmp_path):
+def test_in_public_mode_every_repository_is_shown_but_only_licensed_ones_leave_in_bulk(con, tmp_path):
     catalog.generate(con, tmp_path / "out", public=True, mirror=tmp_path / "mirror")
-    lots = _lots(tmp_path / "out")
-    open_files = {f["path"]: f for f in lots["github.com/open/repo"]["files"]}
-    assert open_files["analysis.py"]["text"].startswith("print(")
-    closed = {f["path"]: f for f in lots["github.com/closed/repo"]["files"]}
-    assert all(f["text"] is None for f in closed.values()) and "license" in closed["analysis.py"]["note"]
+    meta, texts = _meta(tmp_path / "out"), _texts(tmp_path / "out")
+    # Both repositories are shown from OSCR's own copy: the text lives in a digest lot, by sha256.
+    open_files = {f["path"]: f for f in meta["github.com/open/repo"]["files"]}
+    assert texts[open_files["analysis.py"]["sha256"]].startswith("print(")
+    closed = {f["path"]: f for f in meta["github.com/closed/repo"]["files"]}
+    assert texts[closed["analysis.py"]["sha256"]].startswith("print(")               # the unlicensed one too
     assert closed["analysis.py"]["source_url"] == "https://github.com/closed/repo/blob/abc123/analysis.py"
+    # The very same file in both repositories is stored ONCE (deduplicated by sha256).
+    assert open_files["analysis.py"]["sha256"] == closed["analysis.py"]["sha256"]
+    # But only the licensed repository leaves as a redistributable COPY (scripts.jsonl, the mirror,
+    # the public database) — the licence still gates the bulk outputs.
     lines = (tmp_path / "out" / "scripts.jsonl").read_text().splitlines()
     assert {json.loads(l)["repo"] for l in lines} == {"github.com/open/repo"}
     pub = sqlite3.connect(tmp_path / "out" / "oscr_public.db")
@@ -115,4 +130,6 @@ def test_the_hugging_face_dataset_declares_its_tables_and_sends_nothing_in_a_dry
 
 def test_outside_public_mode_all_the_text_stays_readable(con, tmp_path):
     catalog.generate(con, tmp_path / "out", public=False)
-    assert all(f["text"] is not None for f in _lots(tmp_path / "out")["github.com/closed/repo"]["files"])
+    meta, texts = _meta(tmp_path / "out"), _texts(tmp_path / "out")
+    files = [f for f in meta["github.com/closed/repo"]["files"] if f["kind"] != "note"]
+    assert files and all(texts.get(f.get("sha256")) is not None for f in files)

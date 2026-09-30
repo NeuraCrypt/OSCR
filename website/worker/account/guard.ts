@@ -1,6 +1,6 @@
 // Who is asking, for every route that reads or changes an account (the accounts' own, and the
 // contributions' of Phase 6, worker/contributions/): the session behind the request, and for a
-// POST the proofs that it comes from the registry's own pages — the site's Origin (and
+// POST the proofs that it comes from the registry's own pages, the site's Origin (and
 // Sec-Fetch-Site when the browser sends it) and the session's CSRF token.
 
 import { clearCookie, problem, readCookie } from "./http.ts";

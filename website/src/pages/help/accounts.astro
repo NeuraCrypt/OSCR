@@ -33,8 +33,8 @@ const toc = [
 
   <h2 id="why">Why sign in</h2>
   <p>
-    A contribution changes a public record, so the registry needs to know who asks and in which role — an author of the
-    paper, a maintainer of its code, anyone else — and to answer them. It does that with the identity providers
+    A contribution changes a public record, so the registry needs to know who asks and in which role, an author of the
+    paper, a maintainer of its code, anyone else, and to answer them. It does that with the identity providers
     researchers already use, not with a password of its own.
   </p>
 
@@ -42,10 +42,10 @@ const toc = [
   <dl class="terms">
     <dt>ORCID</dt>
     <dd>The best choice for an author: when a paper's metadata lists your ORCID iD, you are recognized as its author at
-      once. {SITE_NAME} asks ORCID for the <code>openid</code> scope only — your iD and your public name.</dd>
+      once. {SITE_NAME} asks ORCID for the <code>openid</code> scope only, your iD and your public name.</dd>
     <dt>GitHub</dt>
     <dd>The way to be recognized as a maintainer of a repository on GitHub. {SITE_NAME} asks GitHub for no scope at all:
-      public information only, of which it reads your account's number, login and name — never an address, even a
+      public information only, of which it reads your account's number, login and name, never an address, even a
       public one.</dd>
     <dt>Google</dt>
     <dd>For anyone else. {SITE_NAME} asks Google for the <code>openid</code> scope only: an opaque identifier, not even a
@@ -54,7 +54,7 @@ const toc = [
   <p>
     Each sign-in goes to the provider's own page and comes back to the page you were on. It is protected against forged
     or replayed returns (a short signed cookie holds the flow's secrets for ten minutes). While the platform is being
-    built, sign-in with ORCID may use ORCID's sandbox — a test service — and then says so; anything validated through it
+    built, sign-in with ORCID may use ORCID's sandbox, a test service, and then says so; anything validated through it
     is recorded as a test.
   </p>
 
@@ -64,7 +64,7 @@ const toc = [
       none), your public handles (ORCID iD, GitHub login), each provider's identifier for you, your roles, your requests
       and their answers, and for each session a short description of the browser ("Firefox on macOS").</li>
     <li><strong>Never</strong>: an email address; a password; the provider's access token, used during the sign-in only
-      and then dropped; your session's identifier itself — the database keeps only its SHA-256.</li>
+      and then dropped; your session's identifier itself, the database keeps only its SHA-256.</li>
   </ul>
   <p>The <a href="/privacy/#accounts">privacy page</a> lists every column of every table.</p>
 
@@ -81,12 +81,12 @@ const toc = [
     <dd>Everyone signed in: may submit a paper, claim authorship, and ask for a removal.</dd>
     <dt>Verified author</dt>
     <dd>Of a given paper: automatically, when your account's ORCID iD is among the paper's authors in its published
-      metadata — checked at each sign-in, and again with "Check my papers again" on your account page. Otherwise, by a{" "}
+      metadata, checked at each sign-in, and again with "Check my papers again" on your account page. Otherwise, by a{" "}
       <a href="/help/claim/">claim</a>, verified by the registry's rules when Crossref's automatic update has put the
       paper in your ORCID record, or accepted by the operator. A verified author may correct the paper's links, validate
       its map, and have their removal requests applied at once.</dd>
     <dt>Maintainer</dt>
-    <dd>Of a given repository: on GitHub, checked at once with your GitHub identity — you own it, are a public member of
+    <dd>Of a given repository: on GitHub, checked at once with your GitHub identity, you own it, are a public member of
       the organization that owns it, are among its contributors, or authored a commit in it. Otherwise, and elsewhere
       (GitLab, Codeberg…), your claim waits for the operator, {REVIEW_DAYS} days at most, then is closed with how to be
       checked again. Only a maintainer who owns the repository or is a public member of its organization (or one the
@@ -98,15 +98,15 @@ const toc = [
   <h2 id="page">Your account page</h2>
   <p>
     <a href="/account/">Your account page</a> shows who you are signed in as, your linked identities, your roles, the
-    papers that list your ORCID iD, the form to claim a repository, and every request you made — submissions,
-    corrections, validations, claims, removal requests — with its status and the answer.
+    papers that list your ORCID iD, the form to claim a repository, and every request you made, submissions,
+    corrections, validations, claims, removal requests, with its status and the answer.
   </p>
 
   <h2 id="notifications">Notifications</h2>
   <p>
     Notifications stay in the site, by decision: {SITE_NAME} sends no email. Today, the answers to your requests appear
     on your account page and on the pages concerned (a removal request's page shows its decision and its words).
-    Notifications of their own — new activity on your papers — will come later, still in the site only.
+    Notifications of their own, new activity on your papers, will come later, still in the site only.
   </p>
 
   <h2 id="sessions">Sessions and signing out</h2>

@@ -1,5 +1,5 @@
 // The information pages (2026-09-29, the launch): About, Help, Policies, Privacy, Brand, Labs,
-// Taxonomy — on the model of arXiv's info site, in the site's own words. Their menus, the footer's
+// Taxonomy, on the model of arXiv's info site, in the site's own words. Their menus, the footer's
 // links, and the sitemap's fixed pages come from here. A fixed number of files: one per page below.
 //
 // Two policies are written with the Code ↔ Paper reader, on another branch: /policies/code/ (why a

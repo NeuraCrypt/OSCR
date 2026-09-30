@@ -169,8 +169,8 @@ The Worker runs only for `/api/*` (`run_worker_first`); every other request is a
 | 503 | `quota` | D1's daily limit is reached (`Retry-After`: seconds until 00:00 UTC) | the daily quota is spent, try tomorrow; Browse and the DOI lookup always work |
 | 503 | `unavailable` | D1 fails or is overloaded | unavailable, try later; idem |
 | 503 | `not_configured` | the databases are not bound yet | not available yet; idem |
-| 429 (Cloudflare, HTML) | — | the Workers' 100,000 requests of the day are spent | the daily quota is spent… |
-| 404, 405 | `not_found`, `method_not_allowed` | another route, another method | — |
+| 429 (Cloudflare, HTML) | n/a | the Workers' 100,000 requests of the day are spent | the daily quota is spent… |
+| 404, 405 | `not_found`, `method_not_allowed` | another route, another method | n/a |
 
 **Caching.** A successful answer carries `Cache-Control: public, max-age=600`: the browser
 serves a repeated search (Back, Forward, the same link) without any request. The Worker also
@@ -237,7 +237,7 @@ all the searches of `docs/SEARCH.md` §3 were run, the table shows a selection):
 | the empty query (any sort) | 607 | 154 | 154 |
 | `q=doi:10.7554/elife.108408` | 1 | 2 | 190 (the simulation's 150 copies) |
 | a query that matches nothing, or is empty after cleaning | 0 | 0 | 0 |
-| export, CSV or JSON (500 results) | — | 1,104–1,500 | 1,500 |
+| export, CSV or JSON (500 results) | n/a | 1,104–1,500 | 1,500 |
 
 - A search reads the index's rows it returns (one per result, 501 at most) and ~2 rows per
   result row shown (the rows by key): at most ~540 rows at 20 results a page, ~600 at 50. An

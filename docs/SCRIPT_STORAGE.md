@@ -3,6 +3,16 @@
 Decided by the owner on 2026-09-26; measured the same day on the private database
 (17,095 files with text, 459 repositories, 327 papers with the authors' code).
 
+> **DISPLAY vs. BULK COPY (owner's decision 2026-09-29).** Two things must not be confused.
+> The **site's reader shows every paper's code**, whatever its licence, even a repository with
+> none, from OSCR's own copy (`oscr/catalog.py` `script_lots`). The site serves the text in lots
+> keyed by the file's **SHA-256 and deduplicated** (`public/scripts/NN.json`, `catalog.N_LOTS` = 256),
+> with the per-repository facts the site is built from in `scriptmeta/NN.json` (never served).
+> The **licence still gates the COPIES that LEAVE**: the Hugging Face scripts dataset described
+> below, `scripts.jsonl`, the `mirror`, and the public database (`oscr_public.db`). Email masking
+> and withheld exclusion apply to both. "Shown from the source" (further down) is now only a
+> graceful fallback for when a digest lot lacks a file.
+
 ## The decision
 
 Decided by the owner on 2026-09-26; the index was settled on 2026-09-27.
@@ -38,25 +48,28 @@ there, at the verified commit:
 - "other-open" without a license file;
 - no license.
 
-Since 2026-09-29 the site's lots of scripts and the public database apply the same audited filter
-(`catalog.copyable`, which calls `scriptstore.verified_license`). Until then they took the recorded
-license alone: on the production database of 2026-09-29, 67 repositories and 7,761 files were
-copied to the site without a verified license (34 MIT and 16 CC BY on forges without a recognized
-license file, 5 CC BY archives, 5 "other-open" archives, a few more). They are now held back like
-the others, and shown from their source.
+This filter (`catalog.copyable`, which calls `scriptstore.verified_license`) gates the BULK outputs
+that leave as a redistributable copy: the Hugging Face scripts dataset above, `scripts.jsonl`, the
+`mirror`, and the public database (`oscr_public.db`). It **no longer gates the site's DISPLAY**
+(reversed on 2026-09-29, later the same day: see the note at the top): the site's lots show every
+file, licensed or not. On the production database of 2026-09-29, 67 repositories and 7,761 files had a
+recorded but unverified licence (34 MIT and 16 CC BY on forges without a recognised licence file, 5 CC
+BY archives, 5 "other-open" archives, a few more); like every other repository they are now shown from
+OSCR's own copy on the site, and like every unverified licence they still do not leave in bulk.
 
-## Shown from the source (decided 2026-09-29)
+## Shown from the source, now a fallback (decided 2026-09-29)
 
-The owner wants the scripts without a redistributable license displayed too, **without any copy**.
-A reader's browser fetches such a file itself, from where its authors published it, at the version
-the registry verified, checks it, and shows it in the registry's own reader, with its colors, line
-numbers, tree and matches with the paper. The registry keeps and publishes no copy: no text in the
-site's lots, in the public database, or in the Hugging Face dataset. The public page
-`/policies/code/` explains it to readers and authors.
+Originally, scripts without a verified redistributable licence were displayed **without any copy**: a
+reader's browser fetched such a file itself, checked it, and showed it. Later the same day the owner
+decided the site should show **every** paper's code from OSCR's own copy (the digest lots above), so
+this path became a **graceful fallback**: it runs only when a digest lot unexpectedly lacks a file. It
+is described here because the machinery (the facts, the origins, the browser checks) is unchanged and
+still guards what leaves the page. The public page `/policies/code/` explains the reader to readers and
+authors.
 
 **Only facts leave the Mac** (`catalog.script_lots`): for each readable file of a held-back
 repository, its path, language, kind, lines, `size` and `sha256` (the file's `digest` column: the
-SHA-256 of its **bytes**, computed when it was read — for a notebook too, whose text the Mac keeps by
+SHA-256 of its **bytes**, computed when it was read, for a notebook too, whose text the Mac keeps by
 cells), and for the repository `source` = `{via, url, at}` from `catalog.source_of`: where a browser
 fetches a file (a template with `{path}`, `{file}` or `{sha256}`), and the pinned version (a commit,
 a Zenodo record). The tracing maps' line numbers were public already.
@@ -70,7 +83,7 @@ a Zenodo record). The tracing maps' line numbers were public already.
 | huggingface.co | `huggingface.co/<repo, its case kept>/raw/<commit>/<path>` | commit |
 | zenodo.org | `zenodo.org/api/records/<id>/files/<file>/content`, a file of the record itself | the record (a published record's files never change) |
 | any other forge (a GitLab of its own, Framagit, GIN…), a file inside a Zenodo archive | Software Heritage, `archive.softwareheritage.org/api/1/content/sha256:<digest>/raw/` | the digest itself |
-| OSF, PMC's supplementary files | nothing: their answers carry no `Access-Control-Allow-Origin` | — |
+| OSF, PMC's supplementary files | nothing: their answers carry no `Access-Control-Allow-Origin` | n/a |
 
 Checked read-only on 2026-09-29 with `curl -sI -H "Origin: https://oscr.yannbellec-b.workers.dev"`:
 every host above answers a simple GET with `Access-Control-Allow-Origin` (`*`, or the site's origin
@@ -117,10 +130,11 @@ bytes per file) and in each static page's reader data; no file per repository is
 (`npm run check -- --every-route` and `npm run check:growth`: 113 → 2,674 files, the two policy pages
 included; only the shards differ between the two builds).
 
-**The licence audit.** The copy filter is unchanged: showing from the source copies nothing, so no new
-audit is needed (`tests/test_scriptstore.py`, the audit's own tests, and
-`tests/test_catalog_source.py::test_the_copy_filter_is_the_audited_one` pass). What changed on
-2026-09-29 is that the site's lots and the public database now apply that same audited filter.
+**The licence audit.** The copy filter is unchanged, and it still gates every BULK output that leaves
+as a redistributable copy (`tests/test_scriptstore.py`, the audit's own tests, and
+`tests/test_catalog_source.py::test_the_copy_filter_is_the_audited_one` pass). What changed later on
+2026-09-29 is that it **no longer gates the site's DISPLAY**: the reader shows every file from OSCR's
+own copy, keyed by SHA-256 and deduplicated, and the audit protects only what leaves in bulk.
 
 ### What becomes viewable (production database, 2026-09-29, read-only)
 
@@ -145,8 +159,8 @@ The copies (a verified license) are 2,120 repositories and 129,038 files.
 | huggingface.co | 9 (+1) | 28 (+1) | Hugging Face, at the commit (1 through Software Heritage) |
 
 In all: **77,436 files** fetched from their own host at the pinned version, **3,439** through
-Software Heritage — found there for 9 of 20 repositories sampled at random (2026-09-29), so roughly
-half of those will show and the others will say "no longer serves it" —, and **4,773** not fetched
+Software Heritage, found there for 9 of 20 repositories sampled at random (2026-09-29), so roughly
+half of those will show and the others will say "no longer serves it", and **4,773** not fetched
 (4,126 on OSF, 184 of PMC, 463 over 1 MB), which the reader links to at their source.
 
 ## The license audit (2026-09-27)

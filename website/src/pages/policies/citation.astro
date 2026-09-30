@@ -1,5 +1,5 @@
 ---
-// Policy: citation — the registry, a paper's record, a tracing map, the datasets, the software and
+// Policy: citation, the registry, a paper's record, a tracing map, the datasets, the software and
 // the authors' code (CITATION.cff; the Cite section of a paper's page; oscr/zenodo.py).
 import Info from "../../components/Info.astro";
 import { SITE_NAME, SITE_TAGLINE, SOURCE_URL } from "../../config";
@@ -19,35 +19,35 @@ const toc = [
 ---
 <Info
   title="Citation"
-  description={`How to cite ${SITE_NAME}, a paper's record, a tracing map, the datasets and the software — and the authors' code first.`}
+  description={`How to cite ${SITE_NAME}, a paper's record, a tracing map, the datasets and the software, and the authors' code first.`}
   group="policies"
   path="/policies/citation/"
   parents={[{ text: "Policies", href: "/policies/" }]}
   toc={toc}
 >
   <p class="lead" slot="lead">
-    {SITE_NAME} exists to make research code citable. Cite the work first — the paper and its authors' code — and the
+    {SITE_NAME} exists to make research code citable. Cite the work first, the paper and its authors' code, and the
     registry when you used it to find, read or check them.
   </p>
 
   <h2 id="principle">Cite the source first</h2>
   <p>
-    A paper is cited by its DOI, as its journal says. A paper's page on {SITE_NAME} gives ready formats — an APA-like text,
-    BibTeX, RIS and CSL-JSON — in its Cite section, each with a Copy button.
+    A paper is cited by its DOI, as its journal says. A paper's page on {SITE_NAME} gives ready formats, an APA-like text,
+    BibTeX, RIS and CSL-JSON, in its Cite section, each with a Copy button.
   </p>
 
   <h2 id="code">The authors' code</h2>
   <p>
     Cite the code as its authors ask: their repository's CITATION.cff when there is one (the Repositories section says
-    so), or its archive's DOI (a Zenodo release, for instance). For a git repository, give the commit — the page shows the
-    one that was verified — and, when Software Heritage has archived it, its permanent identifier.
+    so), or its archive's DOI (a Zenodo release, for instance). For a git repository, give the commit, the page shows the
+    one that was verified, and, when Software Heritage has archived it, its permanent identifier.
   </p>
 
   <h2 id="map">A tracing map</h2>
   <p>
     A map validated by an author has a DOI: cite it when you mean "this paper's code, as its author confirmed it". Its
     creators are the validating author and the platform; the paper's page gives its citation once it has one. A map
-    without a DOI — proposed by the machine — is not meant to be cited; cite the paper's page with the date you read it.
+    without a DOI, proposed by the machine, is not meant to be cited; cite the paper's page with the date you read it.
   </p>
 
   <h2 id="record">A paper's record</h2>

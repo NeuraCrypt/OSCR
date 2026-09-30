@@ -14,8 +14,8 @@ The script prints:
 2. `detect_tools()` over every repository with stored scripts: the most used tools, the
    routes and methods of the detections, how many tools a repository uses, and the
    repositories where none was found (with their languages, to see why);
-3. random samples of (repository, tool) detections — all routes, then calls and
-   declarations only — with the lines that name the tool in the first example file, to be
+3. random samples of (repository, tool) detections, all routes, then calls and
+   declarations only, with the lines that name the tool in the first example file, to be
    judged by hand. Those lines are the authors' code: the output is for local review only.
 """
 
