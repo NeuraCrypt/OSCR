@@ -5,14 +5,14 @@ mode:
 
 - `catalog.json`: every paper, its status and its authors' code with the level of
   evidence (found → alive → inventoried → imported), the method families, the
-  repositories — the website is built from it;
+  repositories, the website is built from it;
 - `scripts/NN.json`: the TEXT of the scripts, in lots keyed by the file's SHA-256 and
   DEDUPLICATED (each unique file stored once), loaded on demand by the reader. Since the
   owner's decision of 2026-09-29 every paper's code is shown from OSCR's own copy, whatever
   its license: the license no longer gates DISPLAY (`script_lots`);
 - `scriptmeta/NN.json`: the per-repository FACTS the site is built from (keyed by
   repository, `lot_of(repo)`): each file's path, language, size, lines, digest and the lot
-  of its text (`text_lot`) — never the text itself. Read at build time only, never served;
+  of its text (`text_lot`), never the text itself. Read at build time only, never served;
 - `alignments/NN.json`: the paper ↔ code matches of each paper, for the reader;
 - in public mode, `entities/`, `lookup/` (oscr/entities.py) and `papers/NN.json`, the
   sections of each paper's page (oscr/paperpage.py);
@@ -24,8 +24,8 @@ mode:
 private database). Every email address in a shown script is masked (`mask_emails`), and
 what a removal request withheld is neither copied nor shown. The DISPLAY (the site's lots
 and the reader) shows every file from OSCR's own copy; the BULK outputs that leave as a
-redistributable copy — `scripts.jsonl`, the Hugging Face scripts dataset (`_mirror`,
-`oscr/scriptstore.py`) and the public database (`public_db`) — stay license-gated
+redistributable copy, `scripts.jsonl`, the Hugging Face scripts dataset (`_mirror`,
+`oscr/scriptstore.py`) and the public database (`public_db`), stay license-gated
 (`copyable`). Development tests (test validations, sandbox DOIs) never leave either.
 """
 from __future__ import annotations
@@ -54,7 +54,7 @@ from . import methods
 #: asserts no lot overflows (tests/test_catalog_source.py).
 N_LOTS: int = 256
 
-#: The licenses under which a script's text may LEAVE as a redistributable copy — the bulk
+#: The licenses under which a script's text may LEAVE as a redistributable copy, the bulk
 #: outputs only (`scripts.jsonl`, the Hugging Face dataset `_mirror`, the public database): its
 #: license allows redistribution AND is verified. Since 2026-09-29 this no longer gates DISPLAY
 #: (the site's lots and the reader): every file is shown from OSCR's own copy.
@@ -66,7 +66,7 @@ def copyable(con: sqlite3.Connection, d: sqlite3.Row) -> bool:
     redistribution AND is verified, by the repository's own license file or, for an archive without
     one, by its record (scriptstore.verified_license, the licence audit's rule: CLAUDE.md, "Script
     copies"). Since 2026-09-29 this gates the BULK outputs (scripts.jsonl, the Hugging Face dataset,
-    the public database) only — never the DISPLAY, which shows every file from OSCR's own copy."""
+    the public database) only, never the DISPLAY, which shows every file from OSCR's own copy."""
     from .scriptstore import verified_license
     return d["redistributable"] in PUBLISHABLE and verified_license(con, d) is not None
 
@@ -394,7 +394,7 @@ def catalog_data(con: sqlite3.Connection) -> dict[str, Any]:
         "SELECT DISTINCT source FROM article WHERE scanned_at IS NOT NULL")})
     scope = {
         "sources": "Europe PMC, Crossref, DataCite" if "europepmc" in sources else
-                   ("local corpus, DataCite" if sources else "—"),
+                   ("local corpus, DataCite" if sources else "n/a"),
         "from": min(dates) if dates else "", "to": max(dates) if dates else "",
         "queries": "; ".join(_passes(con)),
     }
@@ -503,7 +503,7 @@ def script_lots(con: sqlite3.Connection, public: bool) -> dict[int, dict[str, An
 
     `published` is True when the reader shows the repository's files from OSCR's copy (always,
     unless the whole repository was withheld at a removal request). `copyable` says whether the
-    text may LEAVE as a redistributable copy — the bulk outputs (`_scripts_jsonl`, `_mirror`, the
+    text may LEAVE as a redistributable copy, the bulk outputs (`_scripts_jsonl`, `_mirror`, the
     public database) read it; the display ignores it. `source` (public mode) is where a reader's
     browser may fetch a file itself, kept as a graceful FALLBACK for the rare case where a digest
     lot is missing a file. What a removal request withheld keeps neither text nor digest.
@@ -610,7 +610,7 @@ def alignment_lots(con: sqlite3.Connection) -> dict[int, dict[str, Any]]:
 
 
 def generate(con: sqlite3.Connection, folder: Path, *, public: bool = False, mirror: Path | None = None) -> Path:
-    """Write the catalogue, its lots, its tables and the public database — and, when
+    """Write the catalogue, its lots, its tables and the public database, and, when
     asked, the mirror of the republishable scripts. Returns the path of catalog.json."""
     folder.mkdir(parents=True, exist_ok=True)
     d = catalog_data(con)
@@ -671,7 +671,7 @@ def _repositories_csv(con: sqlite3.Connection, path: Path) -> None:
 
 
 def _scripts_jsonl(lots: dict[int, dict[str, Any]], path: Path) -> None:
-    """One script per line — the format the Hugging Face dataset displays and queries. A BULK
+    """One script per line, the format the Hugging Face dataset displays and queries. A BULK
     output: only the text that may LEAVE as a redistributable copy (a `copyable` repository), never
     the display's unlicensed copies."""
     with path.open("w") as f:

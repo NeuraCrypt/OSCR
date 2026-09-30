@@ -12,13 +12,13 @@ Two functions, no request, no clone:
 
 **How a tool is recognized.**
 
-- Python: `import x`, `from x import y` — parsed with `ast`; a file that does not parse
+- Python: `import x`, `from x import y`, parsed with `ast`; a file that does not parse
   (Python 2, a stray `?`) falls back to a regular expression on its lines, outside
   comments and docstrings. Also `importlib.import_module("x")`, rpy2's `importr("x")`
   (an R package), shell commands run through `os.system` / `subprocess`, and the
   environment variables of a program (`os.environ["FSLDIR"]`).
-- Notebooks: the code cells — of the JSON `.ipynb`, or of the text by cells that
-  `oscr.contents` stores — in the kernel's language; `!cmd` lines and `%%bash` cells are
+- Notebooks: the code cells, of the JSON `.ipynb`, or of the text by cells that
+  `oscr.contents` stores, in the kernel's language; `!cmd` lines and `%%bash` cells are
   shell, `%%R` cells are R. R Markdown and Quarto: the ```` ```{r} ```` / ```` ```{python} ````
   chunks.
 - R: `library(x)`, `require(x)`, `requireNamespace("x")`, `x::f`, `p_load(...)`, the
@@ -159,7 +159,7 @@ def features(paths: list[str]) -> dict[str, Any]:
     - `env_files`: the dependency, environment and container files, shallowest first;
     - `has_tests`: a test folder holding code, a test runner's file (`conftest.py`,
       `pytest.ini`, `*.test.js`…), or MIN_NAMED_TESTS files named like tests (`test_*.py`,
-      `*_test.py`, `*Test.m`) — one or two are as often a statistical test or an
+      `*_test.py`, `*Test.m`), one or two are as often a statistical test or an
       evaluation on the test set;
     - `has_ci`: `.github/workflows/*.yml`, `.gitlab-ci.yml`, `.travis.yml`, `.circleci/`…;
     - `has_docs`: a `docs/` or `doc/` folder, `mkdocs.yml`, R's `.Rd` pages, `vignettes/`;
@@ -462,7 +462,7 @@ class _Hits(dict):
 def detect_tools(files: list[tuple[str, str, str]]) -> list[dict[str, Any]]:
     """The tools a repository's stored scripts use, most evidence first.
 
-    `files`: (path, language, text) — the rows of the `file` table; `language` as stored
+    `files`: (path, language, text), the rows of the `file` table; `language` as stored
     there ("Python", "Jupyter", "MATLAB"…) or empty (the extension decides). A path with
     an empty text still counts for the tools its file type belongs to (`.hoc` → NEURON).
 

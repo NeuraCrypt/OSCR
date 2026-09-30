@@ -1,8 +1,8 @@
 """Export stat_bruteforce's method catalogue to `oscr/vocabulary/method_catalog.json`.
 
 **Why a copy and not an import.** The harvester must run on a free host, without the
-stat_bruteforce repository and its environments. The catalogue — each method's name, its
-FAMILY and the pattern that recognizes it in a sentence — is frozen in a versioned JSON,
+stat_bruteforce repository and its environments. The catalogue, each method's name, its
+FAMILY and the pattern that recognizes it in a sentence, is frozen in a versioned JSON,
 refreshed when the catalogue grows.
 
 **Families.** A method already in the vocabulary keeps its family (they were curated

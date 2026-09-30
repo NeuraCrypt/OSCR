@@ -146,7 +146,7 @@ def test_a_github_account_is_not_matched_and_waits_for_the_operator(w):
     assert answer["matched"] == "none" and "contacts" not in answer and "authorship" not in answer
     assert "fixture-university" not in row["answer"] and BEN not in row["answer"]
     listed = rights.describe_waiting(jobs.waiting(w.state, "local", ("rights",)), now=T)
-    assert f"data-rights request {rid}: access, from Ben Example, GitHub ben-example — answer by 26 October 2026" in listed
+    assert f"data-rights request {rid}: access, from Ben Example, GitHub ben-example, answer by 26 October 2026" in listed
     assert "30 day(s) left" in listed
     # An erasure too: the rows stay until the operator looks.
     eid = ask(w, "erasure", user="u_ben", orcid="")

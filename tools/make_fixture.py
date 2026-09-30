@@ -192,7 +192,7 @@ def database(path: Path) -> sqlite3.Connection:
                      (a, 2, 5, "Results", "github.com/oscr-fixture/eeg-analysis", "plot.py", 4, 6, "show", 0.6,
                       '["plot"]', METHOD, 0.0)])
     # 2. A paper whose code has NO license: since 2026-09-29 it is still SHOWN from OSCR's own copy
-    #    (the licence no longer gates display), but it never leaves as a redistributable COPY — not
+    #    (the licence no longer gates display), but it never leaves as a redistributable COPY, not
     #    the public database, not the Hugging Face dataset. Its file has a real digest, so it is
     #    shown from a digest lot; a source is exported too, as a fallback.
     b = _paper(con, 2, "A synthetic study whose code has no license")
@@ -314,7 +314,7 @@ def _phase4(con, a: str, b: str, c: str, d: str, x: str) -> None:
     _record(con, d, statements=(("data", "Data availability statement",
                                  "The invented recordings are deposited at https://doi.org/10.5555/oscr.fixture.data.1."),),
             type="data-paper", language="en", references_count=1)
-    # 9: off-topic — none of it may leave.
+    # 9: off-topic, none of it may leave.
     _record(con, x, abstract=OFF_TOPIC["abstract"], statements=(("data", "Data availability", OFF_TOPIC["statement"]),))
     con.execute("INSERT INTO integrity_notice (article_id, kind, notice_id, source, date, reasons) VALUES "
                 "(?, 'retraction', ?, 'retraction-watch', '2026-09-25', '')", (x, OFF_TOPIC["notice"]))

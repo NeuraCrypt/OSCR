@@ -539,7 +539,7 @@ def _pages(meta: ET.Element) -> str:
     first, last = _text(meta.find("fpage")), _text(meta.find("lpage"))
     if first and last and last != first:
         return f"{first}-{last}"
-    span = re.sub(r"\s*[-‐‑–—]\s*", "-", _text(meta.find("page-range")))
+    span = re.sub(r"\s*[-‐‑–—]\s*", "-", _text(meta.find("page-range")))  # emdash-ok: strips em dashes out of harvested page ranges
     if span and (not first or span.startswith(first + "-")):
         return span.split(",")[0].strip()
     return first or _text(meta.find("elocation-id"))

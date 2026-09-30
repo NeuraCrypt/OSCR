@@ -1,9 +1,9 @@
-"""The authors' contact details — PRIVATE (owner's decision of 2026-09-27).
+"""The authors' contact details, PRIVATE (owner's decision of 2026-09-27).
 
 For each author of a paper: email, given and family names, ORCID, organization, address and
 the full affiliation, linked to the paper and its DOI. They come from what the paper itself
-publishes — the JATS full text (contributors, affiliations, correspondence notes) and the
-Europe PMC record ("Electronic address: …" in the affiliations) — and serve to cite and to
+publishes, the JATS full text (contributors, affiliations, correspondence notes) and the
+Europe PMC record ("Electronic address: …" in the affiliations), and serve to cite and to
 reach the authors of the code.
 
 **Where they go.** The `contact` table of the database on the Mac, and the Hugging Face
@@ -319,7 +319,7 @@ def suppressed(con: sqlite3.Connection) -> tuple[set[str], set[str]]:
 
 def honour(rows: list[dict[str, Any]], orcids: set[str], digests: set[str]) -> list[dict[str, Any]]:
     """The rows without the people on the suppression list: a row with their iD goes; one of their
-    addresses in another row is blanked — that row may be another author's, who shares the address —
+    addresses in another row is blanked, that row may be another author's, who shares the address,
     and a row that then names no one (an address no author could be tied to) goes."""
     out = []
     for r in rows:
@@ -424,7 +424,7 @@ def forget_rows(con: sqlite3.Connection, keys: list[tuple[str, int]], *, request
 
 
 def apply_suppression(con: sqlite3.Connection, suppression: tuple[set[str], set[str]] | None = None) -> int:
-    """The suppression list applied to a database's rows — the registry's, or a backup copy's with the
+    """The suppression list applied to a database's rows, the registry's, or a backup copy's with the
     registry's list (`oscr contacts suppress-in`). Returns the rows deleted or blanked."""
     orcids, digests = suppression if suppression is not None else suppressed(con)
     con.create_function("oscr_email_digest", 1, email_digest, deterministic=True)
@@ -480,16 +480,16 @@ def table(con: sqlite3.Connection) -> list[dict[str, Any]]:
 
 CARD = """---
 license: other
-pretty_name: {platform} — authors' contact details (private)
+pretty_name: {platform}, authors' contact details (private)
 tags:
 - private
 ---
 
-# {platform}: the authors' contact details — PRIVATE
+# {platform}: the authors' contact details, PRIVATE
 
 For each author of each paper the registry read: given and family names, ORCID,
 organization, address, affiliation and email, with the paper's DOI, title, journal and date
-— as published in the paper itself (JATS full text) and in its Europe PMC record.
+, as published in the paper itself (JATS full text) and in its Europe PMC record.
 
 - **Purpose**: to cite the authors of the code and to reach them about their own work (their
   tracing map, a correction, a takedown). No mass email.

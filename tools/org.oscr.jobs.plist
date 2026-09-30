@@ -2,7 +2,7 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <!--
   The site's requests (Phase 6, docs/CONTRIBUTIONS.md): every ten minutes, `oscr jobs poll` on the
-  Cloudflare database reads the new rows of `jobs` in D1 community and answers them — a
+  Cloudflare database reads the new rows of `jobs` in D1 community and answers them, a
   submission harvested into a draft, a correction applied as a new version, a map validated and
   deposited on Zenodo (the sandbox unless OSCR_ZENODO_INSTANCE=zenodo), a claim or a removal
   request listed for the owner (`oscr claims list`, `oscr reports list`).

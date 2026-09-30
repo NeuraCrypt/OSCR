@@ -1,10 +1,10 @@
-"""OpenAlex: what a paper's other records lack — the institutions of its authors (ROR ids,
+"""OpenAlex: what a paper's other records lack, the institutions of its authors (ROR ids,
 countries), its open-access status, its topics, citations, references and related works.
 
 **The key.** OpenAlex needs a free API key since 2026-02-13; the owner created one (decision
 D10). It comes from the macOS keychain (`org.oscr.openalex`) or OPENALEX_API_KEY
 (`net.openalex_key`), and travels in the `Authorization` header that `net.Client` adds for
-api.openalex.org — never in a URL: the cache is keyed by URL, the logs print URLs, and error
+api.openalex.org, never in a URL: the cache is keyed by URL, the logs print URLs, and error
 messages quote them.
 
 **The budget.** $1 of free credit a day, reset at midnight UTC. One work looked up by its DOI
@@ -12,8 +12,8 @@ costs nothing (measured 2026-09-28: `x-ratelimit-cost-usd: 0`); a list or filter
 $0.0001, a search $0.001. So OSCR only looks works up one at a time, by DOI (else PMID), a few a
 second (`net.INTERVALS`; OpenAlex allows 100). `Budget` keeps each UTC day's calls and spending
 in the database (cursor `openalex:budget`), from what OpenAlex answers (`x-ratelimit-cost-usd`,
-`x-ratelimit-remaining-usd`), and stops before the credit runs out. A 429 — the day's budget
-spent, or too many requests a second — gets one pause and one more try; a second one stops
+`x-ratelimit-remaining-usd`), and stops before the credit runs out. A 429, the day's budget
+spent, or too many requests a second, gets one pause and one more try; a second one stops
 every OpenAlex call until the reset.
 
 **What is kept.** `parse` turns a work into OSCR's shapes. `store` keeps it in `openalex_record`
@@ -53,7 +53,7 @@ BASE = "https://api.openalex.org"
 SOURCE = "openalex"
 FOUND, MISSING = "found", "missing"
 
-#: The fields asked for (`select`): what `parse` reads, nothing else — neither the abstract
+#: The fields asked for (`select`): what `parse` reads, nothing else, neither the abstract
 #: (article text) nor the machine-made concepts and keywords.
 SELECT: tuple[str, ...] = (
     "id", "doi", "language", "primary_location", "type", "open_access", "authorships", "cited_by_count",
@@ -566,7 +566,7 @@ def may_write(con: sqlite3.Connection, article_id: str, field: str) -> bool:
 def store(con: sqlite3.Connection, article_id: str, oa: dict[str, Any] | None, now: float | None = None) -> None:
     """Keep what OpenAlex said about a paper: its record (`openalex_record`, without the lists of
     works, which go to `paper_work`), and what only OpenAlex knows. None: OpenAlex does not know
-    the paper — noted, so that it is asked again only after RETRY_MISSING_DAYS; a record kept
+    the paper, noted, so that it is asked again only after RETRY_MISSING_DAYS; a record kept
     earlier stays."""
     now = now or time.time()
     if oa is None:

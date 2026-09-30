@@ -1,7 +1,7 @@
 """The links carried by METADATA: Crossref and DataCite, without reading the paper.
 
-**Why they matter.** For a paper without an open full text — most of the older
-literature — the text will say nothing. But the publisher often deposits the
+**Why they matter.** For a paper without an open full text, most of the older
+literature, the text will say nothing. But the publisher often deposits the
 list of REFERENCES with Crossref, and eLife even types its software there
 (`"type": "software"`, author, title, Software Heritage archive). Measured
 2026-09-25: for eLife 10.7554/elife.100605, the authors' two code repositories
@@ -9,7 +9,7 @@ and their dataset are there, with the author's name.
 
 DataCite says the reverse: which software or dataset DECLARES itself related
 to the paper (`relatedIdentifiers`). Precise when the author declared it,
-silent otherwise — out of 3 papers with code on Zenodo, a single declaration,
+silent otherwise, out of 3 papers with code on Zenodo, a single declaration,
 and it was a dataset.
 
 Both return `Mention`s like the text does: the same judge (`role.py`) decides
@@ -102,6 +102,6 @@ def datacite_mentions(client: Client, doi: str) -> list[Mention]:
         for ri in a.get("relatedIdentifiers", []):
             target = str(ri.get("relatedIdentifier", ""))
             if re.search(r"github\.com|gitlab\.com", target, re.I):
-                mentions.append(Mention(target, sentence + f" — source {ri.get('relationType', '')}",
+                mentions.append(Mention(target, sentence + f", source {ri.get('relationType', '')}",
                                         ("DataCite",), "metadata", f"datacite:{kind}:own"))
     return mentions

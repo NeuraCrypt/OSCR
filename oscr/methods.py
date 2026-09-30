@@ -7,7 +7,7 @@ run over the paper's Methods (the whole body when the paper has no
 recognizable Methods section).
 
 What this allows: for a given method, finding the papers whose native code
-implements it — REFERENCE implementations, written by the authors themselves.
+implements it, REFERENCE implementations, written by the authors themselves.
 
 The vocabulary is a frozen copy (`vocabulary/method_catalog.json`), refreshed
 by the catalog export script in `tools/`.

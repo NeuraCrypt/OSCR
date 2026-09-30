@@ -5,20 +5,20 @@ lot in `catalog.N_LOTS`, keyed by paper id, for the papers with a page only (the
 decisions D2 and D7). The website reads the lots when it is built: they add no file to the
 site. A paper's entry holds its sections:
 
-- `overview`: the bibliographic record — type, language, volume, issue, pages, dates,
+- `overview`: the bibliographic record, type, language, volume, issue, pages, dates,
   license, the authors in order with their affiliations, their institutions (ROR ids, from the
   JATS or OpenAlex), keywords, MeSH, journal subjects, OpenAlex's topic, funding, citation count
   and references (with their source), open-access status, a preprint, RRIDs, integrity
-  notices — and the abstract, **only under an open license** (D1's rule:
+  notices, and the abstract, **only under an open license** (D1's rule:
   `catalog.statement_is_publishable`);
 - `code`: each code repository's commit date, sizes, features (README, CITATION.cff,
   environment files, tests, CI, notebooks), tools, and the history of its availability
   checks (the last MAX_CHECKS);
 - `availability`: the code and data availability statements in full under an open
-  license; under any other, only facts — which kinds of statement, what they point to,
-  "on request" — and never a quotation;
+  license; under any other, only facts, which kinds of statement, what they point to,
+  "on request", and never a quotation;
 - `data`: the data links, with the dataset each one names and where it was found;
-- `map`: the tracing map — what it holds, whether an author validated it (ORCID), and once
+- `map`: the tracing map, what it holds, whether an author validated it (ORCID), and once
   deposited, its DOI and its JSON on Zenodo; and its digest (`zenodo.map_digest`), which a
   verified author's validation carries back (Phase 6: the Mac deposits the map the page showed);
 - `versions`: the history of the record as a diff of public facts. Only VERSION_FIELDS
@@ -360,7 +360,7 @@ def _heading(section: str, most: int = 48) -> str:
     section = _clean(section)
     if len(section) <= most:
         return section
-    return section[:most - 1].rsplit(" ", 1)[0].rstrip(" ,;:.-–—") + "…"
+    return section[:most - 1].rsplit(" ", 1)[0].rstrip(" ,;:.-–—") + "…"  # emdash-ok: strips em dashes off truncated section titles
 
 
 def _data_links(links: list[sqlite3.Row]) -> list[dict[str, str]]:

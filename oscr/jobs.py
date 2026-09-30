@@ -1,8 +1,8 @@
 """Phase 6: what the site's readers ask of the registry, and the Mac's answers
 (docs/CONTRIBUTIONS.md).
 
-The Worker records every request in the D1 community database — a submission, a correction, a
-map's validation, a claim, a removal request — with a row in `jobs`. The Mac polls `jobs` (the
+The Worker records every request in the D1 community database, a submission, a correction, a
+map's validation, a claim, a removal request, with a row in `jobs`. The Mac polls `jobs` (the
 rows after the last one it saw: `WHERE id > ?`, no index), does the work here, and writes the
 outcome into the request's own row, which the reader's pages show:
 
@@ -17,8 +17,8 @@ outcome into the request's own row, which the reader's pages show:
   the page's Versions section shows as "a correction by a verified author";
 - `validation`: the map the page showed (its digest), validated with the author's ORCID iD
   (zenodo.validate: proof `orcid`, or `test` when the site signs in with ORCID's sandbox), then
-  deposited on Zenodo — the sandbox unless the settings say `OSCR_ZENODO_INSTANCE=zenodo`
-  (zenodo.deposit_map) — and its DOI written back;
+  deposited on Zenodo, the sandbox unless the settings say `OSCR_ZENODO_INSTANCE=zenodo`
+  (zenodo.deposit_map), and its DOI written back;
 - `claim` and `report`: decided by the automatic moderator's rules (oscr/moderation.py, since
   2026-09-29: no human moderator is on duty), or left for the owner, 30 days at most, who decides
   with `oscr claims` and `oscr reports` and may reverse what the rules did. A claim accepted writes
@@ -353,7 +353,7 @@ def _is_author(runner: Runner, article_id: str, user: dict[str, Any] | None) -> 
 
 
 def draft_of(con: sqlite3.Connection, article_id: str, submitted: list[links.Link], pairs: int | None) -> dict[str, Any]:
-    """What the submitter reviews: the record as it would be published — the paper, the code
+    """What the submitter reviews: the record as it would be published, the paper, the code
     links it cites and the ones given, each as verified (state, license, scripts), the map."""
     a = _paper(con, article_id)
     assert a is not None
@@ -714,7 +714,7 @@ def poll(runner: Runner) -> Poll:
         _settle(runner, jobs, outcome)
         setattr(out, outcome.status, getattr(out, outcome.status) + len(jobs))
         runner.report(f"  job {latest['id']} ({kind} {ref}): {outcome.status}"
-                      + (f" — {outcome.message}" if outcome.message else ""))
+                      + (f", {outcome.message}" if outcome.message else ""))
     # What reached its deadline is closed, the waiting author claims are checked again.
     try:
         swept = moderation.sweep(runner)
@@ -812,7 +812,7 @@ def withhold(con: sqlite3.Connection, scope: str, article_id: str, *, repo: str 
 
 def decide_report(runner: Runner, report_id: int, accept: bool, message: str = "") -> str:
     """A removal request decided by the owner: accepted, what it names leaves every public output at
-    the next nightly — the whole record (`article.withdrawn`), or only the copies of its scripts, of
+    the next nightly, the whole record (`article.withdrawn`), or only the copies of its scripts, of
     one repository, of one file, or its tracing map (`withhold`); or rejected. The owner's words go
     to the requester's page."""
     rows = runner.d1.query(f"SELECT * FROM reports WHERE id = {int(report_id)}")
@@ -841,7 +841,7 @@ def decide_report(runner: Runner, report_id: int, accept: bool, message: str = "
                    user_id=r["user_id"], paper=r["target_id"], detail={"scope": scope, "message": message}, now=runner.now())
     what = SCOPES.get(scope, scope) + (f" ({_target(r)})" if scope in ("repository", "file") else "")
     return (f"request {report_id} on {r['target_id']}: "
-            + (f"accepted — {what} leaves the site at the next nightly" if accept else "rejected"))
+            + (f"accepted, {what} leaves the site at the next nightly" if accept else "rejected"))
 
 
 def _target(d: dict[str, Any]) -> str:
@@ -853,7 +853,7 @@ def _target(d: dict[str, Any]) -> str:
 
 def decide_submission(runner: Runner, submission_id: int, accept: bool, message: str = "") -> str:
     """A draft published by someone who is not among the paper's authors: the owner publishes it
-    or refuses it — one the moderator's rules refused included (the owner overrides them)."""
+    or refuses it, one the moderator's rules refused included (the owner overrides them)."""
     rows = runner.d1.query(f"SELECT * FROM submissions WHERE id = {int(submission_id)}")
     if not rows:
         raise SystemExit(f"no submission {submission_id} in the {runner.target} database")
@@ -905,7 +905,7 @@ def status(state: sqlite3.Connection, now: float | None = None) -> str:
     for target, dues in sorted(legal.items()):
         late = sum(1 for d in dues if d and d < now)
         lines.append(f"{target}: {len(dues)} request(s) about personal data wait for you (GDPR: one month), the first to "
-                     f"answer by {moderation.deadline_words(min(dues))}" + (f" — {late} OVERDUE" if late else ""))
+                     f"answer by {moderation.deadline_words(min(dues))}" + (f", {late} OVERDUE" if late else ""))
     return "\n".join(lines) or "no job read yet"
 
 
@@ -938,12 +938,12 @@ def describe_waiting(items: list[dict[str, Any]], now: float | None = None) -> s
         due = d.get("due")
         rule = d.get("rule")
         if d.get("legal") and due:
-            late = " — OVERDUE" if due < now else ""
+            late = ", OVERDUE" if due < now else ""
             said.append(f"about personal data: answer it by {moderation.deadline_words(due)} (GDPR: one month); the rules "
                         f"never close it{late}")
         else:
             said.append(f"the rules ({rule}) close it by themselves on {moderation.deadline_words(due)}" if due else "")
         if d.get("guard"):
             said.append(f"not hidden at once: {d['guard']}")
-        out.append(f"{what} — {when} UTC\n" + "".join(f"    {x}\n" for x in said if x))
+        out.append(f"{what}, {when} UTC\n" + "".join(f"    {x}\n" for x in said if x))
     return "\n".join(out).rstrip()

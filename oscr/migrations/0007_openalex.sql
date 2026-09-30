@@ -1,5 +1,5 @@
 -- Phase 1, OpenAlex (oscr/sources/openalex.py): each paper's OpenAlex work, looked up by its DOI
--- (a free call), and what only OpenAlex knows — the institutions of the authors (ROR ids,
+-- (a free call), and what only OpenAlex knows, the institutions of the authors (ROR ids,
 -- countries), the open-access status, a linked preprint, the topics, the referenced and
 -- related works. What OpenAlex adds to fields the paper's own text or Europe PMC already fill
 -- (ORCID iDs, corresponding authors, funders, citation count…) goes into the existing tables,

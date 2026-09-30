@@ -1,8 +1,8 @@
 """Publish the catalogue: the open dataset on Hugging Face, the website on Cloudflare Pages.
 
 **What leaves for Hugging Face.** The tables its dataset viewer displays and queries in
-SQL — `articles.csv`, `repositories.csv`, `scripts.jsonl` (one script per line, with its
-text), `alignments.jsonl` (one paper ↔ code match per line) —, the `oscr_public.db`
+SQL, `articles.csv`, `repositories.csv`, `scripts.jsonl` (one script per line, with its
+text), `alignments.jsonl` (one paper ↔ code match per line), the `oscr_public.db`
 database and, when given, the mirror of the scripts as files. A `README.md` card declares
 the tables to the viewer.
 
@@ -43,7 +43,7 @@ TABLES = ("articles.csv", "repositories.csv", "scripts.jsonl", "alignments.jsonl
 
 CARD = """---
 license: cc0-1.0
-pretty_name: Open Scientific Code Registry (OSCR) — catalogue
+pretty_name: Open Scientific Code Registry (OSCR), catalogue
 tags:
 - neuroscience
 - code
@@ -60,7 +60,7 @@ configs:
   data_files: alignments.jsonl
 ---
 
-# Open Scientific Code Registry (OSCR) — catalogue
+# Open Scientific Code Registry (OSCR), catalogue
 
 The code published by the authors of neuroscience papers, found in the papers' text and
 metadata, then verified at the source.
@@ -70,13 +70,13 @@ metadata, then verified at the source.
 - `scripts`: the text of each script, **only** when the repository's license allows
   republishing it. Each line carries its license and a link to the file at the source,
   at the verified commit: **the source always prevails**.
-- `alignments`: which paragraph of a paper matches which lines of its code — paragraph
+- `alignments`: which paragraph of a paper matches which lines of its code, paragraph
   numbers and short technical terms only, never the paper's text.
 - `oscr_public.db`: the complete SQLite database, without the papers' sentences nor the
-  text of unlicensed repositories — for a website or a service.
+  text of unlicensed repositories, for a website or a service.
 
 The catalogue metadata is CC0-1.0; every script keeps the license of its repository.
-Updated on {date} by the OSCR harvester — https://github.com/NeuraCrypt/OSCR
+Updated on {date} by the OSCR harvester, https://github.com/NeuraCrypt/OSCR
 """
 
 
@@ -104,7 +104,7 @@ def publish_hf(site: Path, dataset: str, *, mirror: Path | None = None, dry_run:
     size = sum((folder / f).stat().st_size for f in files)
     summary = f"{len(files)} files, {size / 1e6:.1f} MB → huggingface.co/datasets/{dataset}"
     if dry_run:
-        return f"(dry run, nothing sent) {summary} — prepared folder: {folder}"
+        return f"(dry run, nothing sent) {summary}, prepared folder: {folder}"
     try:
         from huggingface_hub import HfApi, get_token
     except ImportError as e:

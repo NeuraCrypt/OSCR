@@ -29,7 +29,7 @@ new rows, then changed ones; the rest goes next time. Both tables are WITHOUT RO
 other index, so a statement writes one row.
 
 **Targets.** `local`: the local D1 of `wrangler dev` (`wrangler d1 execute --local --file`).
-`remote`: the Cloudflare database, as `oscr d1 push --remote` reaches the search's — through
+`remote`: the Cloudflare database, as `oscr d1 push --remote` reaches the search's, through
 the REST API when a token (`CLOUDFLARE_D1_TOKEN` or the keychain's `org.oscr.cloudflare-d1`)
 and the ids (`OSCR_D1_ACCOUNT_ID`, `OSCR_D1_COMMUNITY_ID` in the settings) are there, otherwise
 with `wrangler d1 execute oscr_community --remote --file` under wrangler's own login. `oscr

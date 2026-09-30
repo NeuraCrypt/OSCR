@@ -1,13 +1,13 @@
 """The harvest: scan papers, verify their repositories, conclude, import, align.
 
-A paper goes through five steps, each written to the database before the next — an
+A paper goes through five steps, each written to the database before the next, an
 interrupted pass resumes where it stopped:
 
 1. READ. The JATS full text (Europe PMC), else nothing; always the DataCite
    metadata; Crossref when there is no text.
 2. JUDGE. Every link gets a role (`role.py`) and the best verdict per repository
    is kept (`find.py`).
-3. VERIFY. Repositories that may hold code are queried (`repos.py`) — once per
+3. VERIFY. Repositories that may hold code are queried (`repos.py`), once per
    repository, re-verified every 30 days.
 4. CONCLUDE. Verification may correct the text, and says so: a "data" repository
    holding 50 Python scripts carries code; a Zenodo "dataset" record without a
@@ -17,7 +17,7 @@ interrupted pass resumes where it stopped:
 
 Then the enrichment (`enrich.py`), with the paper's OpenAlex work looked up first when the
 owner's key is there (one free call; `sources/openalex.py`). A paper OpenAlex does not know
-yet — new papers appear there a few days after their publication — is asked again by the
+yet, new papers appear there a few days after their publication, is asked again by the
 watch's daily round (`enrich.openalex_pass`).
 """
 from __future__ import annotations
@@ -83,7 +83,7 @@ class Tally:
     def __str__(self) -> str:
         s = ", ".join(f"{k} {v}" for k, v in sorted(self.statuses.items(), key=lambda kv: -kv[1]))
         return (f"{self.articles} papers, {self.with_code} with the authors' code, "
-                f"{self.verified} repositories verified, {self.errors} errors — {s}")
+                f"{self.verified} repositories verified, {self.errors} errors, {s}")
 
 
 def _family_names(authors: list[str]) -> list[str]:
@@ -218,7 +218,7 @@ def verify_article(con: sqlite3.Connection, client: Client, article_id: str, opt
             con.commit()      # before the next network call (see scan_article)
             done += 1
         # The Zenodo record names the GitHub repository the archive comes from: it is
-        # added with the same role at EVERY reading of the paper — whether the record
+        # added with the same role at EVERY reading of the paper, whether the record
         # was just verified or not. Added only at verification time, a new scan lost
         # it (measured 2026-09-25).
         d = con.execute("SELECT linked_to FROM repository WHERE repo = ?", (l["repo"],)).fetchone()
@@ -401,7 +401,7 @@ def _align_quietly(con: sqlite3.Connection, client: Client, article_id: str, xml
 
 def align_pending(con: sqlite3.Connection, client: Client, *, force: bool = False,
                   deadline: float | None = None, report: Callable[[str], None] = print) -> int:
-    """Compute the matches of papers with stored code text that have none yet — or
+    """Compute the matches of papers with stored code text that have none yet, or
     that were computed by another method, or all of them with `force`."""
     from . import align
     ids = [r["id"] for r in con.execute(
@@ -423,7 +423,7 @@ def align_pending(con: sqlite3.Connection, client: Client, *, force: bool = Fals
 def scan_query(con: sqlite3.Connection, client: Client, q: str, opts: Options, *,
                maximum: int | None = None, already: str = "skip", deadline: float | None = None,
                report: Callable[[str], None] = print) -> Tally:
-    """Scan every paper of a Europe PMC query — or until `deadline` (a timestamp), so
+    """Scan every paper of a Europe PMC query, or until `deadline` (a timestamp), so
     that a scheduled pass hands back control on time."""
     tally = Tally()
     for art in europepmc.iterate(client, q, maximum=maximum):
@@ -543,7 +543,7 @@ def backfill_done(con: sqlite3.Connection, domain: str, back_to: int) -> bool:
 def reverify(con: sqlite3.Connection, client: Client, opts: Options, *,
              maximum: int | None = None, deadline: float | None = None) -> int:
     """Re-verify the code repositories that are stale (more than `reverify_after_days`
-    days) or were left unreachable — an outage during verification must not leave them
+    days) or were left unreachable, an outage during verification must not leave them
     failing forever. Returns the number of papers taken up again."""
     ids = [r["id"] for r in con.execute(
         "SELECT DISTINCT l.article_id AS id FROM link l JOIN repository r ON r.repo = l.repo "
@@ -596,7 +596,7 @@ def watch(con: sqlite3.Connection, client: Client, domain: str, opts: Options, *
     last_news = 0.0
     outages = 0
     rounds = 0
-    errors_only = lambda m: m.startswith("  !") and report(m)  # noqa: E731 — errors only
+    errors_only = lambda m: m.startswith("  !") and report(m)  # noqa: E731, errors only
     while iterations is None or rounds < iterations:
         if max_duration_s is not None and time.time() - start >= max_duration_s:
             report(f"{_now()} end of cycle ({max_duration_s / 3600:.0f} h): launchd restarts the watch")
@@ -643,7 +643,7 @@ def watch(con: sqlite3.Connection, client: Client, domain: str, opts: Options, *
                 report(f"{_now()} ! {outages} outages in a row, stopping: {type(e).__name__}: {brief}")
                 raise
             wait = min(3600, 60 * 2 ** outages)
-            report(f"{_now()} ! {type(e).__name__}: {brief} — resuming in {wait // 60:.0f} min")
+            report(f"{_now()} ! {type(e).__name__}: {brief}, resuming in {wait // 60:.0f} min")
             time.sleep(wait)
 
 

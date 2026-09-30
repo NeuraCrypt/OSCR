@@ -1,10 +1,10 @@
-"""Phase 1: a paper's record beyond its links — bibliography, people, money, subjects,
-references, notices, datasets, categories — and what its repositories hold.
+"""Phase 1: a paper's record beyond its links, bibliography, people, money, subjects,
+references, notices, datasets, categories, and what its repositories hold.
 
 Everything here is computed from what the Mac already has: the full text cached forever
 (JATS), the Europe PMC `core` result (kept since Phase 1), the paper's OpenAlex work (kept since
 the owner's key, `sources/openalex.py`), the stored file lists and scripts. The sources are merged
-in that order of authority — JATS, then Europe PMC, then OpenAlex — so OpenAlex only fills what
+in that order of authority (JATS, then Europe PMC, then OpenAlex) so OpenAlex only fills what
 the other two left empty. Each value records where it came from (`field_provenance`) and each
 change of a record is kept (`version`). Nothing here sends a paper's text anywhere: the public
 export strips abstracts and closed-license statements (catalog.public_db).
@@ -394,7 +394,7 @@ _OPENALEX_ORDER = ("CASE WHEN a.on_topic = 'no' OR a.withdrawn != '' THEN 2 WHEN
 def openalex_pending(con: sqlite3.Connection, *, everything: bool = False, now: float | None = None
                      ) -> list[tuple[str, bool]]:
     """The papers the OpenAlex pass takes, in order, each with whether OpenAlex must be asked
-    (False: its record is kept, but the paper was not enriched with it yet — an interrupted
+    (False: its record is kept, but the paper was not enriched with it yet, an interrupted
     pass). Asked: the papers never asked, those OpenAlex did not know RETRY_MISSING_DAYS ago,
     and with `everything` all the others asked more than 20 hours ago (so an interrupted
     `--all` resumes where it stopped)."""
@@ -473,7 +473,7 @@ def openalex_pass(con: sqlite3.Connection, client: Any, *, everything: bool = Fa
     con.commit()
     return (f"OpenAlex: {counts['found']} papers found, {counts['missing']} not in OpenAlex, {counts['applied']} "
             f"enriched, {counts['errors']} errors, {left} left"
-            f"{' — stopped: ' + stopped if stopped else ''}; {budget.summary()} ({time.time() - t0:.0f} s)")
+            f"{', stopped: ' + stopped if stopped else ''}; {budget.summary()} ({time.time() - t0:.0f} s)")
 
 
 def backfill(con: sqlite3.Connection, client: Any, *, everything: bool = False, epmc: bool = False,

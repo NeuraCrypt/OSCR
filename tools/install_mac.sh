@@ -42,7 +42,7 @@ cd "$ROOT"
 echo "2/5 settings ($SETTINGS)"
 mkdir -p ${SETTINGS:h}
 [[ -f $SETTINGS ]] || print -r -- "# OSCR settings, read by \`oscr watch\` and \`oscr nightly\`" > $SETTINGS
-add() {  # KEY value [comment] — never touching what is already set
+add() {  # KEY value [comment], never touching what is already set
   grep -q "^$1=" $SETTINGS && return
   [[ -n ${3:-} ]] && print -r -- "# $3" >> $SETTINGS
   print -r -- "$1=$2" >> $SETTINGS

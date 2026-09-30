@@ -126,7 +126,7 @@ def measure(db_path: Path) -> None:
                 code[f"zenodo-concept:{_concept(client, n.split(':', 1)[1])}"] = code[n]
         for sw in e["software"]:
             # Zenodo writes "Family, Given" OR "Given Family": every word counts ("Olivier
-            # Witteveen" missed "Witteveen O" — 73 pairs misfiled).
+            # Witteveen" missed "Witteveen O", 73 pairs misfiled).
             creators = {_flat(t) for c in sw["creators"] for t in re.split(r"[\s,.]+", c) if len(t) > 1}
             own = bool(authors & creators)
             targets = {f"zenodo:{sw['zenodo']}", f"zenodo-concept:{_concept(client, sw['zenodo'])}"}

@@ -103,7 +103,7 @@ def test_the_command_line_lists_and_accepts_a_scope(w, tmp_path, monkeypatch, ca
     assert cli.main([*base, "reports", "list", *folder]) == 0
     assert f"request {rid}: remove the copies of one repository ({EEG}) of {P1}" in capsys.readouterr().out
     assert cli.main([*base, "reports", "accept", str(rid), "--local", "--message", "Withheld.", *folder]) == 0
-    assert f"accepted — the copies of one repository ({EEG}) leaves the site at the next nightly" in capsys.readouterr().out
+    assert f"accepted, the copies of one repository ({EEG}) leaves the site at the next nightly" in capsys.readouterr().out
     assert [tuple(r) for r in w.mac.execute("SELECT scope, article_id, repo, path, request FROM withheld")] == [
         ("repository", P1, EEG, "", f"local:{rid}")]
     assert w.row("reports", rid)["status"] == "accepted" and w.row("reports", rid)["message"] == "Withheld."
