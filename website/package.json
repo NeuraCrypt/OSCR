@@ -24,6 +24,6 @@
   "devDependencies": {
     "@astrojs/svelte": "^9.0.1",
     "svelte": "^5.57.1",
-    "wrangler": "^4.141.0"
+    "wrangler": "^4.145.0"
   }
 }
