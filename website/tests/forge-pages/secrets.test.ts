@@ -2,13 +2,19 @@
 // src/lib/secrets.ts). The test values are assembled when the test runs, so that no token-shaped
 // string sits in the repository's own files (GitHub's push protection reads those too).
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { describe, test } from "node:test";
-import { findSecrets, secretsInWords } from "../../src/lib/secrets.ts";
+import { PATTERNS, findSecrets, secretsInWords } from "../../src/lib/secrets.ts";
 
 const join = (...parts: string[]) => parts.join("");
 const noise = (n: number) => Array.from({ length: n }, (_, i) => "aB3dE5gH7jK9mN1pQ2rS4tU6vW8yZ0cF"[(i * 7) % 32]).join("");
 
 describe("secrets before a commit", () => {
+  test("the kinds match the shared fixture (phase 11's scan uses the same list)", () => {
+    const fixture = JSON.parse(readFileSync(new URL("../../../tests/fixtures/secret_patterns.json", import.meta.url), "utf8")) as { kinds: string[] };
+    assert.deepEqual(PATTERNS.map((p) => p.kind), fixture.kinds);
+  });
+
   test("token shapes found by kind and line, the value hidden", () => {
     const github = join("gh", "p_", noise(36));
     const aws = join("AK", "IA", "Q3EGRT5YJK7WPL2M");

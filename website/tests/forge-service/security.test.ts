@@ -56,6 +56,21 @@ describe("GET /api/forge/security", () => {
     assert.equal(res.headers.get("Cache-Control"), "no-store");
   });
 
+  test("secret alerts the Mac wrote are returned, value hidden, worst first", async () => {
+    await seed.repo(w.forge, { repoId: "101", ownerLogin: "ada", name: "eeg", mode: "public", head: HEAD });
+    w.forge.sqlite
+      .prepare("INSERT INTO security_alerts (forge, repo_id, kind, ref, severity, summary, detail, path, line, source, found_at, updated_at) "
+        + "VALUES ('memory', '101', 'secret', ?, ?, ?, ?, ?, ?, 'mac', ?, ?)")
+      .run("leak.py:3:a-github-token", "high", "a GitHub token on line 3 of leak.py (ghp_ab…)", JSON.stringify({ hint: "ghp_ab…", paired: false, remediation: "Revoke it." }), "leak.py", 3, T0, T0);
+    const b = await signIn();
+    w.forge.reset();
+    const j = await body(await b.fetch("/api/forge/security?id=memory:101"));
+    assert.equal(j.alerts.secret.length, 1);
+    assert.equal(j.alerts.secret[0].severity, "high");
+    assert.equal(j.alerts.secret[0].detail.remediation, "Revoke it.");
+    assert.deepEqual(w.forge.scans, []);
+  });
+
   test("an unknown repository is 404", async () => {
     const b = await signIn();
     assert.equal((await b.fetch("/api/forge/security?id=memory:999")).status, 404);

@@ -1395,3 +1395,13 @@ details.dep-paths code { font-size: .85em; }
 @media (max-width: 640px) {
   form.dep-filter { flex-direction: column; align-items: stretch; gap: .5em; }
 }
+/* Phase 11: the alerts (secret, vulnerability, code scanning). A list, each with its severity in a
+   tone (.warning or .muted, never a pill) and the fix in muted text; no value is ever shown whole. */
+.security-secrets, .security-alerts, .security-scanning { margin: 1.2em 0; }
+.security-secrets h3, .security-alerts h3, .security-scanning h3 { margin: .2em 0 .3em; }
+ul.alerts { list-style: none; margin: .4em 0; padding: 0; }
+ul.alerts li.alert { margin: .5em 0; padding-left: .8em; border-left: 3px solid var(--rule); }
+ul.alerts .alert-head { margin: .1em 0; }
+ul.alerts .fix { color: var(--muted); margin: .1em 0 .2em; }
+ul.alerts .alert-meta { color: var(--muted); font-size: .9em; }
+ul.alerts code { font-size: .85em; overflow-wrap: anywhere; }

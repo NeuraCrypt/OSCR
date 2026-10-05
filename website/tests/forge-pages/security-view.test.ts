@@ -5,8 +5,8 @@ import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 import { textOf } from "../../src/lib/repo-view.ts";
 import {
-  dependenciesSection, depEntry, EMPTY_FILTER, filterDeps, securityView, summariseView, summaryWords,
-  type DepView, type SecurityAnswer,
+  dependenciesSection, depEntry, EMPTY_FILTER, filterDeps, secretSection, securityView, summariseView, summaryWords,
+  type AlertView, type DepView, type SecurityAnswer,
 } from "../../src/lib/security-view.ts";
 
 function dep(o: Partial<DepView> & { name: string }): DepView {
@@ -66,6 +66,7 @@ describe("security-view rendering", () => {
     const answer: SecurityAnswer = {
       repo: { forge: "memory", id: "101", owner: "ada", name: "eeg" },
       dependencies: { default: DEPS, cited: [dep({ name: "numpy", version: "1.25.0", pinned: true, commit: "b".repeat(40) })], summary: summariseView(DEPS) },
+      alerts: { osv: [], secret: [], sarif: [] },
     };
     const t = textOf(securityView(answer));
     assert.match(t, /Dependencies at the default branch/);
@@ -73,10 +74,27 @@ describe("security-view rendering", () => {
     assert.match(t, /never runs them/);
   });
 
+  test("the secret section says it reports and never blocks, and shows the fix", () => {
+    const alert: AlertView = {
+      kind: "secret", ref: "config.py:12:a-github-token", severity: "high",
+      summary: "a GitHub token on line 12 of config.py (ghp_ab…)", detail: { hint: "ghp_ab…", paired: false, remediation: "Revoke it with the provider." },
+      ecosystem: "", package: "", version: "", advisory: "", path: "config.py", line: 12, devScope: false, commit: "", source: "mac",
+    };
+    const t = textOf(secretSection([alert]));
+    assert.match(t, /never blocks a push/);
+    assert.match(t, /a GitHub token on line 12/);
+    assert.match(t, /Revoke it with the provider/);
+  });
+
+  test("the secret section, empty, says none was found", () => {
+    assert.match(textOf(secretSection([])), /No secret was found/);
+  });
+
   test("no dependencies: a plain sentence, no form", () => {
     const answer: SecurityAnswer = {
       repo: { forge: "memory", id: "101", owner: "ada", name: "eeg" },
       dependencies: { default: [], cited: [], summary: summariseView([]) },
+      alerts: { osv: [], secret: [], sarif: [] },
     };
     const t = textOf(dependenciesSection(answer, "default"));
     assert.match(t, /No dependency was read/);

@@ -2,7 +2,7 @@
 in-memory double; the D1 is the SQLite oscr_forge of the fixture. Nothing reaches the network."""
 from __future__ import annotations
 
-from oscr import community, forge, security
+from oscr import community, forge, secretscan, security
 
 T = 1_790_596_800
 
@@ -71,10 +71,38 @@ def test_command_scans_default_and_cited(forge_d1, tmp_path, monkeypatch):
 
 def test_command_status(forge_d1, tmp_path, monkeypatch):
     monkeypatch.setattr(community, "open_d1", lambda *a, **k: forge_d1)
-    assert "no dependency facts" in security.command(None, "status", target="local", folder=tmp_path, now=T)
+    assert "no facts yet" in security.command(None, "status", target="local", folder=tmp_path, now=T)
     forge_d1.run(security.deps_statements("github", "101", "default",
                  [__import__("oscr.depgraph", fromlist=["Node"]).Node("PyPI", "numpy")], "", T))
     assert "1 dependency rows over 1 repositories" in security.command(None, "status", target="local", folder=tmp_path, now=T)
+
+
+def test_secret_statements_replace(forge_d1):
+    finds = secretscan.scan_text("config.py", 'TOKEN = "ghp_' + "a" * 36 + '"\n')
+    forge_d1.run(security.secret_statements("github", "101", finds, T))
+    rows = forge_d1.query("SELECT kind, severity, path, line, summary FROM security_alerts WHERE kind = 'secret'")
+    assert len(rows) == 1 and rows[0]["severity"] == "high" and rows[0]["path"] == "config.py"
+    assert "a" * 36 not in rows[0]["summary"]  # the value is never stored
+    forge_d1.run(security.secret_statements("github", "101", [], T))
+    assert forge_d1.query("SELECT count(*) AS n FROM security_alerts")[0]["n"] == 0
+
+
+def test_command_scans_secrets_from_stored_files(forge_d1, tmp_path, monkeypatch):
+    seed_repo(forge_d1, head="a" * 40, owner="ada", name="eeg")
+    reader = memory_repo({"requirements.txt": "numpy==1.26.0\n"})
+    # A local harvester DB holding one stored file with a token (the file table has no foreign key).
+    from oscr import db as macdb
+    con = macdb.open_db(str(tmp_path / "mac.db"))
+    con.execute("INSERT INTO file (repo, path, text) VALUES ('github.com/ada/eeg', 'leak.py', ?)",
+                ('API = \"ghp_' + "b" * 36 + '\"\n',))
+    con.commit()
+    monkeypatch.setattr(community, "open_d1", lambda *a, **k: forge_d1)
+    monkeypatch.setattr(security.forge, "reader", lambda f: reader)
+    out = security.command(con, "scan", target="local", folder=tmp_path, now=T)
+    assert "secret alerts" in out
+    alerts = forge_d1.query("SELECT kind, path FROM security_alerts WHERE kind = 'secret'")
+    assert alerts == [{"kind": "secret", "path": "leak.py"}]
+    con.close()
 
 
 def test_command_budget_stops(forge_d1, tmp_path, monkeypatch):

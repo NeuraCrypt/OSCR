@@ -15,7 +15,7 @@
 import { who } from "./who.ts";
 import { json, problem } from "./http.ts";
 import { hiddenOne } from "./hidden.ts";
-import { all, depsOf, first, repoByKey, repoByPath } from "./store.ts";
+import { all, alertsOf, depsOf, first, repoByKey, repoByPath } from "./store.ts";
 import { NOT_FOUND, parseTarget, serviceForge } from "./read.ts";
 import type { ForgeRequest, RepoRow } from "./types.ts";
 
@@ -45,12 +45,64 @@ interface DepRow {
   commit_sha: string;
 }
 
+export interface AlertView {
+  kind: "osv" | "secret" | "sarif";
+  ref: string;
+  severity: "critical" | "high" | "moderate" | "low" | "unknown";
+  summary: string;
+  detail: Record<string, unknown>;
+  ecosystem: string;
+  package: string;
+  version: string;
+  advisory: string;
+  path: string;
+  line: number | null;
+  devScope: boolean;
+  commit: string;
+  source: "mac" | "ci";
+}
+
+interface AlertRow {
+  kind: "osv" | "secret" | "sarif";
+  ref: string;
+  severity: AlertView["severity"];
+  summary: string;
+  detail: string;
+  ecosystem: string;
+  package: string;
+  version: string;
+  advisory: string;
+  path: string;
+  line: number | null;
+  dev_scope: number;
+  commit_sha: string;
+  source: "mac" | "ci";
+}
+
+const SEVERITY_ORDER: Record<AlertView["severity"], number> = { critical: 0, high: 1, moderate: 2, low: 3, unknown: 4 };
+
 export interface SecurityAnswer {
   repo: { forge: string; id: string; owner: string; name: string };
   dependencies: {
     default: DepView[];
     cited: DepView[];
     summary: { total: number; direct: number; transitive: number; pinned: number; ecosystems: Record<string, number> };
+  };
+  alerts: { osv: AlertView[]; secret: AlertView[]; sarif: AlertView[] };
+}
+
+function alertView(row: AlertRow): AlertView {
+  let detail: Record<string, unknown> = {};
+  try {
+    const parsed = JSON.parse(row.detail);
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) detail = parsed as Record<string, unknown>;
+  } catch {
+    detail = {};
+  }
+  return {
+    kind: row.kind, ref: row.ref, severity: row.severity, summary: row.summary, detail,
+    ecosystem: row.ecosystem, package: row.package, version: row.version, advisory: row.advisory,
+    path: row.path, line: row.line, devScope: row.dev_scope === 1, commit: row.commit_sha, source: row.source,
   };
 }
 
@@ -95,13 +147,20 @@ export async function handleSecurity(r: ForgeRequest): Promise<Response> {
   if (await hiddenOne(r.db, "repo", `${row.forge}:${row.repo_id}`)) {
     return problem(410, "moderated", "This repository is hidden from the registry's pages.");
   }
-  const rows = await all<DepRow>(depsOf(r.db, row.forge, row.repo_id));
-  const deps = rows.map(view);
+  const [depRows, alertRows] = await Promise.all([
+    all<DepRow>(depsOf(r.db, row.forge, row.repo_id)),
+    all<AlertRow>(alertsOf(r.db, row.forge, row.repo_id)),
+  ]);
+  const deps = depRows.map(view);
   const def = deps.filter((d) => d.snapshot === "default");
   const cited = deps.filter((d) => d.snapshot === "cited");
+  const alerts: SecurityAnswer["alerts"] = { osv: [], secret: [], sarif: [] };
+  for (const a of alertRows.map(alertView)) alerts[a.kind].push(a);
+  for (const list of Object.values(alerts)) list.sort((a, b) => SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity] || a.ref.localeCompare(b.ref));
   const answer: SecurityAnswer = {
     repo: { forge: row.forge, id: row.repo_id, owner: row.owner_login, name: row.name },
     dependencies: { default: def, cited, summary: summarise(def.length ? def : cited) },
+    alerts,
   };
   return json(answer);
 }

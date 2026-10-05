@@ -18,12 +18,13 @@ Mac's facts (oscr/forgelayer.py).
 from __future__ import annotations
 
 import json
+import re
 import sqlite3
 import time
 from dataclasses import dataclass
 from pathlib import Path
 
-from . import community, depgraph, forge
+from . import community, depgraph, forge, secretscan
 
 #: The most of one manifest the reader fetches (a lock file can be large; the graph needs its text).
 MANIFEST_BYTES = 400_000
@@ -31,8 +32,14 @@ MANIFEST_BYTES = 400_000
 MAX_MANIFESTS = 60
 #: The most dependency rows kept per repository per snapshot (bounds the day's rows).
 MAX_DEPS = 600
+#: The most secret-alert rows kept per repository (bounds the day's rows).
+MAX_SECRET_ALERTS = 200
 #: Statements sent to D1 in one call (as the rest of the facts push).
 CHUNK = community.REMOTE_STATEMENTS
+
+
+def _slug(text: str) -> str:
+    return re.sub(r"[^a-z0-9]+", "-", text.lower()).strip("-")
 
 
 @dataclass
@@ -100,6 +107,46 @@ def deps_statements(forge_name: str, repo_id: str, snapshot: str, nodes: list[de
     return out
 
 
+def scan_secrets(con: sqlite3.Connection, repo_string: str, *, exclusions: list[str],
+                 custom: list[tuple[str, str]]) -> list[secretscan.Finding]:
+    """Secrets in the files the Mac already stored for a repository (the `file` table's text, read at
+    the verified commit): no network, nothing fetched, nothing run (D00-11). Reports, never blocks."""
+    rows = con.execute("SELECT path, text FROM file WHERE repo = ? AND text IS NOT NULL AND text != '' "
+                       "ORDER BY path", (repo_string,)).fetchall()
+    out: list[secretscan.Finding] = []
+    for r in rows:
+        path = r["path"] if isinstance(r, dict) or hasattr(r, "keys") else r[0]
+        text = r["text"] if isinstance(r, dict) or hasattr(r, "keys") else r[1]
+        if secretscan.excluded(path, exclusions):
+            continue
+        out.extend(secretscan.scan_text(path, text, custom=custom))
+        if len(out) >= MAX_SECRET_ALERTS:
+            return out[:MAX_SECRET_ALERTS]
+    return out
+
+
+def secret_statements(forge_name: str, repo_id: str, findings: list[secretscan.Finding],
+                      now: int) -> list[str]:
+    """SQL that replaces a repository's secret alerts (delete then insert). A leaked value is never
+    stored: only its kind, path, line and a short hidden hint."""
+    out = [f"DELETE FROM security_alerts WHERE forge = {community.literal(forge_name)} "
+           f"AND repo_id = {community.literal(repo_id)} AND kind = 'secret';"]
+    for f in findings[:MAX_SECRET_ALERTS]:
+        ref = f"{f.path}:{f.line}:{_slug(f.kind)}"[:300]
+        detail = json.dumps({"hint": f.hint, "paired": f.paired, "remediation": f.remediation()}, ensure_ascii=False)
+        values = {
+            "forge": forge_name, "repo_id": repo_id, "kind": "secret", "ref": ref,
+            "severity": "low" if f.paired else "high",
+            "summary": f"{f.kind} on line {f.line} of {f.path} ({f.hint})"[:2000],
+            "detail": detail[:16384], "path": f.path[:4096], "line": f.line,
+            "source": "mac", "found_at": now, "updated_at": now,
+        }
+        cols = ", ".join(values)
+        vals = ", ".join(community.literal(v) for v in values.values())
+        out.append(f"INSERT INTO security_alerts ({cols}) VALUES ({vals});")
+    return out
+
+
 def _flush(d1: community.D1, statements: list[str], state: sqlite3.Connection, target: str,
            now: int) -> int:
     """Send statements in chunks, counting the rows against the day's budget."""
@@ -121,7 +168,8 @@ def command(con: sqlite3.Connection | None, action: str, *, target: str | None,
     """`oscr security <action>`.
 
     - ``scan``: read each known repository's environment files (default branch and cited commits),
-      compute the dependency graph, and push ``repo_deps`` to ``oscr_forge`` within the day's budget.
+      compute the dependency graph, scan the files already stored for secrets (report never block),
+      and push the facts to ``oscr_forge`` within the day's budget.
     - ``status``: what the database holds.
     """
     t = int(time.time() if now is None else now)
@@ -130,16 +178,20 @@ def command(con: sqlite3.Connection | None, action: str, *, target: str | None,
         rows = d1.query("SELECT snapshot, count(*) AS n FROM repo_deps GROUP BY snapshot")
         n = sum(r["n"] for r in rows)
         repos = d1.query("SELECT count(DISTINCT repo_id) AS r FROM repo_deps")[0]["r"]
-        return f"security: {n} dependency rows over {repos} repositories" if n else "security: no dependency facts yet"
+        alerts = d1.query("SELECT kind, count(*) AS n FROM security_alerts GROUP BY kind")
+        parts = [f"{n} dependency rows over {repos} repositories"] if n else []
+        parts += [f"{r['n']} {r['kind']} alerts" for r in alerts]
+        return "security: " + ("; ".join(parts) if parts else "no facts yet")
     if action != "scan":
         raise SystemExit(f"security: unknown action {action!r} (scan, status)")
 
+    exclusions, custom = secretscan.load_config(settings)
     reader = reader if reader is not None else forge.reader("github")
     state = community.open_state((folder if folder else Path("data") / "community") / "state.db")
     spent = community.budget_spent(state, target or "local", community.utc_day(t))
     left = max(0, budget - spent)
     repos = active_repos(d1)
-    done = depped = 0
+    done = depped = secreted = 0
     for repo in repos:
         if left <= 0:
             report(f"security: the day's budget ({budget}) is spent; {len(repos) - done} repositories left for tomorrow")
@@ -161,6 +213,11 @@ def command(con: sqlite3.Connection | None, action: str, *, target: str | None,
             except forge.ForgeError:
                 continue
             statements += deps_statements(repo.forge, repo.repo_id, "cited", cited, sha, t)
+        secrets: list[secretscan.Finding] = []
+        if con is not None:
+            secrets = scan_secrets(con, f"github.com/{repo.owner}/{repo.name}".lower(),
+                                   exclusions=exclusions, custom=custom)
+            statements += secret_statements(repo.forge, repo.repo_id, secrets, t)
         if len(statements) > left:
             report(f"security: the day's budget ({budget}) is spent; {len(repos) - done} repositories left for tomorrow")
             break
@@ -168,5 +225,7 @@ def command(con: sqlite3.Connection | None, action: str, *, target: str | None,
         left -= written
         done += 1
         depped += len(default)
+        secreted += len(secrets)
     state.close()
-    return f"security: scanned {done} repositories, {depped} direct-and-transitive dependencies at their heads"
+    return (f"security: scanned {done} repositories, {depped} dependencies at their heads, "
+            f"{secreted} secret alerts (reported, never blocking)")

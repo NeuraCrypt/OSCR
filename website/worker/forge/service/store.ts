@@ -444,4 +444,13 @@ export function depsOf(db: D1Database, forge: string, repoId: string): D1Prepare
     .bind(forgeOf(forge), repoId);
 }
 
+/** A repository's security alerts (security_alerts), by the key's prefix (forge, repo_id): a key
+ *  range, never a scan. OSV, secret and SARIF alerts together, the worst severity first. */
+export function alertsOf(db: D1Database, forge: string, repoId: string): D1PreparedStatement {
+  return db
+    .prepare("SELECT kind, ref, severity, summary, detail, ecosystem, package, version, advisory, path, line, dev_scope, commit_sha, source, found_at "
+      + "FROM security_alerts WHERE forge = ? AND repo_id = ? ORDER BY kind, ref")
+    .bind(forgeOf(forge), repoId);
+}
+
 export type { RepoRow };

@@ -28,9 +28,58 @@ export interface DepSummary {
   ecosystems: Record<string, number>;
 }
 
+export interface AlertView {
+  kind: "osv" | "secret" | "sarif";
+  ref: string;
+  severity: "critical" | "high" | "moderate" | "low" | "unknown";
+  summary: string;
+  detail: Record<string, unknown>;
+  ecosystem: string;
+  package: string;
+  version: string;
+  advisory: string;
+  path: string;
+  line: number | null;
+  devScope: boolean;
+  commit: string;
+  source: "mac" | "ci";
+}
+
 export interface SecurityAnswer {
   repo: { forge: string; id: string; owner: string; name: string };
   dependencies: { default: DepView[]; cited: DepView[]; summary: DepSummary };
+  alerts: { osv: AlertView[]; secret: AlertView[]; sarif: AlertView[] };
+}
+
+const severityWord: Record<AlertView["severity"], string> = {
+  critical: "critical", high: "high", moderate: "moderate", low: "low", unknown: "severity not known",
+};
+
+/** The severity in a .ok/.warning tone (never a pill). */
+function severityEl(s: AlertView["severity"]): El {
+  const tone = s === "low" || s === "unknown" ? "muted" : "warning";
+  return h("span", { class: tone }, severityWord[s]);
+}
+
+/** A secret alert: its kind and place, the hidden hint, and how to fix it. Reports, never blocks. */
+export function secretAlertEntry(a: AlertView): El {
+  const remediation = typeof a.detail.remediation === "string" ? a.detail.remediation : "";
+  const guess = a.detail.paired === true;
+  return h("li", { class: "alert alert-secret" },
+    h("p", { class: "alert-head" }, severityEl(a.severity), " ", h("span", null, a.summary), guess ? h("span", { class: "muted" }, " (a guess)") : null),
+    remediation ? h("p", { class: "fix" }, remediation) : null,
+  );
+}
+
+/** The Secret alerts section (E3). Says, in words, that it reports and never blocks a push. */
+export function secretSection(alerts: readonly AlertView[]): El {
+  return h("section", { class: "security-secrets" },
+    h("h3", null, "Secret alerts"),
+    h("p", { class: "muted" }, "Found in the files already read, after the push. The registry reports them and never blocks a push (pushes do not pass through it); a leaked token reaches its provider through GitHub's own partner programme, not through the registry. No value is kept: only a short hidden hint."),
+    alerts.length
+      ? h("ul", { class: "alerts" }, ...alerts.map(secretAlertEntry))
+      : h("p", { class: "ok" }, "No secret was found in the files read."),
+  );
 }
 
 export interface DepFilter {
@@ -150,7 +199,8 @@ export function securityView(answer: SecurityAnswer): El {
   const hasCited = answer.dependencies.cited.length > 0;
   return h("div", { class: "security" },
     h("h2", null, "Security and quality"),
-    h("p", { class: "muted" }, "The registry reads this repository's environment files as text and never runs them. The analysis is computed away from the site; nothing of the code is executed here."),
+    h("p", { class: "muted" }, "The registry reads this repository's environment files and stored code as text and never runs them. The analysis is computed away from the site; nothing of the code is executed here."),
+    secretSection(answer.alerts.secret),
     dependenciesSection(answer, "default"),
     hasCited ? dependenciesSection(answer, "cited") : null,
   );

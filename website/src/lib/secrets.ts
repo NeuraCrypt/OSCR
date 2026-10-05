@@ -16,7 +16,7 @@ export interface SecretFinding {
 }
 
 /** Token shapes with a prefix or a structure of their own (few false alarms by design). */
-const PATTERNS: readonly { kind: string; re: RegExp }[] = [
+export const PATTERNS: readonly { kind: string; re: RegExp }[] = [
   { kind: "a GitHub token", re: /\b(?:gh[pousr]_[A-Za-z0-9]{36,255}|github_pat_[A-Za-z0-9_]{60,255})\b/g },
   { kind: "a GitLab token", re: /\bglpat-[A-Za-z0-9_-]{20,}\b/g },
   { kind: "an AWS access key", re: /\b(?:AKIA|ASIA|ABIA|ACCA)[0-9A-Z]{16}\b/g },
