@@ -31,7 +31,10 @@ TABLES = {"repos", "repo_papers", "installations", "traced_paths", "actions", "d
           "repo_deps", "security_alerts", "alert_triage", "repo_licences", "advisories", "advisory_posts",
           # Phase 09: organizations, teams, roles, the audit log, account security (0013_organizations.sql).
           "organizations", "org_members", "org_invitations", "teams", "team_members", "org_audit",
-          "webauthn_credentials", "security_log", "sudo_sessions"}
+          "webauthn_credentials", "security_log", "sudo_sessions",
+          # Night phase 06: discussions (0014_discussions.sql) and projects (0015_projects.sql).
+          "discussion_spaces", "discussions", "discussion_comments", "discussion_votes",
+          "projects", "project_fields", "project_items"}
 T = 1_790_596_800
 
 
@@ -60,7 +63,8 @@ def test_at_most_one_index_per_table_and_without_rowid_where_the_key_is_text():
                          "content_reports": ["content_reports_open"], "moderation": ["moderation_owner"],
                          "rights_requests": ["rights_requests_open"],
                          "organizations": ["organizations_handle"], "org_members": ["org_members_user"],
-                         "org_invitations": ["org_invitations_invitee"]}
+                         "org_invitations": ["org_invitations_invitee"],
+                         "discussions": ["discussions_space"], "projects": ["projects_owner"]}
     # No hidden autoindex either: a text key is the table itself.
     assert con.execute("SELECT count(*) FROM sqlite_master WHERE type = 'index' AND sql IS NULL AND name NOT LIKE 'sqlite_autoindex_%'").fetchone()[0] == 0
     for name, sql in _tables(con).items():
@@ -107,10 +111,11 @@ def test_the_checks_refuse_an_address_an_unknown_forge_and_a_private_name(forge_
 
 
 def test_the_action_kinds_are_the_workers():
-    """The migrations' CHECK on actions.kind (as the last one that rebuilt the table leaves it: 0012,
-    phase 16's content rules) lists website/worker/forge/service/types.ts ACTION_KINDS, then its
-    RESEARCH_KINDS, SOCIAL_KINDS, AUTOMATION_KINDS and MODERATION_KINDS (the registry's own writes,
-    logged like the actions)."""
+    """The migrations' CHECK on actions.kind (as the last one that rebuilt the table leaves it:
+    0016_wiki.sql, night phase 06) lists website/worker/forge/service/types.ts ACTION_KINDS, then its
+    RESEARCH_KINDS, SOCIAL_KINDS, AUTOMATION_KINDS, MODERATION_KINDS, SECURITY_KINDS, ORG_KINDS and
+    phase 06's DISCUSSION_KINDS and PROJECT_KINDS (the registry's own writes, logged like the
+    actions)."""
     sql = forge_database().execute("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'actions'").fetchone()[0]
     assert "WITHOUT ROWID" in sql
     start = sql.index("kind         TEXT NOT NULL CHECK (kind IN (")
@@ -130,8 +135,12 @@ def test_the_action_kinds_are_the_workers():
     in_ts += re.findall(r'"([a-z_]+)"', types[start:types.index("] as const", start)])
     start = types.index("export const ORG_KINDS = [")
     in_ts += re.findall(r'"([a-z_]+)"', types[start:types.index("] as const", start)])
+    start = types.index("export const DISCUSSION_KINDS = [")
+    in_ts += re.findall(r'"([a-z_]+)"', types[start:types.index("] as const", start)])
+    start = types.index("export const PROJECT_KINDS = [")
+    in_ts += re.findall(r'"([a-z_]+)"', types[start:types.index("] as const", start)])
     assert in_sql == in_ts
-    assert len(in_sql) == 83 and len(set(in_sql)) == 83
+    assert len(in_sql) == 92 and len(set(in_sql)) == 92
 
 
 def test_the_layer_shards_are_sha256_mod_64():
