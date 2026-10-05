@@ -108,17 +108,20 @@ export const DEFAULT_CATEGORIES: Readonly<Record<SpaceKind, readonly Category[]>
     { slug: "general", name: "General", format: "open", emoji: "💬", description: "Anything about this paper's code." },
     { slug: "q-a", name: "Q&A", format: "qa", emoji: "🙏", description: "Ask the authors and the community." },
     { slug: "reproduction", name: "Reproduction", format: "open", emoji: "🔁", description: "Share a reproduction attempt." },
+    { slug: "polls", name: "Polls", format: "poll", emoji: "📊", description: "Take a vote." },
     { slug: "announcements", name: "Announcements", format: "announcement", emoji: "📣", description: "Updates from the authors." },
   ],
   repo: [
     { slug: "general", name: "General", format: "open", emoji: "💬", description: "Chat about this repository." },
     { slug: "q-a", name: "Q&A", format: "qa", emoji: "🙏", description: "Ask a question." },
     { slug: "ideas", name: "Ideas", format: "open", emoji: "💡", description: "Share ideas for new features." },
+    { slug: "polls", name: "Polls", format: "poll", emoji: "📊", description: "Take a vote." },
     { slug: "announcements", name: "Announcements", format: "announcement", emoji: "📣", description: "Updates from the maintainers." },
   ],
   org: [
     { slug: "general", name: "General", format: "open", emoji: "💬", description: "Talk with the organization." },
     { slug: "q-a", name: "Q&A", format: "qa", emoji: "🙏", description: "Ask a question." },
+    { slug: "polls", name: "Polls", format: "poll", emoji: "📊", description: "Take a vote." },
     { slug: "announcements", name: "Announcements", format: "announcement", emoji: "📣", description: "Organization-wide updates." },
   ],
 };
