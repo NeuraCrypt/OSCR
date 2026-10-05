@@ -945,3 +945,35 @@ Built on the night of 2026-09-29, after phase 16; the manual is [CLI.md](CLI.md)
   `/api/v1/device/code`, `/api/v1/device/token`, `/api/v1/token/revoke`.
 - **The screenshots and transcripts**: `docs/night-screenshots/phase-14/` (the approval page and the
   tokens list, desktop 1280×860 and phone 390×844; terminal transcripts of the end-to-end run).
+
+### Security and quality (phase 11): the registry's own security layer
+
+Built on the night of 2026-10-05, after phase 14; the detail is [SECURITY_QUALITY.md](SECURITY_QUALITY.md),
+the decisions D11-1 to D11-9 in [DECISIONS.md](DECISIONS.md). Everything is computed on the Mac from
+files read as text and pushed to `oscr_forge`; nothing of a user's code runs, here or anywhere (D00-11).
+
+- **The dependency graph** (E1, `oscr/depgraph.py`): manifests and lock files of Python, R, Julia,
+  JavaScript, conda and GitHub Actions, normalised to one record per dependency (ecosystem, version,
+  range, scope, direct or transitive, pinned, sources), at the default branch and at each commit a
+  paper's map pins. Facts: `repo_deps`.
+- **Vulnerability and malware alerts** (E2, `oscr/osv.py`): OSV queried without a key, by batch; CVSS
+  severity, malicious packages (`MAL-`), auto-triage of withdrawn advisories; the client talks to a
+  local fake in the night build, never the real OSV. Facts: `security_alerts` (kind `osv`); the human
+  decision in `alert_triage`.
+- **The secrets scan** (E3, `oscr/secretscan.py`): over the files the Mac already stored, reports and
+  never blocks (D00-11); structured and paired patterns, custom patterns with a dry run, exclusions,
+  remediation, the value never kept. Facts: `security_alerts` (kind `secret`).
+- **Code scanning** (E4, `worker/forge/service/sarif.ts`): the researcher's CI uploads SARIF 2.1.0
+  through the token API (`POST /api/v1/security/sarif`, scope `security:write`); the registry shows it
+  and runs no analyser. Facts: `security_alerts` (kind `sarif`).
+- **Private vulnerability reporting** (E5, `worker/forge/service/advisory.ts`): a private report, its
+  thread, collaborators, credits, draft, publish, withdraw; private by construction (never in a public
+  output, the static layer, the search, a feed or a webhook). Tables `advisories`, `advisory_posts`.
+- **SBOM and licence compatibility** (E6, `oscr/sbom.py`, `src/lib/sbom.ts`): an SPDX 2.3 document from
+  the dependency graph (the browser's Download button builds it, nothing of the code sent), a
+  compatibility table for the common open licences and a policy. Facts: `repo_licences`.
+- **The Security tab** on the `/r/` shell shows all of this; every write is behind `FORGE_OPEN`.
+- **The migration**: `migrations/d1-forge/0012_security.sql` (six tables, the `actions` kinds rebuilt
+  with `SECURITY_KINDS`). **The command line**: `oscr security scan|status|sbom`.
+- **The screenshots**: `docs/night-screenshots/phase-11/` (desktop 1280×860 and phone 390×844, against
+  the fake GitHub and `wrangler dev`, every outside address refused).

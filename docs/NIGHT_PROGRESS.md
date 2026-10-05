@@ -380,10 +380,41 @@ from "Next step".
   within the file budget; `check:growth` ok; strict `tsc` clean; the end-to-end run 255 checks, every one
   passed. Screenshots: 8 (desktop and phone) and 10 terminal transcripts.
 
+## Phase 11: what it produced
+
+Security and quality, on `night/phase-11-security` (from `night/phase-14-command-line`). Six elements,
+one commit each; the whole analysis on the Mac, nothing of a user's code run (D00-11); every write
+behind `FORGE_OPEN`. Detail: `docs/SECURITY_QUALITY.md`, decisions D11-1 to D11-9 and D11-n.
+
+- **E1 the dependency graph** (`oscr/depgraph.py`, `oscr security scan`): Python, R, Julia, JavaScript,
+  conda and GitHub Actions parsed as text, versions/scope/direct/pinned/sources, two snapshots
+  (default branch and the commits a paper cites). Facts `repo_deps`; `GET /api/forge/security`; the
+  Security tab's Dependencies view (search, filters, show paths).
+- **E2 OSV alerts** (`oscr/osv.py`): batch, no key, CVSS severity, malware (`MAL-`), auto-triage; a
+  fake OSV in the night build, never the real one. `security_alerts` kind `osv`; the triage (dismiss,
+  reopen, assign, label) in `alert_triage` via `POST /api/forge/security/triage`.
+- **E3 the secrets scan** (`oscr/secretscan.py`): reports and never blocks (D00-11), over the files
+  already stored, the value never kept; structured + paired + custom + dry run + exclusions.
+- **E4 code scanning**: SARIF 2.1.0 uploaded through the token API (`POST /api/v1/security/sarif`,
+  scope `security:write`); OSCR runs no analyser (`worker/forge/service/sarif.ts`).
+- **E5 private vulnerability reporting** (`worker/forge/service/advisory.ts`, `advisories`,
+  `advisory_posts`): private by construction; a report, a private thread, collaborators, credits,
+  draft, publish, withdraw.
+- **E6 SBOM + licence compatibility** (`oscr/sbom.py`, `src/lib/sbom.ts`): SPDX 2.3 built in the
+  browser from the graph; a compatibility table and a policy; dependency licences unknown (not
+  fetched). `repo_licences`.
+- **The close**: `migrations/d1-forge/0012_security.sql` (6 tables, the `actions` kinds rebuilt with
+  `SECURITY_KINDS`); the e2e (stage 9, `e2e-security.ts` against a fake OSV: every check passed); the
+  security self-review; the docs (`SECURITY_QUALITY.md`, FORGE.md, ARCHITECTURE.md, CLAUDE.md,
+  DECISIONS.md D11-*); screenshots in `docs/night-screenshots/phase-11/`.
+- Tests at the close: pytest 585; ruff clean; `npm test` 1,465; the build and `check --every-route`
+  ok, within the budget; the end-to-end run, every check passed (including phase 11's stage 9).
+
 ## Next step
 
-Phase 11, security and quality, on branch `night/phase-11-security` (created from
-`night/phase-14-command-line`, nothing built on it): **it awaits the owner's go**. Before any public
+Phase 09, organizations, teams, rights and accounts, on branch `night/phase-09-organizations` (created
+from `night/phase-11-security`, nothing built on it): **it awaits the owner's go**. Before any public
 opening, the owner's steps are in `docs/NIGHT_REPORT.md` (phase 16's Turnstile, migrations and policy
-drafts, then `FORGE_OPEN`; phase 14's device flow setting on the GitHub App, the migration 0011, the
-PyPI publication when a name is chosen).
+drafts, then `FORGE_OPEN`; phase 14's device flow setting on the GitHub App, the migrations 0011 and
+0012, the PyPI publication when a name is chosen; phase 11's OSV runs with the network, a known-malware
+or secrets config if wanted).

@@ -193,3 +193,23 @@ env SITE="$SITE" MOCK="$MOCK" FAKE="$FAKE" REPO_ID="$REPO_ID" node --experimenta
 # started again with Turnstile's passing test secret, FORGE_OPEN unset, and sign-in codes that live 12 s.
 start_worker --var "TURNSTILE_SECRET_KEY:$TURNSTILE_PASS" --var "DEVICE_CODE_SECONDS:12"
 env SITE="$SITE" MOCK="$MOCK" FAKE="$FAKE" ROOT="$ROOT" TRANSCRIPTS="${TRANSCRIPTS:-}" node --experimental-strip-types tests/forge-service/e2e-cli.ts
+
+# 9. Night phase 11 (tests/forge-service/e2e-security.ts): a FAKE OSV (tests/forge/fake-osv-server.ts),
+# the Mac's security facts seeded through the real code paths against it (seed_security.py: the
+# dependency graph, OSV alerts, a secret alert, the licence), then the Worker (FORGE_OPEN=true) shows
+# the graph and the alerts, dismisses one, ingests a SARIF file through the token API, files and
+# publishes a private vulnerability report, and the SBOM's data is present.
+OSV_PORT=${OSV_PORT:-9493}
+OSV="http://127.0.0.1:$OSV_PORT"
+node --experimental-strip-types tests/forge/fake-osv-server.ts "$OSV_PORT" >"$TMP/osv.log" 2>&1 &
+PIDS="$PIDS $!"
+i=0
+until curl -fs -X POST "$OSV/v1/querybatch" -d '{"queries":[]}' >/dev/null 2>&1; do
+  i=$((i + 1)); [ "$i" -gt 60 ] && { echo "the fake OSV did not start:"; cat "$TMP/osv.log"; exit 1; }
+  sleep 0.5
+done
+(cd "$ROOT" && "$PYTHON" website/tests/forge-service/seed_security.py "$REPO_ID" "$OSV" "$TMP/state" "$(printf 'a%.0s' $(seq 1 40))") \
+  >"$TMP/mac-security.log" 2>&1 || { echo "the Mac's security seed failed:"; tail -20 "$TMP/mac-security.log"; exit 1; }
+cat "$TMP/mac-security.log"
+start_worker --var "TURNSTILE_SECRET_KEY:$TURNSTILE_PASS" --var "FORGE_OPEN:true"
+env SITE="$SITE" REPO_ID="$REPO_ID" node --experimental-strip-types tests/forge-service/e2e-security.ts

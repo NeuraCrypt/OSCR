@@ -415,6 +415,32 @@ never the App's key, never users' code.
 - The REST path needs `OSCR_D1_FORGE_ID` beside `OSCR_D1_ACCOUNT_ID`; without them, wrangler's own
   login.
 
+## Security and quality (night phase 11)
+
+Full details in [SECURITY_QUALITY.md](SECURITY_QUALITY.md). In the forge service:
+
+- **Reads** (signed in): `GET /api/forge/security?id=|path=` returns the repository's dependency graph
+  (`repo_deps`), vulnerability, malware, secret and code-scanning alerts (`security_alerts` merged
+  with `alert_triage`), and the licence compatibility (`repo_licences`); `GET /api/forge/advisory`
+  returns the private vulnerability reports the reader may see (`advisories`, `advisory_posts`). Every
+  read goes by a key or a key range, never a scan.
+- **Writes** (signed in, Origin and CSRF, `FORGE_OPEN`): `POST /api/forge/security/triage` (dismiss,
+  reopen, assign or label an alert, by a manager of the repository), and `POST /api/forge/advisory/
+  open|post|edit` (a private report, its thread, publish/withdraw/collaborator/credit). Logged in
+  `actions` with the kinds `security_alert`, `advisory_open`, `advisory_post`, `advisory_edit` and the
+  caps `triage`, `advisory`.
+- **The token API**: `POST /api/v1/security/sarif` (scope `security:write`) ingests the researcher's
+  CI's SARIF 2.1.0 and stores it as `security_alerts` (kind `sarif`); logged with the kind `sarif` and
+  the cap `scanning`.
+- **The Mac** writes `repo_deps`, `security_alerts` (osv, secret), `repo_licences` through
+  `oscr security scan`, within the facts push's budget; it runs no user code and queries OSV without a
+  key. Advisories and their threads are **private**: the Mac never reads them, and they are never in
+  the static layer, the search, a feed or a webhook.
+- **The Security tab** on the `/r/` shell (`src/scripts/repo-security.ts`, `src/lib/security-view.ts`,
+  `src/lib/sbom.ts`): the sections above, the triage buttons, the private-report form and the SBOM
+  download (built in the browser from the dependency graph). `science.css` holds the styles
+  (`.security-*`, `ul.alerts`, `dl.deps`, `form.dep-filter`, `.advisory-*`).
+
 ## Budget (PLATFORM_PLAN.md §15.4)
 
 Phase 01's share of a day at ~3,000 repositories: **~900 Worker requests, ~1,300 D1 rows written,

@@ -240,6 +240,33 @@ The researchers' `oscr` (`cli/`, `docs/CLI.md`, D14-*):
   `cd cli && ../.venv/bin/python -m pytest -q && ../.venv/bin/ruff check src tests`.
 - Its page's styles are in `science.css`: `input.device-code`.
 
+## Security and quality (night phase 11)
+
+Full detail in [docs/SECURITY_QUALITY.md](docs/SECURITY_QUALITY.md); decisions D11-1 to D11-9.
+
+- **Nothing of a user's code ever runs** (D00-11): the Mac reads files as text, never executes a
+  manifest, resolves, installs or runs an analyser; the Worker shows what the researcher's CI reported.
+  The analysis runs on the Mac (0 Worker requests) and pushes facts to `oscr_forge`.
+- **The dependency graph** (`oscr/depgraph.py`): Python, R, Julia, JavaScript, conda and GitHub Actions,
+  at the default branch and at each commit a paper's map pins (`repo_deps`).
+- **Vulnerability and malware alerts** from OSV without a key (`oscr/osv.py`, batch, CVSS severity,
+  `MAL-` malware, auto-triage); the night build uses a fake, never the real OSV (`security_alerts` kind
+  `osv`, the decision in `alert_triage`). OSCR shows Dependabot and never opens a pull request (AUP).
+- **The secrets scan** reports and never blocks (`oscr/secretscan.py`): over the files already stored,
+  the value never kept (`security_alerts` kind `secret`).
+- **Code scanning**: the CI uploads SARIF 2.1.0 through the token API (`security:write`); OSCR runs no
+  analyser (`security_alerts` kind `sarif`).
+- **Private vulnerability reporting** (`advisories`, `advisory_posts`): private by construction, never
+  in a public output, the static layer, the search, a feed or a webhook; a read is refused to anyone
+  but the reporter, a named collaborator and a manager, until published.
+- **SBOM** (SPDX 2.3, `oscr/sbom.py`, built in the browser from the graph) and **licence compatibility**
+  (a table for the common open licences and a policy; dependency licences not fetched: unknown, never
+  guessed; `repo_licences`).
+- Every write is behind `FORGE_OPEN`; the migration is `migrations/d1-forge/0012_security.sql` (six
+  tables, the `actions` kinds rebuilt with `SECURITY_KINDS`; caps `triage`, `scanning`, `advisory`).
+  The command line: `oscr security scan|status|sbom`. Styles in `science.css` (`.security-*`,
+  `ul.alerts`, `dl.deps`, `form.dep-filter`, `.advisory-*`).
+
 ## The website's style (website/)
 
 - `website/src/styles/science.css` is the **only** source of style of the site. It is

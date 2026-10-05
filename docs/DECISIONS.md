@@ -2786,3 +2786,101 @@ refused the edit of a personal file): NIGHT_REPORT.md gives the owner the one co
 **Decision.** Every git call goes through the context's environment (`ctx.git`); the tests give every
 process a throwaway HOME, `GIT_CONFIG_GLOBAL` and config folder (an autouse fixture) and refuse the
 system keychain.
+
+## Night phase 11 — Security and quality (2026-10-05)
+
+### D11-1. The whole analysis runs on the Mac, from files read as text; nothing of a user's code runs
+
+**Decision.** The dependency graph, the OSV alerts, the secrets scan, the SBOM and the licence
+compatibility are computed on the Mac and pushed to `oscr_forge` as facts (0 Worker requests for the
+analysis). The Mac reads files as text through the read-only forge reader and never executes a
+manifest, resolves a dependency, installs anything or runs an analyser; the Worker runs no analyser
+either. This is D00-11 applied to phase 11. A signed-in Security tab is about 500 Worker requests a
+day; the facts push adds about 500 alert rows a day (PLATFORM_PLAN.md §15.6).
+
+### D11-2. The dependency graph keeps every package with its version, scope and sources
+
+**Decision.** `oscr/depgraph.py` is a new parser (not the tool-detection of `repofeatures.py`, which
+maps names to a vocabulary): it keeps one record per dependency with its ecosystem, exact version when
+a lock file pins it, the declared range, its scope, direct or transitive, pinned, and the files it is
+in (the view's "show paths"). It covers Python (requirements, pyproject, Pipfile, conda, setup.cfg),
+R (DESCRIPTION, renv), Julia (Project, Manifest), JavaScript (package.json, npm/yarn/pnpm locks) and
+GitHub Actions. Source precedence: a lock file's version wins; a manifest marks a dependency direct.
+Two snapshots: the default branch and each commit a paper's map pins.
+
+### D11-3. YAML parsed by hand, no new dependency
+
+**Decision.** conda environments, GitHub Actions workflows and pnpm lock files are parsed line by line,
+as `repofeatures.py` already parses YAML, rather than adding PyYAML (which is only a transitive of the
+lockfile, not a declared dependency). tomllib (standard library, 3.11+) reads the TOML. This keeps the
+package's declared dependencies unchanged.
+
+### D11-4. OSV queried without a key, by batch; a fake in the night build, never the real OSV
+
+**Decision.** `oscr/osv.py` queries OSV (osv.dev) with its batch endpoint and no key; only public
+package names, ecosystems and versions leave. Severity from the CVSS vector, malicious packages from
+the `MAL-` id, auto-triage of withdrawn advisories (a false positive), a development-scope label.
+Covered ecosystems: PyPI, npm, CRAN, GitHub Actions (conda and Julia are not in OSV: skipped, never
+guessed). `net.Client` gains `post_json` for the batch body; `api.osv.dev` an interval. During the
+night build the client talks only to a local fake (`tests/forge/fake-osv-server.ts`); the real calls
+happen when the owner runs `oscr security scan` with the network.
+
+### D11-5. The human decision on an alert is kept apart from the Mac's facts
+
+**Decision.** `security_alerts` holds the findings (the Mac writes OSV and secret rows, the Worker
+writes SARIF rows); the triage (dismiss, reopen, assign, label) is a separate `alert_triage` table the
+Worker writes, so a re-push of a finding never clobbers it. The read merges them: the human decision
+wins, else an auto-triage rule may have dismissed it (carried in the alert's `detail`). Triage is
+`POST /api/forge/security/triage`, gated by `FORGE_OPEN`, by a manager of the repository, cap `triage`.
+
+### D11-6. The secrets scan reports and never blocks, and keeps no value
+
+**Decision.** D00-11: pushes do not pass through the registry, so it cannot refuse a secret. After the
+push, `oscr/secretscan.py` scans the files the Mac already stored (never re-fetched) and records a
+finding by kind, path and line with a short hidden hint, never the value. Structured and paired
+patterns (paired ones marked a guess), custom patterns with a test string and a dry run, path
+exclusions, remediation. The structured kinds match the web editor's warning (`src/lib/secrets.ts`), a
+shared fixture keeps them in step (`tests/fixtures/secret_patterns.json`).
+
+### D11-7. SARIF accepted through the token API; OSCR runs no analyser
+
+**Decision.** Code scanning is the researcher's CI uploading SARIF 2.1.0 through `POST
+/api/v1/security/sarif` (a new token scope `security:write`, gated by `FORGE_OPEN`); `sarif.ts` parses
+it and stores `security_alerts` kind `sarif` (source `ci`). The upload replaces the repository's
+earlier results. OSCR runs no analyser on users' code; it shows what the CI reported. A CVE through a
+numbering authority stays the researcher's step.
+
+### D11-8. Private vulnerability reports are private by construction
+
+**Decision.** An advisory and its thread (`advisories`, `advisory_posts`) are never put in a public
+output, the static layer, the search, a feed or a webhook (the Mac never reads them). A read is
+refused to anyone but the reporter, a named collaborator and a manager of the repository, until the
+maintainers publish it; a withdrawn one is private again. The maintainers draft, publish, withdraw, add
+collaborators and credits; the reporter and collaborators post in the thread. Every write is behind
+`FORGE_OPEN`, masked, logged with `advisory_open`/`advisory_post`/`advisory_edit`, cap `advisory`.
+
+### D11-9. SBOM in SPDX; licence compatibility from a table and a policy; dependency licences not fetched
+
+**Decision.** The SBOM is SPDX 2.3 (JSON and tag-value), one package per dependency with a purl; a
+licence not stated is NOASSERTION, never invented. The browser's Download button builds it from the
+dependency graph (nothing of the code sent); `oscr security sbom` writes the files. Licence
+compatibility uses a table for the common open licences (permissive, weak and strong copyleft,
+Creative Commons, public domain) and a policy (allow and deny lists), and says a clash in words, never
+as a blocking error. Dependency licences are not fetched from the package registries tonight (no
+network in the facts push): they are counted as unknown, never guessed.
+
+### D11-n. What phase 11 covers for phase 16's rules, and what it defers
+
+- **Phase 16's rules must cover the new objects**: a security alert's triage, a SARIF upload and a
+  private vulnerability report are new writes; when the GitHub side opens (`FORGE_OPEN`), the content
+  rules, caps and the moderator's reach should include them (the triage and advisory routes already
+  pass `FORGE_OPEN` and the caps; a hidden repository hides its security layer and advisories through
+  `hiddenOne`). An advisory is private, so it is never shown from the source and never moderated
+  publicly; a takedown of a repository hides it with everything else.
+- **Deferred**: **research advisories** (an advisory for a code error that affects published results,
+  tied to the papers and releases that cite the affected versions) overlap phase 05 research issues and
+  phase 07 release ties; built later, as a research-typed advisory linked to `release_papers`. The
+  **SECURITY.md "start setup"** (a template commit through the `commit` action) is deferred; the
+  coordinated-disclosure guidance is present in the reporting section. **Dependency licences** and the
+  **OSV auto-triage beyond the two base rules** need a package-registry lookup and a richer policy;
+  both noted. Custom secret patterns are the owner's local config tonight, not a server-side store.
