@@ -73,6 +73,7 @@ import { handleTokens, handleTokenWrite } from "./tokens.ts";
 import { handleDeviceDecide, handleDeviceRead } from "./device.ts";
 import { handleHookDeliveries, handleHooks, handleHookWrite } from "./hooks.ts";
 import { handleStatuses } from "./statuses.ts";
+import { handleSecurity } from "./security.ts";
 import { handleAppeal, handleModerationMine, handleModerationRead, handleModerationWrite, handleReport } from "./moderation.ts";
 import { handleBlocks, handleBlockWrite, handleLimits, handleLimitWrite } from "./blocks.ts";
 import { handleRights, handleRightsAnswer } from "./rights.ts";
@@ -123,6 +124,8 @@ export const FORGE_ROUTES: Readonly<Record<string, Route>> = {
   "/api/forge/hooks/write": { method: "POST", signedIn: true, handle: (r) => handleHookWrite(r) },
   // Phase 10: the statuses outside services posted on a commit (statuses.ts; posted through the API).
   "/api/forge/statuses": { method: "GET", signedIn: true, handle: (r) => handleStatuses(r) },
+  // Phase 11: the security and quality layer of a repository (security.ts), the Mac's facts.
+  "/api/forge/security": { method: "GET", signedIn: true, handle: (r) => handleSecurity(r) },
   // Phase 16: reports (with or without an account), the owner's queue and decisions, appeals.
   "/api/forge/report": { method: "POST", signedIn: false, handle: (r) => handleReport(r) },
   "/api/forge/moderation": { method: "GET", signedIn: true, handle: (r) => handleModerationRead(r) },

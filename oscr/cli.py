@@ -419,6 +419,18 @@ def main(argv: list[str] | None = None) -> int:
     mw_where.add_argument("--remote", action="store_true", help="also hide in the Cloudflare database oscr_forge")
     mw.add_argument("--persist-to", default="", help="the local D1's state folder, when not website/.wrangler/state")
 
+    se = sp.add_parser("security", help="night phase 11: security and quality facts computed on the Mac and pushed to "
+                                        "oscr_forge, the dependency graph from environment files (docs/SECURITY_QUALITY.md). "
+                                        "Nothing is run, nothing resolved, nothing installed.")
+    se.add_argument("action", choices=["scan", "status"])
+    se_where = se.add_mutually_exclusive_group()
+    se_where.add_argument("--local", action="store_true", help="the local D1 of `wrangler dev --env local`")
+    se_where.add_argument("--remote", action="store_true", help="the Cloudflare database oscr_forge")
+    se.add_argument("--folder", default="data/community", help="the state (the budget ledger, shared with the other pushers)")
+    se.add_argument("--persist-to", default="", help="the local D1's state folder, when not website/.wrangler/state")
+    se.add_argument("--budget", type=int, default=int(cfg.get("OSCR_COMMUNITY_BUDGET", "10000")),
+                    help="rows written a day, the facts push's included (default 10,000)")
+
     so = sp.add_parser("social", help="the social layer (night phase 08): the static shards of stars, follows and "
                                       "profiles, the Explore page, the collections (docs/SOCIAL.md)")
     so.add_argument("action", choices=["layer", "search", "collections", "accept", "decline"])
@@ -650,6 +662,12 @@ def main(argv: list[str] | None = None) -> int:
             print(_jobs(con, a, cfg, client, opts))
         elif a.command == "forge":
             print(_forge(con, a, cfg, client))
+        elif a.command == "security":
+            from . import security
+            print(security.command(con, a.action, target="remote" if a.remote else "local" if a.local else None,
+                                   folder=Path(a.folder), budget=a.budget, settings=cfg,
+                                   persist_to=Path(a.persist_to) if a.persist_to else None,
+                                   report=lambda m: print(m, flush=True)))
         elif a.command == "social":
             from . import social
             print(social.command(con, a.action, target="remote" if a.remote else "local" if a.local else None,

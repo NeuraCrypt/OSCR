@@ -187,7 +187,7 @@ describe("the heading line and the tabs", () => {
     const tabs = repoTabs(EEG, "branches");
     assert.equal(tabs.tag, "nav");
     assert.equal(tabs.attrs.class, "tabs");
-    assert.deepEqual(hrefs(tabs), ["/r/oscr-fixture/eeg-analysis/", "/r/oscr-fixture/eeg-analysis/issues/", "/r/oscr-fixture/eeg-analysis/pulls/", "/r/oscr-fixture/eeg-analysis/releases/", "/r/oscr-fixture/eeg-analysis/checks/", "/r/oscr-fixture/eeg-analysis/branches/", "/r/oscr-fixture/eeg-analysis/settings/"]);
+    assert.deepEqual(hrefs(tabs), ["/r/oscr-fixture/eeg-analysis/", "/r/oscr-fixture/eeg-analysis/issues/", "/r/oscr-fixture/eeg-analysis/pulls/", "/r/oscr-fixture/eeg-analysis/releases/", "/r/oscr-fixture/eeg-analysis/checks/", "/r/oscr-fixture/eeg-analysis/security/", "/r/oscr-fixture/eeg-analysis/branches/", "/r/oscr-fixture/eeg-analysis/settings/"]);
     // Phase 04: a pull request and the list are under Pull requests.
     assert.deepEqual([...walk(repoTabs(EEG, "pull"))].filter((e) => e.attrs["aria-current"] === "page").map((e) => textOf(e)), ["Pull requests"]);
     // Phase 05: an issue, the list, the labels and the milestones are under Issues.

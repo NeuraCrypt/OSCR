@@ -26,7 +26,9 @@ TABLES = {"repos", "repo_papers", "installations", "traced_paths", "actions", "d
           # Phase 16: content, abuse and rules (0010_moderation.sql).
           "content_reports", "moderation", "blocks", "interaction_limits", "rights_requests",
           # Phase 14: the command line's sign-in (0011_device.sql).
-          "device_grants"}
+          "device_grants",
+          # Phase 11: security and quality (0012_security.sql).
+          "repo_deps"}
 T = 1_790_596_800
 
 
@@ -34,7 +36,7 @@ def _tables(con: sqlite3.Connection) -> dict[str, str]:
     return {name: sql for name, sql in con.execute("SELECT name, sql FROM sqlite_master WHERE type = 'table'")}
 
 
-def test_the_migration_applies_and_holds_the_twenty_eight_tables(forge_d1):
+def test_the_migration_applies_and_holds_the_forge_tables(forge_d1):
     assert FORGE_MIGRATIONS and FORGE_MIGRATIONS[0].name == "0001_forge.sql"
     assert set(_tables(forge_d1.con)) == TABLES
     # The Mac's interface: rows in, rows out.

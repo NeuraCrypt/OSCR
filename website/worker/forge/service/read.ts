@@ -183,11 +183,11 @@ const FORGES: readonly ForgeName[] = ["github", "memory"];
  *  where a GitHub sign-in and the double's GitHub are the same person; no production row has it. */
 const COMMUNITY_HOST: Readonly<Record<ForgeName, string>> = { github: "github.com", memory: "github.com" };
 
-const NOT_FOUND = "The registry does not know this repository, or it is not public.";
+export const NOT_FOUND = "The registry does not know this repository, or it is not public.";
 
 /** The forge the service works with: GitHub, or the backend the tests inject. The backend itself
  *  is not built (a read makes no request to the forge). */
-const serviceForge = (r: ForgeRequest): ForgeName => r.deps.backend?.forge ?? "github";
+export const serviceForge = (r: ForgeRequest): ForgeName => r.deps.backend?.forge ?? "github";
 
 const day = (t: number): string => new Date(t * 1000).toISOString().slice(0, 10);
 

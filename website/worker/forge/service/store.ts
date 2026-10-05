@@ -433,4 +433,15 @@ export function deliverySeen(db: D1Database, delivery: string, t: number): D1Pre
     .bind(...days, delivery);
 }
 
+// ─── phase 11: security and quality facts (the Mac writes them; the service reads them) ──────────
+
+/** A repository's dependency graph (repo_deps), by the key's prefix (forge, repo_id): a key range,
+ *  never a scan. Both snapshots (default and cited), ordered for the view. */
+export function depsOf(db: D1Database, forge: string, repoId: string): D1PreparedStatement {
+  return db
+    .prepare("SELECT snapshot, ecosystem, name, version, req, scope, direct, pinned, sources, commit_sha FROM repo_deps "
+      + "WHERE forge = ? AND repo_id = ? ORDER BY snapshot, ecosystem, name")
+    .bind(forgeOf(forge), repoId);
+}
+
 export type { RepoRow };

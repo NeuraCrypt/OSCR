@@ -1370,3 +1370,28 @@ form.lookup input[type="text"] { width: min(28em, 100%); }
    settings' own list. */
 input.device-code { font-family: var(--font-code); font-size: 1.25em; letter-spacing: .12em; text-transform: uppercase; width: 9em; max-width: 100%; padding: .15em .4em; border: 1px solid #777; border-radius: 0; }
 .panel dl.settings dd ul { margin: .2em 0; padding-left: 1.2em; }
+/* Night phase 11: the Security (and quality) tab. The dependency graph is a definition list, as the
+   catalogue's listing; its facts are said in words (.ok or .warning), never a pill or an uppercase
+   label. The filter form is a row of labelled controls; "show paths" is a details disclosure. */
+.security h2 { margin-top: .4em; }
+.security-deps { margin: 1.2em 0; }
+.security-deps h3 { margin: .2em 0 .3em; }
+.dep-summary { color: var(--muted); margin: .2em 0 .6em; }
+form.dep-filter { display: flex; flex-wrap: wrap; gap: .4em 1.2em; align-items: end; margin: .4em 0 .8em; }
+form.dep-filter label { display: flex; flex-direction: column; font-size: .9em; color: var(--muted); gap: .15em; }
+form.dep-filter input, form.dep-filter select { font: inherit; padding: .15em .35em; border: 1px solid #777; border-radius: 0; background: var(--bg); }
+dl.deps { margin: .3em 0; }
+dl.deps dt { font-weight: normal; margin-top: .5em; }
+dl.deps dt .dep-name { font-weight: bold; }
+dl.deps dt .dep-eco { color: var(--muted); font-size: .85em; }
+dl.deps dt .dep-version { font-family: var(--font-code); font-size: .9em; }
+dl.deps dt .dep-req { font-family: var(--font-code); font-size: .9em; color: var(--muted); }
+dd.dep { margin: 0 0 .1em 1.2em; }
+dd.dep .dep-facts { font-size: .9em; color: var(--muted); }
+details.dep-paths { margin: .15em 0; }
+details.dep-paths summary { cursor: pointer; color: var(--link); font-size: .9em; }
+details.dep-paths ul { margin: .2em 0 .2em 1em; padding-left: 1em; }
+details.dep-paths code { font-size: .85em; }
+@media (max-width: 640px) {
+  form.dep-filter { flex-direction: column; align-items: stretch; gap: .5em; }
+}
