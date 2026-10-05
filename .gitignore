@@ -10,6 +10,10 @@ __pycache__/
 #   PRIVATE. Its copy WITHOUT excerpts is published in data/public/oscr_public.db;
 # - benchmarks and their outputs are regenerated.
 data/
+# The website's public-API endpoints are SOURCE (they generate the /data/ static files at build
+# time), not the private catalogue: keep them tracked despite the data/ rule above.
+!website/src/pages/data/
+!website/src/pages/data/**
 
 # Generated outputs are not versioned: the catalogue lives on Hugging Face and on the
 # website. The "git scraping" pattern (committing library/ and the mirror/ of scripts at

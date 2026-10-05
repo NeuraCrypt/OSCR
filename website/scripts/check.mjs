@@ -21,6 +21,7 @@ import { createHash } from "node:crypto";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { allowsHash, headersFor, parseHeaders } from "../src/lib/headers.ts";
+import { buildOpenapi, ENDPOINTS, REPO_SHARDS } from "../src/lib/apispec.ts";
 import {
   ENTITY_TYPES, FILE_LIMIT, FILE_MARGIN, FIXED_FILES_MAX, keyOf, LIST_PAGES_MAX, LOOKUP_HEX, SHARDS, shardOf, SITEMAP_SHARDS,
   SITEMAP_URLS, STATIC_PAPERS,
@@ -106,6 +107,40 @@ for (const [type, count] of Object.entries(SHARDS)) {
   if (written > count) problems.push(`/records/${type}/: ${written} shards, more than ${count}`);
 }
 
+// 2b. The public read API's static data (src/pages/data/, src/lib/apidata.ts, src/lib/apispec.ts):
+// the files the API serves and that power users fetch directly (the no-rate-limit path). A fixed
+// number of files, keyed the same way the Worker reads them (worker/v1/). No email address passes
+// the global scan (section 5); the OpenAPI document must match the endpoints (no drift).
+const DATA_FILES = [
+  "/data/stats.json", "/data/openapi.json", "/data/articles.csv", "/data/repositories.csv", "/data/alignments.jsonl",
+  ...["authors", "journals", "institutions", "tools", "datasets", "categories"].map((t) => `/data/entities/${t}.json`),
+];
+for (const f of DATA_FILES) if (!all.has(f)) problems.push(`missing API data file ${f}`);
+const apiPapers = new Set();
+const apiPaperFiles = files.filter((f) => /^\/data\/papers\/[0-9a-f]{2,4}\.json$/.test(f));
+if (apiPaperFiles.length > SHARDS.paper) problems.push(`/data/papers/: ${apiPaperFiles.length} shards, more than ${SHARDS.paper}`);
+for (const f of apiPaperFiles) {
+  const name = f.match(/\/([0-9a-f]+)\.json$/)[1];
+  for (const [slug, rec] of Object.entries(json(f))) {
+    if ((await shardOf(slug, SHARDS.paper)) !== name) problems.push(`${f}: ${slug} belongs in another shard`);
+    if (!rec || rec.slug !== slug || !rec.doi) problems.push(`${f}: ${slug} record is malformed`);
+    apiPapers.add(slug);
+  }
+}
+const apiRepoFiles = files.filter((f) => /^\/data\/repos\/[0-9a-f]{2,4}\.json$/.test(f));
+if (apiRepoFiles.length > REPO_SHARDS) problems.push(`/data/repos/: ${apiRepoFiles.length} shards, more than ${REPO_SHARDS}`);
+for (const f of apiRepoFiles) {
+  const name = f.match(/\/([0-9a-f]+)\.json$/)[1];
+  for (const repo of Object.keys(json(f))) if ((await shardOf(repo, REPO_SHARDS)) !== name) problems.push(`${f}: ${repo} belongs in another shard`);
+}
+if (all.has("/data/openapi.json")) {
+  const docPaths = new Set(Object.keys(json("/data/openapi.json").paths ?? {}));
+  const specPaths = new Set(ENDPOINTS.map((e) => e.path || "/"));
+  const builtPaths = new Set(Object.keys(buildOpenapi().paths));
+  for (const p of specPaths) if (!docPaths.has(p)) problems.push(`/data/openapi.json: missing path ${p} (rebuild: it drifted from the routes)`);
+  for (const p of docPaths) if (!specPaths.has(p) || !builtPaths.has(p)) problems.push(`/data/openapi.json: unexpected path ${p}`);
+}
+
 // 3. A page for each paper of decision D2, none for the others: a static one for the most recent,
 // a record for the others; the reader on the page of each static paper with code whose files were
 // read (its former address, /paper/<slug>/code/, is no file: the Worker sends it to the page);
@@ -155,6 +190,10 @@ const oldestStatic = staticPapers.reduce((m, a) => (m === null || key(a) < key(m
 const newestOnDemand = onDemand.reduce((m, a) => (m === null || key(a) > key(m) ? a : m), null);
 if (oldestStatic && newestOnDemand && key(newestOnDemand) > key(oldestStatic)) {
   problems.push(`${newestOnDemand.doi} is rendered on demand, but ${oldestStatic.doi}, older, is static`);
+}
+// Every paper with a page has a public API record under /data/papers/ (the DOI endpoint reads it).
+for (const a of [...staticPapers, ...onDemand]) {
+  if (!apiPapers.has(a.slug)) problems.push(`${a.doi}: no /data/papers/ API record (the /api/v1/paper endpoint needs it)`);
 }
 const shards = existsSync("public/lookup") ? readdirSync("public/lookup").filter((x) => x.endsWith(".json")) : [];
 for (const name of shards) {

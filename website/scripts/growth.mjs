@@ -16,6 +16,7 @@ import { createHash } from "node:crypto";
 import { cpSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { DATA_FIXED_FILES, REPO_SHARDS } from "../src/lib/apispec.ts";
 import { FILE_MARGIN, LIST_PAGES_MAX, LOOKUP_HEX, SHARDS, SITEMAP_SHARDS } from "../src/lib/shards.ts";
 
 const FIXTURE = new URL("../../tests/fixtures/public-catalog/", import.meta.url).pathname;
@@ -140,6 +141,9 @@ const bounded = (folder) => {
   if (folder === "authors/") return 28; // A to Z, "Other", and the list's own page
   if (folder === "list/") return LIST_PAGES_MAX; // every paper by date, a bounded number of pages
   if (folder === "sitemaps/") return SITEMAP_SHARDS; // the sitemap's shards, 50,000 addresses each
+  // The public API's static data: the paper shards (SHARDS.paper), the repository shards
+  // (REPO_SHARDS) and DATA_FIXED_FILES others (entity lists, bulk exports, stats, openapi).
+  if (folder === "data/") return SHARDS.paper + REPO_SHARDS + DATA_FIXED_FILES;
   return undefined;
 };
 const problems = [];
