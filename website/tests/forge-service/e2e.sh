@@ -213,3 +213,10 @@ done
 cat "$TMP/mac-security.log"
 start_worker --var "TURNSTILE_SECRET_KEY:$TURNSTILE_PASS" --var "FORGE_OPEN:true"
 env SITE="$SITE" REPO_ID="$REPO_ID" node --experimental-strip-types tests/forge-service/e2e-security.ts
+
+# 10. Night phase 09 (tests/forge-service/e2e-organizations.ts): organizations, membership and research
+# permissions, a members-only README refused to a non-member then shown to a member, a passkey (WebAuthn
+# with a real ES256 key, verified in the Worker), a session revoked, the audit log exported as CSV. The
+# Worker with FORGE_OPEN=true so Bob (a non-owner) may accept an invitation and act on his membership.
+start_worker --var "TURNSTILE_SECRET_KEY:$TURNSTILE_PASS" --var "FORGE_OPEN:true"
+env SITE="$SITE" MOCK="$MOCK" FAKE="$FAKE" node --experimental-strip-types tests/forge-service/e2e-organizations.ts
