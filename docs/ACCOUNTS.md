@@ -371,3 +371,23 @@ account page says that signing in is not set up yet; the rest of the site deploy
 - No rate limit per account or address yet beyond the 20 pending claims (Turnstile, and limits
   stored in D1, come with the public forms).
 - The owner's steps above. (The remote push of the facts is built: Phase 6.)
+
+## Account security and lifecycle (night phase 09)
+
+The account security page, `/account/security/`, and its routes (`website/worker/forge/service/
+account-security.ts`, `webauthn.ts`; full detail in `docs/ORGANIZATIONS.md`):
+
+- **Sessions**: a person lists the browsers signed in (the `sessions` table, `account/session.ts`),
+  with the current one flagged, and revokes one or all the others. Revoking is a true delete of the
+  session row, so its cookie is then worth nothing. Not gated by FORGE_OPEN; the `security` cap applies.
+- **Identities**: ORCID, GitHub and Google are listed; a person may unlink one, never the last.
+- **Passkeys (WebAuthn)**: a step up for sensitive actions (sudo mode), not the first sign-in. The
+  Worker verifies a registration and an assertion itself with WebCrypto only (no dependency, nothing
+  paid) and keeps only a PUBLIC key (ES256 or RS256). Origin, challenge, rpId and the sign counter are
+  checked; the challenge lives in a server-signed cookie, never in D1. Sudo mode lasts 600 seconds.
+- **The personal security log** records each event and exports as CSV. No email address is read or
+  stored anywhere; security messages stay in the site.
+
+Account EXPORT and DELETION are the phase 16 data-rights self-service; the rest of the account
+lifecycle (a username change with the old handle redirecting, a successor, moving work to an
+organization, merging two accounts, a deceased user's account) is deferred (D09-8).

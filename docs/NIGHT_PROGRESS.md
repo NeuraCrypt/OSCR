@@ -410,11 +410,42 @@ behind `FORGE_OPEN`. Detail: `docs/SECURITY_QUALITY.md`, decisions D11-1 to D11-
 - Tests at the close: pytest 585; ruff clean; `npm test` 1,465; the build and `check --every-route`
   ok, within the budget; the end-to-end run, every check passed (including phase 11's stage 9).
 
+## Phase 09: what it produced
+
+Organizations, teams, rights and accounts, on `night/phase-09-organizations` (from
+`night/phase-11-security`). Five core elements, one commit each, then the pages and the close; all in
+`oscr_forge`, every owner/manager write behind `FORGE_OPEN`; a lab's GitHub organization linked, not
+replaced (no GitHub write). Detail: `docs/ORGANIZATIONS.md`, decisions D09-1 to D09-8.
+
+- **E1 organizations** (`organizations.ts`, `org-core.ts`): create, profile (public and members-only
+  README, picture, banner, pinned repositories, kind, ROR id, verified-domain claim), settings,
+  rename, archive, soft delete. The members-only README refused to a non-member. Audit + action log.
+- **E2 membership, roles, research permissions, teams** (`members.ts`): invite (expiry), accept,
+  decline, remove (leaving checklist), reinstate, roles, research permissions (`propose_map`,
+  `flag_map`, `validate_map`, `tie_release`), own-visibility, leave (last owner protected); teams
+  (create, member, remove, delete); member list CSV export. A person's own answers not FORGE_OPEN gated.
+- **E3 the audit log + security overview** (`audit.ts`): the per-organization audit read as a key
+  range with filters, a text search and a CSV/JSON export; phase 11's open alerts over pinned repos.
+- **E4 account security** (`account-security.ts`): sessions (list, revoke one or all the others, a
+  true delete), identities (unlink but never the last), the personal security log (CSV export).
+- **E5 passkeys / WebAuthn** (`webauthn.ts`, `webauthn-core.ts`): sudo mode, verified in the Worker
+  with WebCrypto only (no dependency); only a public key kept; origin, challenge, rpId and the sign
+  counter checked (clone detection); rename and remove.
+- **The close**: `migrations/d1-forge/0013_organizations.sql` (9 tables, the `actions` kinds rebuilt
+  with `ORG_KINDS`, caps `orgs` and `security`); pages `/organizations/` and `/account/security/`;
+  the e2e (stage 10, `e2e-organizations.ts`, a real passkey: every check passed); the security
+  self-review; the docs (`ORGANIZATIONS.md`, ACCOUNTS.md, FORGE.md, ARCHITECTURE.md, CLAUDE.md,
+  DECISIONS.md D09-*); screenshots in `docs/night-screenshots/phase-09/`.
+- Deferred (D09-8): the static org profile page/shards, rules shown as GitHub enforces them,
+  credentials under org policies, team nesting/auto-assignment, the account lifecycle (E6), binding
+  research permissions to each research route, the domain's DNS check (on the Mac).
+- Tests at the close: pytest 585; ruff clean; `npm test` 1,494; the build and `check --every-route`
+  ok, within the budget; the whole end-to-end run passed (exit 0, including phase 09's stage 10).
+
 ## Next step
 
-Phase 09, organizations, teams, rights and accounts, on branch `night/phase-09-organizations` (created
-from `night/phase-11-security`, nothing built on it): **it awaits the owner's go**. Before any public
-opening, the owner's steps are in `docs/NIGHT_REPORT.md` (phase 16's Turnstile, migrations and policy
-drafts, then `FORGE_OPEN`; phase 14's device flow setting on the GitHub App, the migrations 0011 and
-0012, the PyPI publication when a name is chosen; phase 11's OSV runs with the network, a known-malware
-or secrets config if wanted).
+Phase 06, discussions, wiki and projects, on branch `night/phase-06-discussions` (created from
+`night/phase-09-organizations`, nothing built on it): **the owner's go is granted in advance**. Before
+any public opening, the owner's steps are in `docs/NIGHT_REPORT.md` (phase 16's Turnstile, migrations
+and policy drafts, then `FORGE_OPEN`; phase 14's device flow setting; the migrations through 0013;
+phase 11's OSV runs with the network; and phase 09's own owner steps below).

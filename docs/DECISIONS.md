@@ -2884,3 +2884,107 @@ network in the facts push): they are counted as unknown, never guessed.
   coordinated-disclosure guidance is present in the reporting section. **Dependency licences** and the
   **OSV auto-triage beyond the two base rules** need a package-registry lookup and a richer policy;
   both noted. Custom secret patterns are the owner's local config tonight, not a server-side store.
+
+## Night phase 09: Organizations, teams, rights and accounts
+
+### D09-1. One migration for the new objects, all in `oscr_forge`, behind FORGE_OPEN
+
+**Decision.** Phase 09's objects (organizations, memberships, invitations, teams and team members,
+the per-organization audit log, passkeys, the personal security log, sudo markers) live in one
+migration, `migrations/d1-forge/0013_organizations.sql`, in `oscr_forge` (the FORGE binding),
+written by the Worker. Every write is counted against the forge service's daily row share and logged
+in the existing `actions` table (new row kinds `org`, `member`, `team`, `passkey`, `session`,
+`identity`), with two new standalone caps (`orgs` 300 a day, `security` 200 a day). The owner's and
+managers' writes pass `FORGE_OPEN` (the owner only until phase 16); a person's own writes (accept or
+decline an invitation, set their own visibility, leave, revoke a session, unlink an identity, add or
+use a passkey) are not gated by `FORGE_OPEN`, only by the caps and the day's rows, so a person may
+always answer an invitation or secure their own account even while the GitHub side is closed. The
+Mac never reads or writes these tables; the facts push never exports them.
+
+Reasoning: the audit log and the caps belong with the action log, which is `oscr_forge`; a person's
+account-security answers must work with the GitHub side closed, like a data-rights request (D16-13).
+
+### D09-2. A lab's GitHub organization is linked, not replaced
+
+**Decision.** An OSCR organization is OSCR's own layer (profile, members, roles, research
+permissions, teams, pinned repositories, an audit log, a verified-domain claim, an announcement
+banner). Git rights on a lab's repositories stay GitHub's; no route here asks GitHub for a write. The
+verified-domain CLAIM only records the domain and a DNS TXT proof to publish (`domain_proof`); the
+actual DNS check runs on the Mac (it has the network), never from the Worker (zero cost, no outside
+call), so `domain_verified` stays 0 until the Mac confirms it (deferred, below).
+
+### D09-3. Private membership and the members-only README are private by construction
+
+**Decision.** A private member list and the members-only README are never put in a public output: a
+read of `/api/forge/org` returns them only to a member (`org-core.ts`, `organizations.ts`), and no
+static org shard carries them (the static org profile page is deferred; a future shard applies the
+same filter). A member may also mark their own membership private, which hides them from non-members
+while members still see them.
+
+### D09-4. Research permissions ride on a membership
+
+**Decision.** The research permissions `propose_map`, `flag_map`, `validate_map` and `tie_release`
+are stored on a membership (`org_members.perms`) and set by an owner. They decide who may propose,
+flag or validate a tracing map, or tie a release to a paper version, for the organization's
+repositories. The enforcement hook (the research routes reading an org-owned repository's member
+perms) is documented and wired through `permsOf`; binding it to each research route's repository is a
+small follow-up (noted below), the store and the checks are in place.
+
+### D09-5. Passkeys are a step up (sudo mode), verified in the Worker with WebCrypto only
+
+**Decision.** WebAuthn is used for sudo mode (a step up while already signed in), not for the first
+sign-in (that stays ORCID, GitHub or Google). So the account is always known and a credential is read
+by `(user_id, cred_id)`: a key, never a scan, and no usernameless discovery is needed. The Worker
+verifies a registration and an assertion itself (`webauthn-core.ts`: a minimal CBOR decoder, the COSE
+public key, the authenticator data, DER-to-raw ECDSA, the signature check), with WebCrypto only: no
+dependency, nothing paid. Only a PUBLIC key is kept (ES256 or RS256, as a JWK in the `cose` column;
+no private material). The challenge lives in a server-signed, short-lived cookie bound to the session
+and the purpose (create or get), never in D1. Origin, challenge, rpId and the sign counter are all
+checked; a counter that went backward is refused (clone detection). Sudo mode lasts 600 seconds,
+keyed by the session's hash (`sudo_sessions`).
+
+Column names: the forge schema test forbids the substrings `token` and `key` in a column name, so the
+domain proof is `domain_proof` and the passkey's public key is `cose` (the COSE key as JSON).
+
+### D09-6. The audit log is a dedicated per-organization table, read as a key range
+
+**Decision.** The audit log is `org_audit`, keyed `(org_id, at, nonce)`: one row per org-scoped
+write, written in the same batch as its action row, read by an owner or a moderator as a key range
+newest first (the index walked backward on `at`), with filters (event, actor, since), a text search
+over the target (within the key range, never a scan), and an export as JSON or CSV. The organization
+security overview aggregates phase 11's open alerts over the organization's pinned repositories.
+
+### D09-7. What phase 16's content rules must cover for the new objects
+
+- An organization's name, README (public and members-only), bio, picture and banner; team names and
+  descriptions; passkey labels; audit and security-log free text (there is none beyond fixed events
+  and small JSON details) are new text that the content rules, blocks, interaction limits and
+  data-rights erasure must reach when `FORGE_OPEN` opens the GitHub side to the public. Private
+  membership and members-only READMEs are already excluded from every public output.
+- A takedown or suspension of a person should also drop their organization memberships and
+  invitations; an organization itself can be hidden (soft delete, state `deleted`) and should become a
+  moderation target. Data-rights erasure must delete a person's `org_members`, `org_invitations`,
+  `team_members`, `webauthn_credentials`, `security_log` and `sudo_sessions` rows along with the rest.
+
+### D09-8. What is deferred (noted, not built tonight)
+
+- **The static organization profile page and its shards** (`/org/<handle>/` rendered signed-out from a
+  nightly shard): the dynamic `/api/forge/org` read is in place and the `/organizations/` page links to
+  it; the signed-out static rendering, with the same private-membership filter, is a follow-up.
+- **Rules shown as GitHub enforces them** (rulesets, classic branch protection, push/tag rules, bypass
+  lists, custom properties, organization rulesets, rule warnings in the editor): OSCR is to show and
+  advise, GitHub to enforce; deferred.
+- **Credentials under organization policies** (org token policies: maximum lifetime, approval, review;
+  listing public signing keys from GitHub and showing GitHub's verification): deferred; phase 01/10's
+  personal tokens are unchanged.
+- **Teams**: nesting, maintainers, mentions, review-request auto-assignment and identity-provider sync
+  beyond the base create/member/visibility/parent are deferred.
+- **Account lifecycle** (E6): the username change (at most once in 30 days, the old handle
+  redirecting), a successor, the hand-over of a sole-owned lab, moving work to an organization,
+  merging two accounts, a deceased user's account. Account EXPORT and DELETION already exist in phase
+  16 data-rights; these build on them and are deferred.
+- **Binding research permissions to each research route's repository**: the store and checks exist;
+  wiring `permsOf` into the map propose/flag/validate and release-tie routes for org-owned
+  repositories is a small follow-up.
+- **The verified domain's DNS check** runs on the Mac (it has the network); the Worker only records
+  the claim and the proof.

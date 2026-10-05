@@ -532,3 +532,13 @@ Locally (`wrangler dev --env local`): `FORGE` is bound to a local database
 (`00000000-0000-4000-8000-00000000f09e`; `npx wrangler d1 migrations apply oscr_forge --local
 --env local`), and the App's values go in the gitignored `website/.dev.vars`, with
 `FORGE_GITHUB_*_URL` pointing at the fake GitHub (`website/tests/forge/fake-github.ts`).
+
+## Organizations, teams and account security (night phase 09)
+
+Phase 09 adds OSCR's own organizations and account security over the forge service, all in
+`oscr_forge` (`migrations/d1-forge/0013_organizations.sql`), behind FORGE_OPEN for the owner's and
+managers' writes, and logged in the action log with the new row kinds `org`, `member`, `team`,
+`passkey`, `session`, `identity` and the caps `orgs` and `security`. A person's own writes (answer an
+invitation, set visibility, leave, revoke a session, unlink an identity, add or use a passkey) are not
+gated by FORGE_OPEN. A lab's GitHub organization is linked, not replaced: nothing here asks GitHub for
+a write. Routes, privacy, the audit log and the WebAuthn design are in `docs/ORGANIZATIONS.md`.

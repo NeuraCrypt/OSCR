@@ -22,7 +22,7 @@ interface View {
   sudo: { active: boolean; until: number };
 }
 
-const when = (t: number): string => (t ? new Date(t * 1000).toISOString().slice(0, 16).replace("T", " ") : "—");
+const when = (t: number): string => (t ? new Date(t * 1000).toISOString().slice(0, 16).replace("T", " ") : "-");
 
 const b64urlToBuf = (s: string): ArrayBuffer =>
   Uint8Array.from(atob(s.replace(/-/g, "+").replace(/_/g, "/").padEnd(s.length + ((4 - (s.length % 4)) % 4), "=")), (c) => c.charCodeAt(0)).buffer;

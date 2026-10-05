@@ -267,6 +267,30 @@ Full detail in [docs/SECURITY_QUALITY.md](docs/SECURITY_QUALITY.md); decisions D
   The command line: `oscr security scan|status|sbom`. Styles in `science.css` (`.security-*`,
   `ul.alerts`, `dl.deps`, `form.dep-filter`, `.advisory-*`).
 
+## Organizations and accounts (night phase 09)
+
+Full detail in [docs/ORGANIZATIONS.md](docs/ORGANIZATIONS.md); decisions D09-1 to D09-8. All in
+`oscr_forge`, migration `migrations/d1-forge/0013_organizations.sql`.
+
+- **Organizations** are OSCR's own layer over a lab, a group or a project (create, profile with a
+  public and a members-only README, settings, pinned repositories, a verified-domain claim, an
+  announcement banner, rename, archive, soft delete). A lab's GitHub organization is **linked, not
+  replaced**: git rights stay GitHub's, and nothing here asks GitHub for a write.
+- **Membership, roles, research permissions, teams**: invite (with an expiry), accept, decline,
+  remove (with a leaving checklist), reinstate, roles (owner, moderator, member), research permissions
+  (`propose_map`, `flag_map`, `validate_map`, `tie_release`) on a membership, own-visibility, teams
+  (visibility, nesting). The last owner is protected.
+- **Private membership and the members-only README are private by construction**: refused to a
+  non-member; no static shard carries them (the static org page is deferred).
+- **Account security**: sessions (list, revoke one or all the others; a true delete), identities
+  (link list, unlink but never the last), **passkeys (WebAuthn)** for sudo mode verified in the Worker
+  with WebCrypto only (no dependency, nothing paid; only a public key kept; origin, challenge, rpId
+  and the sign counter checked), the personal security log (with a CSV export).
+- The owner's and managers' writes are behind `FORGE_OPEN`; a person's own writes (answer an
+  invitation, set visibility, leave, revoke a session, unlink an identity, add or use a passkey) are
+  not. New `actions` kinds `org`, `member`, `team`, `passkey`, `session`, `identity`; caps `orgs`,
+  `security`. No email anywhere. Pages `/organizations/` and `/account/security/` (science.css only).
+
 ## The website's style (website/)
 
 - `website/src/styles/science.css` is the **only** source of style of the site. It is

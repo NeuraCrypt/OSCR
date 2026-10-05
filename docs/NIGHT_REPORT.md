@@ -485,3 +485,77 @@ Décision de stockage : aucune option ne permet à OSCR d'héberger lui-même de
 - Phase 14, dans le même esprit :
   - `input.device-code` (le champ où l'on tape le code du terminal sur `/device/` : la police du code, les lettres espacées, en majuscules, assez large sur téléphone) ;
   - `.panel dl.settings dd ul` (la liste des droits demandés dans le panneau de la demande).
+
+## 7. Phase 09 (organisations, équipes, droits et comptes)
+
+Ce que la nuit a construit, en mots simples. Une organisation, ici, c'est un labo, un groupe ou un
+projet sur le registre : ses membres, leurs rôles, leurs droits de recherche, des équipes, une
+présentation publique et une autre réservée aux membres, des dépôts épinglés, et un journal des
+actions. L'organisation GitHub d'un labo est **reliée, pas remplacée** : les droits d'écriture sur
+ses dépôts restent à GitHub, et le registre ne demande jamais d'écrire chez GitHub.
+
+Tout est nouveau dans la base `oscr_forge` (migration `migrations/d1-forge/0013_organizations.sql`,
+9 tables). Détails : `docs/ORGANIZATIONS.md`, décisions D09-1 à D09-8.
+
+### Ce qui marche
+
+- **Créer une organisation**, sa présentation (publique et réservée aux membres), ses réglages, la
+  renommer, l'archiver, la supprimer (en douceur, le nom reste pris). La présentation réservée aux
+  membres et une liste de membres privée sont **refusées à qui n'est pas membre**.
+- **Les membres** : inviter (l'invitation a une date de fin), accepter ou refuser, retirer (une liste
+  de ce que le départ change est renvoyée), réintégrer, changer le rôle (propriétaire, modérateur,
+  membre) et les **droits de recherche** (proposer, signaler ou valider une carte de traçage ; relier
+  une version logicielle à une version d'article). Le dernier propriétaire est protégé. Les **équipes**
+  (créer, ajouter un membre, retirer, supprimer), avec visibilité et imbrication. La liste des membres
+  s'exporte en CSV.
+- **Le journal des actions** par organisation (filtres, recherche de texte, export CSV ou JSON), et un
+  aperçu de sécurité (les alertes de la phase 11 sur les dépôts épinglés).
+- **La sécurité du compte** : voir ses sessions et en fermer une ou toutes les autres (la session est
+  vraiment effacée) ; voir ses identités de connexion et en délier une (jamais la dernière) ; des
+  **passkeys** (WebAuthn) pour le mode sudo (une étape de plus, pas la première connexion). Le Worker
+  vérifie lui-même la clé, avec WebCrypto seulement : aucune bibliothèque en plus, rien de payant, et
+  seule la clé **publique** est gardée. Un journal de sécurité personnel, exportable en CSV.
+
+### Ce que Yann doit faire (ou savoir)
+
+- **Rien de payant, rien de nouveau à configurer pour les passkeys.** La vérification se fait dans le
+  Worker (WebCrypto). Le `rpId` (le domaine de la clé) est le domaine du site : `openscicode.org` en
+  production, `localhost` en local. Aucun service externe n'est appelé.
+- **Appliquer la migration 0013** (comme les autres) avant toute ouverture : `oscr` / wrangler
+  `d1 migrations apply` sur `oscr_forge`. La nuit ne déploie rien.
+- **Les écritures d'organisation, d'équipe et de rôle s'ouvrent au public avec le reste**, à la phase
+  16, quand `FORGE_OPEN` est mis et que le secret Turnstile est présent (D16-13). D'ici là, seul le
+  propriétaire du registre peut créer et gérer une organisation. Les gestes d'un membre sur son
+  **propre** compte (accepter une invitation, se rendre privé, partir, fermer une session, délier une
+  identité, ajouter ou utiliser une passkey) ne passent pas par `FORGE_OPEN` : on peut toujours
+  sécuriser son compte.
+- **Vérifier le domaine d'une organisation** : le propriétaire publie un enregistrement DNS TXT (la
+  valeur `domain_proof` affichée). La vérification réelle du DNS tournera **sur le Mac** (il a le
+  réseau), jamais depuis le Worker (coût zéro). Ce branchement est **différé** (D09-8) : pour l'instant
+  le domaine reste « en attente ».
+- **Aucune adresse e-mail** n'est demandée, montrée ni gardée ; aucune écriture GitHub ; aucun code
+  d'utilisateur n'est exécuté.
+
+### Ce qui est reporté (noté, pas fait cette nuit, D09-8)
+
+La page publique statique d'une organisation (`/org/<handle>/`) et ses fragments ; les règles montrées
+telles que GitHub les applique (rulesets, protection de branche) ; les identifiants sous politiques
+d'organisation (durée de vie, approbation) ; l'imbrication fine des équipes et l'auto-affectation des
+relectures ; le **cycle de vie du compte** (changer de nom d'utilisateur avec redirection, un
+successeur, la remise d'un labo, fusionner deux comptes, le compte d'une personne décédée ; l'export
+et la suppression du compte existent déjà via les droits de la phase 16) ; le branchement des droits
+de recherche à chaque route de recherche du dépôt concerné.
+
+### Vérifications à la clôture
+
+pytest 585 ; ruff propre ; `npm test` 1 494 ; la construction et `check --every-route` passent, dans
+le budget de fichiers ; le bout-en-bout complet passe (code 0), y compris l'étape 10 de la phase 09
+(`e2e-organizations.ts` : créer une organisation, inviter puis retirer un membre, poser un droit de
+recherche, une présentation réservée aux membres refusée puis montrée, enregistrer et utiliser une
+passkey avec une vraie clé ES256, fermer une session, exporter le journal). Captures d'écran dans
+`docs/night-screenshots/phase-09/` (bureau 1280x860 et téléphone 390x844).
+
+### `science.css`
+
+Aucun ajout : les deux pages (`/organizations/` et `/account/security/`) réutilisent les classes
+existantes (`.listing`, `.summary`, `.warning`, `.ok`, `.plain`, `.muted`, `.field`).

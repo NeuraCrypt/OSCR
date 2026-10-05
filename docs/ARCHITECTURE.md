@@ -977,3 +977,13 @@ files read as text and pushed to `oscr_forge`; nothing of a user's code runs, he
   with `SECURITY_KINDS`). **The command line**: `oscr security scan|status|sbom`.
 - **The screenshots**: `docs/night-screenshots/phase-11/` (desktop 1280×860 and phone 390×844, against
   the fake GitHub and `wrangler dev`, every outside address refused).
+
+## Organizations and account security (night phase 09)
+
+OSCR's own organizations (a lab, a group, a project), teams, roles, research permissions, a
+per-organization audit log, and account security (sessions, sign-in identities, passkeys for sudo
+mode) live in `oscr_forge` (`migrations/d1-forge/0013_organizations.sql`), written by the Worker
+(`website/worker/forge/service/organizations.ts`, `members.ts`, `audit.ts`, `account-security.ts`,
+`webauthn.ts`, `org-core.ts`, `webauthn-core.ts`). A lab's GitHub organization is linked, not
+replaced: git rights stay GitHub's. WebAuthn is verified in the Worker with WebCrypto only (no
+dependency, nothing paid; only a public key is kept). See `docs/ORGANIZATIONS.md` and D09-*.
