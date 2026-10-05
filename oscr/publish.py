@@ -153,7 +153,9 @@ def deploy_cloudflare(catalog: Path, project: str, website: Path = WEBSITE) -> s
               ["npx", "wrangler", "deploy", "--name", project]]
     output = ""
     for step in steps:
-        r = subprocess.run(step, cwd=website, env=env, capture_output=True, text=True, timeout=1800)
+        # The site is large (the scripts' copies, the public API's static data): the build and the
+        # upload of the day's changes can take well over half an hour, so allow 90 minutes a step.
+        r = subprocess.run(step, cwd=website, env=env, capture_output=True, text=True, timeout=5400)
         if r.returncode != 0:
             raise RuntimeError(f"{' '.join(step[:4])} failed: " + (r.stderr or r.stdout).strip()[-600:])
         output = r.stdout
