@@ -37,6 +37,12 @@
 #    the fixture's organization (the fake) posts the registry's check run on a pull request from its
 #    pull_request delivery (the App's key: a throwaway key made for this run, never a real one).
 #
+# Night phase 06 (11): discussions, projects and the wiki (tests/forge-service/e2e.ts phase06): Ada,
+#    a verified author of the fixture paper, opens its discussion space, posts and upvotes an answer and
+#    marks it, hides a comment that is then gone for Bob; creates a project with a paper item; commits a
+#    wiki page on the repository's wiki branch and edits it (history). A second run with Turnstile's
+#    always-failing secret checks the human check refuses a write.
+#
 # Phase 14 (8): the researchers' command line (cli/, run as `python -m oscr_cli`; tests/forge-service/e2e-cli.ts)
 #    against the fake GitHub and the Worker started again (Turnstile's passing test secret, FORGE_OPEN unset:
 #    Ada, the owner, approves; DEVICE_CODE_SECONDS=12, a development life for the expired code): sign-in through
@@ -220,3 +226,18 @@ env SITE="$SITE" REPO_ID="$REPO_ID" node --experimental-strip-types tests/forge-
 # Worker with FORGE_OPEN=true so Bob (a non-owner) may accept an invitation and act on his membership.
 start_worker --var "TURNSTILE_SECRET_KEY:$TURNSTILE_PASS" --var "FORGE_OPEN:true"
 env SITE="$SITE" MOCK="$MOCK" FAKE="$FAKE" node --experimental-strip-types tests/forge-service/e2e-organizations.ts
+
+# 11. Night phase 06 (tests/forge-service/e2e.ts phase06): discussions, projects and the wiki. Ada is
+# granted the verified_author role on the fixture paper, so she maintains its discussion space; then a
+# paper discussion is opened, an answer posted, upvoted and marked, a comment hidden by the triager and
+# gone for Bob, a project created with a paper item, and a wiki page committed on the wiki branch. A
+# second run with Turnstile's always-failing secret checks the human check refuses a write.
+ADA_USER=$(npx wrangler d1 execute oscr_community --local --env local --persist-to "$TMP/state" --json \
+  --command "SELECT user_id AS u FROM identities WHERE provider = 'github' AND subject = '$ADA_ID'" \
+  | "$PYTHON" -c 'import json,sys; d=json.load(sys.stdin); print(d[0]["results"][0]["u"])')
+npx wrangler d1 execute oscr_community --local --env local --persist-to "$TMP/state" --yes \
+  --command "INSERT OR IGNORE INTO roles (user_id, role, scope_kind, scope_id, granted_by, granted_at) VALUES ('$ADA_USER', 'verified_author', 'paper', 'doi:10.5555/oscr.fixture.1', 'e2e', 1)" >/dev/null
+start_worker --var "TURNSTILE_SECRET_KEY:$TURNSTILE_PASS" --var "FORGE_OPEN:true"
+env SITE="$SITE" MOCK="$MOCK" FAKE="$FAKE" REPO_ID="$REPO_ID" node --experimental-strip-types tests/forge-service/e2e.ts phase06
+start_worker --var "TURNSTILE_SECRET_KEY:$TURNSTILE_FAIL" --var "FORGE_OPEN:true"
+env SITE="$SITE" MOCK="$MOCK" FAKE="$FAKE" REPO_ID="$REPO_ID" node --experimental-strip-types tests/forge-service/e2e.ts phase06-fail

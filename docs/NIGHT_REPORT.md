@@ -559,3 +559,98 @@ passkey avec une vraie clé ES256, fermer une session, exporter le journal). Cap
 
 Aucun ajout : les deux pages (`/organizations/` et `/account/security/`) réutilisent les classes
 existantes (`.listing`, `.summary`, `.warning`, `.ok`, `.plain`, `.muted`, `.field`).
+
+## 8. Phase 06 (discussions, wiki et projets)
+
+Ce que la nuit a construit, en mots simples. Trois façons d'échanger et de s'organiser autour d'un
+article et de son code, toutes **propres à OSCR** (le registre les garde chez lui, pas chez GitHub ;
+c'est la règle D00-6). Tout est écrit derrière `FORGE_OPEN` (l'interrupteur qui n'ouvre l'écriture
+qu'au propriétaire tant que la phase 16 n'est pas en place). Le registre **n'écrit jamais chez GitHub
+de sa propre initiative**. Le détail est dans `docs/DISCUSSIONS.md`, les décisions D06-1 à D06-6.
+
+### Ce qui marche
+
+- **Les discussions.** Un **espace** de discussion par article (repéré par son DOI, même quand le code
+  est ailleurs), par dépôt, et par organisation. Dans un espace, jusqu'à **25 catégories**, chacune
+  avec un format : discussion ouverte, annonce (seul un responsable en ouvre une), question-réponse
+  (« qa » : on peut marquer la bonne réponse), ou sondage. Une discussion a un titre, un texte, une
+  catégorie, des étiquettes, des votes « pour » (upvotes), un verrou, une épingle, et une frise des
+  événements. Les responsables d'un espace (les auteurs vérifiés de l'article, les mainteneurs du
+  dépôt, les propriétaires de l'organisation, les modérateurs du registre) marquent la réponse,
+  étiquettent, verrouillent, épinglent, déplacent, masquent et suppriment. Un commentaire masqué par un
+  responsable : son texte disparaît pour tout le monde sauf son auteur et toi (le propriétaire). Chaque
+  vote n'est compté qu'une fois. La limite d'un commentaire est **65 536 caractères**.
+- **Le wiki.** GitHub ne donne pas d'interface pour ses propres wikis : alors le wiki d'OSCR, ce sont
+  des pages Markdown (du texte simple mis en forme) sur une **branche `wiki`** du dépôt, modifiées par
+  **un commit autorisé** (le modèle de la phase 03 : ton jeton utilisé une seule fois, jamais gardé ;
+  c'est GitHub qui signe le commit, et toi l'auteur). La première page crée la branche ; les suivantes
+  s'ajoutent dessus. L'historique, une version, la comparaison et le retour en arrière se lisent chez
+  GitHub, dans le navigateur (zéro requête du Worker).
+- **Les projets.** Des tableaux de suivi (comme les Projects de GitHub), à toi ou à une organisation.
+  Leurs **éléments** sont des issues, des pull requests, des brouillons, et surtout des objets de
+  recherche propres à OSCR : des **articles**, des **cartes de traçage** et des **rapports de
+  reproduction**. Leurs **champs** sont intégrés (Titre, Statut), personnalisés (texte, nombre, date,
+  choix unique, itération) et de recherche (article, état d'une carte, résultat d'une reproduction).
+  Vues table, tableau (board) et feuille de route. La valeur d'un champ tient dans la ligne de
+  l'élément : changer un champ, c'est **une seule ligne** écrite, pas une par case. Limites : 5 000
+  éléments et 50 champs par projet.
+
+### Ce que Yann doit faire (ou savoir)
+
+- **Rien de payant, rien de nouveau à configurer.** Aucun service externe appelé. Aucune adresse
+  e-mail demandée, montrée ni gardée (le registre masque chaque adresse dans les textes). Aucun code
+  d'utilisateur exécuté. Aucune écriture chez GitHub décidée par le registre.
+- **Appliquer les migrations 0014, 0015 et 0016** sur `oscr_forge` (comme les autres) avant toute
+  ouverture : elles créent les tables des discussions et des projets, et ajoutent la sorte d'action
+  `wiki_edit`. La nuit ne déploie rien et ne fusionne rien dans `main`.
+- **Les écritures (discussions, projets, wiki) s'ouvrent au public avec le reste**, à la phase 16,
+  quand `FORGE_OPEN` est mis **et** que le secret Turnstile est présent. D'ici là, seul ton compte peut
+  écrire.
+- **Attention, nouveau : du texte public écrit par les lecteurs.** Voir la note ci-dessous.
+
+### Attention : premier texte public écrit par les lecteurs (réconciliation phase 16, D06-6)
+
+Jusqu'ici, on pouvait dire « aucun texte libre d'un lecteur n'est public, donc pas de modèle de langage
+pour modérer ». **Ça change avec la phase 06** : les discussions, les projets et le wiki sont le
+**premier texte public écrit par les lecteurs**. Ce qui protège déjà, tout de suite : **Turnstile**
+(la case « je ne suis pas un robot », vérifiée côté serveur) sur les formulaires d'écriture ; les
+**quotas par compte** et le budget de lignes du jour ; les **blocages et limites d'interaction** d'un
+espace de dépôt ; le **masquage des adresses e-mail** et le nettoyage des caractères invisibles sur
+chaque texte ; la **limite de 65 536 caractères** ; et le **masquage / la suppression par un
+responsable** (via les colonnes propres aux objets). Ce qui **reste à faire quand la phase 06
+fusionnera** (c'est noté, pas fait cette nuit) : étendre la **file de modération du propriétaire et les
+signalements publics** (les listes `REPORT_KINDS`/`HIDDEN_KINDS`, les contrôles des tables `moderation`
+et `content_reports`, `hidden.ts`, le retrait statique côté Mac `oscr/moderation.py`,
+`src/lib/moderation.ts`, le fixture partagé) aux sortes `discussion` et `discussion_comment` ; faire
+que l'export statique de nuit, la recherche, le fil et les webhooks **laissent de côté** le contenu
+masqué ; et mettre à jour la phrase « aucun texte libre d'un lecteur n'est public » dans CLAUDE.md et
+`/policies/moderation/`. **Aucun modérateur par modèle de langage n'est ajouté** : aucun modèle gratuit
+ne tient de façon fiable sur le plan gratuit ; ce sont les règles, Turnstile, le masquage et les
+quotas qui font le travail. Tout ce qui demanderait un service payant est signalé, pas construit.
+
+### Ce qui est reporté (noté, pas fait cette nuit, D06-5)
+
+Les pages du site (Astro) et les scripts du navigateur pour les discussions, les projets et le wiki
+(le service, le schéma, les actions et les quotas sont faits et testés) ; la gestion fine des
+catégories au-delà de celles par défaut ; une issue transformée en discussion et l'inverse ; une
+discussion par release ; les filtres de recherche ; les routes d'API publique pour les discussions et
+les projets ; itérations, feuille de route, graphiques d'analyse, modèles, mises à jour de statut et
+export de vue pour les projets ; les fragments statiques de nuit côté Mac (et le retrait de modération
+de D06-6).
+
+### Vérifications à la clôture
+
+pytest 585 ; ruff propre ; `npm test` 1 533 ; la construction et `check --every-route` passent, dans le
+budget de fichiers ; le bout-en-bout complet passe (chaque test, y compris l'étape 11 de la phase 06 :
+une discussion d'article ouverte par un auteur vérifié, une réponse postée, votée et marquée, un
+commentaire masqué puis invisible pour Bob, Turnstile qui passe puis qui refuse, un projet avec un
+article en élément, une page de wiki commitée puis modifiée). Captures d'écran dans
+`docs/night-screenshots/phase-06/` (bureau 1280x860 et téléphone 390x844 ; aperçus fidèles au style du
+site, les pages Astro étant reportées, D06-5).
+
+### `science.css`
+
+Aucun ajout : les aperçus réutilisent les classes existantes (`.masthead`, `.breadcrumb`, `.record`,
+`.sidebar`, `nav.tabs`, `dl.listing`, `.line`, `.label`, `.ok`, `.warning`). Les pages réelles, quand
+elles seront construites, ajouteront leurs règles dans `science.css`, dans son esprit (pas de pastille,
+pas de majuscule décorative, pas de tiret cadratin).

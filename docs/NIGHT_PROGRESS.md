@@ -442,10 +442,49 @@ replaced (no GitHub write). Detail: `docs/ORGANIZATIONS.md`, decisions D09-1 to 
 - Tests at the close: pytest 585; ruff clean; `npm test` 1,494; the build and `check --every-route`
   ok, within the budget; the whole end-to-end run passed (exit 0, including phase 09's stage 10).
 
+## Phase 06: what it produced
+
+Discussions, the wiki and projects, on `night/phase-06-discussions` (from
+`night/phase-09-organizations`). OSCR-native (D00-6), on the research-issue model; every write behind
+`FORGE_OPEN`; nothing written to GitHub by OSCR itself. Detail: `docs/DISCUSSIONS.md`, decisions D06-1
+to D06-6.
+
+- **E1 discussions schema + core** (`0014_discussions.sql`, `discussions-core.ts`): discussion spaces
+  per paper/repository/organization, categories with formats (open, announcement, qa, poll), comments,
+  votes, polls, the answered state, labels, lock, pin, the timeline; the `actions` kinds rebuilt with
+  the phase-06 kinds; caps `discussions`, `votes`, `projects`, `project_edits`.
+- **E2 discussions routes** (`discussions.ts`): read a space or one discussion; open, comment (edit,
+  delete, hide), vote (upvote, poll), edit (title, body, category, answered, labels, lock, pin, close,
+  reopen, transfer). Turnstile on a new discussion or comment; blocks and limits (`mayInteract`); a
+  hidden comment's body withheld from everyone but its author and the owner.
+- **E3 projects** (`0015_projects.sql`, `projects-core.ts`, `projects.ts`): planning boards owned by a
+  person or an organization; items are issues, pulls, drafts, papers, maps and reproduction reports;
+  built-in, custom and research fields; a field value in the item row (one row a change); caps 5,000
+  items, 50 fields.
+- **E4 the wiki** (`act-wiki.ts`, `0016_wiki.sql`): the `wiki_edit` authorized action, Markdown pages
+  on a `wiki` branch through the phase-03 one-authorized-commit model; history read from GitHub.
+- **The close**: the e2e (stage 11 in `e2e.sh`, `e2e.ts phase06`: a paper discussion by a verified
+  author, an answer posted/upvoted/marked, a comment hidden and gone for Bob, Turnstile pass then
+  fail, a project with a paper item, a wiki page committed and edited; every check passed); the
+  security self-review; the docs (`DISCUSSIONS.md`, FORGE.md, ARCHITECTURE.md, CONTRIBUTIONS.md,
+  CLAUDE.md, DECISIONS.md D06-*); screenshots in `docs/night-screenshots/phase-06/`.
+- **Deferred (D06-5)**: the reader-facing Astro pages and client scripts; custom category management;
+  an issue converted to a discussion and back; a discussion for a release; search qualifiers; the
+  public-API routes; iterations/roadmap/insights/templates/export for projects; the Mac-side nightly
+  static shards (and the moderation drop of D06-6).
+- **Public free text (D06-6)**: the first public, user-written free text; the central moderation,
+  reporting and the nightly static drop must be extended to `discussion`/`discussion_comment` when
+  phase 06 merges.
+- **Tests at the close**: pytest 585; ruff clean; `npm test` 1,533; the build and `check
+  --every-route` ok; the whole end-to-end run passed (every check, including stage 11).
+
 ## Next step
 
-Phase 06, discussions, wiki and projects, on branch `night/phase-06-discussions` (created from
-`night/phase-09-organizations`, nothing built on it): **the owner's go is granted in advance**. Before
-any public opening, the owner's steps are in `docs/NIGHT_REPORT.md` (phase 16's Turnstile, migrations
-and policy drafts, then `FORGE_OPEN`; phase 14's device flow setting; the migrations through 0013;
-phase 11's OSV runs with the network; and phase 09's own owner steps below).
+Phase 12, repository statistics, on branch `night/phase-12-statistics` (created from
+`night/phase-06-discussions`, nothing built on it): insights (Pulse, contributors, commits, code
+frequency, forks, the network graph with research marks), "used by" (papers and repositories that
+depend on a repository), privacy-respecting traffic, the community profile, star history, discussion
+insights, transparency reporting. Depends on 01, 02, 04, 06, 08, 10, 11 (what is counted); the graphs
+are read from GitHub's statistics API in the reader's browser (0 Worker requests). Reading
+Cloudflare's analytics needs a read-only token the owner creates (kept in the keychain). The owner's
+steps so far are in `docs/NIGHT_REPORT.md`; **the owner's go is granted in advance** for the build.

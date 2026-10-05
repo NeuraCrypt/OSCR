@@ -100,7 +100,7 @@ describe("validating a discussion, a comment, a change, a vote", () => {
     assert.ok(isProblem(validateOpen({ ...base, closesInDays: 100 })));
   });
 
-  test("comment: write, edit, delete, hide — one at a time; the length limit holds", () => {
+  test("comment: write, edit, delete, hide, one at a time; the length limit holds", () => {
     assert.ok(!isProblem(validateComment({ id: 1, body: "A reply." })));
     assert.ok(!isProblem(validateComment({ id: 1, n: 2, body: "edited" })));
     assert.ok(!isProblem(validateComment({ id: 1, n: 2, delete: true })));

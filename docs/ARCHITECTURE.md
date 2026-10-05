@@ -987,3 +987,24 @@ mode) live in `oscr_forge` (`migrations/d1-forge/0013_organizations.sql`), writt
 `webauthn.ts`, `org-core.ts`, `webauthn-core.ts`). A lab's GitHub organization is linked, not
 replaced: git rights stay GitHub's. WebAuthn is verified in the Worker with WebCrypto only (no
 dependency, nothing paid; only a public key is kept). See `docs/ORGANIZATIONS.md` and D09-*.
+
+## Discussions, wiki and projects (night phase 06)
+
+OSCR's own conversation, knowledge and planning surfaces, OSCR-native in `oscr_forge` (D00-6), on the
+research-issue model. Detail: `docs/DISCUSSIONS.md`, decisions D06-1 to D06-6.
+
+- **Discussions** (`website/worker/forge/service/discussions-core.ts`, `discussions.ts`;
+  `migrations/d1-forge/0014_discussions.sql`): discussion spaces per paper, repository and
+  organization; categories with formats (open, announcement, qa, poll); comments, upvotes, polls, the
+  answered state, labels, lock, pin, transfer, the timeline; hiding through the objects' own columns.
+- **The wiki** (`act-wiki.ts`; `migrations/d1-forge/0016_wiki.sql` adds only the `wiki_edit` action
+  kind, no table): Markdown pages on a `wiki` branch, edited through the phase-03 one-authorized-commit
+  model; history is read from GitHub in the browser.
+- **Projects** (`projects-core.ts`, `projects.ts`; `migrations/d1-forge/0015_projects.sql`): planning
+  boards owned by a person or an organization; items include papers, tracing maps and reproduction
+  reports; built-in, custom and research fields; a field value in the item row (one row a change).
+- **Caps** (`caps.ts`): `discussions`, `votes`, `projects`, `project_edits`, counted from the action
+  rows like the research writes.
+- **Public free text** (D06-6): the first public user-written free text; the phase-16 reconciliation
+  (central moderation, reporting, the nightly static drop over `discussion`/`discussion_comment`) is
+  deferred to the merge and recorded in CLAUDE.md and `docs/DISCUSSIONS.md`.

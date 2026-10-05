@@ -2988,3 +2988,90 @@ security overview aggregates phase 11's open alerts over the organization's pinn
   repositories is a small follow-up.
 - **The verified domain's DNS check** runs on the Mac (it has the network); the Worker only records
   the claim and the proof.
+
+
+## Night phase 06 (discussions, wiki and projects)
+
+Built on phase 09 (`night/phase-06-discussions`). D06-1 to D06-6 were taken while building; the owner
+granted the go in advance. No merge, no deploy; every write behind `FORGE_OPEN`.
+
+### D06-1. Discussions and projects are OSCR-native, on the research-issue model
+
+**Decision.** Discussions and projects are OSCR's own objects (D00-6), kept in `oscr_forge` and built
+exactly as the research issues are: a pure core (`discussions-core.ts`, `projects-core.ts`) and
+routes (`discussions.ts`, `projects.ts`) that read and write for a signed-in reader, their writes
+logged in `actions` so the caps count them. Nothing is written on GitHub; OSCR never posts there on
+its own (D00-6).
+
+**Reasons.** One source of truth, the row budget, and one write path already secured, capped and
+masked. GitHub has no API for a discussion or an OSCR project anyway.
+
+**What would change it.** An OSCR-hosted backend (D00-1).
+
+### D06-2. A space per paper, per repository, per organization; the maintain role follows the object
+
+**Decision.** A discussion space is `paper:doi:…`, `repo:<forge>:<id>` or `org:<handle>`. The maintain
+role is a paper's verified authors, a repository's maintainers (or its registry manager), an
+organization's owners and moderators, and the registry's moderators. A space is made with its default
+categories on its first discussion (up to 25 per space, each with a format: open, announcement, qa,
+poll). An announcement is opened only by a maintainer; a locked discussion takes comments from
+maintainers only; maintainers mark the answer, label, lock, pin, transfer, hide and delete.
+
+**Reasons.** The paper's authors own the conversation about their paper (research permissions follow
+the paper, not the repository, D09). A paper space is keyed by the DOI even when the code is elsewhere
+(the Discussion section reserved since phase 04).
+
+### D06-3. One row per field change: a project item carries its field values as JSON
+
+**Decision.** A project item stores its field values in its own row as JSON
+(`project_items.field_values`), so a change of one field is one row, not one row per cell. Items are
+capped at 5,000 and fields at 50; `project_create` has the `projects` cap (10 a day), and the chatty
+`project_item`/`project_edit`/`project_field` writes have the `project_edits` cap (300 a day), out of
+the 100 authorized actions.
+
+**Reasons.** The budget of §15.6 names projects the heaviest writer (a cell a row). Storing values on
+the item row keeps a field change at one row and a read by the project's key range (no scan).
+
+**What would change it.** A need for per-cell history, which would add a cell table and its cost.
+
+### D06-4. The wiki is a `wiki` branch, edited through phase-03 commits
+
+**Decision.** The wiki is Markdown pages on a `wiki` branch of the repository (`<slug>.md`, the
+sidebar `_Sidebar.md`, the footer `_Footer.md`), edited through the one-authorized-commit model
+(`wiki_edit`, `act-wiki.ts`): the person's own token, used once, never stored; the commit is GitHub's,
+signed, the person its author; the registry records only the action row. The first page makes the
+branch (`createFrom` a repository commit); later pages commit with `expectedHead` (a branch that moved
+fails). History, a revision, compare and revert are reads of GitHub in the browser (0 Worker
+requests). Content is committed verbatim; the registry masks only when it displays a page.
+
+**Reasons.** GitHub offers no API for its own wikis (D00-6). A branch in the GitBackend model is
+git-versioned, cloned with the repository, and needs no new table.
+
+### D06-5. What is deferred (noted, not built tonight)
+
+The reader-facing Astro pages and client scripts for discussions, projects and the wiki (the service,
+schema, actions and caps are delivered and tested); custom category management beyond the defaults; an
+issue converted to a discussion and back; a discussion for a release; search qualifiers; the
+public-API routes for discussions and projects; iterations, roadmap and insights charts, templates,
+status updates and view export for projects; and the Mac-side nightly static shards (and the
+moderation drop of D06-6). Classroom features (the inventory's adaptation) are deferred with the
+pages.
+
+### D06-6. Public free text: the phase-16 reconciliation (RECORD prominently)
+
+**Decision.** Discussions, projects and the wiki are OSCR's **first public, user-written free text**.
+Until now phase 16 could say "no free text of a reader is public, so no language model is used"
+(CLAUDE.md's moderation section; `/policies/moderation/`). That assumption changes. In force now, all
+self-contained and already generic: **Turnstile** on the write forms, the **per-account caps** and the
+day's row budget, **blocks and interaction limits** (`mayInteract`), **email masking** (`maskEmails`,
+the shared fixture) and control-character stripping, the **65,536-character** comment limit, and
+**triager hide/redact/delete** through the objects' own `hidden`/`state` columns.
+
+Deferred and to be done **when phase 06 merges**: the central owner-moderation queue and public
+reporting (`REPORT_KINDS`/`HIDDEN_KINDS`, the `moderation` and `content_reports` table CHECKs,
+`hidden.ts`, the Mac's `oscr/moderation.py` static drop, `src/lib/moderation.ts`, the shared
+moderation fixture) must cover the kinds `discussion` and `discussion_comment`; the nightly static
+export, search, feed and webhook of discussions must drop hidden/blocked content; and the "no free
+text of a reader is public" statement in CLAUDE.md and `/policies/moderation/` must be updated. **No
+language-model moderator is added**: no free model fits the free plan reliably, so rules, Turnstile,
+hiding and caps carry the load; anything that would need a paid service is flagged, not built.

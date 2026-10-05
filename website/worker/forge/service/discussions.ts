@@ -18,9 +18,9 @@
 //
 // Who may do what: anyone signed in opens a discussion (an announcement category only a maintainer),
 // comments (a locked discussion takes comments from maintainers only), votes; the author edits its
-// title, body and category, closes and reopens it; the space's MAINTAINERS — a paper's verified
+// title, body and category, closes and reopens it; the space's MAINTAINERS (a paper's verified
 // authors, a repository's maintainers, an organization's owners and moderators, the registry's
-// moderators — do that too, and mark the answer, label, lock, pin, transfer, hide and delete.
+// moderators) do that too, and mark the answer, label, lock, pin, transfer, hide and delete.
 
 import type { SignedIn } from "../../account/guard.ts";
 import { mayInteract } from "./blocks.ts";
@@ -67,7 +67,7 @@ import {
 } from "./discussions-core.ts";
 import { readCapped } from "./flow.ts";
 import { closed, dailyCaps, globalCap, mayWrite, overCap } from "./gate.ts";
-import { accountHidden } from "./hidden.ts";
+import { accountHidden, hiddenActors } from "./hidden.ts";
 import { json, problemAnswer } from "./http.ts";
 import { linkedGithub } from "./identity.ts";
 import { isOwner } from "./moderation.ts";
@@ -251,9 +251,12 @@ export async function handleDiscussionsRead(r: ForgeRequest): Promise<Response> 
   const { categories } = await categoriesOf(r.db, space);
   const { maintain } = await maintainerOf(r, s, space, roles, repoRow);
   const list = await all<Parameters<typeof summaryOf>[0] & { author_id: string; hidden: DiscussionRow["hidden"] }>(discussionsOfSpace(r.db, space.key));
+  // A hidden discussion, or one of a suspended account, leaves the list (the owner, a maintainer and
+  // the author still see their own). The suspended accounts among the authors in one read by key.
+  const suspended = owner || maintain ? new Set<string>() : (await hiddenActors(r.db, list.map((x) => ({ user: x.author_id })))).users;
   const discussions = [];
   for (const row of list) {
-    if (row.hidden && !owner && !maintain && row.author_id !== s.user.id) continue;
+    if ((row.hidden || suspended.has(row.author_id)) && !owner && !maintain && row.author_id !== s.user.id) continue;
     discussions.push(summaryOf(row));
   }
   // Pinned first, then newest.

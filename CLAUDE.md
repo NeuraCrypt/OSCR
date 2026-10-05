@@ -211,6 +211,36 @@ The lock before the GitHub side opens (`docs/MODERATION.md`, `docs/POLICIES.md`,
   and its line in the privacy statement.
 - Their styles are in `science.css`: `.human-check`, `p.moderated`, `table.queue`, `form.lookup`,
   `.draft-notice`, `.policy`.
+- **Night phase 06 changes "no free text of a reader is public".** Discussions, projects and the wiki
+  are OSCR's first public, user-written free text. Turnstile, the caps, blocks and interaction limits,
+  email masking, the 65,536-character limit and triager hide/redact/delete are in force now; when
+  phase 06 merges, `REPORT_KINDS`/`HIDDEN_KINDS`, the `moderation` and `content_reports` CHECKs,
+  `hidden.ts`, `oscr/moderation.py`, `src/lib/moderation.ts` and the shared fixture must cover
+  `discussion` and `discussion_comment`, and this statement must be updated (D06-6). No
+  language-model moderator: rules, Turnstile, hiding and caps carry the load.
+
+## Discussions, wiki and projects (night phase 06)
+
+OSCR's own conversation, knowledge and planning surfaces (`docs/DISCUSSIONS.md`, D06-*), on the
+research-issue model (D00-6). All behind `FORGE_OPEN`; OSCR never writes to GitHub on its own.
+
+- **Discussions** (`discussions-core.ts`, `discussions.ts`, `0014_discussions.sql`): a space per paper
+  (keyed by its DOI, its verified authors maintain it), per repository and per organization; up to 25
+  categories with formats (open, announcement, qa, poll); comments (65,536 chars), upvotes, polls, the
+  answered state, labels, close with a reason, lock, pin, transfer, the timeline. Votes counted once
+  (`discussion_votes`). Turnstile on open and comment; blocks and limits via `mayInteract`; email
+  masking on every text.
+- **The wiki** (`act-wiki.ts`, `0016_wiki.sql`): Markdown pages on a `wiki` branch, edited through the
+  phase-03 one-authorized-commit model (`wiki_edit`); the first page makes the branch (`createFrom`),
+  later pages commit with `expectedHead`; history, a revision, compare and revert are reads of GitHub
+  in the browser. Content committed verbatim; masked only when displayed.
+- **Projects** (`projects-core.ts`, `projects.ts`, `0015_projects.sql`): owned by a person or an
+  organization; items are issues, pull requests, drafts, papers, tracing maps and reproduction
+  reports; built-in, custom and research fields (paper, map state, reproduction outcome); table, board
+  and roadmap views; a field value in the item row (one row a change); caps 5,000 items, 50 fields.
+- **Caps** (`caps.ts`): `discussions` (20, with actions), `votes` (200, own), `projects` (10, with
+  actions), `project_edits` (300, own). Comments and edits count toward the 100 authorized actions.
+- **Public free text**: see the phase-16 note above and D06-6.
 
 ## The command line (night phase 14)
 

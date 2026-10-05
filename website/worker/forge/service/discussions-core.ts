@@ -1,6 +1,6 @@
 // Discussions: the registry's own discussion spaces (night phase 06, E1; docs/DISCUSSIONS.md; D00-6,
-// D06-*). This is their pure core — the words, the spaces and their categories, what a new
-// discussion, a comment and a change say, the rows as statements, the views the pages read — shared
+// D06-*). This is their pure core (the words, the spaces and their categories, what a new
+// discussion, a comment and a change say, the rows as statements, the views the pages read), shared
 // by the routes (discussions.ts) and the pages. No request, no database here.
 //
 // A discussion belongs to a SPACE (D00-6: a space per paper, per repository, per organization):

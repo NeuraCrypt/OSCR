@@ -9,7 +9,7 @@
 //   POST /api/forge/projects/item           an item added, changed, archived or removed
 //
 // Signed in; FORGE_OPEN (the owner only until phase 16); the human check on a new project and a draft
-// item (their free text); the per-account caps (projects created, project edits — projects are the
+// item (their free text); the per-account caps (projects created, project edits: projects are the
 // heaviest writer, §15.6); the day's rows. Who may write: the project's author, an org owner or
 // moderator for an org-owned project, the registry's owner. Every text is masked for addresses.
 

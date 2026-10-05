@@ -27,6 +27,7 @@ type Json = Record<string, any>; // deno-lint-ignore no-explicit-any
 const HUMAN_ROUTES = new Set([
   "/api/forge/research/open", "/api/forge/research/comment", "/api/forge/social/profile", "/api/forge/social/list",
   "/api/forge/tokens/write", "/api/forge/hooks/write", "/api/forge/report", "/api/forge/appeal", "/api/forge/rights",
+  "/api/forge/discussions/open", "/api/forge/discussions/comment", "/api/forge/projects/create", "/api/forge/projects/item",
 ]);
 
 /** A browser over real HTTP: a cookie jar for the site, redirects followed by hand. */
@@ -103,6 +104,81 @@ class Client {
 }
 
 const seed = (await (await fetch(`${FAKE}/control/seed`)).json()) as { ada: { id: string }; bob: { id: string } };
+
+// Night phase 06: discussions, projects and the wiki (docs/DISCUSSIONS.md). The Worker runs with
+// FORGE_OPEN=true and Turnstile's passing test secret; e2e.sh has granted Ada the verified_author role
+// on the fixture paper, so she maintains its discussion space. A second run (phase06-fail) checks the
+// human check refuses a write when Turnstile's always-failing secret is set.
+if (process.argv[2] === "phase06" || process.argv[2] === "phase06-fail") {
+  const PAPER = "10.5555/oscr.fixture.1";
+  const SPACE = `paper:${PAPER}`;
+  const REPO_ID = process.env.REPO_ID ?? "";
+  const asAda = async () => {
+    await post(`${MOCK}/control`, { who: { github: { id: Number(seed.ada.id), login: "ada-fixture", name: "Ada Fixture" } } });
+    const c = new Client();
+    await c.navigate(`${SITE}/api/auth/github/start?return=/repositories/`);
+    return c;
+  };
+  const ada = await asAda();
+
+  if (process.argv[2] === "phase06-fail") {
+    const refused = await ada.post("/api/forge/discussions/open", { space: SPACE, title: "Should not pass" });
+    check("phase06: the human check refuses a discussion when Turnstile fails", refused.status === 403 && refused.data.error?.code === "human_check", refused.data);
+    console.log(failures ? `${failures} check(s) failed` : "every check passed");
+    process.exit(failures ? 1 : 0);
+  }
+
+  // A paper discussion opened by a verified author (Ada), in the Q&A category.
+  const opened = await ada.post("/api/forge/discussions/open", { space: SPACE, category: "q-a", title: "Why does figure 2 differ?", body: "Ran it, write me at ada@example.org." });
+  check("phase06: a verified author opens a paper discussion", opened.status === 201 && typeof opened.data.id === "number", opened.data);
+  const id = opened.data.id as number;
+  const one = async () => (await (await ada.request(`${SITE}/api/forge/discussions?id=${id}`)).json()) as Json;
+  check("phase06: the discussion's body keeps no email address", /\[email hidden\]/.test(String((await one()).discussion?.body)), "");
+
+  // An answer posted and upvoted, then the answer marked.
+  const answer = await ada.post("/api/forge/discussions/comment", { id, body: "Rebuild the filter, see the wiki." });
+  check("phase06: an answer is posted", answer.status === 201, answer.data);
+  const up = await ada.post("/api/forge/discussions/vote", { id, n: 1 });
+  check("phase06: the answer is upvoted", up.status === 200, up.data);
+  const upAgain = await ada.post("/api/forge/discussions/vote", { id, n: 1 });
+  check("phase06: a second upvote is a no-op (counted once)", upAgain.data.unchanged === true, upAgain.data);
+  const marked = await ada.post("/api/forge/discussions/edit", { id, answered: 1 });
+  check("phase06: a maintainer marks the answer", marked.status === 200 && (await one()).discussion?.answered === 1, marked.data);
+
+  // A second comment hidden by the triager, and gone for another reader.
+  await ada.post("/api/forge/discussions/comment", { id, body: "Off-topic noise here." });
+  const hidden = await ada.post("/api/forge/discussions/comment", { id, n: 2, hide: "off-topic" });
+  check("phase06: a triager hides a comment", hidden.status === 200, hidden.data);
+  await post(`${MOCK}/control`, { who: { github: { id: Number(seed.bob.id), login: "bob", name: "Bob" } } });
+  const bobC = new Client();
+  await bobC.navigate(`${SITE}/api/auth/github/start?return=/repositories/`);
+  const seenByBob = (await (await bobC.request(`${SITE}/api/forge/discussions?id=${id}`)).json()) as Json;
+  const bobComment = (seenByBob.comments as Json[]).find((c) => c.n === 2);
+  check("phase06: the hidden comment's body is gone for another reader", bobComment?.body === "" && bobComment?.moderated === "off-topic", bobComment);
+
+  // A project, with a paper added as an item.
+  const project = await ada.post("/api/forge/projects/create", { title: "Reproduction campaign", research: true });
+  check("phase06: a project is created with its research fields", project.status === 201 && typeof project.data.id === "number", project.data);
+  const pid = project.data.id as number;
+  const item = await ada.post("/api/forge/projects/item", { project: pid, kind: "paper", ref: PAPER, values: { status: "todo" } });
+  check("phase06: a paper is added as a project item", item.status === 201, item.data);
+  const projectView = (await (await ada.request(`${SITE}/api/forge/projects?id=${pid}`)).json()) as Json;
+  check("phase06: the project shows the paper item and a board view", (projectView.items as Json[]).some((it) => it.kind === "paper" && it.ref === `doi:${PAPER}`) && (projectView.boards as Json[]).length >= 1, projectView.items);
+
+  // A wiki page edited through an authorized commit, and its history read from GitHub.
+  const mainHead = async () => String(((await (await fetch(`${FAKE}/api/repos/oscr-fixture/eeg-analysis/branches/main`)).json()) as Json).commit?.sha ?? "");
+  const head = await mainHead();
+  const madeWiki = await ada.act("wiki_edit", { forge: "github", id: REPO_ID }, { base: "", createFrom: head, message: "Start the wiki", pages: [{ slug: "Home", content: "# Home\nThe analysis wiki." }], sidebar: "* [Home](Home)" }, "/r/oscr-fixture/eeg-analysis/wiki/Home", { branch: "wiki", expectedHead: head });
+  check("phase06: the first wiki page makes the wiki branch through one authorized commit", madeWiki.status === 200 && madeWiki.data.result?.newBranch === true, madeWiki.data);
+  const wikiHome = await (await fetch(`${FAKE}/raw/oscr-fixture/eeg-analysis/wiki/Home.md`)).text();
+  check("phase06: the wiki page is on the wiki branch at GitHub", /The analysis wiki\./.test(wikiHome), wikiHome.slice(0, 60));
+  const wikiHead = String(((await (await fetch(`${FAKE}/api/repos/oscr-fixture/eeg-analysis/branches/wiki`)).json()) as Json).commit?.sha ?? "");
+  const editWiki = await ada.act("wiki_edit", { forge: "github", id: REPO_ID }, { base: wikiHead, message: "Update Home", pages: [{ slug: "Home", content: "# Home\nUpdated." }] }, "/r/oscr-fixture/eeg-analysis/wiki/Home", { branch: "wiki", expectedHead: wikiHead });
+  check("phase06: a later wiki commit builds the branch's history", editWiki.status === 200 && editWiki.data.result?.base?.sha === wikiHead, editWiki.data);
+
+  console.log(failures ? `${failures} check(s) failed` : "every check passed");
+  process.exit(failures ? 1 : 0);
+}
 
 // Phase 07, after the Mac's forge poll (e2e.sh runs it between the two): the tracing map versioned
 // with the release, and the deposit of its validated map on the MOCK Zenodo sandbox — never a real one.

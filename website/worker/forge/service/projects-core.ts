@@ -1,5 +1,5 @@
 // Projects: OSCR's own planning boards (night phase 06, E3; docs/DISCUSSIONS.md; D00-6, D06-*). This
-// is their pure core — the fields and their data types, the items and their kinds, what a new
+// is their pure core (the fields and their data types, the items and their kinds, what a new
 // project, a field and an item say, the rows as statements, the views the pages read. No request, no
 // database here.
 //

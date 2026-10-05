@@ -542,3 +542,35 @@ managers' writes, and logged in the action log with the new row kinds `org`, `me
 invitation, set visibility, leave, revoke a session, unlink an identity, add or use a passkey) are not
 gated by FORGE_OPEN. A lab's GitHub organization is linked, not replaced: nothing here asks GitHub for
 a write. Routes, privacy, the audit log and the WebAuthn design are in `docs/ORGANIZATIONS.md`.
+
+## Discussions, wiki and projects (night phase 06)
+
+OSCR's own conversation, knowledge and planning surfaces (`docs/DISCUSSIONS.md`, D06-*), on the
+research-issue model (D00-6). Code: `discussions-core.ts`/`discussions.ts`,
+`projects-core.ts`/`projects.ts`, `act-wiki.ts`; schema `migrations/d1-forge/0014_discussions.sql`,
+`0015_projects.sql`, `0016_wiki.sql`. Every write behind `FORGE_OPEN`; nothing written to GitHub by
+OSCR itself.
+
+Routes (all signed in; the registry's own writes are logged in `actions` for the caps):
+
+```
+GET  /api/forge/discussions?id=N | ?space=paper:…|repo:…|org:…    a discussion, or a space
+POST /api/forge/discussions/open | /comment | /vote | /edit       open, comment, vote, edit
+GET  /api/forge/projects?id=N | ?owner=…                          a project, or an owner's
+POST /api/forge/projects/create | /edit | /field | /item          create, edit, a field, an item
+```
+
+- **Discussions**: a space per paper (its verified authors maintain it), per repository, per
+  organization; 25 categories with formats (open, announcement, qa, poll); comments (65,536 chars),
+  upvotes, polls, the answered state, labels, close with a reason, lock, pin, transfer, the timeline.
+  Turnstile on open and comment; blocks and limits (`mayInteract`); every text masked.
+- **The wiki**: the `wiki_edit` authorized action, one commit on the repository's `wiki` branch (the
+  phase-03 model): the first page makes the branch (`createFrom`), later pages commit with
+  `expectedHead`; the action row is the only D1 row; history is read from GitHub in the browser.
+- **Projects**: owned by a person or an organization; items are issues, pulls, drafts, papers, maps
+  and reproduction reports; built-in, custom and research fields; a field value in the item row (one
+  row a change); caps 5,000 items, 50 fields.
+- **Caps**: `discussions` (20), `votes` (200, own), `projects` (10), `project_edits` (300, own).
+- **Public free text** (D06-6): these are OSCR's first public user-written free text; the central
+  owner-moderation, reporting and the nightly static drop must be extended to `discussion` and
+  `discussion_comment` when phase 06 merges. The e2e harness exercises all of this in stage 11.
