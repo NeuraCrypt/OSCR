@@ -79,6 +79,7 @@ import { handleAppeal, handleModerationMine, handleModerationRead, handleModerat
 import { handleBlocks, handleBlockWrite, handleLimits, handleLimitWrite } from "./blocks.ts";
 import { handleRights, handleRightsAnswer } from "./rights.ts";
 import { handleOrgCreate, handleOrgRead, handleOrgsMine, handleOrgUpdate } from "./organizations.ts";
+import { handleMembersWrite, handleTeamsWrite } from "./members.ts";
 import type { Context, D1Database, ForgeDeps, ForgeRequest, ForgeServiceEnv, RouteHandler } from "./types.ts";
 import { handleWebhook } from "./webhook.ts";
 
@@ -153,6 +154,8 @@ export const FORGE_ROUTES: Readonly<Record<string, Route>> = {
   "/api/forge/org": { method: "GET", signedIn: true, handle: (r) => handleOrgRead(r) },
   "/api/forge/org/create": { method: "POST", signedIn: true, handle: (r) => handleOrgCreate(r) },
   "/api/forge/org/update": { method: "POST", signedIn: true, handle: (r) => handleOrgUpdate(r) },
+  "/api/forge/org/members": { method: "POST", signedIn: true, handle: (r) => handleMembersWrite(r) },
+  "/api/forge/org/teams": { method: "POST", signedIn: true, handle: (r) => handleTeamsWrite(r) },
 };
 
 const PREFIX = "/api/forge/";

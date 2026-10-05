@@ -126,6 +126,20 @@ export async function handleOrgRead(r: ForgeRequest): Promise<Response> {
   const me = await first<MemberRow>(memberOf(r.db, o.id, s.user.id));
   const viewerIsMember = isMember(me);
 
+  // The member list exported as CSV, to a member of the organization only.
+  if (r.url.searchParams.get("export") === "members") {
+    if (!viewerIsMember) return problemAnswer(new ForgeProblem(403, "members_only", "The member list is exported by a member of the organization."), s.cookies);
+    const rows = await all<MemberRow>(membersOf(r.db, o.id));
+    const lines = ["handle,role,research_permissions,private"];
+    for (const m of rows) {
+      const handle = (await nameOf(s.db, m.user_id)).replace(/[",\n]/g, " ");
+      lines.push(`${handle},${m.role},${permsOf(m).join(" ")},${m.private === 1}`);
+    }
+    const res = new Response(lines.join("\n") + "\n", { status: 200, headers: { "Content-Type": "text/csv; charset=utf-8", "Cache-Control": "no-store", "Content-Disposition": `attachment; filename="${o.handle}-members.csv"` } });
+    for (const c of s.cookies) res.headers.append("Set-Cookie", c);
+    return res;
+  }
+
   // The members-only README and a private member list, to members only.
   const view = orgView(o);
   const readmeMembers = viewerIsMember ? o.readme_members : "";
