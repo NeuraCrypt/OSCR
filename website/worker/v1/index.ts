@@ -224,24 +224,31 @@ async function entity(assets: Assets, url: URL, type: ApiEntityType, rawId: stri
 async function list(assets: Assets, url: URL, type: ApiEntityType, self: string, origin: string, head: boolean): Promise<Response> {
   const plural = LIST_ID[type];
   const bulk = `${DATA_BASE}/entities/${plural}.json`;
-  const all = await readJson<unknown[]>(assets, url, bulk);
-  if (!Array.isArray(all)) return fail(503, "unavailable", "That list is not available on this deployment.", origin, head);
+  // The Worker reads only the small preview (the first 100, with the total), never the full bulk:
+  // authors alone is ~17 MB, too much to parse on a cache miss. The whole list is the bulk file.
+  const preview = await readJson<{ total?: number; items?: unknown[] }>(assets, url, `${DATA_BASE}/entities/head/${plural}.json`);
+  if (!preview || !Array.isArray(preview.items)) return fail(503, "unavailable", "That list is not available on this deployment.", origin, head);
+  const total = typeof preview.total === "number" ? preview.total : preview.items.length;
   const size = clampInt(url.searchParams.get("size"), 50, 1, 100);
   const page = clampInt(url.searchParams.get("page"), 1, 1, 1_000_000);
   const start = (page - 1) * size;
-  const items = all.slice(start, start + size);
-  const pages = Math.max(1, Math.ceil(all.length / size));
+  const items = start < preview.items.length ? preview.items.slice(start, start + size) : [];
+  const pages = Math.max(1, Math.ceil(total / size));
   const next = page < pages ? `${origin}${API_BASE}/${plural}?page=${page + 1}&size=${size}` : null;
+  // Entries past the preview live only in the bulk file; the live endpoint does not read that far.
+  const beyondPreview = start >= preview.items.length && start < total;
   return jsonResponse(
     envelope(self, {
       type,
-      total: all.length,
+      total,
       page,
       size,
       pages,
       next,
       bulk: `${origin}${bulk}`,
-      note: "The whole list is the bulk file; it is a static download with no rate limit.",
+      note: beyondPreview
+        ? "Entries past the first 100 are in the bulk file only, a static download with no rate limit."
+        : "The first entries are shown here; the whole list is the bulk file, a static download with no rate limit.",
       items,
     }),
     200,

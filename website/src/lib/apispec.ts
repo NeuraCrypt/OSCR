@@ -23,9 +23,11 @@ export const DATA_BASE = "/data";
  *  (worker/v1/), so the shard rule is one rule. */
 export const REPO_SHARDS = 128;
 
-/** The other /data/ files besides the paper and repository shards: the six entity lists, the three
- *  bulk exports (articles.csv, repositories.csv, alignments.jsonl), stats.json and openapi.json. */
-export const DATA_FIXED_FILES = 11;
+/** The other /data/ files besides the paper and repository shards: the six entity lists, the five
+ *  list previews (entities/head/, read by the /api/v1/<type> list endpoint; categories is not a list
+ *  endpoint), the three bulk exports (articles.csv, repositories.csv, alignments.jsonl), stats.json
+ *  and openapi.json. */
+export const DATA_FIXED_FILES = 16;
 
 /** A parameter of an endpoint, described once for the dispatch, the reference and the pages. */
 export type ApiParam = {

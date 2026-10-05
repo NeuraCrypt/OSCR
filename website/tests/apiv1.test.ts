@@ -31,10 +31,13 @@ async function files(): Promise<Record<string, string>> {
       entities: { [ORCID]: { name: "Ben Example", papers: [SLUG], counts: { papers: 1, with_code: 1 } } },
       rows: { [SLUG]: { doi: DOI, title: "A paper" } },
     }),
-    "/data/entities/authors.json": JSON.stringify([
-      { orcid: ORCID, name: "Ben Example" },
-      { orcid: "0000-0000-0000-001X", name: "Ada Second" },
-    ]),
+    "/data/entities/head/authors.json": JSON.stringify({
+      total: 2,
+      items: [
+        { orcid: ORCID, name: "Ben Example" },
+        { orcid: "0000-0000-0000-001X", name: "Ada Second" },
+      ],
+    }),
     [`/data/repos/${await shardOf(REPO, REPO_SHARDS)}.json`]: JSON.stringify({ [REPO]: { repo: REPO, host: "github.com", license: "MIT", papers: [] } }),
   };
 }
