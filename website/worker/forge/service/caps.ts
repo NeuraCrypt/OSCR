@@ -36,6 +36,9 @@ export const PER_ACCOUNT_DAY = {
   // Phase 09: an organization, membership, role or team change; an account-security change (a
   // passkey, a session revoked, an identity unlinked).
   orgs: 300, security: 200,
+  // Night phase 06: discussions opened, poll and upvote votes, projects created, and the chatty
+  // project edits (items and fields) with a cap of their own, out of the 100 authorized actions.
+  discussions: 20, votes: 200, projects: 10, project_edits: 300,
 } as const;
 export type Cap = keyof typeof PER_ACCOUNT_DAY;
 /** OSCR's grace period before a repository asked for deletion may be deleted (D00-10). */
@@ -88,6 +91,12 @@ export const CAP_OF: Readonly<Partial<Record<RowKind, Exclude<Cap, "actions">>>>
   passkey: "security",
   session: "security",
   identity: "security",
+  discussion_open: "discussions",
+  discussion_vote: "votes",
+  project_create: "projects",
+  project_item: "project_edits",
+  project_edit: "project_edits",
+  project_field: "project_edits",
 };
 
 /** The kinds each cap counts. */
@@ -110,11 +119,15 @@ export const KINDS_OF: Readonly<Record<Exclude<Cap, "actions">, readonly RowKind
   advisory: ["advisory_open", "advisory_post", "advisory_edit"],
   orgs: ["org", "member", "team"],
   security: ["passkey", "session", "identity"],
+  discussions: ["discussion_open"],
+  votes: ["discussion_vote"],
+  projects: ["project_create"],
+  project_edits: ["project_item", "project_edit", "project_field"],
 };
 
 /** Phase 08: the caps that stand alone (their kinds are not counted in `actions`); phase 10 adds its
  *  own (tokens and hooks changed; statuses posted by an outside service). */
-export const OWN_CAPS: ReadonlySet<Cap> = new Set<Cap>(["social", "notices", "automation", "statuses", "reports", "moderation", "appeals", "blocks", "limits", "rights", "triage", "scanning", "advisory", "orgs", "security"]);
+export const OWN_CAPS: ReadonlySet<Cap> = new Set<Cap>(["social", "notices", "automation", "statuses", "reports", "moderation", "appeals", "blocks", "limits", "rights", "triage", "scanning", "advisory", "orgs", "security", "votes", "project_edits"]);
 
 /** A cap in words, for the answers ("10 repositories created"). */
 export const CAP_WORDS: Readonly<Record<Cap, (n: number) => string>> = {
@@ -137,4 +150,8 @@ export const CAP_WORDS: Readonly<Record<Cap, (n: number) => string>> = {
   advisory: (n) => `${n} changes to private vulnerability reports`,
   orgs: (n) => `${n} changes to organizations and teams`,
   security: (n) => `${n} changes to your account's security`,
+  discussions: (n) => `${n} ${n === 1 ? "discussion" : "discussions"} opened`,
+  votes: (n) => `${n} votes`,
+  projects: (n) => `${n} ${n === 1 ? "project" : "projects"} created`,
+  project_edits: (n) => `${n} changes to your projects`,
 };

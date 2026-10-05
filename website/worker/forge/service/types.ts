@@ -189,9 +189,24 @@ export type SecurityRowKind = (typeof SECURITY_KINDS)[number];
 export const ORG_KINDS = ["org", "member", "team", "passkey", "session", "identity"] as const;
 export type OrgRowKind = (typeof ORG_KINDS)[number];
 
+/** Night phase 06's discussion writes (migrations/d1-forge/0014_discussions.sql): a discussion opened
+ *  (discussions.ts), a comment written, edited, deleted or hidden, a change of the discussion (title,
+ *  category, answered state, labels, lock, pin, close, transfer), an upvote or a poll vote. OSCR's own
+ *  objects (D00-6): nothing is written on GitHub. Logged in `actions` like the research writes, with
+ *  caps of their own (caps.ts `discussions`, `votes`). */
+export const DISCUSSION_KINDS = ["discussion_open", "discussion_comment", "discussion_edit", "discussion_vote"] as const;
+export type DiscussionRowKind = (typeof DISCUSSION_KINDS)[number];
+
+/** Night phase 06's project writes (migrations/d1-forge/0015_projects.sql): a project created or its
+ *  settings changed (projects.ts), an item added, edited or removed, a field created or changed.
+ *  OSCR's own objects: nothing on GitHub. Projects are the heaviest writer (the budget of §15.6), so
+ *  their edits have their own cap (caps.ts `projects`, `project_edits`), out of the 100 actions. */
+export const PROJECT_KINDS = ["project_create", "project_edit", "project_item", "project_field"] as const;
+export type ProjectRowKind = (typeof PROJECT_KINDS)[number];
+
 /** Every kind an action row may have. */
-export const ROW_KINDS = [...ACTION_KINDS, ...RESEARCH_KINDS, ...SOCIAL_KINDS, ...AUTOMATION_KINDS, ...MODERATION_KINDS, ...SECURITY_KINDS, ...ORG_KINDS] as const;
-export type RowKind = ActionKind | ResearchKind | SocialKind | AutomationKind | ModerationRowKind | SecurityRowKind | OrgRowKind;
+export const ROW_KINDS = [...ACTION_KINDS, ...RESEARCH_KINDS, ...SOCIAL_KINDS, ...AUTOMATION_KINDS, ...MODERATION_KINDS, ...SECURITY_KINDS, ...ORG_KINDS, ...DISCUSSION_KINDS, ...PROJECT_KINDS] as const;
+export type RowKind = ActionKind | ResearchKind | SocialKind | AutomationKind | ModerationRowKind | SecurityRowKind | OrgRowKind | DiscussionRowKind | ProjectRowKind;
 
 export const isSocialKind = (value: unknown): value is SocialKind => typeof value === "string" && (SOCIAL_KINDS as readonly string[]).includes(value);
 

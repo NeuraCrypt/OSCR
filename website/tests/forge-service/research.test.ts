@@ -21,7 +21,7 @@ import {
   validateOpen,
   type OpenParsed,
 } from "../../worker/forge/service/research-core.ts";
-import { ACTION_KINDS, AUTOMATION_KINDS, isProblem, MODERATION_KINDS, ORG_KINDS, RESEARCH_KINDS, ROW_KINDS, SECURITY_KINDS, SOCIAL_KINDS } from "../../worker/forge/service/types.ts";
+import { ACTION_KINDS, AUTOMATION_KINDS, DISCUSSION_KINDS, isProblem, MODERATION_KINDS, ORG_KINDS, PROJECT_KINDS, RESEARCH_KINDS, ROW_KINDS, SECURITY_KINDS, SOCIAL_KINDS } from "../../worker/forge/service/types.ts";
 import { utf8 } from "../../worker/forge/objects.ts";
 import { authorize, signIn } from "./authorize.ts";
 import { forgeRows } from "./d1.ts";
@@ -391,7 +391,7 @@ describe("the research issue on GitHub and in a merge", () => {
       assert.equal(REGISTERED_IN[spec.kind], "act-research.ts");
       assert.ok(ACTION_KINDS.includes(spec.kind));
     }
-    assert.deepEqual([...ROW_KINDS], [...ACTION_KINDS, ...RESEARCH_KINDS, ...SOCIAL_KINDS, ...AUTOMATION_KINDS, ...MODERATION_KINDS, ...SECURITY_KINDS, ...ORG_KINDS]);
+    assert.deepEqual([...ROW_KINDS], [...ACTION_KINDS, ...RESEARCH_KINDS, ...SOCIAL_KINDS, ...AUTOMATION_KINDS, ...MODERATION_KINDS, ...SECURITY_KINDS, ...ORG_KINDS, ...DISCUSSION_KINDS, ...PROJECT_KINDS]);
     for (const k of RESEARCH_KINDS) assert.equal(ACTIONS.get(k as never), undefined);
   });
 });

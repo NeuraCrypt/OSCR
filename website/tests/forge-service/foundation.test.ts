@@ -200,7 +200,7 @@ describe("the gate", () => {
     await seed.action(db, { userId: "u_ben", kind: "create", t });
     db.reset();
     let caps = await dailyCaps(db, "u_ada", "create", t);
-    assert.deepEqual(caps.used, { actions: 28, creations: 9, links: 19, research: 0, social: 0, notices: 0, automation: 0, statuses: 0, reports: 0, moderation: 0, appeals: 0, blocks: 0, limits: 0, rights: 0, triage: 0, scanning: 0, advisory: 0, orgs: 0, security: 0 });
+    assert.deepEqual(caps.used, { actions: 28, creations: 9, links: 19, research: 0, social: 0, notices: 0, automation: 0, statuses: 0, reports: 0, moderation: 0, appeals: 0, blocks: 0, limits: 0, rights: 0, triage: 0, scanning: 0, advisory: 0, orgs: 0, security: 0, discussions: 0, votes: 0, projects: 0, project_edits: 0 });
     assert.equal(caps.exceeded, null);
     assert.deepEqual(caps.limits, PER_ACCOUNT_DAY);
     await seed.action(db, { userId: "u_ada", kind: "create", t: t + 1 });
@@ -211,7 +211,7 @@ describe("the gate", () => {
     assert.deepEqual((await dailyCaps(db, "u_ada", "link", t + 3)).exceeded, { cap: "links", limit: 20, used: 20 });
     // Another kind is still allowed; Ben has his own count.
     assert.equal((await dailyCaps(db, "u_ada", "edit", t + 3)).exceeded, null);
-    assert.deepEqual((await dailyCaps(db, "u_ben", "create", t + 3)).used, { actions: 1, creations: 1, links: 0, research: 0, social: 0, notices: 0, automation: 0, statuses: 0, reports: 0, moderation: 0, appeals: 0, blocks: 0, limits: 0, rights: 0, triage: 0, scanning: 0, advisory: 0, orgs: 0, security: 0 });
+    assert.deepEqual((await dailyCaps(db, "u_ben", "create", t + 3)).used, { actions: 1, creations: 1, links: 0, research: 0, social: 0, notices: 0, automation: 0, statuses: 0, reports: 0, moderation: 0, appeals: 0, blocks: 0, limits: 0, rights: 0, triage: 0, scanning: 0, advisory: 0, orgs: 0, security: 0, discussions: 0, votes: 0, projects: 0, project_edits: 0 });
     // The next day, the window has moved on.
     assert.equal((await dailyCaps(db, "u_ada", "create", t + 86_400)).exceeded, null);
     assert.equal(db.totals.written, 0);
@@ -257,9 +257,9 @@ describe("the gate", () => {
     assert.equal(ACTION_PAYLOAD_BYTES, 1_048_576);
     assert.equal(WEBHOOK_BYTES, WEBHOOK_MAX_BYTES);
     assert.equal(FORGE_ROWS_PER_DAY, 5_000);
-    assert.deepEqual(PER_ACCOUNT_DAY, { actions: 100, creations: 10, links: 20, research: 20, social: 300, notices: 500, automation: 50, statuses: 300, reports: 20, moderation: 500, appeals: 5, blocks: 100, limits: 20, rights: 3, triage: 200, scanning: 100, advisory: 50, orgs: 300, security: 200 });
+    assert.deepEqual(PER_ACCOUNT_DAY, { actions: 100, creations: 10, links: 20, research: 20, social: 300, notices: 500, automation: 50, statuses: 300, reports: 20, moderation: 500, appeals: 5, blocks: 100, limits: 20, rights: 3, triage: 200, scanning: 100, advisory: 50, orgs: 300, security: 200, discussions: 20, votes: 200, projects: 10, project_edits: 300 });
     assert.equal(GRACE_SECONDS, 30 * 86_400);
-    assert.deepEqual(CAP_OF, { create: "creations", generate: "creations", link: "links", research_open: "research", star: "social", star_list: "social", follow: "social", profile: "social", notice: "notices", token: "automation", hook: "automation", status: "statuses", report: "reports", moderate: "moderation", appeal: "appeals", block: "blocks", limit: "limits", rights: "rights", security_alert: "triage", sarif: "scanning", advisory_open: "advisory", advisory_post: "advisory", advisory_edit: "advisory", org: "orgs", member: "orgs", team: "orgs", passkey: "security", session: "security", identity: "security" });
+    assert.deepEqual(CAP_OF, { create: "creations", generate: "creations", link: "links", research_open: "research", star: "social", star_list: "social", follow: "social", profile: "social", notice: "notices", token: "automation", hook: "automation", status: "statuses", report: "reports", moderate: "moderation", appeal: "appeals", block: "blocks", limit: "limits", rights: "rights", security_alert: "triage", sarif: "scanning", advisory_open: "advisory", advisory_post: "advisory", advisory_edit: "advisory", org: "orgs", member: "orgs", team: "orgs", passkey: "security", session: "security", identity: "security", discussion_open: "discussions", discussion_vote: "votes", project_create: "projects", project_item: "project_edits", project_edit: "project_edits", project_field: "project_edits" });
     assert.equal(utcDay(T0), 20_724);
     assert.equal(untilNextDay(T0), 43_200);
   });
@@ -356,8 +356,8 @@ describe("the rows (store.ts)", () => {
     // Phase 10: a person's tokens, and the hooks of a subject (0009_automation.sql). Phase 16: the open
     // reports, a person's hidden things, the open appeals, the data-rights requests (0010_moderation.sql).
     assert.deepEqual(indexes.map((i) => i.name).sort(), [
-      "api_tokens_user", "content_reports_open", "hooks_subject", "moderation_owner", "org_invitations_invitee", "org_members_user",
-      "organizations_handle", "repos_path", "research_paper", "rights_requests_open",
+      "api_tokens_user", "content_reports_open", "discussions_space", "hooks_subject", "moderation_owner", "org_invitations_invitee",
+      "org_members_user", "organizations_handle", "repos_path", "research_paper", "rights_requests_open",
     ]);
   });
 
