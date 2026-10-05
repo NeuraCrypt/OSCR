@@ -142,6 +142,10 @@ export const ACTION_KINDS = [
   // Phase 07 (migrations/d1-forge/0007_packages.sql): a package the manifests declare, confirmed or
   // declined by a person who may push (act-packages.ts).
   "package_confirm",
+  // Night phase 06 (migrations/d1-forge/0016_wiki.sql): one commit on a repository's `wiki` branch,
+  // made by GitHub as the person, the phase-03 model (act-wiki.ts). The wiki is versioned by git
+  // (D00-6): OSCR never writes to GitHub itself.
+  "wiki_edit",
 ] as const;
 
 export type ActionKind = (typeof ACTION_KINDS)[number];

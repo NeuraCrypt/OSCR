@@ -24,6 +24,7 @@
 //                                        release_drafts, release_research, tag_create,
 //                                        tag_delete, asset_upload, asset_delete (phase 07, E1)
 //   act-packages.ts   PACKAGE_ACTIONS    package_confirm                       (phase 07, E6)
+//   act-wiki.ts        WIKI_ACTIONS       wiki_edit                       (night phase 06, E4)
 // (The registry's own writes of research issues, research_open, research_comment and research_edit,
 // are routes of research.ts, not authorized actions: they are in RESEARCH_KINDS, not here.)
 // A kind registered twice, or one that is not in ACTION_KINDS, stops the Worker at load.
@@ -39,6 +40,7 @@ import { PULL_ACTIONS } from "./act-pulls.ts";
 import { PACKAGE_ACTIONS } from "./act-packages.ts";
 import { RELEASE_ACTIONS } from "./act-releases.ts";
 import { RESEARCH_ACTIONS } from "./act-research.ts";
+import { WIKI_ACTIONS } from "./act-wiki.ts";
 import { REF_ACTIONS } from "./act-refs.ts";
 import { SETTINGS_ACTIONS } from "./act-settings.ts";
 import { isActionKind, type ActionKind, type ActionRegistry, type AnyActionSpec } from "./types.ts";
@@ -100,6 +102,7 @@ export const REGISTERED_IN: Readonly<Record<ActionKind, string>> = {
   asset_upload: "act-releases.ts",
   asset_delete: "act-releases.ts",
   package_confirm: "act-packages.ts",
+  wiki_edit: "act-wiki.ts",
 };
 
 /** A registry of these specs; a duplicate or an unknown kind is a programming error. */
@@ -127,4 +130,5 @@ export const ACTIONS: ActionRegistry = registry([
   ...RESEARCH_ACTIONS,
   ...RELEASE_ACTIONS,
   ...PACKAGE_ACTIONS,
+  ...WIKI_ACTIONS,
 ]);
