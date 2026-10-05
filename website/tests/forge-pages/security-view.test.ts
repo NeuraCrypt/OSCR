@@ -5,9 +5,17 @@ import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 import { textOf } from "../../src/lib/repo-view.ts";
 import {
-  dependenciesSection, depEntry, EMPTY_FILTER, filterDeps, secretSection, securityView, summariseView, summaryWords,
+  dependenciesSection, depEntry, EMPTY_FILTER, filterDeps, osvAlertEntry, osvSection, secretSection, securityView, summariseView, summaryWords,
   type AlertView, type DepView, type SecurityAnswer,
 } from "../../src/lib/security-view.ts";
+
+function makeAlert(o: Partial<AlertView> & { kind: AlertView["kind"]; ref: string }): AlertView {
+  return {
+    severity: "high", summary: "", detail: {}, ecosystem: "", package: "", version: "", advisory: "",
+    path: "", line: null, devScope: false, commit: "", source: "mac", state: "open", reason: "",
+    assignee: "", labels: [], auto: false, ...o,
+  } as AlertView;
+}
 
 function dep(o: Partial<DepView> & { name: string }): DepView {
   return {
@@ -66,7 +74,7 @@ describe("security-view rendering", () => {
     const answer: SecurityAnswer = {
       repo: { forge: "memory", id: "101", owner: "ada", name: "eeg" },
       dependencies: { default: DEPS, cited: [dep({ name: "numpy", version: "1.25.0", pinned: true, commit: "b".repeat(40) })], summary: summariseView(DEPS) },
-      alerts: { osv: [], secret: [], sarif: [] },
+      alerts: { osv: [], secret: [], sarif: [] }, mayTriage: false,
     };
     const t = textOf(securityView(answer));
     assert.match(t, /Dependencies at the default branch/);
@@ -90,11 +98,42 @@ describe("security-view rendering", () => {
     assert.match(textOf(secretSection([])), /No secret was found/);
   });
 
+  test("a vulnerability alert shows severity, package, advisory and summary", () => {
+    const a = makeAlert({ kind: "osv", ref: "GHSA-x:numpy:1.0.0", severity: "critical", package: "numpy", version: "1.0.0", advisory: "GHSA-x", summary: "A flaw", detail: { cve: "CVE-2021-1" } });
+    const t = textOf(osvAlertEntry(a, false));
+    assert.match(t, /critical/);
+    assert.match(t, /numpy@1.0.0/);
+    assert.match(t, /GHSA-x, CVE-2021-1/);
+    assert.match(t, /A flaw/);
+  });
+
+  test("a malicious-package alert says so; a dismissed one shows its state", () => {
+    const mal = makeAlert({ kind: "osv", ref: "MAL-1:x:1", package: "x", detail: { malware: true }, severity: "critical" });
+    assert.match(textOf(osvAlertEntry(mal, false)), /malicious package/);
+    const auto = makeAlert({ kind: "osv", ref: "GHSA-old:y:1", package: "y", state: "dismissed", reason: "false_positive", auto: true });
+    assert.match(textOf(osvAlertEntry(auto, false)), /dismissed automatically \(false_positive\)/);
+  });
+
+  test("triage buttons appear only for a manager", () => {
+    const a = makeAlert({ kind: "osv", ref: "GHSA-x:numpy:1.0.0", package: "numpy" });
+    assert.doesNotMatch(textOf(osvAlertEntry(a, false)), /Dismiss/);
+    assert.match(textOf(osvAlertEntry(a, true)), /Dismiss as tolerable/);
+    const dismissed = makeAlert({ kind: "osv", ref: "r", package: "z", state: "dismissed", reason: "fixed" });
+    assert.match(textOf(osvAlertEntry(dismissed, true)), /Reopen/);
+  });
+
+  test("the OSV section names OSV and says the registry never opens a pull request", () => {
+    const t = textOf(osvSection([makeAlert({ kind: "osv", ref: "r", package: "p" })], false));
+    assert.match(t, /OSV/);
+    assert.match(t, /never opens a pull request/);
+    assert.match(textOf(osvSection([], false)), /No known vulnerability/);
+  });
+
   test("no dependencies: a plain sentence, no form", () => {
     const answer: SecurityAnswer = {
       repo: { forge: "memory", id: "101", owner: "ada", name: "eeg" },
       dependencies: { default: [], cited: [], summary: summariseView([]) },
-      alerts: { osv: [], secret: [], sarif: [] },
+      alerts: { osv: [], secret: [], sarif: [] }, mayTriage: false,
     };
     const t = textOf(dependenciesSection(answer, "default"));
     assert.match(t, /No dependency was read/);

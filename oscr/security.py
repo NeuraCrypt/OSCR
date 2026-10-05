@@ -24,7 +24,7 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 
-from . import community, depgraph, forge, secretscan
+from . import community, depgraph, forge, osv, secretscan
 
 #: The most of one manifest the reader fetches (a lock file can be large; the graph needs its text).
 MANIFEST_BYTES = 400_000
@@ -147,6 +147,60 @@ def secret_statements(forge_name: str, repo_id: str, findings: list[secretscan.F
     return out
 
 
+def osv_queries(nodes: list[depgraph.Node]) -> list[osv.Query]:
+    """OSV queries from the dependency graph: the nodes OSV can cover, that carry an exact version.
+    A dependency only in a dev or optional scope is marked development-scope."""
+    out: list[osv.Query] = []
+    for n in nodes:
+        if n.ecosystem in osv.ECOSYSTEM and n.version:
+            out.append(osv.Query(n.ecosystem, n.name, n.version, dev_scope=n.scope in ("dev", "optional")))
+    return out
+
+
+def scan_osv(post, get, nodes: list[depgraph.Node], *, base: str) -> list[osv.Alert]:
+    """The OSV alerts for a dependency graph: a batch query, then each advisory's details, joined and
+    auto-triaged. Nothing of the code leaves: only public package names, ecosystems and versions."""
+    queries = osv_queries(nodes)
+    if not queries:
+        return []
+    ids_by_key = osv.query_batch(post, queries, base=base)
+    dev = {f"{q.ecosystem}\n{q.package}\n{q.version}": q.dev_scope for q in queries}
+    advisories: dict[str, osv.Advisory] = {}
+    for ids in ids_by_key.values():
+        for vuln_id in ids:
+            if vuln_id not in advisories:
+                adv = osv.fetch_advisory(post, vuln_id, base=base, get=get)
+                if adv is not None:
+                    advisories[vuln_id] = adv
+    return osv.alerts_from(ids_by_key, advisories, dev)
+
+
+def osv_statements(forge_name: str, repo_id: str, alerts: list[osv.Alert], now: int) -> list[str]:
+    """SQL that replaces a repository's OSV alerts (delete then insert). The value kept is the
+    advisory id and severity, never code; the auto-triage decision rides in `detail`."""
+    out = [f"DELETE FROM security_alerts WHERE forge = {community.literal(forge_name)} "
+           f"AND repo_id = {community.literal(repo_id)} AND kind = 'osv';"]
+    for a in alerts:
+        adv = a.advisory
+        ref = f"{adv.id}:{a.package}:{a.version}"[:300]
+        detail = json.dumps({"aliases": adv.aliases, "cve": adv.cve, "malware": adv.malware,
+                             "withdrawn": adv.withdrawn, "auto_dismiss": a.auto_dismiss}, ensure_ascii=False)
+        kind_word = "a malicious package" if adv.malware else "a known vulnerability"
+        values = {
+            "forge": forge_name, "repo_id": repo_id, "kind": "osv", "ref": ref,
+            "severity": adv.severity,
+            "summary": f"{kind_word} in {a.package} {a.version}: {adv.summary}"[:2000] if adv.summary
+                       else f"{kind_word} in {a.package} {a.version} ({adv.id})"[:2000],
+            "detail": detail[:16384], "ecosystem": a.ecosystem[:40], "package": a.package[:214],
+            "version": a.version[:100], "advisory": adv.id[:100],
+            "dev_scope": 1 if a.dev_scope else 0, "source": "mac", "found_at": now, "updated_at": now,
+        }
+        cols = ", ".join(values)
+        vals = ", ".join(community.literal(v) for v in values.values())
+        out.append(f"INSERT INTO security_alerts ({cols}) VALUES ({vals});")
+    return out
+
+
 def _flush(d1: community.D1, statements: list[str], state: sqlite3.Connection, target: str,
            now: int) -> int:
     """Send statements in chunks, counting the rows against the day's budget."""
@@ -164,6 +218,7 @@ def command(con: sqlite3.Connection | None, action: str, *, target: str | None,
             folder: Path = Path("data") / "community", budget: int = community.DAILY_BUDGET,
             settings: dict | None = None, persist_to: Path | None = None,
             reader: forge.ForgeReader | None = None, now: float | None = None,
+            client=None, osv_post=None, osv_get=None, osv_base: str | None = None,
             report=lambda _m: None) -> str:
     """`oscr security <action>`.
 
@@ -186,12 +241,18 @@ def command(con: sqlite3.Connection | None, action: str, *, target: str | None,
         raise SystemExit(f"security: unknown action {action!r} (scan, status)")
 
     exclusions, custom = secretscan.load_config(settings)
+    osv_base = osv_base or (settings or {}).get("OSV_API_URL", "") or osv.API_URL
+    # OSV is queried only when a transport is given (tests/e2e inject a fake; the owner's real runs
+    # pass the harvester's client). Without one, the scan still does deps and secrets, no OSV.
+    if osv_post is None and client is not None and not getattr(client, "offline", False):
+        osv_post = lambda url, body: client.post_json(url, body)  # noqa: E731
+        osv_get = lambda url: client.get(url, ttl_s=86400)        # noqa: E731
     reader = reader if reader is not None else forge.reader("github")
     state = community.open_state((folder if folder else Path("data") / "community") / "state.db")
     spent = community.budget_spent(state, target or "local", community.utc_day(t))
     left = max(0, budget - spent)
     repos = active_repos(d1)
-    done = depped = secreted = 0
+    done = depped = secreted = vulned = 0
     for repo in repos:
         if left <= 0:
             report(f"security: the day's budget ({budget}) is spent; {len(repos) - done} repositories left for tomorrow")
@@ -218,6 +279,13 @@ def command(con: sqlite3.Connection | None, action: str, *, target: str | None,
             secrets = scan_secrets(con, f"github.com/{repo.owner}/{repo.name}".lower(),
                                    exclusions=exclusions, custom=custom)
             statements += secret_statements(repo.forge, repo.repo_id, secrets, t)
+        alerts: list[osv.Alert] = []
+        if osv_post is not None:
+            try:
+                alerts = scan_osv(osv_post, osv_get, default, base=osv_base)
+            except Exception as e:  # a bad answer never stops the scan
+                report(f"security: {repo.owner}/{repo.name}: OSV: {e}")
+            statements += osv_statements(repo.forge, repo.repo_id, alerts, t)
         if len(statements) > left:
             report(f"security: the day's budget ({budget}) is spent; {len(repos) - done} repositories left for tomorrow")
             break
@@ -226,6 +294,7 @@ def command(con: sqlite3.Connection | None, action: str, *, target: str | None,
         done += 1
         depped += len(default)
         secreted += len(secrets)
+        vulned += len(alerts)
     state.close()
     return (f"security: scanned {done} repositories, {depped} dependencies at their heads, "
-            f"{secreted} secret alerts (reported, never blocking)")
+            f"{vulned} OSV alerts, {secreted} secret alerts (reported, never blocking)")

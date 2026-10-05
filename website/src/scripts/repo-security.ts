@@ -9,6 +9,7 @@
 import { depsList, filterDeps, securityView, type DepFilter, type DepView, type SecurityAnswer } from "../lib/security-view.ts";
 import { h } from "../lib/repo-view.ts";
 import { show, toDom } from "./dom.ts";
+import { postJson } from "./social-client.ts";
 import { codeViews, type CodeEnv } from "./repo-code.ts";
 
 async function load(env: CodeEnv): Promise<SecurityAnswer | number> {
@@ -70,8 +71,11 @@ codeViews.security = async (slot, env) => {
     ));
     return;
   }
+  render(slot, answer, env);
+};
+
+function render(slot: HTMLElement, answer: SecurityAnswer, env: CodeEnv): void {
   slot.replaceChildren(toDom(securityView(answer)));
-  // Wire each snapshot's filter form.
   const bySnapshot: Record<string, DepView[]> = {
     default: answer.dependencies.default,
     cited: answer.dependencies.cited,
@@ -79,4 +83,29 @@ codeViews.security = async (slot, env) => {
   for (const section of slot.querySelectorAll<HTMLElement>("section.security-deps")) {
     wireSection(section, bySnapshot[section.dataset.snapshot ?? "default"] ?? []);
   }
-};
+  if (answer.mayTriage) wireTriage(slot, answer, env);
+}
+
+/** The dismiss/reopen buttons: a POST, then the whole view is read again. */
+function wireTriage(slot: HTMLElement, answer: SecurityAnswer, env: CodeEnv): void {
+  const id = `${env.info.key.forge}:${env.layer?.id ?? env.info.key.id}`;
+  for (const button of slot.querySelectorAll<HTMLButtonElement>(".alert-actions button[data-op]")) {
+    button.addEventListener("click", async () => {
+      const { kind, ref, op, reason } = button.dataset;
+      button.disabled = true;
+      try {
+        const res = await postJson(`/api/forge/security/triage?id=${encodeURIComponent(id)}`, { op, kind, ref, reason: reason ?? "" });
+        if (res.ok) {
+          const fresh = await load(env);
+          if (typeof fresh !== "number") {
+            render(slot, fresh, env);
+            return;
+          }
+        }
+      } catch {
+        // fall through to re-enable
+      }
+      button.disabled = false;
+    });
+  }
+}

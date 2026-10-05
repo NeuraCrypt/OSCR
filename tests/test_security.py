@@ -105,6 +105,35 @@ def test_command_scans_secrets_from_stored_files(forge_d1, tmp_path, monkeypatch
     con.close()
 
 
+def test_command_scans_osv_with_a_fake(forge_d1, tmp_path, monkeypatch):
+    seed_repo(forge_d1, head="a" * 40)
+    reader = memory_repo({"requirements.txt": "numpy==1.0.0\n"})
+
+    class FakeResp:
+        def __init__(self, status, data):
+            self.status = status
+            self._data = data
+            self.text = ""
+
+        def json(self):
+            return self._data
+
+    def post(url, body):
+        return FakeResp(200, {"results": [{"vulns": [{"id": "GHSA-x"}]}]})
+
+    def get(url):
+        return FakeResp(200, {"id": "GHSA-x", "summary": "A flaw in numpy",
+                              "severity": [{"type": "CVSS_V3", "score": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H"}]})
+
+    monkeypatch.setattr(community, "open_d1", lambda *a, **k: forge_d1)
+    monkeypatch.setattr(security.forge, "reader", lambda f: reader)
+    out = security.command(None, "scan", target="local", folder=tmp_path, now=T,
+                           osv_post=post, osv_get=get, osv_base="http://fake")
+    assert "1 OSV alerts" in out
+    row = forge_d1.query("SELECT kind, severity, package, advisory FROM security_alerts WHERE kind = 'osv'")
+    assert row == [{"kind": "osv", "severity": "critical", "package": "numpy", "advisory": "GHSA-x"}]
+
+
 def test_command_budget_stops(forge_d1, tmp_path, monkeypatch):
     seed_repo(forge_d1)
     reader = memory_repo({"requirements.txt": "numpy==1.26.0\n"})

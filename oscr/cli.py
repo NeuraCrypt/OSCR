@@ -666,7 +666,7 @@ def main(argv: list[str] | None = None) -> int:
             from . import security
             print(security.command(con, a.action, target="remote" if a.remote else "local" if a.local else None,
                                    folder=Path(a.folder), budget=a.budget, settings=cfg,
-                                   persist_to=Path(a.persist_to) if a.persist_to else None,
+                                   persist_to=Path(a.persist_to) if a.persist_to else None, client=client,
                                    report=lambda m: print(m, flush=True)))
         elif a.command == "social":
             from . import social

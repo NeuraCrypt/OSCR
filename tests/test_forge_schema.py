@@ -28,7 +28,7 @@ TABLES = {"repos", "repo_papers", "installations", "traced_paths", "actions", "d
           # Phase 14: the command line's sign-in (0011_device.sql).
           "device_grants",
           # Phase 11: security and quality (0012_security.sql).
-          "repo_deps", "security_alerts"}
+          "repo_deps", "security_alerts", "alert_triage"}
 T = 1_790_596_800
 
 
@@ -102,7 +102,7 @@ def test_the_checks_refuse_an_address_an_unknown_forge_and_a_private_name(forge_
 
 
 def test_the_action_kinds_are_the_workers():
-    """The migrations' CHECK on actions.kind (as the last one that rebuilt the table leaves it: 0010,
+    """The migrations' CHECK on actions.kind (as the last one that rebuilt the table leaves it: 0012,
     phase 16's content rules) lists website/worker/forge/service/types.ts ACTION_KINDS, then its
     RESEARCH_KINDS, SOCIAL_KINDS, AUTOMATION_KINDS and MODERATION_KINDS (the registry's own writes,
     logged like the actions)."""
@@ -121,8 +121,10 @@ def test_the_action_kinds_are_the_workers():
     in_ts += re.findall(r'"([a-z_]+)"', types[start:types.index("] as const", start)])
     start = types.index("export const MODERATION_KINDS = [")
     in_ts += re.findall(r'"([a-z_]+)"', types[start:types.index("] as const", start)])
+    start = types.index("export const SECURITY_KINDS = [")
+    in_ts += re.findall(r'"([a-z_]+)"', types[start:types.index("] as const", start)])
     assert in_sql == in_ts
-    assert len(in_sql) == 72 and len(set(in_sql)) == 72
+    assert len(in_sql) == 77 and len(set(in_sql)) == 77
 
 
 def test_the_layer_shards_are_sha256_mod_64():

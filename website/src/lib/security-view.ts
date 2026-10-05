@@ -49,6 +49,7 @@ export interface SecurityAnswer {
   repo: { forge: string; id: string; owner: string; name: string };
   dependencies: { default: DepView[]; cited: DepView[]; summary: DepSummary };
   alerts: { osv: AlertView[]; secret: AlertView[]; sarif: AlertView[] };
+  mayTriage: boolean;
 }
 
 const severityWord: Record<AlertView["severity"], string> = {
@@ -68,6 +69,56 @@ export function secretAlertEntry(a: AlertView): El {
   return h("li", { class: "alert alert-secret" },
     h("p", { class: "alert-head" }, severityEl(a.severity), " ", h("span", null, a.summary), guess ? h("span", { class: "muted" }, " (a guess)") : null),
     remediation ? h("p", { class: "fix" }, remediation) : null,
+  );
+}
+
+/** Triage buttons for an alert (shown only to a manager); the script wires their clicks. */
+function triageButtons(a: AlertView): El {
+  const data = { "data-kind": a.kind, "data-ref": a.ref };
+  if (a.state === "dismissed") {
+    return h("p", { class: "alert-actions" }, h("button", { ...data, "data-op": "reopen", type: "button" }, "Reopen"));
+  }
+  return h("p", { class: "alert-actions" },
+    h("button", { ...data, "data-op": "dismiss", "data-reason": "tolerable", type: "button" }, "Dismiss as tolerable"),
+    " ",
+    h("button", { ...data, "data-op": "dismiss", "data-reason": "fixed", type: "button" }, "Dismiss as fixed"),
+  );
+}
+
+/** One vulnerability or malware alert: severity, the package and version, the advisory id (and CVE),
+ *  the summary, the labels, the state, and (for a manager) the triage buttons. */
+export function osvAlertEntry(a: AlertView, mayTriage: boolean): El {
+  const malware = a.detail.malware === true;
+  const dismissed = a.state === "dismissed";
+  const head = h("p", { class: "alert-head" },
+    severityEl(a.severity),
+    " ",
+    h("span", null, malware ? "malicious package" : "vulnerability"),
+    " in ",
+    h("code", null, `${a.package}${a.version ? `@${a.version}` : ""}`),
+    a.advisory ? h("span", { class: "muted" }, ` (${a.advisory}${typeof a.detail.cve === "string" && a.detail.cve ? `, ${a.detail.cve}` : ""})`) : null,
+  );
+  const labels: (El | string)[] = [];
+  if (a.devScope || a.labels.includes("development-scope")) labels.push(h("span", { class: "muted" }, "development scope"));
+  if (dismissed) labels.push(h("span", { class: "muted" }, a.auto ? `dismissed automatically (${a.reason})` : `dismissed (${a.reason})`));
+  return h("li", { class: `alert alert-osv${dismissed ? " is-dismissed" : ""}`, "data-kind": "osv", "data-ref": a.ref },
+    head,
+    a.summary ? h("p", null, a.summary) : null,
+    labels.length ? h("p", { class: "alert-meta" }, ...labels.flatMap((l, i) => (i ? [" · ", l] : [l]))) : null,
+    mayTriage ? triageButtons(a) : null,
+  );
+}
+
+/** The Vulnerability and malware alerts section (E2). */
+export function osvSection(alerts: readonly AlertView[], mayTriage: boolean): El {
+  const live = alerts.filter((a) => a.state === "open");
+  return h("section", { class: "security-alerts" },
+    h("h3", null, "Vulnerability and malware alerts"),
+    h("p", { class: "muted" }, "From OSV (osv.dev), a free public database, matched against the dependency graph away from the site. Security and version-update pull requests are GitHub's Dependabot, which the researcher switches on; the registry shows alerts and never opens a pull request."),
+    alerts.length
+      ? h("ul", { class: "alerts" }, ...alerts.map((a) => osvAlertEntry(a, mayTriage)))
+      : h("p", { class: "ok" }, "No known vulnerability or malicious package in the dependencies read."),
+    alerts.length ? h("p", { class: "muted" }, `${live.length} open, ${alerts.length - live.length} dismissed.`) : null,
   );
 }
 
@@ -200,6 +251,7 @@ export function securityView(answer: SecurityAnswer): El {
   return h("div", { class: "security" },
     h("h2", null, "Security and quality"),
     h("p", { class: "muted" }, "The registry reads this repository's environment files and stored code as text and never runs them. The analysis is computed away from the site; nothing of the code is executed here."),
+    osvSection(answer.alerts.osv, answer.mayTriage),
     secretSection(answer.alerts.secret),
     dependenciesSection(answer, "default"),
     hasCited ? dependenciesSection(answer, "cited") : null,

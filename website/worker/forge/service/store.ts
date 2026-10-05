@@ -453,4 +453,32 @@ export function alertsOf(db: D1Database, forge: string, repoId: string): D1Prepa
     .bind(forgeOf(forge), repoId);
 }
 
+/** A repository's alert triage (the human decisions), by the key's prefix: a key range. */
+export function triageOf(db: D1Database, forge: string, repoId: string): D1PreparedStatement {
+  return db
+    .prepare("SELECT kind, ref, state, reason, assignee, note, labels FROM alert_triage WHERE forge = ? AND repo_id = ?")
+    .bind(forgeOf(forge), repoId);
+}
+
+/** One alert's finding row (to check it exists before triaging it: the key, 1 row). */
+export function alertByRef(db: D1Database, forge: string, repoId: string, kind: string, ref: string): D1PreparedStatement {
+  return db.prepare("SELECT kind, ref FROM security_alerts WHERE forge = ? AND repo_id = ? AND kind = ? AND ref = ?")
+    .bind(forgeOf(forge), repoId, kind, ref);
+}
+
+/** Set a human decision on an alert (upsert by its key). */
+export function triageWrite(
+  db: D1Database,
+  t: { forge: string; repoId: string; kind: string; ref: string; state: string; reason: string; assignee: string; note: string; labels: string[]; byUser: string; at: number },
+): Write {
+  return {
+    rows: 1,
+    stmt: db
+      .prepare("INSERT INTO alert_triage (forge, repo_id, kind, ref, state, reason, assignee, note, labels, by_user, updated_at) "
+        + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT (forge, repo_id, kind, ref) DO UPDATE SET "
+        + "state = excluded.state, reason = excluded.reason, assignee = excluded.assignee, note = excluded.note, labels = excluded.labels, by_user = excluded.by_user, updated_at = excluded.updated_at")
+      .bind(forgeOf(t.forge), t.repoId, t.kind, t.ref, t.state, t.reason, t.assignee.slice(0, 100), t.note.slice(0, 2000), JSON.stringify(t.labels).slice(0, 300), t.byUser, Math.floor(t.at)),
+  };
+}
+
 export type { RepoRow };

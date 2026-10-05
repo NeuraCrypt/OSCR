@@ -49,6 +49,8 @@ INTERVALS: dict[str, float] = {
     "api.figshare.com": 0.5,
     "huggingface.co": 0.5,
     "archive.softwareheritage.org": 1.0,
+    # OSV's free batch API (no key): a few requests a second is plenty, and the batch holds many.
+    "api.osv.dev": 0.5,
     # OpenAlex allows 100 requests a second with a key; a few a second is plenty.
     "api.openalex.org": 0.25,
 }
@@ -265,6 +267,34 @@ class Client:
             return resp
         return Response(url=key, status=0, text=f"network outage: {last_error!r}")
 
+    def post_json(self, url: str, body: Any, *, headers: dict[str, str] | None = None,
+                  patient: bool = False) -> Response:
+        """A polite POST with a JSON body, for an API that answers JSON (OSV's batch endpoint).
+        Never cached (a POST). No Authorization header is added (OSV takes no key)."""
+        if self.offline:
+            return Response(url=url, status=0, text="")
+        host = urlsplit(url).hostname or ""
+        h = {"Content-Type": "application/json", "Accept": "application/json"}
+        h.update(headers or {})
+        last_error: Exception | None = None
+        for attempt in range(ATTEMPTS):
+            self._wait(host, url)
+            self.requests[host] = self.requests.get(host, 0) + 1
+            try:
+                r = self._http.request("POST", url, json=body, headers=h)
+            except httpx.TransportError as e:
+                last_error = e
+                time.sleep(min(MAX_WAIT_S, 2.0 ** attempt))
+                continue
+            if not patient and r.status_code == 429:
+                return Response(url=str(r.url), status=r.status_code, text="",
+                                headers={k.lower(): v for k, v in r.headers.items()})
+            if r.status_code in RETRYABLE and attempt < ATTEMPTS - 1:
+                time.sleep(_retry_delay(r, attempt))
+                continue
+            return Response(url=str(r.url), status=r.status_code, text=r.text,
+                            headers={k.lower(): v for k, v in r.headers.items()})
+        return Response(url=url, status=0, text=f"network outage: {last_error!r}")
 
     def _stream(self, url: str, max_bytes: int, out: IO[bytes]) -> bool:
         """Stream `url` into `out`, abandoned beyond `max_bytes`: a 4 GB data

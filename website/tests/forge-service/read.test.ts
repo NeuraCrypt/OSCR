@@ -339,7 +339,7 @@ describe("GET /api/forge/mine", () => {
     });
     // The pending deletions come first, with their dates, whatever page they are on.
     assert.deepEqual(p1.pending.map((x: Json) => [x.name, x.state, x.deleteAfter]), [["d-pending", "pending_deletion", T0 + GRACE_SECONDS]]);
-    assert.deepEqual(p1.caps, { limits: PER_ACCOUNT_DAY, used: { actions: 1, creations: 0, links: 1, research: 0, social: 0, notices: 0, automation: 0, statuses: 0, reports: 0, moderation: 0, appeals: 0, blocks: 0, limits: 0, rights: 0 } });
+    assert.deepEqual(p1.caps, { limits: PER_ACCOUNT_DAY, used: { actions: 1, creations: 0, links: 1, research: 0, social: 0, notices: 0, automation: 0, statuses: 0, reports: 0, moderation: 0, appeals: 0, blocks: 0, limits: 0, rights: 0, triage: 0, scanning: 0, advisory: 0 } });
     assert.equal(p1.open, true);
 
     const p2 = await body(await b.fetch(`/api/forge/mine?limit=2&after=${p1.next}`));

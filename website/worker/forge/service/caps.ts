@@ -31,6 +31,8 @@ export const PER_ACCOUNT_DAY = {
   actions: 100, creations: 10, links: 20, research: 20, social: 300, notices: 500, automation: 50, statuses: 300,
   // Phase 16: reports, the owner's decisions, appeals, blocks and interaction limits, data-rights requests.
   reports: 20, moderation: 500, appeals: 5, blocks: 100, limits: 20, rights: 3,
+  // Phase 11: a security alert triaged, a SARIF upload, a private vulnerability report written.
+  triage: 200, scanning: 100, advisory: 50,
 } as const;
 export type Cap = keyof typeof PER_ACCOUNT_DAY;
 /** OSCR's grace period before a repository asked for deletion may be deleted (D00-10). */
@@ -72,6 +74,11 @@ export const CAP_OF: Readonly<Partial<Record<RowKind, Exclude<Cap, "actions">>>>
   block: "blocks",
   limit: "limits",
   rights: "rights",
+  security_alert: "triage",
+  sarif: "scanning",
+  advisory_open: "advisory",
+  advisory_post: "advisory",
+  advisory_edit: "advisory",
 };
 
 /** The kinds each cap counts. */
@@ -89,11 +96,14 @@ export const KINDS_OF: Readonly<Record<Exclude<Cap, "actions">, readonly RowKind
   blocks: ["block"],
   limits: ["limit"],
   rights: ["rights"],
+  triage: ["security_alert"],
+  scanning: ["sarif"],
+  advisory: ["advisory_open", "advisory_post", "advisory_edit"],
 };
 
 /** Phase 08: the caps that stand alone (their kinds are not counted in `actions`); phase 10 adds its
  *  own (tokens and hooks changed; statuses posted by an outside service). */
-export const OWN_CAPS: ReadonlySet<Cap> = new Set<Cap>(["social", "notices", "automation", "statuses", "reports", "moderation", "appeals", "blocks", "limits", "rights"]);
+export const OWN_CAPS: ReadonlySet<Cap> = new Set<Cap>(["social", "notices", "automation", "statuses", "reports", "moderation", "appeals", "blocks", "limits", "rights", "triage", "scanning", "advisory"]);
 
 /** A cap in words, for the answers ("10 repositories created"). */
 export const CAP_WORDS: Readonly<Record<Cap, (n: number) => string>> = {
@@ -111,4 +121,7 @@ export const CAP_WORDS: Readonly<Record<Cap, (n: number) => string>> = {
   blocks: (n) => `${n} blocks and unblocks`,
   limits: (n) => `${n} changes to interaction limits`,
   rights: (n) => `${n} data-rights requests`,
+  triage: (n) => `${n} security alerts triaged`,
+  scanning: (n) => `${n} code-scanning uploads`,
+  advisory: (n) => `${n} changes to private vulnerability reports`,
 };

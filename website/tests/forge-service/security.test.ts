@@ -18,10 +18,20 @@ beforeEach(() => {
 });
 afterEach(() => w.restore());
 
-async function signIn(): Promise<ForgeBrowser> {
+async function signIn(who?: { id: number; login: string; name: string }): Promise<{ b: ForgeBrowser; userId: string }> {
+  if (who) w.mock.who.github = who;
   const b = w.browser();
   await b.signIn("github");
-  return b;
+  const subject = String(w.mock.who.github.id);
+  const row = w.db.sqlite.prepare("SELECT user_id FROM identities WHERE provider = 'github' AND subject = ?").get(subject) as { user_id: string };
+  return { b, userId: row.user_id };
+}
+
+function alert(repoId: string, kind: string, ref: string, o: Partial<{ severity: string; summary: string; detail: string; package: string; version: string; advisory: string; path: string; line: number; dev: number; source: string }> = {}): void {
+  w.forge.sqlite
+    .prepare("INSERT INTO security_alerts (forge, repo_id, kind, ref, severity, summary, detail, ecosystem, package, version, advisory, path, line, dev_scope, source, found_at, updated_at) "
+      + "VALUES ('memory', ?, ?, ?, ?, ?, ?, '', ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+    .run(repoId, kind, ref, o.severity ?? "high", o.summary ?? "a finding", o.detail ?? "{}", o.package ?? "", o.version ?? "", o.advisory ?? "", o.path ?? "", o.line ?? null, o.dev ?? 0, o.source ?? "mac", T0, T0);
 }
 
 function dep(repoId: string, snapshot: string, eco: string, name: string, o: Partial<{ version: string; req: string; scope: string; direct: number; pinned: number; sources: string; commit: string }> = {}): void {
@@ -38,7 +48,7 @@ describe("GET /api/forge/security", () => {
     dep("101", "default", "PyPI", "scipy", { req: ">=1.10", direct: 0 });
     dep("101", "default", "npm", "d3", { req: "^7", sources: '["package.json"]' });
     dep("101", "cited", "PyPI", "numpy", { version: "1.25.0", pinned: 1, commit: CITED });
-    const b = await signIn();
+    const { b } = await signIn();
     w.forge.reset();
     const res = await b.fetch("/api/forge/security?id=memory:101");
     assert.equal(res.status, 200);
@@ -62,7 +72,7 @@ describe("GET /api/forge/security", () => {
       .prepare("INSERT INTO security_alerts (forge, repo_id, kind, ref, severity, summary, detail, path, line, source, found_at, updated_at) "
         + "VALUES ('memory', '101', 'secret', ?, ?, ?, ?, ?, ?, 'mac', ?, ?)")
       .run("leak.py:3:a-github-token", "high", "a GitHub token on line 3 of leak.py (ghp_ab…)", JSON.stringify({ hint: "ghp_ab…", paired: false, remediation: "Revoke it." }), "leak.py", 3, T0, T0);
-    const b = await signIn();
+    const { b } = await signIn();
     w.forge.reset();
     const j = await body(await b.fetch("/api/forge/security?id=memory:101"));
     assert.equal(j.alerts.secret.length, 1);
@@ -72,7 +82,7 @@ describe("GET /api/forge/security", () => {
   });
 
   test("an unknown repository is 404", async () => {
-    const b = await signIn();
+    const { b } = await signIn();
     assert.equal((await b.fetch("/api/forge/security?id=memory:999")).status, 404);
   });
 
@@ -82,7 +92,65 @@ describe("GET /api/forge/security", () => {
   });
 
   test("a bad target is 400", async () => {
-    const b = await signIn();
+    const { b } = await signIn();
     assert.equal((await b.fetch("/api/forge/security")).status, 400);
   });
+
+  test("an auto-dismissed (withdrawn) OSV alert reads as dismissed, with no triage row", async () => {
+    await seed.repo(w.forge, { repoId: "101", ownerLogin: "ada", name: "eeg", mode: "public", head: HEAD });
+    alert("101", "osv", "GHSA-old:left-pad:1.0.0", { severity: "low", detail: JSON.stringify({ auto_dismiss: "false_positive", withdrawn: true }) });
+    const { b } = await signIn();
+    const j = await body(await b.fetch("/api/forge/security?id=memory:101"));
+    assert.equal(j.alerts.osv[0].state, "dismissed");
+    assert.equal(j.alerts.osv[0].auto, true);
+  });
 });
+
+describe("POST /api/forge/security/triage", () => {
+  async function setup(): Promise<{ b: ForgeBrowser }> {
+    const { b, userId } = await signIn();
+    await seed.repo(w.forge, { repoId: "101", ownerLogin: "ada", name: "eeg", mode: "public", head: HEAD, linkedBy: userId }, T0 - 86_400);
+    alert("101", "osv", "GHSA-x:numpy:1.0.0", { severity: "critical", package: "numpy" });
+    return { b };
+  }
+
+  test("the owner-manager dismisses an alert and reopens it; the state follows", async () => {
+    const { b } = await setup();
+    let res = await b.post("/api/forge/security/triage?id=memory:101", { op: "dismiss", kind: "osv", ref: "GHSA-x:numpy:1.0.0", reason: "tolerable" });
+    assert.equal(res.status, 200);
+    assert.equal((await body(res)).state, "dismissed");
+    let j = await body(await b.fetch("/api/forge/security?id=memory:101"));
+    assert.equal(j.alerts.osv[0].state, "dismissed");
+    assert.equal(j.alerts.osv[0].reason, "tolerable");
+    assert.equal(j.alerts.osv[0].auto, false);
+    res = await b.post("/api/forge/security/triage?id=memory:101", { op: "reopen", kind: "osv", ref: "GHSA-x:numpy:1.0.0" });
+    assert.equal(res.status, 200);
+    j = await body(await b.fetch("/api/forge/security?id=memory:101"));
+    assert.equal(j.alerts.osv[0].state, "open");
+    // One action row per triage, kind security_alert.
+    const kinds = (w.forge.sqlite.prepare("SELECT kind FROM actions").all() as { kind: string }[]).map((a) => a.kind);
+    assert.deepEqual(kinds.filter((k) => k === "security_alert").length, 2);
+  });
+
+  test("a triage of an unknown alert is 404", async () => {
+    const { b } = await setup();
+    const res = await b.post("/api/forge/security/triage?id=memory:101", { op: "dismiss", kind: "osv", ref: "nope", reason: "fixed" });
+    assert.equal(res.status, 404);
+  });
+
+  test("an email as assignee is refused", async () => {
+    const { b } = await setup();
+    const res = await b.post("/api/forge/security/triage?id=memory:101", { op: "assign", kind: "osv", ref: "GHSA-x:numpy:1.0.0", assignee: "a@b.org" });
+    assert.equal(res.status, 400);
+  });
+
+  test("FORGE_OPEN unset: a non-owner is told the GitHub side is closed", async () => {
+    await seed.repo(w.forge, { repoId: "101", ownerLogin: "ada", name: "eeg", mode: "public", head: HEAD }, T0 - 86_400);
+    alert("101", "osv", "GHSA-x:numpy:1.0.0", { package: "numpy" });
+    const { b } = await signIn(BOB);
+    const res = await b.post("/api/forge/security/triage?id=memory:101", { op: "dismiss", kind: "osv", ref: "GHSA-x:numpy:1.0.0", reason: "fixed" });
+    assert.equal(res.status, 403);
+  });
+});
+
+const BOB = { id: 5_000_001, login: "bob-lab", name: "Bob Lab" };

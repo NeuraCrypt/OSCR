@@ -173,9 +173,17 @@ export type AutomationKind = (typeof AUTOMATION_KINDS)[number];
 export const MODERATION_KINDS = ["report", "moderate", "appeal", "block", "limit", "rights"] as const;
 export type ModerationRowKind = (typeof MODERATION_KINDS)[number];
 
+/** Phase 11's writes (migrations/d1-forge/0012_security.sql): a security alert triaged (dismiss,
+ *  reopen, assign, label: security.ts), a code-scanning result uploaded through the API (sarif.ts),
+ *  and a private vulnerability report opened, posted in or edited (advisory.ts). Logged in `actions`
+ *  like the others, with caps of their own (caps.ts `triage`, `scanning`, `advisory`). None writes to
+ *  GitHub. */
+export const SECURITY_KINDS = ["security_alert", "sarif", "advisory_open", "advisory_post", "advisory_edit"] as const;
+export type SecurityRowKind = (typeof SECURITY_KINDS)[number];
+
 /** Every kind an action row may have. */
-export const ROW_KINDS = [...ACTION_KINDS, ...RESEARCH_KINDS, ...SOCIAL_KINDS, ...AUTOMATION_KINDS, ...MODERATION_KINDS] as const;
-export type RowKind = ActionKind | ResearchKind | SocialKind | AutomationKind | ModerationRowKind;
+export const ROW_KINDS = [...ACTION_KINDS, ...RESEARCH_KINDS, ...SOCIAL_KINDS, ...AUTOMATION_KINDS, ...MODERATION_KINDS, ...SECURITY_KINDS] as const;
+export type RowKind = ActionKind | ResearchKind | SocialKind | AutomationKind | ModerationRowKind | SecurityRowKind;
 
 export const isSocialKind = (value: unknown): value is SocialKind => typeof value === "string" && (SOCIAL_KINDS as readonly string[]).includes(value);
 
