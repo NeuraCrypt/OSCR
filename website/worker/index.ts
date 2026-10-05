@@ -24,8 +24,9 @@ import { handleAccount } from "./account/index.ts";
 import { error, handleSearch } from "./api.ts";
 import { handleContributions } from "./contributions/index.ts";
 import type { Context, Env, Handler } from "./env.ts";
-import { handlePage } from "./pages.ts";
+import { asset, handlePage, SITE_HEADERS } from "./pages.ts";
 import { handleRights } from "./rights/index.ts";
+import { handleV1 } from "./v1/index.ts";
 
 type Route = { path: string; handle: Handler } | { prefix: string; handle: Handler };
 
@@ -39,6 +40,8 @@ const contributions: Handler = async (request, env, ctx) =>
 const rights: Handler = async (request, env, ctx) => (await handleRights(request, env, ctx)) ?? error(404, "not_found", "No such route.");
 
 const ROUTES: Route[] = [
+  { path: "/api/v1", handle: handleV1 },
+  { prefix: "/api/v1/", handle: handleV1 },
   { path: "/api/search", handle: handleSearch },
   { prefix: "/api/auth/", handle: account },
   { prefix: "/api/account/", handle: account },
@@ -61,11 +64,29 @@ function route(pathname: string): Handler | undefined {
   return undefined;
 }
 
+/** GET /api and /api/ : the human-readable API page. /api/* runs the Worker first (wrangler.toml),
+ *  so the static page (dist/api/index.html) is served through the ASSETS binding here, not by the
+ *  assets themselves. It gets the site-wide headers, the same as every static page. */
+async function apiPage(request: Request, assets: Env["ASSETS"]): Promise<Response> {
+  const url = new URL(request.url);
+  const head = request.method === "HEAD";
+  if (request.method !== "GET" && !head) return new Response("Method not allowed", { status: 405, headers: { Allow: "GET, HEAD" } });
+  if (!assets) return new Response("Not found", { status: 404 });
+  const res = await asset(assets, url, "/api/");
+  if (!res.ok) return handlePage(request, assets);
+  const body = head ? null : await res.text();
+  return new Response(body, {
+    status: 200,
+    headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "public, max-age=600", ...SITE_HEADERS },
+  });
+}
+
 export default {
   async fetch(request: Request, env: Env, ctx: Context): Promise<Response> {
     const path = new URL(request.url).pathname;
     const handle = route(path);
     if (handle) return handle(request, env, ctx);
+    if (path === "/api" || path === "/api/") return apiPage(request, env.ASSETS);
     if (path === "/api" || path.startsWith("/api/")) return error(404, "not_found", "No such route.");
     return handlePage(request, env.ASSETS);
   },
