@@ -357,7 +357,7 @@ describe("the rows (store.ts)", () => {
     // reports, a person's hidden things, the open appeals, the data-rights requests (0010_moderation.sql).
     assert.deepEqual(indexes.map((i) => i.name).sort(), [
       "api_tokens_user", "content_reports_open", "discussions_space", "hooks_subject", "moderation_owner", "org_invitations_invitee",
-      "org_members_user", "organizations_handle", "repos_path", "research_paper", "rights_requests_open",
+      "org_members_user", "organizations_handle", "projects_owner", "repos_path", "research_paper", "rights_requests_open",
     ]);
   });
 

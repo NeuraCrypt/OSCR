@@ -175,4 +175,5 @@ export const SOCIAL_EMPTY = {
   organizations: 0, org_members: 0, org_invitations: 0, teams: 0, team_members: 0, org_audit: 0,
   webauthn_credentials: 0, security_log: 0, sudo_sessions: 0,
   discussion_spaces: 0, discussions: 0, discussion_comments: 0, discussion_votes: 0,
+  projects: 0, project_fields: 0, project_items: 0,
 } as const;

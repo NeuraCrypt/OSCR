@@ -19,6 +19,11 @@
 //   POST /api/forge/discussions/vote  signed in   an upvote or a poll vote, or either taken back  discussions.ts
 //   POST /api/forge/discussions/edit  signed in   title, body, category, answered, labels, lock,  discussions.ts
 //                                                 pin, close, reopen, transfer
+//   GET  /api/forge/projects          signed in   a project (?id=), or an owner's (?owner=)       projects.ts (night phase 06)
+//   POST /api/forge/projects/create   signed in   a new project with its built-in fields           projects.ts
+//   POST /api/forge/projects/edit     signed in   title, description, state, views                 projects.ts
+//   POST /api/forge/projects/field    signed in   a field created, changed or deleted              projects.ts
+//   POST /api/forge/projects/item     signed in   an item added, changed, archived or removed      projects.ts
 //   GET  /api/forge/social            signed in   phase 08: the reader's star, lists, follow of   social.ts
 //                                                 ≤ 20 subjects (the buttons)
 //   GET  /api/forge/social/mine       signed in   the reader's stars, lists, follows, profile     social.ts
@@ -73,6 +78,7 @@ import { failure, problem, wrongMethod } from "./http.ts";
 import { handleMine, handleRepo } from "./read.ts";
 import { handleResearchComment, handleResearchEdit, handleResearchOpen, handleResearchRead } from "./research.ts";
 import { handleDiscussionComment, handleDiscussionEdit, handleDiscussionOpen, handleDiscussionsRead, handleDiscussionVote } from "./discussions.ts";
+import { handleProjectCreate, handleProjectEdit, handleProjectField, handleProjectItem, handleProjectsRead } from "./projects.ts";
 import { handleActivity, handleFeed, handleInbox, handleNotices } from "./inbox.ts";
 import { handleSocialFollow, handleSocialList, handleSocialMine, handleSocialPerson, handleSocialProfile, handleSocialStar, handleSocialState } from "./social.ts";
 import { handleStart } from "./start.ts";
@@ -120,6 +126,12 @@ export const FORGE_ROUTES: Readonly<Record<string, Route>> = {
   "/api/forge/discussions/comment": { method: "POST", signedIn: true, handle: (r) => handleDiscussionComment(r) },
   "/api/forge/discussions/vote": { method: "POST", signedIn: true, handle: (r) => handleDiscussionVote(r) },
   "/api/forge/discussions/edit": { method: "POST", signedIn: true, handle: (r) => handleDiscussionEdit(r) },
+  // Night phase 06: projects, OSCR's own planning boards (projects.ts).
+  "/api/forge/projects": { method: "GET", signedIn: true, handle: (r) => handleProjectsRead(r) },
+  "/api/forge/projects/create": { method: "POST", signedIn: true, handle: (r) => handleProjectCreate(r) },
+  "/api/forge/projects/edit": { method: "POST", signedIn: true, handle: (r) => handleProjectEdit(r) },
+  "/api/forge/projects/field": { method: "POST", signedIn: true, handle: (r) => handleProjectField(r) },
+  "/api/forge/projects/item": { method: "POST", signedIn: true, handle: (r) => handleProjectItem(r) },
   "/api/forge/social": { method: "GET", signedIn: true, handle: (r) => handleSocialState(r) },
   "/api/forge/social/mine": { method: "GET", signedIn: true, handle: (r) => handleSocialMine(r) },
   "/api/forge/social/person": { method: "GET", signedIn: true, handle: (r) => handleSocialPerson(r) },

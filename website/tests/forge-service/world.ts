@@ -54,6 +54,7 @@ export const HUMAN_ROUTES = new Set([
   "/api/forge/tokens/write", "/api/forge/hooks/write", "/api/forge/report", "/api/forge/appeal", "/api/forge/rights",
   "/api/forge/device/decide",
   "/api/forge/discussions/open", "/api/forge/discussions/comment",
+  "/api/forge/projects/create", "/api/forge/projects/item",
 ]);
 
 /** A fresh world. `env` overrides the environment (FORGE_OPEN, FORGE_OWNER_GITHUB_ID: undefined to
