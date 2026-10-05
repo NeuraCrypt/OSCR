@@ -240,6 +240,35 @@ menus in `website/src/lib/info.ts`, the layout `src/components/Info.astro`):
   site's policy (`! Content-Security-Policy`) and sets its own. `worker/pages.ts` gives its pages the
   same; `npm run check` holds every inline script and style to its page's policy.
 
+## Public data API (keyless, read-only)
+
+A free, keyless, read-only API over the catalogue, versioned under `/api/v1/` (page `/api/`, guide
+`/help/api/`, reference `docs/API_PUBLIC.md`). Zero cost, like the pages: the data is static (CDN,
+free, no rate limit), the Worker a thin layer.
+
+- **Static data under `/data/`**, built at site build time (`website/src/pages/data/`, shaped by
+  `website/src/lib/apidata.ts`, email-free): the sharded records (`papers/NN.json` for every paper
+  with a page, `repos/NN.json`), the full entity lists (`entities/<type>.json`), the small bulk
+  exports (`articles.csv`, `repositories.csv`, `alignments.jsonl`), `stats.json`, `openapi.json`. A
+  **fixed** number of files whatever the catalogue (`check.mjs`, `growth.mjs`: bound `SHARDS.paper +
+  REPO_SHARDS + DATA_FIXED_FILES`), never one file per paper or entity.
+- **The Worker** (`website/worker/v1/`, routed by `worker/index.ts`) resolves a DOI through the
+  lookup, reads the static file through `ASSETS` (free), reshapes it, caches it. `GET`/`HEAD` only,
+  CORS open to any origin. Envelope `{ oscr_api, self, … }`; error `{ error, message,
+  documentation_url }` (distinct from `/api/search`'s `{ error: { code } }`, unchanged). Only
+  `/api/v1/search` reads D1, so only it counts against the search's daily quota.
+- **The `/api/` page is served by the Worker** (`/api/*` runs the Worker first): it reads the built
+  `dist/api/index.html` through `ASSETS`.
+- **Routes and OpenAPI share one source**, `website/src/lib/apispec.ts`; a test and `check.mjs` hold
+  the built `openapi.json` equal to the routes (no drift).
+- **No full catalogue dump is served** (over the 25 MiB asset limit). `oscr public-export` writes
+  the small public dump folder locally; **a public catalogue Hugging Face dataset (catalogue without
+  the `contact` table) is the owner's decision to create and publish**, flagged, never published here.
+- **`/api/v1/` namespace (decision)**: the night "forge" plans an authenticated token read/write
+  layer, also `/api/v1/`. The keyless read API owns `/api/v1/` on `main`. At reconciliation the
+  forge's routes must **require a token (401 without one)** and **rename any overlap** (such as a
+  token search); a token is never required to read.
+
 ## The website's style (website/)
 
 - `website/src/styles/science.css` is the **only** source of style of the site. It is

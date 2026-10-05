@@ -243,6 +243,42 @@ catalogue's listing of the static pages is its too).
   renders the older paper in the browser, but with the status 404, which search engines do not
   index, and every other missing address gets the site's 404 page.
 
+## The public read API
+
+A free, keyless, read-only API over the catalogue, versioned under `/api/v1/` (overview page
+`/api/`, guide `/help/api/`, reference `docs/API_PUBLIC.md`). It follows the same rule as the pages:
+the heavy data is static (served by the CDN, free, no rate limit), and the Worker is a thin
+convenience layer. `GET` and `HEAD` only; CORS open to any origin, no credentials; a stable envelope
+(`{ oscr_api, self, … }`) and a stable error body (`{ error, message, documentation_url }`, distinct
+from `/api/search`'s `{ error: { code, message } }`, which is unchanged).
+
+- **The static data** is built by `website/src/pages/data/` from `website/src/lib/apidata.ts`
+  (shaped once at build time, email-free like every record) and lands under `/data/`: the shards the
+  Worker reads one record from (`/data/papers/NN.json`, all papers with a page, 256 at most;
+  `/data/repos/NN.json`, 128 at most), the full entity lists (`/data/entities/<type>.json`), the
+  small bulk exports (`articles.csv`, `repositories.csv`, `alignments.jsonl`), `stats.json` and
+  `openapi.json`. A fixed number of files whatever the catalogue (held by `check.mjs` and
+  `growth.mjs`, bound `SHARDS.paper + REPO_SHARDS + DATA_FIXED_FILES`).
+- **The Worker** (`website/worker/v1/index.ts`, routed by `worker/index.ts`) resolves a DOI through
+  the existing lookup, reads the right static file through its `ASSETS` binding (free, no request
+  counted), reshapes it into the envelope, and sets `Cache-Control` so a repeat call is served from
+  the cache. The one endpoint that reads D1 is `/api/v1/search` (it wraps the site's search, so each
+  call counts against the search's shared daily quota).
+- **The `/api/` page itself is served by the Worker**: `/api/*` runs the Worker first
+  (`run_worker_first`), so `worker/index.ts` reads the built `dist/api/index.html` through `ASSETS`
+  and returns it with the site's headers.
+- **The routes and the OpenAPI document share one source**, `website/src/lib/apispec.ts`
+  (`ENDPOINTS`, `buildOpenapi`): the Worker, the pages and the checks import it, and a test plus
+  `check.mjs` hold the built `openapi.json` equal to the routes (no drift).
+- **Namespace note**: the night "forge" branch plans an authenticated, token-based layer, also under
+  `/api/v1/`. The keyless read API here owns `/api/v1/` on `main`; at reconciliation the forge's
+  routes must require a token (401 without one) and rename any overlap (for example a token search).
+  See `CLAUDE.md` and `docs/API_PUBLIC.md`.
+- **A full catalogue dump** (the whole database in one file) is not served: it is over the Worker's
+  25 MiB asset limit. `oscr public-export` writes the small public dump folder locally; publishing a
+  public catalogue dataset on Hugging Face is the operator's decision (the scripts' text is already
+  the public dataset `OpenScientificCodeRegistry/Database`).
+
 ## The paper's page (Phase 4)
 
 One page per paper, in sections reached through a bar of in-page links (`#overview`,
