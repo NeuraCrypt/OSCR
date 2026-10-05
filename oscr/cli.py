@@ -150,6 +150,18 @@ def _jobs(con, a: argparse.Namespace, cfg: dict[str, str], client: Client, opts:
         state.close()
 
 
+def _public_export(con, out: Path) -> str:
+    """Write the public catalogue dump folder for the owner, publishing nothing. The capability is
+    catalog.generate(public=True): the public SQLite (without the private contact table),
+    articles.csv, repositories.csv, alignments.jsonl, the entities and the paper pages. Whether to
+    publish a PUBLIC catalogue dataset on Hugging Face is the owner's decision; the scripts' text is
+    already public (OpenScientificCodeRegistry/Database)."""
+    path = catalog.generate(con, out, public=True)
+    return (f"public catalogue dump written to {path.parent}\n"
+            "Nothing was published. A PUBLIC catalogue dataset on Hugging Face (the catalogue without "
+            "the private contact table) is the owner's decision to create and publish.")
+
+
 def _zenodo(con, a: argparse.Namespace) -> None:
     """Tracing maps and their DOIs (rules: CLAUDE.md, zenodo.py)."""
     from . import zenodo
@@ -254,6 +266,10 @@ def main(argv: list[str] | None = None) -> int:
     al.add_argument("--hours", type=float, default=None, help="time budget")
 
     sp.add_parser("export", help="regenerate the catalogue and its tables")
+
+    pe = sp.add_parser("public-export", help="write the public catalogue dump folder (publishes nothing): the public "
+                       "database, the CSV and JSONL tables, the entities and the paper pages, for the owner to review")
+    pe.add_argument("--out", default="data/public-export", help="the folder to write (overwritten)")
 
     dash = sp.add_parser("dashboard", help="the local dashboard: the database's table (http://127.0.0.1:8790)")
     dash.add_argument("--port", type=int, default=8790)
@@ -546,6 +562,8 @@ def main(argv: list[str] | None = None) -> int:
                                     folder=Path(a.folder), budget=a.budget, settings=cfg))
         elif a.command in ("jobs", "claims", "reports", "submissions", "rights"):
             print(_jobs(con, a, cfg, client, opts))
+        elif a.command == "public-export":
+            print(_public_export(con, Path(a.out)))
         elif a.command == "zenodo":
             _zenodo(con, a)
         elif a.command == "d1":
