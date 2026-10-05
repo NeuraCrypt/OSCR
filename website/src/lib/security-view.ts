@@ -307,6 +307,56 @@ export function licenceSection(answer: SecurityAnswer): El {
   );
 }
 
+export interface AdvisoryView {
+  ref: string;
+  state: string;
+  severity: AlertView["severity"];
+  title: string;
+  summary?: string;
+  cve?: string;
+  reporter?: string;
+  posts?: number;
+  credits?: { handle: string; kind: string }[];
+  thread?: { n: number; body: string; author: string; at: number }[];
+}
+
+/** One advisory in the list: its state, severity, title, and a link to open its thread. */
+export function advisoryItem(a: AdvisoryView): El {
+  const stateWord = { triage: "in triage", draft: "draft", published: "published", withdrawn: "withdrawn" }[a.state] ?? a.state;
+  return h("li", { class: "advisory", "data-ref": a.ref },
+    h("button", { type: "button", class: "advisory-open", "data-ref": a.ref }, a.title || "(untitled)"),
+    " ",
+    severityEl(a.severity),
+    " ",
+    h("span", { class: a.state === "published" ? "ok" : "muted" }, stateWord),
+    a.posts ? h("span", { class: "muted" }, ` · ${a.posts} ${a.posts === 1 ? "message" : "messages"}`) : null,
+  );
+}
+
+/** The private vulnerability reporting section (E5): the guidance, the list of advisories the reader
+ *  may see (filled by the script), and the form to open a private report. */
+export function reportingSection(): El {
+  return h("section", { class: "security-reporting" },
+    h("h3", null, "Private vulnerability reporting"),
+    h("p", { class: "muted" },
+      "Tell the maintainers of a vulnerability in private, before it is public. A report opens a private thread; the maintainers draft an advisory, credit the reporters, and publish it once a fix is out. A CVE identifier is issued by a numbering authority, which is the maintainers' own step. Coordinated disclosure: agree a date, publish the advisory and the fix together."),
+    h("div", { class: "advisory-list", "aria-live": "polite" }, h("p", { class: "muted" }, "Reading the reports you may see…")),
+    h("details", { class: "advisory-new panel" },
+      h("summary", null, "Report a vulnerability privately"),
+      h("form", { class: "advisory-form" },
+        h("label", null, "Title ", h("input", { type: "text", name: "title", maxlength: "256" })),
+        h("label", null, "Severity ", h("select", { name: "severity" }, ...["unknown", "low", "moderate", "high", "critical"].map((s) => h("option", { value: s }, s)))),
+        h("label", null, "What is affected ", h("input", { type: "text", name: "affected", maxlength: "200", placeholder: "versions, packages" })),
+        h("label", null, "Details ", h("input", { type: "text", name: "summary", maxlength: "500", placeholder: "what the reader can see of the problem" })),
+        h("p", null, h("button", { type: "submit" }, "Open a private report")),
+      ),
+    ),
+    h("p", { class: "muted" }, "The advisory databases: ",
+      link("https://osv.dev", "OSV"), " and ", link("https://github.com/advisories", "GitHub's advisory database"),
+      ", browsed at their source."),
+  );
+}
+
 /** The Security tab's whole content for a repository. Later elements add their sections here. */
 export function securityView(answer: SecurityAnswer): El {
   const hasCited = answer.dependencies.cited.length > 0;
@@ -319,6 +369,7 @@ export function securityView(answer: SecurityAnswer): El {
     dependenciesSection(answer, "default"),
     hasCited ? dependenciesSection(answer, "cited") : null,
     licenceSection(answer),
+    reportingSection(),
   );
 }
 

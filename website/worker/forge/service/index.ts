@@ -74,6 +74,7 @@ import { handleDeviceDecide, handleDeviceRead } from "./device.ts";
 import { handleHookDeliveries, handleHooks, handleHookWrite } from "./hooks.ts";
 import { handleStatuses } from "./statuses.ts";
 import { handleSecurity, handleTriage } from "./security.ts";
+import { handleAdvisoryEdit, handleAdvisoryOpen, handleAdvisoryPost, handleAdvisoryRead } from "./advisory.ts";
 import { handleAppeal, handleModerationMine, handleModerationRead, handleModerationWrite, handleReport } from "./moderation.ts";
 import { handleBlocks, handleBlockWrite, handleLimits, handleLimitWrite } from "./blocks.ts";
 import { handleRights, handleRightsAnswer } from "./rights.ts";
@@ -127,6 +128,11 @@ export const FORGE_ROUTES: Readonly<Record<string, Route>> = {
   // Phase 11: the security and quality layer of a repository (security.ts), the Mac's facts.
   "/api/forge/security": { method: "GET", signedIn: true, handle: (r) => handleSecurity(r) },
   "/api/forge/security/triage": { method: "POST", signedIn: true, handle: (r) => handleTriage(r) },
+  // Phase 11: private vulnerability reporting (advisory.ts), private by construction.
+  "/api/forge/advisory": { method: "GET", signedIn: true, handle: (r) => handleAdvisoryRead(r) },
+  "/api/forge/advisory/open": { method: "POST", signedIn: true, handle: (r) => handleAdvisoryOpen(r) },
+  "/api/forge/advisory/post": { method: "POST", signedIn: true, handle: (r) => handleAdvisoryPost(r) },
+  "/api/forge/advisory/edit": { method: "POST", signedIn: true, handle: (r) => handleAdvisoryEdit(r) },
   // Phase 16: reports (with or without an account), the owner's queue and decisions, appeals.
   "/api/forge/report": { method: "POST", signedIn: false, handle: (r) => handleReport(r) },
   "/api/forge/moderation": { method: "GET", signedIn: true, handle: (r) => handleModerationRead(r) },

@@ -171,5 +171,5 @@ export const SOCIAL_EMPTY = {
   api_tokens: 0, hook_deliveries: 0, hooks: 0, statuses: 0,
   blocks: 0, content_reports: 0, interaction_limits: 0, moderation: 0, rights_requests: 0,
   device_grants: 0,
-  repo_deps: 0, security_alerts: 0, alert_triage: 0, repo_licences: 0,
+  repo_deps: 0, security_alerts: 0, alert_triage: 0, repo_licences: 0, advisories: 0, advisory_posts: 0,
 } as const;

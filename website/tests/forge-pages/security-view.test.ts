@@ -5,7 +5,7 @@ import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 import { textOf } from "../../src/lib/repo-view.ts";
 import {
-  dependenciesSection, depEntry, EMPTY_FILTER, filterDeps, licenceSection, osvAlertEntry, osvSection, sarifSection, secretSection, securityView, summariseView, summaryWords,
+  advisoryItem, dependenciesSection, depEntry, EMPTY_FILTER, filterDeps, licenceSection, osvAlertEntry, osvSection, reportingSection, sarifSection, secretSection, securityView, summariseView, summaryWords,
   type AlertView, type DepView, type SecurityAnswer,
 } from "../../src/lib/security-view.ts";
 
@@ -158,6 +158,22 @@ describe("security-view rendering", () => {
   test("no licence fact: the section says compatibility is not decided", () => {
     const answer = { repo: { forge: "memory", id: "1", owner: "a", name: "b" }, dependencies: { default: [], cited: [], summary: summariseView([]) }, alerts: { osv: [], secret: [], sarif: [] }, licence: null, mayTriage: false } as SecurityAnswer;
     assert.match(textOf(licenceSection(answer)), /not stated|not decided/);
+  });
+
+  test("the reporting section explains coordinated disclosure and offers a private form", () => {
+    const t = textOf(reportingSection());
+    assert.match(t, /Private vulnerability reporting/);
+    assert.match(t, /Coordinated disclosure/);
+    assert.match(t, /numbering authority/);
+    assert.match(t, /Report a vulnerability privately/);
+  });
+
+  test("an advisory list item shows its title, severity and state", () => {
+    const t = textOf(advisoryItem({ ref: "abc", state: "published", severity: "high", title: "Path traversal", posts: 2 }));
+    assert.match(t, /Path traversal/);
+    assert.match(t, /high/);
+    assert.match(t, /published/);
+    assert.match(t, /2 messages/);
   });
 
   test("no dependencies: a plain sentence, no form", () => {

@@ -139,3 +139,43 @@ CREATE TABLE repo_licences (
     computed_at  INTEGER NOT NULL,
     PRIMARY KEY (forge, repo_id)
 ) WITHOUT ROWID;
+
+-- Private vulnerability reporting (E5). An advisory is PRIVATE by construction: it is never put in a
+-- public output, the static layer, the search, a feed or a webhook (the Mac never reads these tables;
+-- the facts push never exports them). A read is refused to anyone but the reporter, a collaborator the
+-- report names, and a person who manages the repository, until the maintainer publishes it; a withdrawn
+-- one is private again. Keyed by a random ref within the repository, so a repository's advisories are a
+-- key range (no index). No email address, no token: the texts are masked, the handles carry no at sign.
+CREATE TABLE advisories (
+    forge          TEXT NOT NULL CHECK (forge IN ('github', 'memory')),
+    repo_id        TEXT NOT NULL CHECK (repo_id NOT GLOB '*[^0-9]*'),
+    ref            TEXT NOT NULL CHECK (length(ref) BETWEEN 8 AND 64 AND ref NOT GLOB '*[^0-9a-f]*'),
+    state          TEXT NOT NULL DEFAULT 'triage' CHECK (state IN ('triage', 'draft', 'published', 'withdrawn')),
+    severity       TEXT NOT NULL DEFAULT 'unknown' CHECK (severity IN ('critical', 'high', 'moderate', 'low', 'unknown')),
+    title          TEXT NOT NULL CHECK (length(title) BETWEEN 1 AND 256),
+    summary        TEXT NOT NULL DEFAULT '' CHECK (length(summary) <= 16384),
+    cve            TEXT NOT NULL DEFAULT '' CHECK (length(cve) <= 100),
+    affected       TEXT NOT NULL DEFAULT '' CHECK (length(affected) <= 2000),
+    reporter_id    TEXT NOT NULL,                  -- oscr_community users.id: never answered
+    reporter       TEXT NOT NULL CHECK (length(reporter) BETWEEN 1 AND 100 AND instr(reporter, '@') = 0),
+    collaborators  TEXT NOT NULL DEFAULT '[]' CHECK (json_valid(collaborators) AND length(collaborators) <= 2000),
+    credits        TEXT NOT NULL DEFAULT '[]' CHECK (json_valid(credits) AND length(credits) <= 2000),
+    posts          INTEGER NOT NULL DEFAULT 0 CHECK (posts >= 0),
+    created_at     INTEGER NOT NULL,
+    updated_at     INTEGER NOT NULL,
+    published_at   INTEGER,
+    PRIMARY KEY (forge, repo_id, ref)
+) WITHOUT ROWID;
+
+-- The private thread of an advisory: the maintainers and the collaborators only.
+CREATE TABLE advisory_posts (
+    forge        TEXT NOT NULL CHECK (forge IN ('github', 'memory')),
+    repo_id      TEXT NOT NULL CHECK (repo_id NOT GLOB '*[^0-9]*'),
+    ref          TEXT NOT NULL CHECK (length(ref) BETWEEN 8 AND 64),
+    n            INTEGER NOT NULL CHECK (n >= 1),
+    body         TEXT NOT NULL DEFAULT '' CHECK (length(body) <= 16384),
+    author_id    TEXT NOT NULL,                    -- never answered
+    author       TEXT NOT NULL CHECK (length(author) BETWEEN 1 AND 100 AND instr(author, '@') = 0),
+    at           INTEGER NOT NULL,
+    PRIMARY KEY (forge, repo_id, ref, n)
+) WITHOUT ROWID;

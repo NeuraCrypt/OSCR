@@ -6,11 +6,11 @@
 //
 // Like every browser script, it never names the platform.
 
-import { depsList, filterDeps, securityView, type DepFilter, type DepView, type SecurityAnswer } from "../lib/security-view.ts";
+import { advisoryItem, depsList, filterDeps, securityView, type AdvisoryView, type DepFilter, type DepView, type SecurityAnswer } from "../lib/security-view.ts";
 import { spdxDocument } from "../lib/sbom.ts";
 import { h } from "../lib/repo-view.ts";
 import { show, toDom } from "./dom.ts";
-import { postJson } from "./social-client.ts";
+import { getJson, postJson } from "./social-client.ts";
 import { codeViews, type CodeEnv } from "./repo-code.ts";
 
 async function load(env: CodeEnv): Promise<SecurityAnswer | number> {
@@ -86,6 +86,67 @@ function render(slot: HTMLElement, answer: SecurityAnswer, env: CodeEnv): void {
   }
   if (answer.mayTriage) wireTriage(slot, answer, env);
   wireSbom(slot, answer, env);
+  void wireReporting(slot, answer, env);
+}
+
+const repoId = (env: CodeEnv): string => `${env.info.key.forge}:${env.layer?.id ?? env.info.key.id}`;
+
+/** The private vulnerability reports: list the ones the reader may see, and wire the open form. */
+async function wireReporting(slot: HTMLElement, answer: SecurityAnswer, env: CodeEnv): Promise<void> {
+  const list = slot.querySelector<HTMLElement>(".advisory-list");
+  const form = slot.querySelector<HTMLFormElement>("form.advisory-form");
+  const id = repoId(env);
+  const refresh = async (): Promise<void> => {
+    if (!list) return;
+    const r = await getJson(`/api/forge/advisory?id=${encodeURIComponent(id)}`);
+    const advisories = (r.ok && Array.isArray((r.body as { advisories?: unknown }).advisories) ? (r.body as { advisories: AdvisoryView[] }).advisories : []);
+    list.replaceChildren(
+      advisories.length
+        ? toDom(h("ul", { class: "advisories" }, ...advisories.map(advisoryItem)))
+        : toDom(h("p", { class: "muted" }, "No vulnerability report you may see.")),
+    );
+    for (const button of list.querySelectorAll<HTMLButtonElement>("button.advisory-open")) {
+      button.addEventListener("click", () => void openThread(list, id, button.dataset.ref ?? ""));
+    }
+  };
+  await refresh();
+  form?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const value = (name: string): string => (form.elements.namedItem(name) as HTMLInputElement | HTMLSelectElement | null)?.value ?? "";
+    const title = value("title").trim();
+    if (!title) return;
+    const res = await postJson(`/api/forge/advisory/open?id=${encodeURIComponent(id)}`, { title, severity: value("severity"), affected: value("affected"), summary: value("summary") });
+    if (res.ok) {
+      form.reset();
+      const details = form.closest("details");
+      if (details) details.open = false;
+      await refresh();
+    }
+  });
+}
+
+/** Expand one advisory's private thread under its list item. */
+async function openThread(list: HTMLElement, id: string, ref: string): Promise<void> {
+  if (!ref) return;
+  const item = list.querySelector<HTMLElement>(`li.advisory[data-ref="${ref}"]`);
+  if (!item) return;
+  const existing = item.querySelector(".advisory-thread");
+  if (existing) { existing.remove(); return; }
+  const r = await getJson(`/api/forge/advisory?id=${encodeURIComponent(id)}&ref=${encodeURIComponent(ref)}`);
+  const adv = r.ok ? (r.body as { advisory?: AdvisoryView }).advisory : undefined;
+  const box = document.createElement("div");
+  box.className = "advisory-thread";
+  if (!adv) {
+    box.append(toDom(h("p", { class: "warning" }, "This report is private.")));
+  } else {
+    const thread = adv.thread ?? [];
+    box.append(toDom(h("div", null,
+      adv.summary ? h("p", null, adv.summary) : null,
+      adv.cve ? h("p", { class: "muted" }, `CVE: ${adv.cve}`) : null,
+      thread.length ? h("ul", { class: "advisory-posts" }, ...thread.map((p) => h("li", null, h("strong", null, p.author), " ", h("span", null, p.body)))) : h("p", { class: "muted" }, "No message yet."),
+    )));
+  }
+  item.append(box);
 }
 
 /** The "Download SBOM (SPDX)" button: build the SPDX JSON here from the dependency graph and hand it

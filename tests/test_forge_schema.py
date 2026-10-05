@@ -28,7 +28,7 @@ TABLES = {"repos", "repo_papers", "installations", "traced_paths", "actions", "d
           # Phase 14: the command line's sign-in (0011_device.sql).
           "device_grants",
           # Phase 11: security and quality (0012_security.sql).
-          "repo_deps", "security_alerts", "alert_triage", "repo_licences"}
+          "repo_deps", "security_alerts", "alert_triage", "repo_licences", "advisories", "advisory_posts"}
 T = 1_790_596_800
 
 

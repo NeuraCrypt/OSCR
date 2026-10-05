@@ -1413,3 +1413,16 @@ ul.alerts code { font-size: .85em; overflow-wrap: anywhere; }
 .alert-actions button:hover, .sbom-actions button:hover { background: #e8e8e8; }
 .alert-actions { margin: .2em 0; }
 li.alert.is-dismissed { opacity: .65; }
+/* Phase 11: private vulnerability reporting. */
+.security-reporting { margin: 1.2em 0; }
+.security-reporting h3 { margin: .2em 0 .3em; }
+ul.advisories { list-style: none; margin: .4em 0; padding: 0; }
+ul.advisories li.advisory { margin: .4em 0; padding-left: .8em; border-left: 3px solid var(--rule); }
+button.advisory-open { font: inherit; background: none; border: none; color: var(--link); cursor: pointer; padding: 0; text-align: left; }
+button.advisory-open:hover { text-decoration: underline; }
+.advisory-thread { margin: .3em 0 .3em 1em; padding-left: .6em; border-left: 2px solid var(--rule); }
+ul.advisory-posts { list-style: none; margin: .2em 0; padding: 0; }
+ul.advisory-posts li { margin: .2em 0; }
+details.advisory-new { margin: .8em 0; }
+form.advisory-form label { display: block; margin: .3em 0; }
+form.advisory-form input, form.advisory-form select { font: inherit; padding: .15em .35em; border: 1px solid #777; border-radius: 0; min-width: min(28em, 100%); }
