@@ -7,7 +7,7 @@
   "scripts": {
     "data": "node scripts/data.mjs",
     "dev": "npm run data && astro dev",
-    "build": "npm run data && astro build",
+    "build": "npm run data && NODE_OPTIONS=--max-old-space-size=8192 astro build",
     "check": "node --experimental-strip-types scripts/check.mjs",
     "check:growth": "node --experimental-strip-types scripts/growth.mjs",
     "test": "node --experimental-strip-types --test \"tests/**/*.test.ts\"",
