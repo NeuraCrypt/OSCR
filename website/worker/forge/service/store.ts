@@ -460,6 +460,11 @@ export function triageOf(db: D1Database, forge: string, repoId: string): D1Prepa
     .bind(forgeOf(forge), repoId);
 }
 
+/** A repository's licence and its dependencies' compatibility summary (repo_licences): the key, 1 row. */
+export function licencesOf(db: D1Database, forge: string, repoId: string): D1PreparedStatement {
+  return db.prepare("SELECT licence, summary FROM repo_licences WHERE forge = ? AND repo_id = ?").bind(forgeOf(forge), repoId);
+}
+
 /** One alert's finding row (to check it exists before triaging it: the key, 1 row). */
 export function alertByRef(db: D1Database, forge: string, repoId: string, kind: string, ref: string): D1PreparedStatement {
   return db.prepare("SELECT kind, ref FROM security_alerts WHERE forge = ? AND repo_id = ? AND kind = ? AND ref = ?")

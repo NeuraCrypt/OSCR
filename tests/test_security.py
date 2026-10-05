@@ -134,6 +134,36 @@ def test_command_scans_osv_with_a_fake(forge_d1, tmp_path, monkeypatch):
     assert row == [{"kind": "osv", "severity": "critical", "package": "numpy", "advisory": "GHSA-x"}]
 
 
+def test_command_records_repo_licence(forge_d1, tmp_path, monkeypatch):
+    seed_repo(forge_d1, head="a" * 40)
+    reader = forge.MemoryReader()
+    reader.add("ada", "eeg", id="101", sha="a" * 40, license_spdx="MIT",
+               files={"requirements.txt": b"numpy==1.26.0\n"})
+    monkeypatch.setattr(community, "open_d1", lambda *a, **k: forge_d1)
+    monkeypatch.setattr(security.forge, "reader", lambda f: reader)
+    security.command(None, "scan", target="local", folder=tmp_path, now=T)
+    row = forge_d1.query("SELECT licence, summary FROM repo_licences")
+    assert len(row) == 1 and row[0]["licence"] == "MIT"
+    import json as _json
+    summary = _json.loads(row[0]["summary"])
+    assert summary["repo_licence"] == "MIT" and summary["unknown"] == 1  # the dep's licence is unknown
+
+
+def test_command_sbom_writes_spdx(forge_d1, tmp_path, monkeypatch):
+    seed_repo(forge_d1, head="a" * 40)
+    reader = forge.MemoryReader()
+    reader.add("ada", "eeg", id="101", sha="a" * 40, license_spdx="MIT",
+               files={"requirements.txt": b"numpy==1.26.0\n"})
+    monkeypatch.setattr(community, "open_d1", lambda *a, **k: forge_d1)
+    monkeypatch.setattr(security.forge, "reader", lambda f: reader)
+    out = security.command(None, "sbom", target="local", folder=tmp_path, out_dir=tmp_path / "sbom", now=T)
+    assert "wrote 1 SPDX" in out
+    import json as _json
+    doc = _json.loads((tmp_path / "sbom" / "ada__eeg.spdx.json").read_text())
+    assert doc["spdxVersion"] == "SPDX-2.3"
+    assert any(p["name"] == "numpy" for p in doc["packages"])
+
+
 def test_command_budget_stops(forge_d1, tmp_path, monkeypatch):
     seed_repo(forge_d1)
     reader = memory_repo({"requirements.txt": "numpy==1.26.0\n"})

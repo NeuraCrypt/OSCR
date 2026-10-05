@@ -45,10 +45,21 @@ export interface AlertView {
   source: "mac" | "ci";
 }
 
+export interface LicenceSummary {
+  repo_licence?: string;
+  known?: number;
+  compatible?: number;
+  incompatible?: number;
+  denied?: number;
+  unknown?: number;
+  clashes?: { name: string; licence: string; why: string }[];
+}
+
 export interface SecurityAnswer {
   repo: { forge: string; id: string; owner: string; name: string };
   dependencies: { default: DepView[]; cited: DepView[]; summary: DepSummary };
   alerts: { osv: AlertView[]; secret: AlertView[]; sarif: AlertView[] };
+  licence: { spdx: string; summary: LicenceSummary } | null;
   mayTriage: boolean;
 }
 
@@ -271,6 +282,31 @@ export function summariseView(deps: readonly DepView[]): DepSummary {
   return { total: deps.length, direct, transitive: deps.length - direct, pinned, ecosystems };
 }
 
+/** The Licence compatibility section (E6), and the SBOM download (the button's click builds the SPDX
+ *  in the browser from the dependency graph: src/scripts/repo-security.ts). */
+export function licenceSection(answer: SecurityAnswer): El {
+  const lic = answer.licence;
+  const s = lic?.summary ?? {};
+  const repoLic = lic?.spdx || "";
+  const facts: (El | string)[] = [];
+  if (repoLic) facts.push("Repository licence: ", h("code", null, repoLic), ". ");
+  else facts.push("The repository's own licence is not stated. ");
+  if ((s.known ?? 0) > 0) {
+    facts.push(`${s.compatible ?? 0} of ${s.known} dependencies with a known licence are compatible, ${s.incompatible ?? 0} clash, ${s.denied ?? 0} are denied by a policy; ${s.unknown ?? 0} have no stated licence.`);
+  } else {
+    facts.push("No dependency states a licence the registry could read, so compatibility is not decided. Dependency licences are not fetched from the package registries.");
+  }
+  const clashes = Array.isArray(s.clashes) ? s.clashes : [];
+  return h("section", { class: "security-licences" },
+    h("h3", null, "Licence compatibility"),
+    h("p", null, ...facts),
+    clashes.length
+      ? h("ul", { class: "alerts" }, ...clashes.map((c) => h("li", { class: "alert" }, h("code", null, c.name), " ", h("span", { class: "warning" }, c.licence || "unknown"), " ", h("span", { class: "muted" }, c.why === "denied" ? "denied by the policy" : "incompatible with the repository's licence"))))
+      : null,
+    h("p", { class: "sbom-actions" }, h("button", { type: "button", class: "sbom-download" }, "Download SBOM (SPDX)"), " ", h("span", { class: "muted" }, "built here from the dependency graph; nothing of the code is sent.")),
+  );
+}
+
 /** The Security tab's whole content for a repository. Later elements add their sections here. */
 export function securityView(answer: SecurityAnswer): El {
   const hasCited = answer.dependencies.cited.length > 0;
@@ -282,6 +318,7 @@ export function securityView(answer: SecurityAnswer): El {
     secretSection(answer.alerts.secret),
     dependenciesSection(answer, "default"),
     hasCited ? dependenciesSection(answer, "cited") : null,
+    licenceSection(answer),
   );
 }
 

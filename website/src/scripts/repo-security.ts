@@ -7,6 +7,7 @@
 // Like every browser script, it never names the platform.
 
 import { depsList, filterDeps, securityView, type DepFilter, type DepView, type SecurityAnswer } from "../lib/security-view.ts";
+import { spdxDocument } from "../lib/sbom.ts";
 import { h } from "../lib/repo-view.ts";
 import { show, toDom } from "./dom.ts";
 import { postJson } from "./social-client.ts";
@@ -84,6 +85,30 @@ function render(slot: HTMLElement, answer: SecurityAnswer, env: CodeEnv): void {
     wireSection(section, bySnapshot[section.dataset.snapshot ?? "default"] ?? []);
   }
   if (answer.mayTriage) wireTriage(slot, answer, env);
+  wireSbom(slot, answer, env);
+}
+
+/** The "Download SBOM (SPDX)" button: build the SPDX JSON here from the dependency graph and hand it
+ *  to the reader as a file. Nothing of the code is sent anywhere. */
+function wireSbom(slot: HTMLElement, answer: SecurityAnswer, env: CodeEnv): void {
+  const button = slot.querySelector<HTMLButtonElement>("button.sbom-download");
+  if (!button) return;
+  button.addEventListener("click", () => {
+    const name = `${answer.repo.owner}/${answer.repo.name}`;
+    const doc = spdxDocument(name, `https://spdx.org/oscr/${answer.repo.forge}/${answer.repo.id}`, answer.dependencies.default, {
+      repoLicence: answer.licence?.spdx || undefined,
+      created: new Date().toISOString(),
+    });
+    const blob = new Blob([JSON.stringify(doc, null, 1)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${answer.repo.owner}-${answer.repo.name}.spdx.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  });
 }
 
 /** The dismiss/reopen buttons: a POST, then the whole view is read again. */

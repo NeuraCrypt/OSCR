@@ -17,7 +17,7 @@ import { type SignedIn } from "../../account/guard.ts";
 import { json, problem, problemAnswer } from "./http.ts";
 import { readCapped } from "./flow.ts";
 import { hiddenOne } from "./hidden.ts";
-import { actionRow, all, alertByRef, alertsOf, depsOf, first, newNonce, repoByKey, repoByPath, triageOf, triageWrite } from "./store.ts";
+import { actionRow, all, alertByRef, alertsOf, depsOf, first, licencesOf, newNonce, repoByKey, repoByPath, triageOf, triageWrite } from "./store.ts";
 import { NOT_FOUND, parseTarget, serviceForge } from "./read.ts";
 import { closed, dailyCaps, globalCap, mayWrite, overCap } from "./gate.ts";
 import { FORGE_ROWS_PER_DAY } from "./caps.ts";
@@ -114,6 +114,7 @@ export interface SecurityAnswer {
     summary: { total: number; direct: number; transitive: number; pinned: number; ecosystems: Record<string, number> };
   };
   alerts: { osv: AlertView[]; secret: AlertView[]; sarif: AlertView[] };
+  licence: { spdx: string; summary: Record<string, unknown> } | null;
   mayTriage: boolean;
 }
 
@@ -187,11 +188,21 @@ export async function handleSecurity(r: ForgeRequest): Promise<Response> {
   if (await hiddenOne(r.db, "repo", `${row.forge}:${row.repo_id}`)) {
     return problem(410, "moderated", "This repository is hidden from the registry's pages.");
   }
-  const [depRows, alertRows, triageRows] = await Promise.all([
+  const [depRows, alertRows, triageRows, licenceRow] = await Promise.all([
     all<DepRow>(depsOf(r.db, row.forge, row.repo_id)),
     all<AlertRow>(alertsOf(r.db, row.forge, row.repo_id)),
     all<TriageRow>(triageOf(r.db, row.forge, row.repo_id)),
+    first<{ licence: string; summary: string }>(licencesOf(r.db, row.forge, row.repo_id)),
   ]);
+  let licence: SecurityAnswer["licence"] = null;
+  if (licenceRow) {
+    let summary: Record<string, unknown> = {};
+    try {
+      const parsed = JSON.parse(licenceRow.summary);
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) summary = parsed as Record<string, unknown>;
+    } catch { summary = {}; }
+    licence = { spdx: licenceRow.licence, summary };
+  }
   const triage = new Map(triageRows.map((t) => [`${t.kind}\n${t.ref}`, t]));
   const deps = depRows.map(view);
   const def = deps.filter((d) => d.snapshot === "default");
@@ -203,7 +214,7 @@ export async function handleSecurity(r: ForgeRequest): Promise<Response> {
   const answer: SecurityAnswer = {
     repo: { forge: row.forge, id: row.repo_id, owner: row.owner_login, name: row.name },
     dependencies: { default: def, cited, summary: summarise(def.length ? def : cited) },
-    alerts, mayTriage,
+    alerts, licence, mayTriage,
   };
   return json(answer);
 }

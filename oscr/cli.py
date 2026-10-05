@@ -422,7 +422,7 @@ def main(argv: list[str] | None = None) -> int:
     se = sp.add_parser("security", help="night phase 11: security and quality facts computed on the Mac and pushed to "
                                         "oscr_forge, the dependency graph from environment files (docs/SECURITY_QUALITY.md). "
                                         "Nothing is run, nothing resolved, nothing installed.")
-    se.add_argument("action", choices=["scan", "status"])
+    se.add_argument("action", choices=["scan", "status", "sbom"])
     se_where = se.add_mutually_exclusive_group()
     se_where.add_argument("--local", action="store_true", help="the local D1 of `wrangler dev --env local`")
     se_where.add_argument("--remote", action="store_true", help="the Cloudflare database oscr_forge")
@@ -430,6 +430,9 @@ def main(argv: list[str] | None = None) -> int:
     se.add_argument("--persist-to", default="", help="the local D1's state folder, when not website/.wrangler/state")
     se.add_argument("--budget", type=int, default=int(cfg.get("OSCR_COMMUNITY_BUDGET", "10000")),
                     help="rows written a day, the facts push's included (default 10,000)")
+    se.add_argument("--repo", default="", help="sbom: only this repository (owner/name); default: every known one")
+    se.add_argument("--sbom-out", default="data/security/sbom", help="sbom: the folder for the SPDX files")
+    se.add_argument("--sbom-format", choices=["json", "tag-value"], default="json", help="sbom: the SPDX shape")
 
     so = sp.add_parser("social", help="the social layer (night phase 08): the static shards of stars, follows and "
                                       "profiles, the Explore page, the collections (docs/SOCIAL.md)")
@@ -667,6 +670,7 @@ def main(argv: list[str] | None = None) -> int:
             print(security.command(con, a.action, target="remote" if a.remote else "local" if a.local else None,
                                    folder=Path(a.folder), budget=a.budget, settings=cfg,
                                    persist_to=Path(a.persist_to) if a.persist_to else None, client=client,
+                                   repo_filter=a.repo, out_dir=Path(a.sbom_out), sbom_format=a.sbom_format,
                                    report=lambda m: print(m, flush=True)))
         elif a.command == "social":
             from . import social

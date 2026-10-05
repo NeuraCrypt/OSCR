@@ -5,7 +5,7 @@ import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 import { textOf } from "../../src/lib/repo-view.ts";
 import {
-  dependenciesSection, depEntry, EMPTY_FILTER, filterDeps, osvAlertEntry, osvSection, sarifSection, secretSection, securityView, summariseView, summaryWords,
+  dependenciesSection, depEntry, EMPTY_FILTER, filterDeps, licenceSection, osvAlertEntry, osvSection, sarifSection, secretSection, securityView, summariseView, summaryWords,
   type AlertView, type DepView, type SecurityAnswer,
 } from "../../src/lib/security-view.ts";
 
@@ -74,7 +74,7 @@ describe("security-view rendering", () => {
     const answer: SecurityAnswer = {
       repo: { forge: "memory", id: "101", owner: "ada", name: "eeg" },
       dependencies: { default: DEPS, cited: [dep({ name: "numpy", version: "1.25.0", pinned: true, commit: "b".repeat(40) })], summary: summariseView(DEPS) },
-      alerts: { osv: [], secret: [], sarif: [] }, mayTriage: false,
+      alerts: { osv: [], secret: [], sarif: [] }, licence: null, mayTriage: false,
     };
     const t = textOf(securityView(answer));
     assert.match(t, /Dependencies at the default branch/);
@@ -139,11 +139,32 @@ describe("security-view rendering", () => {
     assert.match(textOf(sarifSection([], false)), /No code-scanning result/);
   });
 
+  test("the licence section names the repo licence, the compatibility and the SBOM download", () => {
+    const answer = {
+      repo: { forge: "memory", id: "101", owner: "ada", name: "eeg" },
+      dependencies: { default: [], cited: [], summary: summariseView([]) },
+      alerts: { osv: [], secret: [], sarif: [] },
+      licence: { spdx: "MIT", summary: { repo_licence: "MIT", known: 2, compatible: 1, incompatible: 1, denied: 0, unknown: 3, clashes: [{ name: "gplthing", licence: "GPL-3.0-only", why: "incompatible" }] } },
+      mayTriage: false,
+    } as SecurityAnswer;
+    const t = textOf(licenceSection(answer));
+    assert.match(t, /Repository licence/);
+    assert.match(t, /MIT/);
+    assert.match(t, /1 of 2 dependencies/);
+    assert.match(t, /gplthing/);
+    assert.match(t, /Download SBOM \(SPDX\)/);
+  });
+
+  test("no licence fact: the section says compatibility is not decided", () => {
+    const answer = { repo: { forge: "memory", id: "1", owner: "a", name: "b" }, dependencies: { default: [], cited: [], summary: summariseView([]) }, alerts: { osv: [], secret: [], sarif: [] }, licence: null, mayTriage: false } as SecurityAnswer;
+    assert.match(textOf(licenceSection(answer)), /not stated|not decided/);
+  });
+
   test("no dependencies: a plain sentence, no form", () => {
     const answer: SecurityAnswer = {
       repo: { forge: "memory", id: "101", owner: "ada", name: "eeg" },
       dependencies: { default: [], cited: [], summary: summariseView([]) },
-      alerts: { osv: [], secret: [], sarif: [] }, mayTriage: false,
+      alerts: { osv: [], secret: [], sarif: [] }, licence: null, mayTriage: false,
     };
     const t = textOf(dependenciesSection(answer, "default"));
     assert.match(t, /No dependency was read/);

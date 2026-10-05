@@ -1405,3 +1405,11 @@ ul.alerts .alert-head { margin: .1em 0; }
 ul.alerts .fix { color: var(--muted); margin: .1em 0 .2em; }
 ul.alerts .alert-meta { color: var(--muted); font-size: .9em; }
 ul.alerts code { font-size: .85em; overflow-wrap: anywhere; }
+/* Phase 11: the licence compatibility section and the SBOM download. */
+.security-licences { margin: 1.2em 0; }
+.security-licences h3 { margin: .2em 0 .3em; }
+.sbom-actions { margin: .5em 0; }
+.alert-actions button, .sbom-actions button { font: inherit; padding: .1em .6em; border: 1px solid #777; border-radius: 0; background: var(--bg-sidebar); cursor: pointer; }
+.alert-actions button:hover, .sbom-actions button:hover { background: #e8e8e8; }
+.alert-actions { margin: .2em 0; }
+li.alert.is-dismissed { opacity: .65; }

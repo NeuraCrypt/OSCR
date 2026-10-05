@@ -127,3 +127,15 @@ INSERT INTO actions_next (day, user_id, at, nonce, kind, forge, repo_id, github_
 DROP TABLE actions;
 
 ALTER TABLE actions_next RENAME TO actions;
+
+-- The repository's licence and the compatibility summary of its dependencies (E6), written by the
+-- Mac. `summary` is the JSON of oscr/sbom.licence_summary (counts and the clashes). A dependency
+-- whose licence the manifests do not state is counted as unknown, never guessed.
+CREATE TABLE repo_licences (
+    forge        TEXT NOT NULL CHECK (forge IN ('github', 'memory')),
+    repo_id      TEXT NOT NULL CHECK (repo_id NOT GLOB '*[^0-9]*'),
+    licence      TEXT NOT NULL DEFAULT '' CHECK (length(licence) <= 100),
+    summary      TEXT NOT NULL DEFAULT '{}' CHECK (json_valid(summary) AND length(summary) <= 16384),
+    computed_at  INTEGER NOT NULL,
+    PRIMARY KEY (forge, repo_id)
+) WITHOUT ROWID;

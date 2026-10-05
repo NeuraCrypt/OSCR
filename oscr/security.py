@@ -24,7 +24,7 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 
-from . import community, depgraph, forge, osv, secretscan
+from . import community, depgraph, forge, osv, sbom, secretscan
 
 #: The most of one manifest the reader fetches (a lock file can be large; the graph needs its text).
 MANIFEST_BYTES = 400_000
@@ -201,6 +201,24 @@ def osv_statements(forge_name: str, repo_id: str, alerts: list[osv.Alert], now: 
     return out
 
 
+def repo_licence(reader: forge.ForgeReader, ref: forge.RepoRef) -> str:
+    """The repository's own licence (SPDX), as the forge reports it, or ''."""
+    try:
+        return reader.repo(ref).license_spdx or ""
+    except forge.ForgeError:
+        return ""
+
+
+def licences_statements(forge_name: str, repo_id: str, licence: str, summary: dict, now: int) -> list[str]:
+    """SQL that records a repository's licence and its dependencies' compatibility summary (upsert)."""
+    values = {"forge": forge_name, "repo_id": repo_id, "licence": sbom.normalise_licence(licence)[:100],
+              "summary": json.dumps(summary, ensure_ascii=False)[:16384], "computed_at": now}
+    cols = ", ".join(values)
+    vals = ", ".join(community.literal(v) for v in values.values())
+    sets = "licence = excluded.licence, summary = excluded.summary, computed_at = excluded.computed_at"
+    return [f"INSERT INTO repo_licences ({cols}) VALUES ({vals}) ON CONFLICT (forge, repo_id) DO UPDATE SET {sets};"]
+
+
 def _flush(d1: community.D1, statements: list[str], state: sqlite3.Connection, target: str,
            now: int) -> int:
     """Send statements in chunks, counting the rows against the day's budget."""
@@ -219,7 +237,8 @@ def command(con: sqlite3.Connection | None, action: str, *, target: str | None,
             settings: dict | None = None, persist_to: Path | None = None,
             reader: forge.ForgeReader | None = None, now: float | None = None,
             client=None, osv_post=None, osv_get=None, osv_base: str | None = None,
-            report=lambda _m: None) -> str:
+            repo_filter: str = "", out_dir: Path = Path("data") / "security" / "sbom",
+            sbom_format: str = "json", report=lambda _m: None) -> str:
     """`oscr security <action>`.
 
     - ``scan``: read each known repository's environment files (default branch and cited commits),
@@ -237,8 +256,28 @@ def command(con: sqlite3.Connection | None, action: str, *, target: str | None,
         parts = [f"{n} dependency rows over {repos} repositories"] if n else []
         parts += [f"{r['n']} {r['kind']} alerts" for r in alerts]
         return "security: " + ("; ".join(parts) if parts else "no facts yet")
+    if action == "sbom":
+        reader = reader if reader is not None else forge.reader("github")
+        repos = [r for r in active_repos(d1) if not repo_filter or f"{r.owner}/{r.name}".lower() == repo_filter.lower()]
+        out_dir.mkdir(parents=True, exist_ok=True)
+        wrote = 0
+        for repo in repos:
+            ref = forge.RepoRef(repo.forge, repo.owner, repo.name)
+            try:
+                nodes = scan_deps(reader, ref, repo.head)
+            except forge.ForgeError as e:
+                report(f"security: {repo.owner}/{repo.name}: {e}")
+                continue
+            doc = sbom.spdx_document(f"{repo.owner}/{repo.name}", f"https://spdx.org/oscr/{repo.forge}/{repo.repo_id}",
+                                     nodes, repo_licence=repo_licence(reader, ref))
+            ext = "spdx.json" if sbom_format == "json" else "spdx"
+            path = out_dir / f"{repo.owner}__{repo.name}.{ext}"
+            path.write_text(sbom.to_json(doc) if sbom_format == "json" else sbom.spdx_tag_value(doc), encoding="utf-8")
+            report(f"security: SBOM {path} ({len(nodes)} packages)")
+            wrote += 1
+        return f"security: wrote {wrote} SPDX documents to {out_dir}"
     if action != "scan":
-        raise SystemExit(f"security: unknown action {action!r} (scan, status)")
+        raise SystemExit(f"security: unknown action {action!r} (scan, status, sbom)")
 
     exclusions, custom = secretscan.load_config(settings)
     osv_base = osv_base or (settings or {}).get("OSV_API_URL", "") or osv.API_URL
@@ -286,6 +325,11 @@ def command(con: sqlite3.Connection | None, action: str, *, target: str | None,
             except Exception as e:  # a bad answer never stops the scan
                 report(f"security: {repo.owner}/{repo.name}: OSV: {e}")
             statements += osv_statements(repo.forge, repo.repo_id, alerts, t)
+        # The repository's licence, and its dependencies' compatibility (dep licences unknown without
+        # a registry lookup: counted as unknown, never guessed).
+        licence = repo_licence(reader, ref)
+        summary = sbom.licence_summary(licence, [(n.name, "") for n in default])
+        statements += licences_statements(repo.forge, repo.repo_id, licence, summary, t)
         if len(statements) > left:
             report(f"security: the day's budget ({budget}) is spent; {len(repos) - done} repositories left for tomorrow")
             break

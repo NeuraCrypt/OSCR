@@ -81,6 +81,16 @@ describe("GET /api/forge/security", () => {
     assert.deepEqual(w.forge.scans, []);
   });
 
+  test("the repository's licence and compatibility summary are returned", async () => {
+    await seed.repo(w.forge, { repoId: "101", ownerLogin: "ada", name: "eeg", mode: "public", head: HEAD });
+    w.forge.sqlite.prepare("INSERT INTO repo_licences (forge, repo_id, licence, summary, computed_at) VALUES ('memory', '101', 'MIT', ?, ?)")
+      .run(JSON.stringify({ repo_licence: "MIT", known: 1, compatible: 1, incompatible: 0, denied: 0, unknown: 2 }), T0);
+    const { b } = await signIn();
+    const j = await body(await b.fetch("/api/forge/security?id=memory:101"));
+    assert.equal(j.licence.spdx, "MIT");
+    assert.equal(j.licence.summary.unknown, 2);
+  });
+
   test("an unknown repository is 404", async () => {
     const { b } = await signIn();
     assert.equal((await b.fetch("/api/forge/security?id=memory:999")).status, 404);
