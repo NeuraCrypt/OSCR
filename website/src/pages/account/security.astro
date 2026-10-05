@@ -1,0 +1,48 @@
+---
+// /account/security/: a person's account security (night phase 09, E4 and E5; docs/ACCOUNTS.md).
+// Its script (src/scripts/account-security.ts) reads GET /api/forge/account/security when signed in,
+// lists the sessions, identities, passkeys and the security log, and lets the person revoke a session,
+// unlink an identity, add and use a passkey (WebAuthn in the browser), and enter sudo mode. science.css
+// only; no email address is ever shown.
+import Base from "../../layouts/Base.astro";
+import { SITE_NAME } from "../../config";
+---
+<Base
+  title="Account security"
+  description="Your sessions, sign-in identities, passkeys and security log: revoke a session, unlink an identity, add and use a passkey."
+  breadcrumb={[{ text: "Account", href: "/account/" }, { text: "Security" }]}
+>
+  <div id="security-shell">
+    <h1>Account security</h1>
+    <p class="summary" aria-live="polite">Reading your account security…</p>
+    <noscript><p class="warning">This page reads your account security in your browser, which needs JavaScript.</p></noscript>
+    <p>
+      Everything here is your account's, and only yours. {SITE_NAME} keeps no email address: notices and
+      security messages stay in the site. A session is a browser signed in; a passkey is a key on a device
+      that proves it is you, with no password to type.
+    </p>
+
+    <h2>Your sessions</h2>
+    <div id="sessions" aria-live="polite"></div>
+
+    <h2>Sign-in identities</h2>
+    <p>You sign in with one or more of ORCID, GitHub and Google. You may unlink one, but never the last.</p>
+    <div id="identities" aria-live="polite"></div>
+
+    <h2>Passkeys</h2>
+    <p>
+      A passkey is a second step for sensitive actions (sudo mode). {SITE_NAME} verifies it itself and keeps
+      only its public key.
+    </p>
+    <div id="passkeys" aria-live="polite"></div>
+    <div id="passkey-actions"></div>
+    <div id="passkey-note" aria-live="polite"></div>
+
+    <h2>Security log</h2>
+    <div id="security-log" aria-live="polite"></div>
+    <p><a id="log-export" href="/api/forge/account/security?format=csv">Export the security log (CSV)</a></p>
+  </div>
+  <script>
+    import "../../scripts/account-security";
+  </script>
+</Base>
