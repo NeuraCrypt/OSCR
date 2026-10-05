@@ -78,6 +78,7 @@ import { handleAdvisoryEdit, handleAdvisoryOpen, handleAdvisoryPost, handleAdvis
 import { handleAppeal, handleModerationMine, handleModerationRead, handleModerationWrite, handleReport } from "./moderation.ts";
 import { handleBlocks, handleBlockWrite, handleLimits, handleLimitWrite } from "./blocks.ts";
 import { handleRights, handleRightsAnswer } from "./rights.ts";
+import { handleOrgCreate, handleOrgRead, handleOrgsMine, handleOrgUpdate } from "./organizations.ts";
 import type { Context, D1Database, ForgeDeps, ForgeRequest, ForgeServiceEnv, RouteHandler } from "./types.ts";
 import { handleWebhook } from "./webhook.ts";
 
@@ -147,6 +148,11 @@ export const FORGE_ROUTES: Readonly<Record<string, Route>> = {
   // Phase 16: data-rights requests, answered in the site.
   "/api/forge/rights": { method: "POST", signedIn: true, handle: (r) => handleRights(r) },
   "/api/forge/rights/answer": { method: "POST", signedIn: true, handle: (r) => handleRightsAnswer(r) },
+  // Phase 09: organizations, teams, roles, the audit log, and account security.
+  "/api/forge/orgs": { method: "GET", signedIn: true, handle: (r) => handleOrgsMine(r) },
+  "/api/forge/org": { method: "GET", signedIn: true, handle: (r) => handleOrgRead(r) },
+  "/api/forge/org/create": { method: "POST", signedIn: true, handle: (r) => handleOrgCreate(r) },
+  "/api/forge/org/update": { method: "POST", signedIn: true, handle: (r) => handleOrgUpdate(r) },
 };
 
 const PREFIX = "/api/forge/";

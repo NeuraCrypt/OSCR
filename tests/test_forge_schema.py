@@ -28,7 +28,10 @@ TABLES = {"repos", "repo_papers", "installations", "traced_paths", "actions", "d
           # Phase 14: the command line's sign-in (0011_device.sql).
           "device_grants",
           # Phase 11: security and quality (0012_security.sql).
-          "repo_deps", "security_alerts", "alert_triage", "repo_licences", "advisories", "advisory_posts"}
+          "repo_deps", "security_alerts", "alert_triage", "repo_licences", "advisories", "advisory_posts",
+          # Phase 09: organizations, teams, roles, the audit log, account security (0013_organizations.sql).
+          "organizations", "org_members", "org_invitations", "teams", "team_members", "org_audit",
+          "webauthn_credentials", "security_log", "sudo_sessions"}
 T = 1_790_596_800
 
 
@@ -55,7 +58,9 @@ def test_at_most_one_index_per_table_and_without_rowid_where_the_key_is_text():
     assert per_table == {"repos": ["repos_path"], "research_issues": ["research_paper"],
                          "api_tokens": ["api_tokens_user"], "hooks": ["hooks_subject"],
                          "content_reports": ["content_reports_open"], "moderation": ["moderation_owner"],
-                         "rights_requests": ["rights_requests_open"]}
+                         "rights_requests": ["rights_requests_open"],
+                         "organizations": ["organizations_handle"], "org_members": ["org_members_user"],
+                         "org_invitations": ["org_invitations_invitee"]}
     # No hidden autoindex either: a text key is the table itself.
     assert con.execute("SELECT count(*) FROM sqlite_master WHERE type = 'index' AND sql IS NULL AND name NOT LIKE 'sqlite_autoindex_%'").fetchone()[0] == 0
     for name, sql in _tables(con).items():
@@ -123,8 +128,10 @@ def test_the_action_kinds_are_the_workers():
     in_ts += re.findall(r'"([a-z_]+)"', types[start:types.index("] as const", start)])
     start = types.index("export const SECURITY_KINDS = [")
     in_ts += re.findall(r'"([a-z_]+)"', types[start:types.index("] as const", start)])
+    start = types.index("export const ORG_KINDS = [")
+    in_ts += re.findall(r'"([a-z_]+)"', types[start:types.index("] as const", start)])
     assert in_sql == in_ts
-    assert len(in_sql) == 77 and len(set(in_sql)) == 77
+    assert len(in_sql) == 83 and len(set(in_sql)) == 83
 
 
 def test_the_layer_shards_are_sha256_mod_64():

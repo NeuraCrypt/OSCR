@@ -9,7 +9,7 @@ import { readCapped } from "./flow.ts";
 import { closed, dailyCaps, globalCap, mayWrite, overCap } from "./gate.ts";
 import { linkedGithub } from "./identity.ts";
 import { actionRow, newNonce, rowsOf, statements } from "./store.ts";
-import { ForgeProblem, type AutomationKind, type ForgeRequest, type Write } from "./types.ts";
+import { ForgeProblem, type ForgeRequest, type RowKind, type Write } from "./types.ts";
 
 /** A POST's JSON body, at most `max` bytes; a problem in words otherwise. */
 export async function readJsonBody(r: ForgeRequest, max: number): Promise<unknown | ForgeProblem> {
@@ -25,7 +25,7 @@ export async function readJsonBody(r: ForgeRequest, max: number): Promise<unknow
 
 /** Who may write (FORGE_OPEN: until phase 16, the owner only), the account's cap for this kind, the
  *  day's rows: the problem, or the linked GitHub account's id ("" without one) for the action row. */
-export async function mayAutomate(r: ForgeRequest, s: SignedIn, kind: AutomationKind, rows: number): Promise<ForgeProblem | { github: string }> {
+export async function mayAutomate(r: ForgeRequest, s: SignedIn, kind: RowKind, rows: number): Promise<ForgeProblem | { github: string }> {
   const github = await linkedGithub(s.db, s.user.id);
   if (!mayWrite(r.env, github)) return closed();
   const caps = await dailyCaps(r.db, s.user.id, kind, r.t);
@@ -37,7 +37,7 @@ export async function mayAutomate(r: ForgeRequest, s: SignedIn, kind: Automation
 export async function commitAutomation(
   r: ForgeRequest,
   s: SignedIn,
-  kind: AutomationKind,
+  kind: RowKind,
   github: string,
   writes: Write[],
   subject: string,

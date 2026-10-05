@@ -33,6 +33,9 @@ export const PER_ACCOUNT_DAY = {
   reports: 20, moderation: 500, appeals: 5, blocks: 100, limits: 20, rights: 3,
   // Phase 11: a security alert triaged, a SARIF upload, a private vulnerability report written.
   triage: 200, scanning: 100, advisory: 50,
+  // Phase 09: an organization, membership, role or team change; an account-security change (a
+  // passkey, a session revoked, an identity unlinked).
+  orgs: 300, security: 200,
 } as const;
 export type Cap = keyof typeof PER_ACCOUNT_DAY;
 /** OSCR's grace period before a repository asked for deletion may be deleted (D00-10). */
@@ -79,6 +82,12 @@ export const CAP_OF: Readonly<Partial<Record<RowKind, Exclude<Cap, "actions">>>>
   advisory_open: "advisory",
   advisory_post: "advisory",
   advisory_edit: "advisory",
+  org: "orgs",
+  member: "orgs",
+  team: "orgs",
+  passkey: "security",
+  session: "security",
+  identity: "security",
 };
 
 /** The kinds each cap counts. */
@@ -99,11 +108,13 @@ export const KINDS_OF: Readonly<Record<Exclude<Cap, "actions">, readonly RowKind
   triage: ["security_alert"],
   scanning: ["sarif"],
   advisory: ["advisory_open", "advisory_post", "advisory_edit"],
+  orgs: ["org", "member", "team"],
+  security: ["passkey", "session", "identity"],
 };
 
 /** Phase 08: the caps that stand alone (their kinds are not counted in `actions`); phase 10 adds its
  *  own (tokens and hooks changed; statuses posted by an outside service). */
-export const OWN_CAPS: ReadonlySet<Cap> = new Set<Cap>(["social", "notices", "automation", "statuses", "reports", "moderation", "appeals", "blocks", "limits", "rights", "triage", "scanning", "advisory"]);
+export const OWN_CAPS: ReadonlySet<Cap> = new Set<Cap>(["social", "notices", "automation", "statuses", "reports", "moderation", "appeals", "blocks", "limits", "rights", "triage", "scanning", "advisory", "orgs", "security"]);
 
 /** A cap in words, for the answers ("10 repositories created"). */
 export const CAP_WORDS: Readonly<Record<Cap, (n: number) => string>> = {
@@ -124,4 +135,6 @@ export const CAP_WORDS: Readonly<Record<Cap, (n: number) => string>> = {
   triage: (n) => `${n} security alerts triaged`,
   scanning: (n) => `${n} code-scanning uploads`,
   advisory: (n) => `${n} changes to private vulnerability reports`,
+  orgs: (n) => `${n} changes to organizations and teams`,
+  security: (n) => `${n} changes to your account's security`,
 };

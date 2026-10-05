@@ -181,9 +181,17 @@ export type ModerationRowKind = (typeof MODERATION_KINDS)[number];
 export const SECURITY_KINDS = ["security_alert", "sarif", "advisory_open", "advisory_post", "advisory_edit"] as const;
 export type SecurityRowKind = (typeof SECURITY_KINDS)[number];
 
+/** Phase 09's writes (migrations/d1-forge/0013_organizations.sql): an organization created or changed
+ *  (organizations.ts), a membership, invitation, role or team change (members.ts), a passkey added or
+ *  removed (webauthn.ts), a session revoked (account-security.ts), an identity unlinked
+ *  (account-security.ts). Logged in `actions` like the others, with caps of their own (caps.ts `orgs`,
+ *  `security`). None writes to GitHub: a lab's GitHub organization is linked, not replaced. */
+export const ORG_KINDS = ["org", "member", "team", "passkey", "session", "identity"] as const;
+export type OrgRowKind = (typeof ORG_KINDS)[number];
+
 /** Every kind an action row may have. */
-export const ROW_KINDS = [...ACTION_KINDS, ...RESEARCH_KINDS, ...SOCIAL_KINDS, ...AUTOMATION_KINDS, ...MODERATION_KINDS, ...SECURITY_KINDS] as const;
-export type RowKind = ActionKind | ResearchKind | SocialKind | AutomationKind | ModerationRowKind | SecurityRowKind;
+export const ROW_KINDS = [...ACTION_KINDS, ...RESEARCH_KINDS, ...SOCIAL_KINDS, ...AUTOMATION_KINDS, ...MODERATION_KINDS, ...SECURITY_KINDS, ...ORG_KINDS] as const;
+export type RowKind = ActionKind | ResearchKind | SocialKind | AutomationKind | ModerationRowKind | SecurityRowKind | OrgRowKind;
 
 export const isSocialKind = (value: unknown): value is SocialKind => typeof value === "string" && (SOCIAL_KINDS as readonly string[]).includes(value);
 
