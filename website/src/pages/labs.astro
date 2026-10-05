@@ -170,6 +170,11 @@ ${site}api/search?q=tool:mne&format=csv        (the first 500 results, CSV or JS
     facets' counts, and what the search cost in database rows. When the quota is spent it answers{" "}
     <code>503</code> with the code <code>quota</code>.
   </p>
+  <p>
+    The search is also wrapped by the versioned, keyless read API at <code>/api/v1/search</code>, alongside routes for
+    papers, authors, repositories and more, and bulk downloads: see <a href="/api/">the API page</a> and its{" "}
+    <a href="/help/api/">guide</a>.
+  </p>
 
   <h2 id="badge">The badge</h2>
   <p>One static image for every paper, linked to the paper's page from its code's README: <a href="/help/badge/">how</a>, and <a href="/brand/#badge">its rules</a>.</p>
@@ -190,10 +195,10 @@ ${site}api/search?q=tool:mne&format=csv        (the first 500 results, CSV or JS
     <dd>A program for the terminal, standard-library Python only, that links a repository to its paper, checks it as the
       registry does, traces its lines to the paragraphs of the Methods, produces a citation, and works with the GitHub
       repository, never running the code it reads. Not published yet.</dd>
-    <dt>A public API with tokens</dt>
-    <dd>Versioned read and write routes under <code>/api/v1/</code>, by personal tokens only, shown once, stored as a
-      digest, each with its rights and an expiry, with limits per token and a reference built from the routes
-      themselves.</dd>
+    <dt>A token layer over the API, with write routes</dt>
+    <dd>On top of the keyless read API (which is live: see <a href="/api/">the API page</a>), authenticated write routes
+      under <code>/api/v1/</code>, by personal tokens only, shown once, stored as a digest, each with its rights and an
+      expiry, with limits per token. A token would never be required to read.</dd>
     <dt>Checks that never run the code</dt>
     <dd>On a repository's pull requests and at any commit: its licence, an environment file saying how the code runs
       again, its link to the paper's DOI, a usable CITATION.cff, the files its tracing maps point to, file sizes, a README

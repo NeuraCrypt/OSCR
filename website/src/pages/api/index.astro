@@ -1,0 +1,107 @@
+---
+// The public read API's landing page (served by the Worker at /api/, since /api/* runs the Worker
+// first: worker/index.ts). Classes of science.css only; no inline script or style. The endpoint
+// table is built from src/lib/apispec.ts, so it cannot drift from the routes. The full reference,
+// with examples in curl, Python and R, is the guide at /help/api/.
+import Base from "../../layouts/Base.astro";
+import { SITE_FULL_NAME, SITE_NAME, SOURCE_URL } from "../../config";
+import { API_BASE, DATA_BASE, ENDPOINTS } from "../../lib/apispec";
+
+const SITE = "https://openscicode.org";
+const example = (e: (typeof ENDPOINTS)[number]) => `${SITE}${API_BASE}${e.example}`;
+const DATASET = "https://huggingface.co/datasets/OpenScientificCodeRegistry/Database";
+---
+<Base
+  title="API"
+  description={`A free, keyless, read-only API over ${SITE_NAME}'s catalogue: papers, authors, journals, institutions, tools, datasets and repositories, as JSON, plus bulk downloads.`}
+  breadcrumb={[{ text: "API" }]}
+>
+  <div class="info">
+    <article class="info-body">
+      <h1>API</h1>
+      <p class="lead">
+        {SITE_FULL_NAME} offers a free, keyless, read-only API over its catalogue. No account, no token, no sign-up: every
+        route answers a plain <code>GET</code> and returns JSON. The data is the same the pages are built from (no PDF, no
+        paper full text, no email address). For a worked reference, with examples in curl, Python and R, read the{" "}
+        <a href="/help/api/">API guide</a>.
+      </p>
+
+      <h2 id="start">Getting started</h2>
+      <p>Every route hangs off <code>{API_BASE}</code>. Try the index, which links to everything:</p>
+      <pre>{`curl ${SITE}${API_BASE}/`}</pre>
+      <p>
+        The machine-readable description is an OpenAPI 3.1 document at{" "}
+        <a href={`${API_BASE}/openapi.json`}><code>{API_BASE}/openapi.json</code></a> (a static copy is at{" "}
+        <a href={`${DATA_BASE}/openapi.json`}><code>{DATA_BASE}/openapi.json</code></a>).
+      </p>
+
+      <h2 id="endpoints">The endpoints</h2>
+      <div class="table-wrap">
+        <table class="facts">
+          <thead><tr><th>Route</th><th>What</th><th>Example</th></tr></thead>
+          <tbody>
+            {ENDPOINTS.filter((e) => e.id !== "index").map((e) => (
+              <tr>
+                <td><code>{`${API_BASE}${e.path}`}</code></td>
+                <td>{e.summary}{e.quota ? " (shares the daily search quota)" : ""}</td>
+                <td><a href={`${API_BASE}${e.example}`}><code>{`${API_BASE}${e.example}`}</code></a></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p>
+        A DOI contains slashes, so give it URL-encoded in the path, or as the <code>?doi=</code> query parameter:
+      </p>
+      <pre>{`${example(ENDPOINTS.find((e) => e.id === "paper")!)}
+${SITE}${API_BASE}/paper?doi=10.5555/oscr.fixture.1`}</pre>
+
+      <h2 id="bulk">Bulk downloads</h2>
+      <p>
+        To extract everything at once, use the static files under <a href="/help/data/"><code>{DATA_BASE}/</code></a>.
+        They are served by the CDN, free and with no rate limit, and are rebuilt every night:
+      </p>
+      <dl class="terms">
+        <dt><a href={`${DATA_BASE}/articles.csv`}><code>{DATA_BASE}/articles.csv</code></a></dt>
+        <dd>One row per paper: DOI, title, journal, date, status, code and data link counts.</dd>
+        <dt><a href={`${DATA_BASE}/repositories.csv`}><code>{DATA_BASE}/repositories.csv</code></a></dt>
+        <dd>One row per repository: host, state, licence, scripts, languages, pinned commit.</dd>
+        <dt><a href={`${DATA_BASE}/alignments.jsonl`}><code>{DATA_BASE}/alignments.jsonl</code></a></dt>
+        <dd>One JSON object per aligned paper: its paragraph to code-line matches (paragraph numbers, never text).</dd>
+        <dt><code>{DATA_BASE}/entities/&lt;type&gt;.json</code></dt>
+        <dd>The full list of authors, journals, institutions, tools, datasets and categories.</dd>
+        <dt><code>{DATA_BASE}/papers/NN.json</code>, <code>{DATA_BASE}/repos/NN.json</code></dt>
+        <dd>Every paper's and repository's record, sharded (the API reads these for one record at a time).</dd>
+      </dl>
+      <p>
+        The authors' scripts (their text) are a separate public dataset on Hugging Face,{" "}
+        <a href={DATASET}>OpenScientificCodeRegistry/Database</a>, under their verified licences (see the{" "}
+        <a href="/help/data/">data guide</a>). A single full catalogue dump (the whole database in one file) is not served
+        here: it is too large for the hosting, and whether to publish one as a public dataset is the operator's decision.
+      </p>
+
+      <h2 id="limits">Rate and caching</h2>
+      <p>
+        The static files and the Hugging Face dataset are unlimited. The one exception is{" "}
+        <a href={`${API_BASE}/search`}><code>{API_BASE}/search</code></a>: it reads the search database, so each call counts
+        against the site's shared daily free budget. Call it sparingly and cache its answers. Every answer carries a{" "}
+        <code>Cache-Control</code> header, so a repeat call within ten minutes is served from the cache.
+      </p>
+
+      <h2 id="licence">Licence, terms and citation</h2>
+      <p>
+        The catalogue's facts are open data; the authors' code stays under its own licence (that is why some files are
+        shown from their source rather than copied: see <a href="/policies/code/">the code policy</a>). Use of the API and
+        the data is covered by <a href="/policies/terms/">the terms of use</a>. To cite {SITE_NAME} and its records, see{" "}
+        <a href="/policies/citation/">Citation</a>.
+      </p>
+
+      <h2 id="more">More</h2>
+      <p>
+        The full <a href="/help/api/">API guide</a> has every endpoint with its parameters and a real example in curl,
+        Python and R, pagination, errors, and the versioning policy. The code is open:{" "}
+        <a href={SOURCE_URL}>the project on GitHub</a>.
+      </p>
+    </article>
+  </div>
+</Base>
