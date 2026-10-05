@@ -80,6 +80,7 @@ import { handleBlocks, handleBlockWrite, handleLimits, handleLimitWrite } from "
 import { handleRights, handleRightsAnswer } from "./rights.ts";
 import { handleOrgCreate, handleOrgRead, handleOrgsMine, handleOrgUpdate } from "./organizations.ts";
 import { handleMembersWrite, handleTeamsWrite } from "./members.ts";
+import { handleAuditRead, handleOrgSecurity } from "./audit.ts";
 import type { Context, D1Database, ForgeDeps, ForgeRequest, ForgeServiceEnv, RouteHandler } from "./types.ts";
 import { handleWebhook } from "./webhook.ts";
 
@@ -156,6 +157,8 @@ export const FORGE_ROUTES: Readonly<Record<string, Route>> = {
   "/api/forge/org/update": { method: "POST", signedIn: true, handle: (r) => handleOrgUpdate(r) },
   "/api/forge/org/members": { method: "POST", signedIn: true, handle: (r) => handleMembersWrite(r) },
   "/api/forge/org/teams": { method: "POST", signedIn: true, handle: (r) => handleTeamsWrite(r) },
+  "/api/forge/org/audit": { method: "GET", signedIn: true, handle: (r) => handleAuditRead(r) },
+  "/api/forge/org/security": { method: "GET", signedIn: true, handle: (r) => handleOrgSecurity(r) },
 };
 
 const PREFIX = "/api/forge/";
