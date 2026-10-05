@@ -123,7 +123,9 @@ for (const f of apiPaperFiles) {
   const name = f.match(/\/([0-9a-f]+)\.json$/)[1];
   for (const [slug, rec] of Object.entries(json(f))) {
     if ((await shardOf(slug, SHARDS.paper)) !== name) problems.push(`${f}: ${slug} belongs in another shard`);
-    if (!rec || rec.slug !== slug || !rec.doi) problems.push(`${f}: ${slug} record is malformed`);
+    // A paper may be identified by its PMCID with no DOI (its slug is pmcid_...), so doi can be
+    // empty; the record is sound when it has its slug and an id.
+    if (!rec || rec.slug !== slug || !rec.id) problems.push(`${f}: ${slug} record is malformed`);
     apiPapers.add(slug);
   }
 }
