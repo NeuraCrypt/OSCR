@@ -2787,7 +2787,7 @@ refused the edit of a personal file): NIGHT_REPORT.md gives the owner the one co
 process a throwaway HOME, `GIT_CONFIG_GLOBAL` and config folder (an autouse fixture) and refuse the
 system keychain.
 
-## Night phase 11 — Security and quality (2026-10-05)
+## Night phase 11: security and quality (2026-10-05)
 
 ### D11-1. The whole analysis runs on the Mac, from files read as text; nothing of a user's code runs
 
