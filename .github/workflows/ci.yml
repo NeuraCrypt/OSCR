@@ -18,9 +18,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: astral-sh/setup-uv@v6
+      - uses: astral-sh/setup-uv@v7
         with:
           python-version: "3.12"
           enable-cache: true
@@ -52,7 +52,7 @@ jobs:
     env:
       CATALOG_DIR: ${{ github.workspace }}/tests/fixtures/public-catalog
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Look for the website and its fixture catalogue
         id: fixture
@@ -64,7 +64,7 @@ jobs:
             echo "::notice title=Website build skipped::no fixture catalogue at tests/fixtures/public-catalog/catalog.json (described in .github/workflows/ci.yml)"
           fi
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         if: steps.fixture.outputs.ready == 'true'
         with:
           node-version: 22
