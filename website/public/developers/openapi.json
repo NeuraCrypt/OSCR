@@ -23,7 +23,8 @@
     "notifications:write": "mark your notifications read, done or saved, and unsubscribe",
     "hooks:read": "read your outgoing webhooks and their deliveries",
     "hooks:write": "make, change, test, redeliver and delete your outgoing webhooks",
-    "statuses:write": "post commit statuses on the repositories the registry knows (a CI or a reproduction service)"
+    "statuses:write": "post commit statuses on the repositories the registry knows (a CI or a reproduction service)",
+    "security:write": "upload code-scanning results (SARIF) from your CI, for the repositories the registry knows"
   },
   "security": [
     {
@@ -2199,6 +2200,81 @@
                   "repo",
                   "sha",
                   "state"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/security/sarif": {
+      "post": {
+        "summary": "Upload code-scanning results as SARIF 2.1.0 (your CI's own analyser): the registry shows them. It runs no analyser itself. The upload replaces the repository's code-scanning alerts.",
+        "operationId": "postSecuritySarif",
+        "x-scope": "security:write",
+        "security": [
+          {
+            "token": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ApiVersion"
+          }
+        ],
+        "responses": {
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error"
+          },
+          "2XX": {
+            "description": "The answer, JSON.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "repo": {
+                    "description": "owner/name or <forge>:<id> (required)."
+                  },
+                  "commit": {
+                    "description": "The commit's full hex id the analysis ran on."
+                  },
+                  "ref": {
+                    "description": "The branch the analysis is about."
+                  },
+                  "sarif": {
+                    "description": "The SARIF 2.1.0 document (required)."
+                  }
+                },
+                "required": [
+                  "repo",
+                  "sarif"
                 ]
               }
             }

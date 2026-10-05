@@ -37,6 +37,7 @@ import { API_RATE, bearer, giveBack, peekRate, rateHeaders, sharedLimit, takeReq
 import { handleCli, handleDeviceCode, handleDeviceToken, handleSelfRevoke } from "./device.ts";
 import { handleHookDeliveries, handleHooks, handleHookWrite } from "./hooks.ts";
 import { handleActionsStatus, handleStatuses, handleStatusPost } from "./statuses.ts";
+import { handleSarifUpload } from "./sarif.ts";
 import { handleActivity, handleFeed, handleInbox, handleNotices } from "./inbox.ts";
 import { runRoute } from "./index.ts";
 import { handleMine, handleRepo } from "./read.ts";
@@ -377,6 +378,18 @@ export const API_ROUTES: Record<string, ApiRoute> = {
       context: "The service and its check, as “lab-ci/tests” (default: default).",
       description: "A short sentence (140 characters).",
       target_url: "An https page with the details.",
+    },
+  },
+  [`${API_PREFIX}/security/sarif`]: {
+    method: "POST",
+    scope: "security:write",
+    handle: handleSarifUpload,
+    words: "Upload code-scanning results as SARIF 2.1.0 (your CI's own analyser): the registry shows them. It runs no analyser itself. The upload replaces the repository's code-scanning alerts.",
+    body: {
+      repo: "owner/name or <forge>:<id> (required).",
+      commit: "The commit's full hex id the analysis ran on.",
+      ref: "The branch the analysis is about.",
+      sarif: "The SARIF 2.1.0 document (required).",
     },
   },
   [`${API_PREFIX}/statuses/actions`]: {

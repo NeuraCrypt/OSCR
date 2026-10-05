@@ -122,6 +122,32 @@ export function osvSection(alerts: readonly AlertView[], mayTriage: boolean): El
   );
 }
 
+/** One code-scanning (SARIF) alert: severity, rule, the file and line, the data-flow steps. */
+export function sarifAlertEntry(a: AlertView, mayTriage: boolean): El {
+  const ruleName = typeof a.detail.ruleName === "string" ? a.detail.ruleName : "";
+  const flow = Array.isArray(a.detail.flow) ? (a.detail.flow as { path: string; line: number | null }[]) : [];
+  const dismissed = a.state === "dismissed";
+  return h("li", { class: `alert alert-sarif${dismissed ? " is-dismissed" : ""}`, "data-kind": "sarif", "data-ref": a.ref },
+    h("p", { class: "alert-head" }, severityEl(a.severity), " ", h("span", null, a.summary || ruleName)),
+    a.path ? h("p", { class: "alert-meta" }, "In ", h("code", null, `${a.path}${a.line ? `:${a.line}` : ""}`), dismissed ? h("span", { class: "muted" }, ` · dismissed (${a.reason})`) : null) : null,
+    flow.length
+      ? h("details", { class: "dep-paths" }, h("summary", null, `data flow (${flow.length} steps)`), h("ol", { class: "lines" }, ...flow.map((f) => h("li", null, h("code", null, `${f.path}${f.line ? `:${f.line}` : ""}`)))))
+      : null,
+    mayTriage ? triageButtons(a) : null,
+  );
+}
+
+/** The Code scanning section (E4). OSCR runs no analyser: it shows the CI's own SARIF. */
+export function sarifSection(alerts: readonly AlertView[], mayTriage: boolean): El {
+  return h("section", { class: "security-scanning" },
+    h("h3", null, "Code scanning"),
+    h("p", { class: "muted" }, "Results your continuous integration uploaded as SARIF. The registry runs no analyser on your code; it shows what your CI reported."),
+    alerts.length
+      ? h("ul", { class: "alerts" }, ...alerts.map((a) => sarifAlertEntry(a, mayTriage)))
+      : h("p", { class: "ok" }, "No code-scanning result was uploaded for this repository."),
+  );
+}
+
 /** The Secret alerts section (E3). Says, in words, that it reports and never blocks a push. */
 export function secretSection(alerts: readonly AlertView[]): El {
   return h("section", { class: "security-secrets" },
@@ -252,6 +278,7 @@ export function securityView(answer: SecurityAnswer): El {
     h("h2", null, "Security and quality"),
     h("p", { class: "muted" }, "The registry reads this repository's environment files and stored code as text and never runs them. The analysis is computed away from the site; nothing of the code is executed here."),
     osvSection(answer.alerts.osv, answer.mayTriage),
+    sarifSection(answer.alerts.sarif, answer.mayTriage),
     secretSection(answer.alerts.secret),
     dependenciesSection(answer, "default"),
     hasCited ? dependenciesSection(answer, "cited") : null,

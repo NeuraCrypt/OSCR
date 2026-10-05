@@ -5,7 +5,7 @@ import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 import { textOf } from "../../src/lib/repo-view.ts";
 import {
-  dependenciesSection, depEntry, EMPTY_FILTER, filterDeps, osvAlertEntry, osvSection, secretSection, securityView, summariseView, summaryWords,
+  dependenciesSection, depEntry, EMPTY_FILTER, filterDeps, osvAlertEntry, osvSection, sarifSection, secretSection, securityView, summariseView, summaryWords,
   type AlertView, type DepView, type SecurityAnswer,
 } from "../../src/lib/security-view.ts";
 
@@ -127,6 +127,16 @@ describe("security-view rendering", () => {
     assert.match(t, /OSV/);
     assert.match(t, /never opens a pull request/);
     assert.match(textOf(osvSection([], false)), /No known vulnerability/);
+  });
+
+  test("the code-scanning section shows the rule, file and data flow, and says OSCR runs no analyser", () => {
+    const a = makeAlert({ kind: "sarif", ref: "r", severity: "critical", summary: "SQL injection: user input", path: "app/db.py", line: 42, detail: { ruleName: "SQL injection", flow: [{ path: "app/web.py", line: 10 }, { path: "app/db.py", line: 42 }] } });
+    const t = textOf(sarifSection([a], false));
+    assert.match(t, /runs no analyser/);
+    assert.match(t, /SQL injection/);
+    assert.match(t, /app\/db.py:42/);
+    assert.match(t, /data flow \(2 steps\)/);
+    assert.match(textOf(sarifSection([], false)), /No code-scanning result/);
   });
 
   test("no dependencies: a plain sentence, no form", () => {

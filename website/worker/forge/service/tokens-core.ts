@@ -38,6 +38,7 @@ export const SCOPES = [
   "hooks:read",
   "hooks:write",
   "statuses:write",
+  "security:write",
 ] as const;
 export type Scope = (typeof SCOPES)[number];
 
@@ -53,6 +54,7 @@ export const SCOPE_WORDS: Readonly<Record<Scope, string>> = {
   "hooks:read": "read your outgoing webhooks and their deliveries",
   "hooks:write": "make, change, test, redeliver and delete your outgoing webhooks",
   "statuses:write": "post commit statuses on the repositories the registry knows (a CI or a reproduction service)",
+  "security:write": "upload code-scanning results (SARIF) from your CI, for the repositories the registry knows",
 };
 
 export const isScope = (v: unknown): v is Scope => typeof v === "string" && (SCOPES as readonly string[]).includes(v);

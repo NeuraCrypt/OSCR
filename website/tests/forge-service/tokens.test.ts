@@ -64,7 +64,7 @@ describe("the pure parts", () => {
     for (const bad of [{ name: "", scopes: ["repos:read"] }, { name: "x", scopes: [] }, { name: "x", scopes: ["admin"] }, { name: "x", scopes: ["repos:read"], days: 0 }, { name: "x", scopes: ["repos:read"], days: 367 }, { name: "x", scopes: ["repos:read"], days: 1.5 }, null, []]) {
       assert.ok(isProblem(validateToken(bad)), JSON.stringify(bad));
     }
-    assert.equal(SCOPES.length, 10);
+    assert.equal(SCOPES.length, 11);
   });
 
   test("the logs never keep a token: redact knows the prefix", () => {
