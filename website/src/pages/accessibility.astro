@@ -1,0 +1,111 @@
+---
+// /accessibility/: the registry's accessibility statement (night phase 15). It describes what is in
+// place and how to use it, and it must stay true of the code (CLAUDE.md, the launch pages): a
+// feature named here exists. science.css only; it takes the platform's name from src/config.ts.
+import Base from "../layouts/Base.astro";
+import { SITE_FULL_NAME, SITE_NAME } from "../config";
+---
+<Base
+  title="Accessibility"
+  description="How the registry works for keyboard and screen-reader users: the standard it aims for, what is in place, and how to use it."
+  breadcrumb={[{ text: "Accessibility" }]}
+>
+  <h1>Accessibility</h1>
+  <p class="summary">
+    {SITE_FULL_NAME} is built to be read and used without a mouse, without colour, and with a screen
+    reader. This page says what that means in practice, and where it still falls short.
+  </p>
+
+  <h2>The standard we aim for</h2>
+  <p>
+    We aim for the Web Content Accessibility Guidelines (WCAG, the common rules for accessible web
+    pages) version 2.2, level AA. This is a goal, not a certificate: we test as we build, and we fix
+    what we find. If a page fails one of these rules for you, it is a bug, and you can report it.
+  </p>
+
+  <h2>What is in place</h2>
+  <ul>
+    <li>
+      <strong>Skip to the content.</strong> The first thing the keyboard reaches on every page is a
+      "Skip to the content" link, so you jump past the masthead straight to the page.
+    </li>
+    <li>
+      <strong>Landmarks and one heading tree.</strong> Each page has a banner, a navigation, one main
+      region and a footer, and a single top heading, so a screen reader can move by region and by
+      heading.
+    </li>
+    <li>
+      <strong>Keyboard shortcuts.</strong> Press <kbd>?</kbd> for the full list. Single-key shortcuts
+      match the ones researchers know from other forges, and can be turned off in your preferences;
+      the help and the command palette work either way.
+    </li>
+    <li>
+      <strong>The command palette.</strong> Press <kbd>Ctrl</kbd>+<kbd>K</kbd> (or <kbd>Cmd</kbd>+<kbd>K</kbd>)
+      to jump to a page or run a command. It is a listbox you drive with the arrow keys and
+      <kbd>Enter</kbd>, announced to a screen reader, and it asks the server for nothing.
+    </li>
+    <li>
+      <strong>Visible focus.</strong> Whatever has the keyboard's focus shows a clear outline, in
+      every theme. The "More contrast" preference thickens it.
+    </li>
+    <li>
+      <strong>Preferences for how it looks.</strong> In <a href="/settings/preferences/">your preferences</a>:
+      a dark theme (never forced on you; light is the default), more contrast, colour-vision palettes
+      for the charts and coloured marks, reduced motion, link underlines, line spacing, tab size and a
+      fixed-width font for rendered text. They are kept in your browser.
+    </li>
+    <li>
+      <strong>Reduced motion.</strong> The site carries almost no animation, and it honours your
+      system's reduced-motion setting on its own.
+    </li>
+    <li>
+      <strong>It reflows.</strong> Pages work down to a narrow phone (320 pixels wide) without a
+      sideways scroll, and when you enlarge the text to 200 percent.
+    </li>
+    <li>
+      <strong>Charts are also tables.</strong> Every chart {SITE_NAME} draws is a plain inline drawing
+      with a text label, and the same numbers are given just below as a table you can read and copy,
+      so nothing depends on seeing the shape or telling two colours apart.
+    </li>
+    <li>
+      <strong>Mathematics and diagrams.</strong> Formulas are written as MathML, which the browser and
+      the screen reader read natively, not as pictures. Diagrams carry a text description.
+    </li>
+    <li>
+      <strong>No colour-only meaning.</strong> A status is said in words ("code verified", "dead
+      link"), never by a colour alone, and never as a decorative pill.
+    </li>
+  </ul>
+
+  <h2>How to drive it from the keyboard</h2>
+  <dl>
+    <dt><kbd>Tab</kbd></dt><dd>move through the links and controls; the first stop is "Skip to the content".</dd>
+    <dt><kbd>?</kbd></dt><dd>open the list of keyboard shortcuts.</dd>
+    <dt><kbd>Ctrl</kbd>+<kbd>K</kbd> or <kbd>Cmd</kbd>+<kbd>K</kbd></dt><dd>open the command palette.</dd>
+    <dt><kbd>/</kbd></dt><dd>jump to the search box.</dd>
+    <dt><kbd>Escape</kbd></dt><dd>close the palette or a dialog.</dd>
+  </dl>
+
+  <h2>Where it still falls short</h2>
+  <ul>
+    <li>
+      If you chose the dark theme, a page may show for an instant in light before it switches, because
+      the registry serves one set of pages to everyone and applies your theme in your browser.
+    </li>
+    <li>
+      The code published by the authors is shown as its authors wrote it: a script with poor contrast
+      or a missing text alternative is theirs, and {SITE_NAME} does not rewrite it.
+    </li>
+    <li>
+      A few of the smaller coloured marks are tuned for the light theme first; the colour-vision
+      palettes cover the charts and the main marks.
+    </li>
+  </ul>
+
+  <h2>Report an accessibility problem</h2>
+  <p>
+    If a page is hard or impossible to use, tell us: open the <a href="/report/">report page</a> and
+    say which page and what went wrong. The registry collects no email address, so there is nothing to
+    fill in about yourself. We treat an accessibility barrier as a bug to fix.
+  </p>
+</Base>

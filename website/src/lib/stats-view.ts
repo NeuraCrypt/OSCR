@@ -154,7 +154,7 @@ export function timeSeriesChart(opts: TimeSeriesOptions): El {
   return h(
     "figure",
     { class: "chart chart-line" },
-    h("svg", { viewBox: `0 0 ${W} ${H}`, preserveAspectRatio: "xMidYMid meet", role: "img", "aria-label": chartAria(opts) }, ...parts),
+    h("svg", { viewBox: `0 0 ${W} ${H}`, preserveAspectRatio: "xMidYMid meet", role: "img", "aria-label": chartAria(opts) }, h("title", null, opts.title), h("desc", null, chartAria(opts)), ...parts),
     legend(opts.series, opts.marks ?? []),
     opts.caption ? h("figcaption", null, opts.caption) : null,
   );
@@ -205,7 +205,7 @@ export function divergingColumns(opts: DivergingOptions): El {
   return h(
     "figure",
     { class: "chart chart-diverging" },
-    h("svg", { viewBox: `0 0 ${W} ${H}`, preserveAspectRatio: "xMidYMid meet", role: "img", "aria-label": `${opts.title}: ${number(pts.length)} weeks. The table below gives every value.` }, ...parts),
+    h("svg", { viewBox: `0 0 ${W} ${H}`, preserveAspectRatio: "xMidYMid meet", role: "img", "aria-label": `${opts.title}: ${number(pts.length)} weeks. The table below gives every value.` }, h("title", null, opts.title), h("desc", null, `${opts.title}: ${number(pts.length)} weeks. The table below gives every value.`), ...parts),
     h("p", { class: "chart-legend" },
       h("span", { class: "key key-up" }, opts.upLabel), " ",
       h("span", { class: "key key-down" }, opts.downLabel)),
@@ -243,7 +243,7 @@ export function rankedBars(opts: RankedOptions): El {
   return h(
     "figure",
     { class: "chart chart-ranked" },
-    h("svg", { viewBox: `0 0 ${W} ${chartH}`, preserveAspectRatio: "xMidYMid meet", role: "img", "aria-label": `${opts.title}: ${number(shown.length)} of ${number(sorted.length)} rows. The table below gives every value.` }, ...parts),
+    h("svg", { viewBox: `0 0 ${W} ${chartH}`, preserveAspectRatio: "xMidYMid meet", role: "img", "aria-label": `${opts.title}: ${number(shown.length)} of ${number(sorted.length)} rows. The table below gives every value.` }, h("title", null, opts.title), h("desc", null, `${opts.title}: ${number(shown.length)} of ${number(sorted.length)} rows. The table below gives every value.`), ...parts),
     opts.caption ? h("figcaption", null, opts.caption) : null,
   );
 }

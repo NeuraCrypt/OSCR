@@ -64,7 +64,7 @@ export const COMMANDS: readonly PaletteEntry[] = [
  *  those pages exist). They are concatenated by indexEntries. */
 export const LATER_DESTINATIONS: PaletteEntry[] = [
   { id: "go-status", kind: "go", title: "Service status", href: "/status/", keywords: "uptime incidents availability" },
-  { id: "go-accessibility", kind: "go", title: "Accessibility", href: "/policies/accessibility/", keywords: "a11y conformance screen reader" },
+  { id: "go-accessibility", kind: "go", title: "Accessibility", href: "/accessibility/", keywords: "a11y conformance screen reader" },
 ];
 
 /** The whole static index. */
