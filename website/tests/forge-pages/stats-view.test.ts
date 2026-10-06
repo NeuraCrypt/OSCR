@@ -6,7 +6,9 @@ import { describe, test } from "node:test";
 import type { El } from "../../src/lib/repo-view.ts";
 import { textOf } from "../../src/lib/repo-view.ts";
 import {
-  dataTable, dayOf, divergingColumns, rankedBars, timeSeriesChart, toCsv,
+  dataTable, dayOf, divergingColumns,
+  parseCodeFrequency, parseCommitActivity, parseContributors, parseParticipation,
+  rankedBars, timeSeriesChart, toCsv,
   type Point,
 } from "../../src/lib/stats-view.ts";
 
@@ -100,6 +102,29 @@ describe("rankedBars", () => {
     assert.equal(bars.length, 2, "only the top 2 are drawn");
     // The longest (bob, 80) is first.
     assert.ok(textOf(bars[0]).startsWith("bob"));
+  });
+});
+
+describe("parsing GitHub's statistics", () => {
+  test("commit activity keeps the week and its total, drops a bad row", () => {
+    const pts = parseCommitActivity([{ total: 4, week: base }, { total: 6, week: base + WEEK }, { nope: 1 }]);
+    assert.deepEqual(pts, [{ t: base, v: 4 }, { t: base + WEEK, v: 6 }]);
+  });
+  test("participation anchors the weekly buckets to the week of now", () => {
+    const now = base + 10 * WEEK;
+    const { all, owner } = parseParticipation({ all: [1, 2, 3], owner: [0, 1, 1] }, now);
+    assert.equal(all.length, 3);
+    assert.equal(all[2].t, now);
+    assert.equal(all[0].t, now - 2 * WEEK);
+    assert.equal(owner[1].v, 1);
+  });
+  test("code frequency is additions up and deletions down", () => {
+    const pts = parseCodeFrequency([[base, 100, -40], [base + WEEK, 5, -2], [base]]);
+    assert.deepEqual(pts, [{ t: base, up: 100, down: -40 }, { t: base + WEEK, up: 5, down: -2 }]);
+  });
+  test("contributors are sorted by total, an unknown author named", () => {
+    const bars = parseContributors([{ total: 3, author: { login: "ada" } }, { total: 9, author: { login: "bob" } }, { total: 1 }]);
+    assert.deepEqual(bars.map((b) => [b.label, b.value]), [["bob", 9], ["ada", 3], ["(unknown)", 1]]);
   });
 });
 

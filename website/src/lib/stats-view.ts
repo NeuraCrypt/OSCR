@@ -15,14 +15,11 @@
 import { number } from "./format.ts";
 import { h } from "./repo-view.ts";
 import type { El } from "./repo-view.ts";
+import type { DivergingPoint, Point, RankedBar, ResearchMark } from "./stats.ts";
+
+export type { DivergingPoint, Point, RankedBar, ResearchMark } from "./stats.ts";
 
 // ─── the shapes a chart is built from ────────────────────────────────────────
-
-/** A point in a time series: a Unix-seconds timestamp and a value. */
-export interface Point {
-  t: number;
-  v: number;
-}
 
 /** One line of a time-series chart. `tone` picks a science.css colour class (.series-1…6). */
 export interface Series {
@@ -33,14 +30,6 @@ export interface Series {
   step?: boolean;
   /** Fill the area under the line (a single-series chart reads better filled). */
   area?: boolean;
-}
-
-/** A research mark overlaid on a time-series chart: what a paper or a map cites, or a tag tied to a
- *  paper version or a DOI. It is OSCR's own fact, never read from GitHub. */
-export interface ResearchMark {
-  t: number;
-  kind: "paper" | "map" | "tag";
-  label: string;
 }
 
 const W = 720;
@@ -180,12 +169,6 @@ const markWord = (k: ResearchMark["kind"]): string => (k === "paper" ? "Cited by
 
 // ─── a diverging column chart (code frequency: additions up, deletions down) ──
 
-export interface DivergingPoint {
-  t: number;
-  up: number;
-  down: number;
-}
-
 export interface DivergingOptions {
   title: string;
   points: DivergingPoint[];
@@ -231,13 +214,6 @@ export function divergingColumns(opts: DivergingOptions): El {
 }
 
 // ─── ranked horizontal bars (contributors, popular content, referrers) ────────
-
-export interface RankedBar {
-  label: string;
-  value: number;
-  /** An optional sub-value shown after the label (a contributor's additions, say). */
-  note?: string;
-}
 
 export interface RankedOptions {
   title: string;
@@ -300,4 +276,57 @@ export function toCsv(headers: string[], rows: string[][]): string {
   const cell = (s: string): string => (/[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s);
   const line = (r: string[]): string => r.map(cell).join(",");
   return [line(headers), ...rows.map(line)].join("\r\n") + "\r\n";
+}
+
+// ─── GitHub's statistics, parsed into the neutral shapes above ────────────────
+//
+// The reader's browser reads these from GitHub directly (0 Worker and 0 Mac requests, phase 12's
+// binding directive); these pure parsers turn the answers into the shapes the charts draw, so they
+// are tested in Node against fixture JSON. GitHub answers 202 (no body) while it computes a
+// statistic; that is the caller's concern (src/scripts/repo-insights.ts), not this module's.
+
+const WEEK_SECONDS = 7 * 86400;
+const isObj = (x: unknown): x is Record<string, unknown> => typeof x === "object" && x !== null;
+const num = (x: unknown): number => (typeof x === "number" && Number.isFinite(x) ? x : 0);
+
+/** GET /repos/{o}/{r}/stats/commit_activity: [{ total, week, days[] }, …] (up to 52 weeks). */
+export function parseCommitActivity(json: unknown): Point[] {
+  if (!Array.isArray(json)) return [];
+  return json.filter(isObj).map((w) => ({ t: num(w.week), v: num(w.total) })).filter((p) => p.t > 0);
+}
+
+/** GET /repos/{o}/{r}/stats/participation: { all: number[52], owner: number[52] }. The weeks carry no
+ *  timestamp, so they are anchored to the week of `now` (the last bucket) going back. */
+export function parseParticipation(json: unknown, now: number): { all: Point[]; owner: Point[] } {
+  if (!isObj(json)) return { all: [], owner: [] };
+  const toPoints = (arr: unknown): Point[] => {
+    if (!Array.isArray(arr)) return [];
+    const n = arr.length;
+    return arr.map((v, i) => ({ t: now - (n - 1 - i) * WEEK_SECONDS, v: num(v) }));
+  };
+  return { all: toPoints(json.all), owner: toPoints(json.owner) };
+}
+
+/** GET /repos/{o}/{r}/stats/code_frequency: [[week, additions, deletions], …] (deletions negative). */
+export function parseCodeFrequency(json: unknown): DivergingPoint[] {
+  if (!Array.isArray(json)) return [];
+  return json
+    .filter((row): row is number[] => Array.isArray(row) && row.length >= 3)
+    .map((row) => ({ t: num(row[0]), up: num(row[1]), down: num(row[2]) }))
+    .filter((p) => p.t > 0);
+}
+
+/** GET /repos/{o}/{r}/stats/contributors: [{ total, weeks[], author:{login} }, …]. `total` is the
+ *  author's commit count; the view keeps the top N (the caller slices), the rest stay in the table.
+ *  GitHub's count includes merge commits; the view says so in words rather than guess which to drop. */
+export function parseContributors(json: unknown): RankedBar[] {
+  if (!Array.isArray(json)) return [];
+  const out: RankedBar[] = [];
+  for (const c of json) {
+    if (!isObj(c)) continue;
+    const author = isObj(c.author) ? c.author : {};
+    const login = typeof author.login === "string" ? author.login : "(unknown)";
+    out.push({ label: login, value: num(c.total) });
+  }
+  return out.sort((a, b) => b.value - a.value);
 }

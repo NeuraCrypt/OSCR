@@ -62,7 +62,7 @@ export type RepoView =
   | "pulls" | "pull" | "fork" | "forks"
   | "issues" | "labels" | "milestones" | "milestone"
   | "releases" | "tags" | "environment"
-  | "checks" | "security";
+  | "checks" | "security" | "insights";
 export const REPO_VIEWS: readonly RepoView[] = ["home", "settings", "branches"];
 /** The views that carry segments after their name (a ref, a path, a commit, a comparison). */
 export const CODE_VIEWS: readonly RepoView[] = [
@@ -70,7 +70,7 @@ export const CODE_VIEWS: readonly RepoView[] = [
   "pulls", "pull", "fork", "forks",
   "issues", "labels", "milestones", "milestone",
   "releases", "tags", "environment",
-  "checks", "security",
+  "checks", "security", "insights",
 ];
 /** The editing views (phase 03): they act on a branch, and their changes are commits. */
 export const EDIT_VIEWS: readonly RepoView[] = ["edit", "new", "upload", "delete"];
@@ -132,6 +132,7 @@ const SEGMENTS: Partial<Record<RepoView, [number, number]>> = {
   environment: [0, 64],
   checks: [0, 64],
   security: [0, 0],
+  insights: [0, 0],
 };
 
 /** The repository and the view a path of the shell names, or null: /r/<owner>/<name>/ (the final

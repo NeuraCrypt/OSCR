@@ -417,13 +417,15 @@ export function repoTabs(repo: RepoCoords, view: RepoView): El {
               ? "checks"
               : view === "security"
                 ? "security"
-                : "home";
+                : view === "insights"
+                  ? "insights"
+                  : "home";
   const tab = (v: RepoView, label: string) =>
     h("li", null, h("a", { href: repoPath(repo, v), "aria-current": v === shown ? "page" : null }, label));
   return h(
     "nav",
     { class: "tabs", "aria-label": "Repository" },
-    h("ul", null, tab("home", "Code"), tab("issues", "Issues"), tab("pulls", "Pull requests"), tab("releases", "Releases"), tab("checks", "Checks"), tab("security", "Security"), tab("branches", "Branches"), tab("settings", "Settings")),
+    h("ul", null, tab("home", "Code"), tab("issues", "Issues"), tab("pulls", "Pull requests"), tab("releases", "Releases"), tab("checks", "Checks"), tab("security", "Security"), tab("insights", "Insights"), tab("branches", "Branches"), tab("settings", "Settings")),
   );
 }
 

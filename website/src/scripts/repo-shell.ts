@@ -72,6 +72,7 @@ import "./repo-release-assets.ts";
 import "./repo-environment.ts";
 import "./repo-checks.ts";
 import "./repo-security.ts";
+import "./repo-insights.ts";
 import { mountForkStatus } from "./repo-forks.ts";
 import { codePanel, quickSetup, useTemplate, wireCopy } from "./repo-code-panel.ts";
 import { mountBranches } from "./repo-branches.ts";
