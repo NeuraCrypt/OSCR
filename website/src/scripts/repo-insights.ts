@@ -12,7 +12,7 @@
 // live SVG in the browser, colours inlined, so nothing leaves the page). Like every browser script,
 // it never names the platform.
 
-import type { Dependent, StatsFacts } from "../lib/stats.ts";
+import type { Dependent, StatsFacts, TrafficFacts } from "../lib/stats.ts";
 import {
   dataTable, dayOf, divergingColumns, parseCodeFrequency, parseCommitActivity, parseContributors, parseParticipation,
   rankedBars, timeSeriesChart, toCsv,
@@ -76,17 +76,7 @@ function section(id: string, title: string): HTMLElement {
 
 /** Put a chart, its table (folded), and its downloads into a section. */
 function place(sec: HTMLElement, chart: ReturnType<typeof h>, table: { caption: string; headers: string[]; rows: string[][] } | null, base: string): void {
-  const box = document.createElement("div");
-  box.className = "figure-with-table";
-  box.append(toDom(chart));
-  if (table && table.rows.length) {
-    const details = document.createElement("details");
-    details.className = "chart-data";
-    details.append(toDom(h("summary", null, "The numbers")));
-    details.append(toDom(dataTable(table.caption, table.headers, table.rows)));
-    box.append(details);
-    box.append(downloads(base, table, box));
-  }
+  const box = toDomFigure(chart, table ?? { caption: "", headers: [], rows: [] }, base);
   const heading = sec.querySelector("h3");
   sec.replaceChildren(...(heading ? [heading] : []), box);
 }
@@ -270,6 +260,53 @@ function mountUsedBy(sec: HTMLElement, facts: StatsFacts | null): void {
   sec.replaceChildren(...(heading ? [heading] : []), box);
 }
 
+async function mountTraffic(sec: HTMLElement, env: CodeEnv): Promise<void> {
+  const id = env.layer?.id ?? env.info.key.id;
+  if (!id) return saySection(sec, "Traffic is shown to a repository's maintainers, once it is in the registry.");
+  let r: { ok: boolean; status: number; body: unknown };
+  try {
+    r = await getJson(`/api/forge/traffic?id=${encodeURIComponent(`${env.info.key.forge}:${id}`)}`);
+  } catch {
+    return saySection(sec, "Traffic could not be read just now.", "warning");
+  }
+  if (r.status === 401) return saySection(sec, "Sign in as a maintainer of this repository to see its traffic.");
+  if (r.status === 403) return saySection(sec, "A repository's traffic is shown only to the people who maintain it in the registry.");
+  if (!r.ok) return saySection(sec, "Traffic could not be read just now.", "warning");
+  const t = r.body as TrafficFacts;
+  if (!t.configured) return saySection(sec, t.note || "Traffic is not enabled yet.");
+  const box = document.createElement("div");
+  box.append(toDom(h("p", { class: "traffic-note" }, "Aggregate figures only: page views and visits, never a count of unique visitors and nothing per person. Visible to maintainers only.")));
+  if (t.days.length) {
+    const chart = timeSeriesChart({
+      title: "Views and visits per day (14 days)", unit: "views",
+      series: [{ label: "Page views", points: t.days.map((d) => ({ t: d.t, v: d.views })), area: true, tone: 2 }, { label: "Visits", points: t.days.map((d) => ({ t: d.t, v: d.visits })), tone: 4 }],
+      caption: "The last 14 days.",
+    });
+    box.append(toDomFigure(chart, { caption: "Views and visits per day", headers: ["Day", "Views", "Visits"], rows: t.days.map((d) => [dayOf(d.t), number(d.views), number(d.visits)]) }, `${env.repo.name}-traffic`));
+  }
+  if (t.referrers.length) box.append(toDomFigure(rankedBars({ title: "Top referring sites", bars: t.referrers, unit: "views", top: 10 }), { caption: "Referring sites", headers: ["Site", "Views"], rows: t.referrers.map((b) => [b.label, number(b.value)]) }, `${env.repo.name}-referrers`));
+  if (t.pages.length) box.append(toDomFigure(rankedBars({ title: "Popular pages", bars: t.pages, unit: "views", top: 10 }), { caption: "Popular pages", headers: ["Page", "Views"], rows: t.pages.map((b) => [b.label, number(b.value)]) }, `${env.repo.name}-pages`));
+  if (!t.days.length && !t.referrers.length && !t.pages.length) box.append(toDom(h("p", { class: "muted" }, t.note || "No traffic recorded yet.")));
+  const heading = sec.querySelector("h3");
+  sec.replaceChildren(...(heading ? [heading] : []), box);
+}
+
+/** A figure with its folded table and downloads, built off-DOM and returned as a node. */
+function toDomFigure(chart: ReturnType<typeof h>, table: { caption: string; headers: string[]; rows: string[][] }, base: string): HTMLElement {
+  const box = document.createElement("div");
+  box.className = "figure-with-table";
+  box.append(toDom(chart));
+  if (table.rows.length) {
+    const details = document.createElement("details");
+    details.className = "chart-data";
+    details.append(toDom(h("summary", null, "The numbers")));
+    details.append(toDom(dataTable(table.caption, table.headers, table.rows)));
+    box.append(details);
+    box.append(downloads(base, table, box));
+  }
+  return box;
+}
+
 function mountStars(sec: HTMLElement, env: CodeEnv, stars: Point[]): void {
   if (!stars.length) return saySection(sec, "No stars in the registry yet.");
   const chart = timeSeriesChart({
@@ -286,20 +323,22 @@ codeViews.insights = async (slot, env) => {
   root.append(toDom(h("h2", null, "Insights")));
   root.append(toDom(h("p", { class: "at-source" }, "The registry draws these charts itself. The source's own statistics are read in your browser, on your quota; the research marks and the star history are the registry's.")));
   const secUsedBy = section("used_by", "Used by");
+  const secTraffic = section("traffic", "Traffic (maintainers only)");
   const secCommits = section("commit_activity", "Commit activity");
   const secParticipation = section("participation", "Participation");
   const secCode = section("code_frequency", "Code frequency");
   const secContributors = section("contributors", "Contributors");
   const secStars = section("stars", "Star history");
-  root.append(secUsedBy, secCommits, secParticipation, secCode, secContributors, secStars);
+  root.append(secUsedBy, secTraffic, secCommits, secParticipation, secCode, secContributors, secStars);
   slot.replaceChildren(root);
 
   const facts = await readFacts(env);
   const marks = facts?.marks ?? [];
   const stars = facts?.stars ?? [];
   mountUsedBy(secUsedBy, facts);
-  // The GitHub reads run together; the facts are already in.
+  // The GitHub reads and the maintainer traffic run together; the facts are already in.
   await Promise.all([
+    mountTraffic(secTraffic, env),
     mountCommitActivity(secCommits, env, marks),
     mountParticipation(secParticipation, env),
     mountCodeFrequency(secCode, env),

@@ -69,3 +69,26 @@ export interface StatsFacts {
 export function emptyStats(id: string | null): StatsFacts {
   return { forge: "github", id, usedBy: { papers: 0, repos: 0, dependents: [] }, marks: [], stars: [] };
 }
+
+/** One day's or one week's traffic: page views and visits. NO unique-visitor or per-person figure:
+ *  the registry's traffic is aggregate only (D12-3). */
+export interface TrafficBucket {
+  t: number;
+  views: number;
+  visits: number;
+}
+
+/** GET /api/forge/traffic?id=… : a repository's traffic, shown to its maintainers ONLY, as
+ *  privacy-respecting aggregates (D12-3): page views and visits per day (14 days) and per week (104
+ *  weeks), referring sites and popular pages. Read from Cloudflare's analytics with a read-only token
+ *  the owner holds; never a unique-visitor count, never anything per person. */
+export interface TrafficFacts {
+  /** Whether the owner has set up the read-only analytics token (else the view says it is not on). */
+  configured: boolean;
+  days: TrafficBucket[];
+  weeks: TrafficBucket[];
+  referrers: RankedBar[];
+  pages: RankedBar[];
+  /** A sentence for the reader (not configured, or a free-plan note). */
+  note?: string;
+}

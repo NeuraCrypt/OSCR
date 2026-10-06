@@ -66,6 +66,18 @@ export type ForgeServiceEnv = AccountEnv &
      *  (5 to 899 seconds), so that the end-to-end run sees one expire. Never longer than 15 minutes; never
      *  in wrangler.toml, never in production. */
     DEVICE_CODE_SECONDS?: string;
+    /** Phase 12 (traffic.ts): a READ-ONLY Cloudflare analytics token the owner creates (Account
+     *  Analytics: Read only) and keeps in the keychain (org.oscr.cloudflare-analytics), set as a
+     *  Cloudflare secret by tools/setup_cloudflare.sh. Unset: the maintainer traffic view says it is not
+     *  enabled. It is never read, printed or created by the code; it only authorises the read below. */
+    CLOUDFLARE_ANALYTICS_TOKEN?: string;
+    /** Phase 12 (traffic.ts): the Cloudflare account id (public) and the Web Analytics site tag the
+     *  traffic query filters on. Set beside the token; unset: the view says it is not enabled. */
+    CLOUDFLARE_ACCOUNT_ID?: string;
+    CLOUDFLARE_ANALYTICS_SITE_TAG?: string;
+    /** Development only (traffic.ts): a stand-in for Cloudflare's GraphQL analytics endpoint on this
+     *  machine (the end-to-end run's fake). Never in wrangler.toml, never in production. */
+    CLOUDFLARE_ANALYTICS_URL?: string;
   };
 
 /** What the tests (and only they) inject. The Worker passes nothing: service/backend.ts builds
@@ -84,6 +96,8 @@ export interface ForgeDeps {
   hookFetch?: typeof fetch;
   /** Phase 16: the fetch Turnstile's siteverify is asked with (a stand-in in tests). */
   turnstileFetch?: typeof fetch;
+  /** Phase 12: the fetch the Cloudflare analytics read is made with (a stand-in in tests). */
+  analyticsFetch?: typeof fetch;
 }
 
 /** One request to a forge route, as index.ts hands it to its handler: FORGE is bound, the method is
