@@ -81,7 +81,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
 }
 .masthead select, .masthead button { font: inherit; border-radius: 0; }
 /* The ways in (Browse, DOI lookup) in the masthead (approved by the owner, 2026-09-27) */
-.masthead nav { display: flex; gap: 1em; font-size: .9em; }
+.masthead nav { display: flex; flex-wrap: wrap; gap: .4em 1em; font-size: .9em; }
 .masthead nav a, .masthead nav a:visited { color: var(--masthead-text); }
 /* A form in a page (the DOI lookup), like the masthead's search (approved 2026-09-27) */
 /* A button anywhere in a page (the forms, the citations' "Copy") and a form's menus, like the

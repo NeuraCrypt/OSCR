@@ -48,6 +48,8 @@ export const DESTINATIONS: readonly PaletteEntry[] = [
   { id: "go-tokens", kind: "go", title: "Personal tokens", href: "/settings/tokens/", keywords: "api key" },
   { id: "go-about", kind: "go", title: "About", href: "/about/" },
   { id: "go-developers", kind: "go", title: "API and developers", href: "/developers/", keywords: "api reference" },
+  { id: "go-api", kind: "go", title: "API", href: "/api/", keywords: "rest json endpoints curl" },
+  { id: "go-cli", kind: "go", title: "Command line", href: "/help/cli/", keywords: "cli terminal oscr tool shell" },
   { id: "go-limits", kind: "go", title: "Limits", href: "/limits/", keywords: "quota" },
   { id: "go-privacy", kind: "go", title: "Privacy", href: "/privacy/" },
   { id: "go-terms", kind: "go", title: "Terms", href: "/terms/" },
