@@ -36,7 +36,9 @@ TABLES = {"repos", "repo_papers", "installations", "traced_paths", "actions", "d
           "discussion_spaces", "discussions", "discussion_comments", "discussion_votes",
           "projects", "project_fields", "project_items",
           # Night phase 12: repository statistics (0017_statistics.sql).
-          "repo_stats", "repo_dependents", "repo_marks"}
+          "repo_stats", "repo_dependents", "repo_marks",
+          # Night phase 13: snippets (0018_snippets.sql).
+          "snippets", "snippet_comments", "snippet_stars"}
 T = 1_790_596_800
 
 
@@ -66,7 +68,8 @@ def test_at_most_one_index_per_table_and_without_rowid_where_the_key_is_text():
                          "rights_requests": ["rights_requests_open"],
                          "organizations": ["organizations_handle"], "org_members": ["org_members_user"],
                          "org_invitations": ["org_invitations_invitee"],
-                         "discussions": ["discussions_space"], "projects": ["projects_owner"]}
+                         "discussions": ["discussions_space"], "projects": ["projects_owner"],
+                         "snippets": ["snippets_discover"]}
     # No hidden autoindex either: a text key is the table itself.
     assert con.execute("SELECT count(*) FROM sqlite_master WHERE type = 'index' AND sql IS NULL AND name NOT LIKE 'sqlite_autoindex_%'").fetchone()[0] == 0
     for name, sql in _tables(con).items():
@@ -141,8 +144,10 @@ def test_the_action_kinds_are_the_workers():
     in_ts += re.findall(r'"([a-z_]+)"', types[start:types.index("] as const", start)])
     start = types.index("export const PROJECT_KINDS = [")
     in_ts += re.findall(r'"([a-z_]+)"', types[start:types.index("] as const", start)])
+    start = types.index("export const SNIPPET_KINDS = [")
+    in_ts += re.findall(r'"([a-z_]+)"', types[start:types.index("] as const", start)])
     assert in_sql == in_ts
-    assert len(in_sql) == 92 and len(set(in_sql)) == 92
+    assert len(in_sql) == 98 and len(set(in_sql)) == 98
 
 
 def test_the_layer_shards_are_sha256_mod_64():

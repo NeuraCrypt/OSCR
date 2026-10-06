@@ -40,6 +40,7 @@ import { PULL_ACTIONS } from "./act-pulls.ts";
 import { PACKAGE_ACTIONS } from "./act-packages.ts";
 import { RELEASE_ACTIONS } from "./act-releases.ts";
 import { RESEARCH_ACTIONS } from "./act-research.ts";
+import { SNIPPET_ACTIONS } from "./act-snippet.ts";
 import { WIKI_ACTIONS } from "./act-wiki.ts";
 import { REF_ACTIONS } from "./act-refs.ts";
 import { SETTINGS_ACTIONS } from "./act-settings.ts";
@@ -103,6 +104,9 @@ export const REGISTERED_IN: Readonly<Record<ActionKind, string>> = {
   asset_delete: "act-releases.ts",
   package_confirm: "act-packages.ts",
   wiki_edit: "act-wiki.ts",
+  snippet_create: "act-snippet.ts",
+  snippet_revise: "act-snippet.ts",
+  snippet_fork: "act-snippet.ts",
 };
 
 /** A registry of these specs; a duplicate or an unknown kind is a programming error. */
@@ -131,4 +135,5 @@ export const ACTIONS: ActionRegistry = registry([
   ...RELEASE_ACTIONS,
   ...PACKAGE_ACTIONS,
   ...WIKI_ACTIONS,
+  ...SNIPPET_ACTIONS,
 ]);

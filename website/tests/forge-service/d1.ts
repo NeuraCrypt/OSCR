@@ -177,4 +177,5 @@ export const SOCIAL_EMPTY = {
   discussion_spaces: 0, discussions: 0, discussion_comments: 0, discussion_votes: 0,
   projects: 0, project_fields: 0, project_items: 0,
   repo_stats: 0, repo_dependents: 0, repo_marks: 0,
+  snippets: 0, snippet_comments: 0, snippet_stars: 0,
 } as const;

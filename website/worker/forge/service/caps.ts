@@ -39,6 +39,10 @@ export const PER_ACCOUNT_DAY = {
   // Night phase 06: discussions opened, poll and upvote votes, projects created, and the chatty
   // project edits (items and fields) with a cap of their own, out of the 100 authorized actions.
   discussions: 20, votes: 200, projects: 10, project_edits: 300,
+  // Night phase 13: a snippet's native writes (its record edited, a comment, a star) with a cap of
+  // their own, out of the 100 authorized actions. Creating, revising and forking a snippet are
+  // authorized commits and count toward the 100 like any action.
+  snippets: 300,
 } as const;
 export type Cap = keyof typeof PER_ACCOUNT_DAY;
 /** OSCR's grace period before a repository asked for deletion may be deleted (D00-10). */
@@ -97,6 +101,9 @@ export const CAP_OF: Readonly<Partial<Record<RowKind, Exclude<Cap, "actions">>>>
   project_item: "project_edits",
   project_edit: "project_edits",
   project_field: "project_edits",
+  snippet_edit: "snippets",
+  snippet_comment: "snippets",
+  snippet_star: "snippets",
 };
 
 /** The kinds each cap counts. */
@@ -123,11 +130,12 @@ export const KINDS_OF: Readonly<Record<Exclude<Cap, "actions">, readonly RowKind
   votes: ["discussion_vote"],
   projects: ["project_create"],
   project_edits: ["project_item", "project_edit", "project_field"],
+  snippets: ["snippet_edit", "snippet_comment", "snippet_star"],
 };
 
 /** Phase 08: the caps that stand alone (their kinds are not counted in `actions`); phase 10 adds its
  *  own (tokens and hooks changed; statuses posted by an outside service). */
-export const OWN_CAPS: ReadonlySet<Cap> = new Set<Cap>(["social", "notices", "automation", "statuses", "reports", "moderation", "appeals", "blocks", "limits", "rights", "triage", "scanning", "advisory", "orgs", "security", "votes", "project_edits"]);
+export const OWN_CAPS: ReadonlySet<Cap> = new Set<Cap>(["social", "notices", "automation", "statuses", "reports", "moderation", "appeals", "blocks", "limits", "rights", "triage", "scanning", "advisory", "orgs", "security", "votes", "project_edits", "snippets"]);
 
 /** A cap in words, for the answers ("10 repositories created"). */
 export const CAP_WORDS: Readonly<Record<Cap, (n: number) => string>> = {
@@ -154,4 +162,5 @@ export const CAP_WORDS: Readonly<Record<Cap, (n: number) => string>> = {
   votes: (n) => `${n} votes`,
   projects: (n) => `${n} ${n === 1 ? "project" : "projects"} created`,
   project_edits: (n) => `${n} changes to your projects`,
+  snippets: (n) => `${n} changes to snippets (edits, comments and stars)`,
 };

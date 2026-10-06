@@ -160,6 +160,12 @@ export const ACTION_KINDS = [
   // made by GitHub as the person, the phase-03 model (act-wiki.ts). The wiki is versioned by git
   // (D00-6): OSCR never writes to GitHub itself.
   "wiki_edit",
+  // Night phase 13 (migrations/d1-forge/0018_snippets.sql): a snippet created or revised as one
+  // authorized commit into the person's own `snippets` repository, and a snippet forked (the folder
+  // copied into the forker's own `snippets` repository in one commit), made by GitHub as the person
+  // (act-snippet.ts; D13-*). OSCR never asks for the Gists permission (D00-14) and never writes to
+  // GitHub itself: the files are git's, the record is oscr_forge's.
+  "snippet_create", "snippet_revise", "snippet_fork",
 ] as const;
 
 export type ActionKind = (typeof ACTION_KINDS)[number];
@@ -222,9 +228,18 @@ export type DiscussionRowKind = (typeof DISCUSSION_KINDS)[number];
 export const PROJECT_KINDS = ["project_create", "project_edit", "project_item", "project_field"] as const;
 export type ProjectRowKind = (typeof PROJECT_KINDS)[number];
 
+/** Night phase 13's native snippet writes (migrations/d1-forge/0018_snippets.sql): a snippet's record
+ *  edited (title, description, visibility, comments on/off, paper passage), a comment written, edited,
+ *  deleted or hidden, a star or its removal. OSCR's own objects (D00-6): nothing is written on GitHub
+ *  by these (the files are git's; creating and revising a snippet are authorized commits, in
+ *  ACTION_KINDS). Logged in `actions` like the discussion writes, with a cap of their own (caps.ts
+ *  `snippets`), out of the 100 authorized actions. */
+export const SNIPPET_KINDS = ["snippet_edit", "snippet_comment", "snippet_star"] as const;
+export type SnippetRowKind = (typeof SNIPPET_KINDS)[number];
+
 /** Every kind an action row may have. */
-export const ROW_KINDS = [...ACTION_KINDS, ...RESEARCH_KINDS, ...SOCIAL_KINDS, ...AUTOMATION_KINDS, ...MODERATION_KINDS, ...SECURITY_KINDS, ...ORG_KINDS, ...DISCUSSION_KINDS, ...PROJECT_KINDS] as const;
-export type RowKind = ActionKind | ResearchKind | SocialKind | AutomationKind | ModerationRowKind | SecurityRowKind | OrgRowKind | DiscussionRowKind | ProjectRowKind;
+export const ROW_KINDS = [...ACTION_KINDS, ...RESEARCH_KINDS, ...SOCIAL_KINDS, ...AUTOMATION_KINDS, ...MODERATION_KINDS, ...SECURITY_KINDS, ...ORG_KINDS, ...DISCUSSION_KINDS, ...PROJECT_KINDS, ...SNIPPET_KINDS] as const;
+export type RowKind = ActionKind | ResearchKind | SocialKind | AutomationKind | ModerationRowKind | SecurityRowKind | OrgRowKind | DiscussionRowKind | ProjectRowKind | SnippetRowKind;
 
 export const isSocialKind = (value: unknown): value is SocialKind => typeof value === "string" && (SOCIAL_KINDS as readonly string[]).includes(value);
 
