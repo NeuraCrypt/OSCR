@@ -157,7 +157,7 @@ the number of files must not grow with the catalogue: how each kind of page is r
 | `/lookup/` | the DOI lookup: any paper read, with or without a page | `lookup/NN.json` | static page; the browser fetches one of 256 shards |
 | `/search/` | the search (Phase 3): a static page and a Svelte island that asks `/api/search` only when a search is submitted | D1, through the Worker | static + Worker |
 | `/account/` | sign-in, the linked identities, the roles, "your papers", the maintainer claim form (Phase 5) | nothing: the page asks `/api/account/me` | static + Worker |
-| `/about/`, `/help/` (and 13 guides), `/policies/` (and 8 policies), `/privacy/`, `/brand/`, `/labs/`, `/taxonomy/` | the information pages (2026-09-29), on the model of arXiv's: the mission and how it works, the guides, the policies, every personal datum held, the name and the logo, the open data and what is in development, the scope and the categories with their definitions and counts; a footer on every page links to them | `catalog.json`, `entities/`, `papers/` (the taxonomy's topics), `oscr/vocabulary/categories.json` | static |
+| `/about/`, `/help/` (and 14 guides, the command-line guide `/help/cli/` among them), `/policies/` (and 8 policies), `/privacy/`, `/brand/`, `/labs/`, `/taxonomy/` | the information pages (2026-09-29), on the model of arXiv's: the mission and how it works, the guides, the policies, every personal datum held, the name and the logo, the open data and what is in development, the scope and the categories with their definitions and counts; a footer on every page links to them | `catalog.json`, `entities/`, `papers/` (the taxonomy's topics), `oscr/vocabulary/categories.json` | static |
 | `/sitemap.xml`, `/sitemaps/NN.xml`, `/robots.txt` | the sitemap's index and its shards (every indexable page: the fixed pages, the list, the categories, every paper with a page, every entity; 50,000 addresses a shard, `SITEMAP_SHARDS` (32) at most); robots.txt keeps robots off `/api/` and the search's results, which cost Worker requests | the same | static |
 
 - **Who counts.** `oscr/entities.py` counts only the papers with a page (D2): the authors'
@@ -251,7 +251,12 @@ catalogue's listing of the static pages is its too).
 ## The public read API
 
 A free, keyless, read-only API over the catalogue, versioned under `/api/v1/` (overview page
-`/api/`, guide `/help/api/`, reference `docs/API_PUBLIC.md`). It follows the same rule as the pages:
+`/api/`, guide `/help/api/`, reference `docs/API_PUBLIC.md`). Both the API overview and the
+researchers' command line are reached straight from the masthead: the top-nav `sections` array in
+`src/layouts/Base.astro` carries an **API** link (to `/api/`) and a **CLI** link (to `/help/cli/`),
+and the command palette (`src/lib/palette.ts`) lists them too. The command line itself is a separate
+distribution (`cli/`, the `openscicode` package on PyPI, the `oscr` command); its full guide is
+`/help/cli/` and its reference is `docs/CLI.md`. It follows the same rule as the pages:
 the heavy data is static (served by the CDN, free, no rate limit), and the Worker is a thin
 convenience layer. `GET` and `HEAD` only; CORS open to any origin, no credentials; a stable envelope
 (`{ oscr_api, self, … }`) and a stable error body (`{ error, message, documentation_url }`, distinct

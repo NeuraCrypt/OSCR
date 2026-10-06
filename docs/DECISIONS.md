@@ -2787,6 +2787,20 @@ refused the edit of a personal file): NIGHT_REPORT.md gives the owner the one co
 process a throwaway HOME, `GIT_CONFIG_GLOBAL` and config folder (an autouse fixture) and refuse the
 system keychain.
 
+### D14-17. The PyPI name is `openscicode`; the command stays `oscr` (2026-10-06)
+
+**Decision.** The short name `oscr` is already taken on PyPI by an unrelated project, so the
+distribution the owner publishes is named **`openscicode`** (it matches the domain, openscicode.org);
+the console script a user types stays **`oscr`** (`[project.scripts]`). The placeholder-name wording of
+D14-12 is removed: `cli/pyproject.toml` now names `openscicode`, with the metadata filled in
+(description, authors, keywords, classifiers, `project.urls` to openscicode.org and
+`NeuraCrypt/OSCR`), and `cli/README.md` is a PyPI-facing README. Verified on 2026-10-06: `uv build`
+makes the wheel and sdist; the wheel installed in a throwaway venv runs `oscr --version` and the
+offline commands with no dependency. Publishing is still the owner's step (a PyPI token of the
+owner's, never in the repository). The tool's internal namespaces are unchanged (the keychain service
+and config folder stay `oscr-cli`, apart from the harvester, D14-1). The full guide now lives on the
+site at `/help/cli/`, and the masthead links to it (CLI) and to the API (API).
+
 ## Night phase 11: security and quality (2026-10-05)
 
 ### D11-1. The whole analysis runs on the Mac, from files read as text; nothing of a user's code runs
