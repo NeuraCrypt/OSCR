@@ -13,6 +13,7 @@
 
 import { browserStore, type Store } from "../lib/prefs.ts";
 import { appliedAttributes, isPreferenceKey, preferenceOf } from "../lib/preferences.ts";
+import "./shortcuts.ts";
 
 const store = (): Store | null => browserStore();
 

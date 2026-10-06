@@ -1643,3 +1643,39 @@ html[data-motion="reduced"] *, html[data-motion="reduced"] *::before, html[data-
 .prefs-saved { color: var(--ok); margin-left: .6em; }
 .prefs-actions { margin: 1em 0; display: flex; flex-wrap: wrap; gap: .6em; align-items: center; }
 .prefs-actions button { font: inherit; border-radius: 0; cursor: pointer; }
+
+/* The keyboard-shortcut help, and the command palette (night phase 15): both are modal dialogs,
+   built by their scripts and styled only here. A plain surface, the archive density, no pills. */
+dialog.shortcuts-dialog, dialog.command-palette {
+  padding: 0; border: 1px solid var(--border-strong); border-radius: 0;
+  background: var(--panel); color: var(--text); box-shadow: 0 4px 20px var(--shadow);
+  max-width: 44em; width: calc(100% - 2em);
+}
+dialog.shortcuts-dialog::backdrop, dialog.command-palette::backdrop { background: rgba(0, 0, 0, .35); }
+.dialog-head { display: flex; align-items: baseline; justify-content: space-between; gap: 1em; padding: .6em .9em; border-bottom: 1px solid var(--rule); }
+.dialog-head h2 { margin: 0; font-size: 1.1em; }
+.dialog-head button { font: inherit; border-radius: 0; cursor: pointer; }
+
+/* The shortcut help: one table per group, keys on the left. */
+.shortcut-help { padding: .6em .9em 1em; max-height: 70vh; overflow: auto; }
+.shortcut-group { margin: .6em 0 1em; }
+.shortcut-group h3 { margin: .4em 0 .3em; font-size: 1em; }
+table.shortcut-table { border-collapse: collapse; width: 100%; }
+table.shortcut-table td { padding: .2em .4em; vertical-align: top; }
+td.shortcut-keys { white-space: nowrap; width: 9em; }
+td.shortcut-keys kbd, .shortcut-help kbd {
+  font-family: var(--font-code); font-size: .85em; padding: .05em .35em; margin-right: .15em;
+  border: 1px solid var(--rule); border-bottom-width: 2px; background: var(--bg-sidebar);
+}
+
+/* The command palette: an input, then the results, keyboard-navigable. */
+.command-palette .palette-input { display: block; width: 100%; box-sizing: border-box; font: inherit; padding: .5em .9em; border: 0; border-bottom: 1px solid var(--rule); background: var(--panel); color: var(--text); }
+.command-palette .palette-input:focus-visible { outline: none; }
+.palette-hint { padding: .35em .9em; font-size: .85em; color: var(--muted); border-bottom: 1px solid var(--rule); }
+.palette-results { list-style: none; margin: 0; padding: .3em 0; max-height: 60vh; overflow: auto; }
+.palette-results .palette-group { padding: .35em .9em .1em; font-size: .78em; color: var(--muted); }
+.palette-results li.palette-option { padding: .3em .9em; cursor: pointer; display: flex; gap: .6em; align-items: baseline; }
+.palette-results li.palette-option .palette-kind { color: var(--muted); font-size: .85em; }
+.palette-results li.palette-option[aria-selected="true"] { background: var(--bg-sidebar); }
+.palette-results li.palette-option mark { background: var(--highlighter); color: inherit; }
+.palette-empty { padding: .6em .9em; color: var(--muted); }
