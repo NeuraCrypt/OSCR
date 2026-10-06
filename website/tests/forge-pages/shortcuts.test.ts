@@ -122,7 +122,7 @@ describe("the catalogue of shortcuts", () => {
   test("no description names the platform or uses an em dash", () => {
     for (const s of ALL_SHORTCUTS) {
       assert.doesNotMatch(s.describe, /\bOSCR\b|Open Scientific Code Registry/);
-      assert.doesNotMatch(s.describe, /—/);
+      assert.doesNotMatch(s.describe, /\u2014/);
     }
   });
 });

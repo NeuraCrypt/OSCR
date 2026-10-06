@@ -70,7 +70,7 @@ def run_check(url: str, now: float | None = None, get: Getter = default_getter) 
     try:
         status, ms = get(url)
         return Check(t=when, ok=200 <= status < 400, status=status, ms=round(ms, 1))
-    except Exception:  # noqa: BLE001 — any failure to reach the site is an outage, recorded as one
+    except Exception:  # noqa: BLE001 (any failure to reach the site is an outage, recorded as one)
         return Check(t=when, ok=False, status=0, ms=0.0)
 
 

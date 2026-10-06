@@ -36,7 +36,7 @@ describe("the static index", () => {
   test("no entry names the platform or uses an em dash", () => {
     for (const e of indexEntries()) {
       assert.doesNotMatch(`${e.title} ${e.keywords ?? ""}`, /\bOSCR\b|Open Scientific Code Registry/);
-      assert.doesNotMatch(e.title, /—/);
+      assert.doesNotMatch(e.title, /\u2014/);
     }
   });
 
