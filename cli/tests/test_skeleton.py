@@ -92,7 +92,7 @@ def test_settings_file_mode_env_and_validation(run):
     assert run("config", "get", "host").out.strip() == "example.org"
     assert run("config", "get", "host", env={"OSCR_HOST": "localhost:8791"}).out.strip() == "localhost:8791"
     assert run("config", "unset", "host").code == 0
-    assert run("config", "get", "host").out.strip() == "oscr.yannbellec-b.workers.dev"
+    assert run("config", "get", "host").out.strip() == "openscicode.org"
     r = run("config", "list")
     assert "credential_store=keychain" in r.out
     r = run("config", "set", "credential_store", "file")

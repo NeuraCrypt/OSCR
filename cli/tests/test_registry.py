@@ -199,7 +199,7 @@ def test_trace_propose_then_check_at_later_commits(run, clone):
     assert m["commit"] == head and m["paper"]["doi"] == "10.5555/oscr.fixture.1"
     assert m["pairs"][0] == {"pair": 1, "path": "analysis/preprocess.py", "start": 4, "end": 5, "section": "Methods › Filtering", "paragraph": 3, "symbol": "bandpass",
                              "permalink": f"https://github.com/oscr-fixture/eeg-analysis/blob/{head}/analysis/preprocess.py#L4-L5",
-                             "registry": f"https://oscr.yannbellec-b.workers.dev/r/oscr-fixture/eeg-analysis/blob/{head}/analysis/preprocess.py#L4-L5"}
+                             "registry": f"https://openscicode.org/r/oscr-fixture/eeg-analysis/blob/{head}/analysis/preprocess.py#L4-L5"}
     assert "on no remote branch" in r.err
     # Moved: two lines added above.
     p = clone / "analysis" / "preprocess.py"

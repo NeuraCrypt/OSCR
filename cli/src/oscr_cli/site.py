@@ -13,7 +13,7 @@ SITE_NAME = "OSCR"
 
 #: The registry's address while it is built (CLAUDE.md: the free workers.dev address, a domain before
 #: the public launch).
-DEFAULT_HOST = "oscr.yannbellec-b.workers.dev"
+DEFAULT_HOST = "openscicode.org"
 
 #: GitHub's own addresses (the device flow, git, the REST API). Tests point them at the fake GitHub.
 DEFAULT_GITHUB_WEB = "https://github.com"
