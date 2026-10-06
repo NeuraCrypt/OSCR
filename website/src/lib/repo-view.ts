@@ -71,7 +71,15 @@ export const MATH_TAGS = [
   "math", "mrow", "mi", "mn", "mo", "ms", "mtext", "mspace", "msub", "msup", "msubsup", "mfrac", "msqrt", "mroot",
   "mover", "munder", "munderover", "mtable", "mtr", "mtd", "mstyle", "mpadded", "mphantom", "semantics", "annotation",
 ] as const;
-export const TAGS = [...HTML_TAGS, ...MATH_TAGS] as const;
+/** SVG's presentation elements, for the charts the registry draws itself (night phase 12): the
+ *  repository statistics are shown in the registry's own inline SVG, never a chart library, never a
+ *  GitHub image. Colour is set by science.css classes (never a fill or stroke attribute), so a chart
+ *  reads the same light and dark; only geometry is carried as attributes. No `script`, no
+ *  `foreignObject`, no `image`, no external reference: the SVG is inert. */
+export const SVG_TAGS = [
+  "svg", "g", "path", "rect", "line", "circle", "polyline", "polygon", "text", "tspan", "title", "desc",
+] as const;
+export const TAGS = [...HTML_TAGS, ...MATH_TAGS, ...SVG_TAGS] as const;
 export type Tag = (typeof TAGS)[number];
 
 /** The attributes a view may set (no style, no event handler, no inline anything). `src` takes
@@ -84,6 +92,10 @@ export const ATTRS = [
   "for", "datetime", "rel", "lang", "maxlength",
   "display", "mathvariant", "stretchy", "accent", "accentunder", "fence", "separator", "lspace", "rspace", "columnalign",
   "linethickness", "encoding", "width", "depth", "height", "movablelimits", "largeop", "symmetric", "scriptlevel",
+  // SVG geometry for the registry's own charts (night phase 12): shape and position only, never a
+  // colour (science.css classes carry colour), never a reference out (no href on an SVG element).
+  "viewBox", "preserveAspectRatio", "d", "x", "y", "x1", "y1", "x2", "y2", "cx", "cy", "r", "points",
+  "text-anchor", "dominant-baseline",
 ] as const;
 
 /** An image source a view may carry: an object URL the page made from bytes it read (blob:), or

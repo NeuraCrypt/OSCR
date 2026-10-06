@@ -18,6 +18,21 @@
   --font: "Lucida Grande", "Helvetica Neue", Helvetica, Arial, sans-serif;
   --font-code: Menlo, Consolas, "DejaVu Sans Mono", monospace;
   --width: 1100px;
+  /* The registry's own charts (statistics, night phase 12): one muted palette, defined here only, so
+     a future theme redefines it in one place. Additions green, deletions brown, like a diff. */
+  --chart-ink: #333;
+  --chart-grid: #ddd;
+  --series-1: #1f3b4d;
+  --series-2: #0645ad;
+  --series-3: #1a6b1a;
+  --series-4: #8a5a00;
+  --series-5: #7a2048;
+  --series-6: #4a4a4a;
+  --chart-add: #1a6b1a;
+  --chart-del: #a33;
+  --mark-paper: #0645ad;
+  --mark-map: #7a2048;
+  --mark-tag: #8a5a00;
 }
 
 html { font-size: 100%; }
@@ -1426,3 +1441,60 @@ ul.advisory-posts li { margin: .2em 0; }
 details.advisory-new { margin: .8em 0; }
 form.advisory-form label { display: block; margin: .3em 0; }
 form.advisory-form input, form.advisory-form select { font: inherit; padding: .15em .35em; border: 1px solid #777; border-radius: 0; min-width: min(28em, 100%); }
+
+/* Repository statistics (night phase 12): the registry draws every chart itself, in inline SVG, and
+   shows the same numbers as a table. No chart library, no GitHub image. Colour is set here, never as
+   an SVG attribute, so a chart reads the same wherever the theme goes. */
+.insights { margin: 1em 0; }
+.insights h2 { margin: .2em 0 .4em; }
+.insights section { margin: 1.4em 0; }
+.insights section > h3 { margin: .2em 0 .3em; }
+.insights .at-source { color: var(--muted); font-size: .9em; margin: .2em 0 .6em; }
+.figure-with-table { margin: 1em 0; }
+figure.chart { margin: .4em 0; }
+figure.chart svg { width: 100%; height: auto; display: block; }
+figure.chart figcaption { color: var(--muted); font-size: .9em; margin-top: .3em; }
+figure.chart-empty { color: var(--muted); font-style: italic; }
+.chart .axis { stroke: var(--chart-grid); stroke-width: 1; }
+.chart .tick { fill: var(--muted); font-size: 11px; font-family: var(--font); }
+.chart .line { fill: none; stroke-width: 1.6; }
+.chart .line-1 { stroke: var(--series-1); } .chart .area-1 { fill: var(--series-1); opacity: .14; }
+.chart .line-2 { stroke: var(--series-2); } .chart .area-2 { fill: var(--series-2); opacity: .14; }
+.chart .line-3 { stroke: var(--series-3); } .chart .area-3 { fill: var(--series-3); opacity: .14; }
+.chart .line-4 { stroke: var(--series-4); } .chart .area-4 { fill: var(--series-4); opacity: .14; }
+.chart .line-5 { stroke: var(--series-5); } .chart .area-5 { fill: var(--series-5); opacity: .14; }
+.chart .line-6 { stroke: var(--series-6); } .chart .area-6 { fill: var(--series-6); opacity: .14; }
+.chart .col-up { fill: var(--chart-add); }
+.chart .col-down { fill: var(--chart-del); }
+.chart .bar-1 { fill: var(--series-1); } .chart .bar-2 { fill: var(--series-2); }
+.chart .bar-3 { fill: var(--series-3); } .chart .bar-4 { fill: var(--series-4); }
+.chart .bar-5 { fill: var(--series-5); } .chart .bar-6 { fill: var(--series-6); }
+.chart .bar-label { fill: var(--bg); font-size: 11px; font-family: var(--font); }
+.chart .bar-value { fill: var(--chart-ink); font-size: 11px; font-family: var(--font); }
+.chart .mark { stroke-width: 1; stroke-dasharray: 2 2; }
+.chart .mark-dot { stroke: none; }
+.chart .mark-paper, .chart circle.mark-paper { stroke: var(--mark-paper); fill: var(--mark-paper); }
+.chart .mark-map, .chart circle.mark-map { stroke: var(--mark-map); fill: var(--mark-map); }
+.chart .mark-tag, .chart circle.mark-tag { stroke: var(--mark-tag); fill: var(--mark-tag); }
+.chart-legend { font-size: .85em; color: var(--muted); margin: .2em 0; }
+.chart-legend .key { margin-right: 1em; white-space: nowrap; }
+.chart-legend .key::before { content: ""; display: inline-block; width: .8em; height: .8em; margin-right: .3em; vertical-align: -.05em; }
+.chart-legend .series-1::before { background: var(--series-1); } .chart-legend .series-2::before { background: var(--series-2); }
+.chart-legend .series-3::before { background: var(--series-3); } .chart-legend .series-4::before { background: var(--series-4); }
+.chart-legend .series-5::before { background: var(--series-5); } .chart-legend .series-6::before { background: var(--series-6); }
+.chart-legend .key-up::before { background: var(--chart-add); } .chart-legend .key-down::before { background: var(--chart-del); }
+.chart-legend .mark-paper::before { background: var(--mark-paper); } .chart-legend .mark-map::before { background: var(--mark-map); } .chart-legend .mark-tag::before { background: var(--mark-tag); }
+table.chart-table { border-collapse: collapse; font-size: .9em; margin: .4em 0; }
+table.chart-table caption { text-align: left; color: var(--muted); font-size: .95em; margin-bottom: .2em; }
+table.chart-table th, table.chart-table td { border: 1px solid var(--rule); padding: .1em .5em; text-align: right; }
+table.chart-table th:first-child { text-align: left; }
+.chart-downloads { font-size: .85em; margin: .3em 0; }
+.chart-downloads button { font: inherit; background: none; border: none; color: var(--link); cursor: pointer; padding: 0; margin-right: 1em; }
+.chart-downloads button:hover { text-decoration: underline; }
+details.chart-data > summary { cursor: pointer; color: var(--link); font-size: .9em; }
+.used-by-count { font-weight: bold; }
+.traffic-note { color: var(--muted); font-size: .9em; }
+.checklist { list-style: none; margin: .5em 0; padding: 0; }
+.checklist li { margin: .25em 0; }
+.checklist .done::before { content: "\2713 "; color: var(--ok); }
+.checklist .todo::before { content: "\2022 "; color: var(--muted); }
