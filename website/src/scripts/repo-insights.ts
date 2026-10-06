@@ -13,6 +13,7 @@
 // it never names the platform.
 
 import type { Dependent, StatsFacts, TrafficFacts } from "../lib/stats.ts";
+import { communityView, isRedistributable, type CommunityInput } from "../lib/community-view.ts";
 import {
   dataTable, dayOf, divergingColumns, parseCodeFrequency, parseCommitActivity, parseContributors, parseParticipation,
   rankedBars, timeSeriesChart, toCsv,
@@ -260,6 +261,49 @@ function mountUsedBy(sec: HTMLElement, facts: StatsFacts | null): void {
   sec.replaceChildren(...(heading ? [heading] : []), box);
 }
 
+/** Read a file at the repository's default branch in the browser; null when absent or unreadable. */
+async function readFileText(env: CodeEnv, path: string): Promise<string | null> {
+  const url = `${env.endpoints.api}/repos/${encodeURIComponent(env.repo.owner)}/${encodeURIComponent(env.repo.name)}/contents/${path}`;
+  try {
+    const res = await fetch(url, { headers: { Accept: "application/vnd.github.raw" } });
+    if (!res.ok) return null;
+    return await res.text();
+  } catch {
+    return null;
+  }
+}
+
+async function mountCommunity(sec: HTMLElement, env: CodeEnv): Promise<void> {
+  // GitHub's community profile is one request: the health files it found (readme, licence, code of
+  // conduct, contributing). CITATION.cff and SECURITY are read on their own; the papers come from
+  // OSCR's layer. All on the reader's quota, 0 Worker requests.
+  let profile: { files?: Record<string, unknown>; description?: string | null } = {};
+  try {
+    const res = await fetch(`${env.endpoints.api}/repos/${encodeURIComponent(env.repo.owner)}/${encodeURIComponent(env.repo.name)}/community/profile`, { headers: { Accept: "application/vnd.github+json" } });
+    if (res.ok) profile = await res.json();
+    else if (res.status === 403 || res.status === 429) return saySection(sec, "The source's hourly limit for anonymous readers is spent; the community checklist will read again later.", "warning");
+  } catch {
+    return saySection(sec, "The community checklist could not be read at the source just now.", "warning");
+  }
+  const files = profile.files ?? {};
+  const licenceFile = files.license as { spdx_id?: string } | null | undefined;
+  const spdx = licenceFile && typeof licenceFile.spdx_id === "string" && licenceFile.spdx_id !== "NOASSERTION" ? licenceFile.spdx_id : "";
+  const [cff, security] = await Promise.all([readFileText(env, "CITATION.cff"), readFileText(env, "SECURITY.md")]);
+  const input: CommunityInput = {
+    hasReadme: !!files.readme,
+    hasDescription: !!(env.info.description || profile.description),
+    licence: spdx ? { spdx, redistributable: isRedistributable(spdx) } : null,
+    citation: { present: cff !== null, doi: cff !== null && /10\.\d{4,9}\/\S+/.test(cff) },
+    hasCodeOfConduct: !!files.code_of_conduct,
+    hasContributing: !!files.contributing,
+    hasSecurity: security !== null || !!files.security,
+    papers: env.layer?.papers?.length ?? 0,
+    maps: env.layer?.maps ?? 0,
+  };
+  const heading = sec.querySelector("h3");
+  sec.replaceChildren(...(heading ? [heading] : []), toDom(h("p", { class: "at-source" }, "The health files are read at the source; the linked papers are the registry's.")), toDom(communityView(input)));
+}
+
 async function mountTraffic(sec: HTMLElement, env: CodeEnv): Promise<void> {
   const id = env.layer?.id ?? env.info.key.id;
   if (!id) return saySection(sec, "Traffic is shown to a repository's maintainers, once it is in the registry.");
@@ -322,6 +366,7 @@ codeViews.insights = async (slot, env) => {
   root.className = "insights";
   root.append(toDom(h("h2", null, "Insights")));
   root.append(toDom(h("p", { class: "at-source" }, "The registry draws these charts itself. The source's own statistics are read in your browser, on your quota; the research marks and the star history are the registry's.")));
+  const secCommunity = section("community", "Community profile");
   const secUsedBy = section("used_by", "Used by");
   const secTraffic = section("traffic", "Traffic (maintainers only)");
   const secCommits = section("commit_activity", "Commit activity");
@@ -329,7 +374,7 @@ codeViews.insights = async (slot, env) => {
   const secCode = section("code_frequency", "Code frequency");
   const secContributors = section("contributors", "Contributors");
   const secStars = section("stars", "Star history");
-  root.append(secUsedBy, secTraffic, secCommits, secParticipation, secCode, secContributors, secStars);
+  root.append(secCommunity, secUsedBy, secTraffic, secCommits, secParticipation, secCode, secContributors, secStars);
   slot.replaceChildren(root);
 
   const facts = await readFacts(env);
@@ -338,6 +383,7 @@ codeViews.insights = async (slot, env) => {
   mountUsedBy(secUsedBy, facts);
   // The GitHub reads and the maintainer traffic run together; the facts are already in.
   await Promise.all([
+    mountCommunity(secCommunity, env),
     mountTraffic(secTraffic, env),
     mountCommitActivity(secCommits, env, marks),
     mountParticipation(secParticipation, env),
