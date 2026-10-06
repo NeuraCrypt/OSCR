@@ -478,13 +478,46 @@ to D06-6.
 - **Tests at the close**: pytest 585; ruff clean; `npm test` 1,533; the build and `check
   --every-route` ok; the whole end-to-end run passed (every check, including stage 11).
 
+## Phase 12: what it produced
+
+Repository statistics, on `night/phase-12-statistics` (from `night/phase-06-discussions`). Built on
+phase 06; not merged, not deployed, not pushed to main. Every registry write behind `FORGE_OPEN`;
+nothing of a user's code run; no email. Detail: `docs/STATISTICS.md`, decisions D12-1 to D12-5. Five
+elements, one commit each:
+
+- **E1 the charts** (`src/lib/stats-view.ts`, `tests/forge-pages/stats-view.test.ts`): a time-series
+  chart, a diverging column chart (code frequency) and ranked bars (contributors), each also a table
+  with a CSV; the GitHub-stats parsers. SVG joined the view tree (`repo-view.ts`, `dom.ts`); chart
+  colours in `science.css`. GitHub is the competitor: the registry draws everything itself (D12-1, D12-4).
+- **E2 the Insights tab** (`src/scripts/repo-insights.ts`, the `insights` view and tab): commit
+  activity, participation, code frequency and contributors, read from GitHub in the reader's browser
+  (0 Worker/Mac requests), the 202 handled; each chart has a CSV and a PNG (rasterised from the live
+  SVG); the research marks overlaid from `/api/forge/stats`.
+- **E3 "Used by"** (`migrations/d1-forge/0017_statistics.sql`, `oscr/usedby.py`, `oscr usedby`,
+  `worker/forge/service/statistics.ts`): the papers and repositories that depend on a repository, a
+  **paper counts** (D12-2); computed on the Mac, served by `GET /api/forge/stats` by a key range.
+- **E4 traffic** (`worker/forge/service/traffic.ts`): aggregate page views and visits, referrers and
+  pages, **maintainers only** (403 otherwise), **no unique visitors** (D12-3); read from Cloudflare
+  with the owner's read-only token (`org.oscr.cloudflare-analytics`), a local fake in the night build.
+- **E5 the community profile** (`src/lib/community-view.ts`): the health files GitHub checks for, plus
+  a reusable licence, a `CITATION.cff` and a linked paper with a tracing map; a score and research notes.
+
+The close: the whole suite green (pytest 592, ruff clean, `npm test` 1 558, build and `check
+--every-route` within the budget); the end-to-end run extended (stage 12, `e2e-statistics.ts`, a fake
+Cloudflare analytics source: "Used by" counts a paper, the chart shows a research mark, Ada sees
+aggregate traffic with no unique-visitor figure, Bob is refused 403, the checklist reflects a ready and
+a bare repository) and the whole run passed (exit 0). Screenshots in `docs/night-screenshots/phase-12/`.
+Docs: `STATISTICS.md`, `FORGE.md`, `ARCHITECTURE.md`, `CLAUDE.md`, `DECISIONS.md` D12-*.
+
+Deferred (D12-5): the network graph and forks tree/activity; tag marks and commit-date marks; the
+static-layer "Used by" counter for signed-out readers; discussion insights, CI metrics, rule insights,
+lab research insights, moderation transparency reporting.
+
 ## Next step
 
-Phase 12, repository statistics, on branch `night/phase-12-statistics` (created from
-`night/phase-06-discussions`, nothing built on it): insights (Pulse, contributors, commits, code
-frequency, forks, the network graph with research marks), "used by" (papers and repositories that
-depend on a repository), privacy-respecting traffic, the community profile, star history, discussion
-insights, transparency reporting. Depends on 01, 02, 04, 06, 08, 10, 11 (what is counted); the graphs
-are read from GitHub's statistics API in the reader's browser (0 Worker requests). Reading
-Cloudflare's analytics needs a read-only token the owner creates (kept in the keychain). The owner's
-steps so far are in `docs/NIGHT_REPORT.md`; **the owner's go is granted in advance** for the build.
+Phase 13, snippets (the registry's gists), on branch `night/phase-13-snippets` (created from
+`night/phase-12-statistics`, nothing built on it). See `docs/PLATFORM_PLAN.md` §15 "Phase 13,
+Snippets": a snippet lives in a `snippets` repository in the researcher's own GitHub account (created
+through an authorized action), its record in `oscr_forge`; public or unlisted; revisions, forks, stars,
+comments, embedding; the research additions (a snippet attached to a paper passage). Depends on 01, 02,
+03, 08, 16. **The owner's go is granted in advance** for the next phases.

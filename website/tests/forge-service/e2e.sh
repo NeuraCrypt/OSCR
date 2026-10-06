@@ -241,3 +241,32 @@ start_worker --var "TURNSTILE_SECRET_KEY:$TURNSTILE_PASS" --var "FORGE_OPEN:true
 env SITE="$SITE" MOCK="$MOCK" FAKE="$FAKE" REPO_ID="$REPO_ID" node --experimental-strip-types tests/forge-service/e2e.ts phase06
 start_worker --var "TURNSTILE_SECRET_KEY:$TURNSTILE_FAIL" --var "FORGE_OPEN:true"
 env SITE="$SITE" MOCK="$MOCK" FAKE="$FAKE" REPO_ID="$REPO_ID" node --experimental-strip-types tests/forge-service/e2e.ts phase06-fail
+
+# 12. Night phase 12 (tests/forge-service/e2e-statistics.ts): repository statistics. A FAKE Cloudflare
+# analytics source (tests/forge/fake-cf-analytics-server.ts), the statistics seeded into oscr_forge
+# (repo_stats, repo_dependents counting a paper, a research mark), then the Worker (FORGE_OPEN=true,
+# the read-only analytics token and the fake endpoint): "Used by" counts a paper and a mark shows on
+# the chart, Ada (a maintainer) sees aggregate traffic with no unique-visitor figure, Bob (not a
+# maintainer) is refused, and the community checklist reflects a ready and a bare repository.
+CF_PORT=${CF_PORT:-9494}
+CF="http://127.0.0.1:$CF_PORT"
+node --experimental-strip-types tests/forge/fake-cf-analytics-server.ts "$CF_PORT" >"$TMP/cf.log" 2>&1 &
+PIDS="$PIDS $!"
+i=0
+until curl -fs -X POST "$CF/graphql" -d '{}' >/dev/null 2>&1; do
+  i=$((i + 1)); [ "$i" -gt 60 ] && { echo "the fake Cloudflare analytics did not start:"; cat "$TMP/cf.log"; exit 1; }
+  sleep 0.5
+done
+npx wrangler d1 execute oscr_forge --local --env local --persist-to "$TMP/state" --yes --command \
+  "INSERT OR REPLACE INTO repo_stats (forge, repo_id, usedby_papers, usedby_repos, stars, computed_at) VALUES ('github', '$REPO_ID', 1, 1, '[[1700000000,1],[1700604800,3]]', 1700604800);
+   DELETE FROM repo_dependents WHERE forge = 'github' AND repo_id = '$REPO_ID';
+   INSERT INTO repo_dependents (forge, repo_id, dep_kind, dep_ref, via, owner, name, slug, title, computed_at) VALUES
+     ('github', '$REPO_ID', 'paper', 'doi:10.5555/oscr.fixture.1', 'PyPI:eeg-analysis', '', '', 'oscr-fixture-1', 'The fixture paper', 1700604800),
+     ('github', '$REPO_ID', 'repo', '9001', 'PyPI:eeg-analysis', 'cat', 'downstream', '', '', 1700604800);
+   DELETE FROM repo_marks WHERE forge = 'github' AND repo_id = '$REPO_ID';
+   INSERT INTO repo_marks (forge, repo_id, kind, ref, t, label, computed_at) VALUES
+     ('github', '$REPO_ID', 'paper', 'doi:10.5555/oscr.fixture.1', 1700300000, 'The fixture paper (doi:10.5555/oscr.fixture.1)', 1700604800);" >/dev/null
+start_worker --var "TURNSTILE_SECRET_KEY:$TURNSTILE_PASS" --var "FORGE_OPEN:true" \
+  --var "CLOUDFLARE_ANALYTICS_TOKEN:ro-test-token" --var "CLOUDFLARE_ACCOUNT_ID:acc-test" \
+  --var "CLOUDFLARE_ANALYTICS_SITE_TAG:site-test" --var "CLOUDFLARE_ANALYTICS_URL:$CF/graphql"
+env SITE="$SITE" MOCK="$MOCK" FAKE="$FAKE" REPO_ID="$REPO_ID" node --experimental-strip-types tests/forge-service/e2e-statistics.ts

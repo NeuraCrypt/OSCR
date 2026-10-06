@@ -978,6 +978,30 @@ files read as text and pushed to `oscr_forge`; nothing of a user's code runs, he
 - **The screenshots**: `docs/night-screenshots/phase-11/` (desktop 1280×860 and phone 390×844, against
   the fake GitHub and `wrangler dev`, every outside address refused).
 
+### Repository statistics (phase 12): the registry's own charts
+
+Built on the night of 2026-10-05, on `night/phase-06-discussions`; the detail is
+[STATISTICS.md](STATISTICS.md), the decisions D12-1 to D12-5 in [DECISIONS.md](DECISIONS.md). GitHub is
+the competitor, so every statistic is drawn in the registry's own inline-SVG charts
+(`src/lib/stats-view.ts`), never a chart library and never a GitHub image; each chart is also a table
+with a CSV and a PNG.
+
+- **Read in the browser** (E1/E2, `src/scripts/repo-insights.ts`): GitHub's `stats/*` and
+  `community/profile`, on the reader's quota, 0 Worker and 0 Mac requests (D12-1); a 202 is retried.
+  The charts overlay the registry's **research marks** (a commit a paper or a map cites).
+- **"Used by"** (E2/E3): the papers and repositories that depend on a repository. A **paper** counts
+  (D12-2): the Mac (`oscr usedby`, `oscr/usedby.py`) builds a reverse index over `repo_deps` and the
+  confirmed `repo_packages`, and counts the papers linked to each dependant. Facts: `repo_stats`,
+  `repo_dependents`. `GET /api/forge/stats` serves them by a key range.
+- **Traffic** (E4, `worker/forge/service/traffic.ts`): aggregate page views and visits, referrers and
+  pages, **maintainers only**, **no unique visitors** (D12-3), read from Cloudflare with the owner's
+  read-only token (`org.oscr.cloudflare-analytics`); a local fake in the night build.
+- **The community profile and research checklist** (E5, `src/lib/community-view.ts`): the health files
+  GitHub checks for, plus a reusable licence, a `CITATION.cff` and a linked paper with a tracing map.
+- **The migration**: `migrations/d1-forge/0017_statistics.sql` (`repo_stats`, `repo_dependents`,
+  `repo_marks`). SVG joined the view tree (`repo-view.ts`, `dom.ts`), colour by `science.css` (D12-4).
+- **The screenshots**: `docs/night-screenshots/phase-12/` (desktop 1280×860 and phone 390×844).
+
 ## Organizations and account security (night phase 09)
 
 OSCR's own organizations (a lab, a group, a project), teams, roles, research permissions, a

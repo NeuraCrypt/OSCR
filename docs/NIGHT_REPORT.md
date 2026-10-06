@@ -654,3 +654,92 @@ Aucun ajout : les aperçus réutilisent les classes existantes (`.masthead`, `.b
 `.sidebar`, `nav.tabs`, `dl.listing`, `.line`, `.label`, `.ok`, `.warning`). Les pages réelles, quand
 elles seront construites, ajouteront leurs règles dans `science.css`, dans son esprit (pas de pastille,
 pas de majuscule décorative, pas de tiret cadratin).
+
+## 9. Phase 12 (statistiques des dépôts)
+
+Construit sur `night/phase-06-discussions`, pas fusionné, pas déployé. Toute écriture du registre
+derrière `FORGE_OPEN` ; rien du code d'un utilisateur n'est exécuté ; aucune adresse e-mail nulle part.
+Détail : [`docs/STATISTICS.md`](STATISTICS.md), décisions D12-1 à D12-5.
+
+L'idée simple : l'onglet « Insights » d'un dépôt montre ses chiffres. GitHub est le concurrent, alors
+le registre **dessine lui-même** chaque graphique (du SVG écrit à la main, jamais une bibliothèque de
+graphiques, jamais une image de GitHub). Chaque graphique est **aussi un tableau**, avec un bouton pour
+télécharger le CSV (le tableau en texte) et le PNG (l'image, fabriquée dans le navigateur).
+
+### Ce qui marche
+
+- **Les graphiques du navigateur** : l'activité des commits, la participation, la fréquence du code et
+  les contributeurs sont lus **dans le navigateur du lecteur, directement chez GitHub**, sur le quota du
+  lecteur (0 requête pour le Worker et pour le Mac). GitHub répond « 202 » (pas encore prêt) le temps de
+  calculer ; la page réessaie, puis le dit en mots.
+- **« Utilisé par »** : combien d'**articles** et de dépôts dépendent d'un dépôt. L'angle recherche :
+  on compte un **article**, pas seulement un dépôt. Un dépôt P est « utilisé par » un dépôt D quand le
+  graphe des dépendances de D nomme un paquet que P publie ; chaque article lié à D compte alors. Calculé
+  sur le Mac (`oscr usedby`), servi par `GET /api/forge/stats`, lecture par clé (jamais un balayage).
+- **Le trafic (mainteneurs seulement)** : vues de page et visites par jour (14 jours) et par semaine
+  (104 semaines), sites référents, pages populaires. **Rien que des totaux** : jamais un compte de
+  visiteurs uniques, jamais rien par personne. Refusé à qui n'est pas mainteneur du dépôt (403), donc ça
+  ne fuite ni dans les pages statiques, ni dans la recherche, ni dans un flux, ni dans un webhook, ni
+  dans l'API.
+- **Le profil de communauté** : les fichiers de santé que GitHub vérifie (README, licence, code de
+  conduite, contribution, politique de sécurité) PLUS ce dont le code d'un article a besoin (une licence
+  qui autorise le partage, un `CITATION.cff`, un article lié avec une carte de traçage) ; une note par
+  point et un score.
+- **Les marques de recherche** sur les graphiques (un commit qu'un article ou une carte cite) et
+  l'historique des étoiles du registre : ce sont les faits du registre, pas de GitHub.
+
+### Ce que Yann doit faire (ou savoir)
+
+- **Le jeton Cloudflare pour le trafic** : pour que la vue « Trafic » marche en vrai, il faut un jeton
+  **en lecture seule** que **toi seul** crées, dans le tableau de bord Cloudflare :
+  - un **API token** avec la seule permission **Account Analytics : Read** (lecture seule, aucun droit
+    d'écriture, aucun autre périmètre) ;
+  - range-le dans le trousseau du Mac sous le nom **`org.oscr.cloudflare-analytics`** (comme les autres
+    jetons : `security python -c` ou la commande `security add-generic-password`), et pose-le comme
+    **secret Cloudflare** du Worker via `sh tools/setup_cloudflare.sh` (le script te le demande, ne
+    l'affiche jamais, ne l'écrit dans aucun fichier) ;
+  - pose aussi, à côté, `CLOUDFLARE_ACCOUNT_ID` (l'identifiant de ton compte, public) et
+    `CLOUDFLARE_ANALYTICS_SITE_TAG` (l'étiquette du site dans Web Analytics).
+  - Le code **ne lit, n'affiche et ne crée jamais** ce jeton : il s'en sert seulement pour autoriser la
+    requête. Tant que le jeton n'est pas posé, la vue « Trafic » dit en mots qu'elle n'est pas activée.
+  - **Coût** : lire l'analytics Cloudflare entre dans l'analytics incluse du plan Workers (gratuit à ce
+    volume). Si un jour le volume demandait un palier payant, c'est signalé avant d'être activé, jamais
+    mis en route en silence ; la vue retombe sur « pas activée ».
+- **La nuit, rien n'a touché Cloudflare** : l'essai de bout en bout a utilisé une **fausse** source
+  d'analytics sur la machine (`tests/forge/fake-cf-analytics-server.ts`), jamais le vrai Cloudflare.
+- **Le pousseur du Mac** : `oscr usedby scan` calcule « Utilisé par », l'historique des étoiles et les
+  marques des articles, et écrit seulement pour les dépôts dont les chiffres ont changé, dans le budget
+  du pousseur. À ajouter à la passe nocturne (à côté de `oscr security`).
+- **La migration** : `migrations/d1-forge/0017_statistics.sql` (trois tables : `repo_stats`,
+  `repo_dependents`, `repo_marks`). À appliquer avec les autres quand la phase sera fusionnée.
+- **Lecture connectée** : `GET /api/forge/stats` et `/api/forge/traffic` demandent d'être connecté (les
+  faits « Utilisé par » sont publics, mais la lecture reste hors de la page déconnectée, comme pour la
+  sécurité) ; les graphiques GitHub, eux, marchent déconnecté.
+
+### Ce qui est reporté (noté, pas fait cette nuit, D12-5)
+
+Le graphe de réseau (les branches dessinées) et l'arbre/activité des forks ; les marques pour les
+**tags** liés à une version d'article ou à un DOI, et les marques placées à la date propre de chaque
+commit cité (cette nuit, une marque d'article est posée à la date de publication de l'article) ; le
+compteur « Utilisé par » dans les pages statiques pour les lecteurs déconnectés ; les analyses des
+discussions, les mesures d'intégration continue, les analyses de règles, les analyses de recherche d'un
+laboratoire, et le rapport de transparence de la modération (des comptes seulement). Chaque report est
+additif : un élément plus tard ajoute une section ou un fait du Mac, jamais un fichier par dépôt.
+
+### Vérifications à la clôture
+
+Toute la suite verte : pytest 592, ruff propre, `npm test` 1 558 ; la construction et `check
+--every-route` dans le budget. L'essai de bout en bout étendu (étape 12, `e2e-statistics.ts`, une fausse
+source Cloudflare) et l'ensemble a réussi (sortie 0) : « Utilisé par » compte un article, le graphique
+montre une marque de recherche, Ada (mainteneuse) voit un trafic en totaux sans visiteur unique, Bob
+(non-mainteneur) est refusé (403), la liste de contrôle reflète un dépôt complet et un dépôt vide.
+Captures d'écran dans `docs/night-screenshots/phase-12/` (bureau 1280×860 et téléphone 390×844, contre
+un serveur local, toute adresse extérieure bloquée ; le port 8790 n'a pas été touché).
+
+### `science.css`
+
+Ajouts dans l'esprit de la feuille (une seule source de style) : les jetons de couleur des graphiques
+sur `:root` (`--series-1..6`, `--chart-add`, `--chart-del`, `--mark-*`), puis `.insights`, `figure.chart`
+et ses `.line/.area/.col/.bar/.mark`, `.chart-legend`, `table.chart-table`, `.chart-downloads`,
+`.checklist`. Les formes SVG ne portent que la géométrie ; la couleur vient de ces classes (pas de
+pastille, pas de majuscule décorative, pas de tiret cadratin).

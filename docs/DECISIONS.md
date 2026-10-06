@@ -3075,3 +3075,60 @@ export, search, feed and webhook of discussions must drop hidden/blocked content
 text of a reader is public" statement in CLAUDE.md and `/policies/moderation/` must be updated. **No
 language-model moderator is added**: no free model fits the free plan reliably, so rules, Turnstile,
 hiding and caps carry the load; anything that would need a paid service is flagged, not built.
+
+## Night phase 12 (repository statistics)
+
+Built on `night/phase-06-discussions`, not merged, not deployed. Writes behind `FORGE_OPEN`. See
+`docs/STATISTICS.md`, `docs/FORGE.md` and `docs/ARCHITECTURE.md`.
+
+### D12-1. GitHub's statistics are read in the reader's browser; the registry draws its own charts
+
+**Decision.** GitHub is the competitor, so a repository's statistics are shown in the registry's own
+inline-SVG charts (`src/lib/stats-view.ts`), never a chart library and never a GitHub image. What
+GitHub can compute (Pulse, contributors, commit activity, code frequency) the reader's browser reads
+straight from GitHub (`stats/*`, `community/profile`), on the reader's own quota, 0 Worker and 0 Mac
+requests (`src/scripts/repo-insights.ts`). GitHub answers 202 with no body while it computes; each read
+retries a few times and then says so. Every chart is also a table, with a CSV and a PNG (the PNG is
+rasterised from the live SVG in the browser, colours inlined, so nothing of the page leaves).
+
+### D12-2. "Used by" counts papers, not only repositories, computed on the Mac
+
+**Decision.** The research angle of "Used by" is that a **paper** counts. A repository P is used by a
+repository D when D's dependency graph (`repo_deps`) names a package P publishes (`repo_packages`,
+confirmed), and every paper linked to D then counts as a paper that uses P. The Mac computes this
+(`oscr usedby scan`, `oscr/usedby.py`): a reverse index over every repository's deps and confirmed
+packages, with the paper links and the star events, written only for the repositories whose numbers
+changed, within the facts push's budget. `GET /api/forge/stats` serves it by a key range, signed in
+(the facts are public, but the read is kept off the signed-out page, like Security). Migration
+`0017_statistics.sql` (`repo_stats`, `repo_dependents`, `repo_marks`).
+
+### D12-3. Traffic is aggregate-only and maintainer-only, read with a read-only token
+
+**Decision.** A repository's traffic (`GET /api/forge/traffic`, `worker/forge/service/traffic.ts`) is
+shown to its **maintainers only** (403 to anyone else, so it never reaches the static layer, the
+search, a feed, a webhook or the public API), as **aggregates only**: page views and visits per day
+(14 days) and per week (104 weeks), referring sites and popular pages. There is **no unique-visitor
+count and nothing per person**: the query never asks Cloudflare for `uniques`, and the parser drops
+anything unexpected. It is read from Cloudflare's GraphQL analytics with a **READ-ONLY token** the
+owner creates (Account Analytics: Read) and keeps in the keychain (`org.oscr.cloudflare-analytics`), a
+Cloudflare secret the code never reads, prints or creates. Unset: the view says traffic is not
+enabled. Development and the tests use a local stand-in (`CLOUDFLARE_ANALYTICS_URL`,
+`deps.analyticsFetch`); the live read is free on the Workers plan's included analytics, and any future
+paid volume is flagged before it is turned on, never built silently.
+
+### D12-4. SVG joins the view tree; colour comes from science.css, never an attribute
+
+**Decision.** The charts are built as `El` trees (`repo-view.ts` SVG tags and attributes, `dom.ts`
+namespace), so a chart is a pure, tested value and renders with no inline script and no `innerHTML`.
+The shapes carry **geometry only**; colour is set by `science.css`'s `.chart` classes (a small palette
+of tokens defined once on `:root`), so a chart reads the same wherever the theme goes and the
+"science.css only" rule holds.
+
+### D12-5. What phase 12 defers (noted, not built tonight)
+
+**Deferred.** The network graph (branches drawn for the reader) and the forks tree/activity view;
+research marks for **tags** tied to a paper version or a DOI, and marks resolved from each cited
+commit's own date (tonight a paper mark sits at the paper's publication day); the static-layer "Used
+by" counter for signed-out readers; discussion insights, CI metrics as GitHub reports, rule insights,
+lab research insights for an organization, and transparency reporting of moderation (counts only).
+Each is additive: a later element adds a section or a Mac fact, never a file per repository.

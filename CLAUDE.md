@@ -321,6 +321,30 @@ Full detail in [docs/ORGANIZATIONS.md](docs/ORGANIZATIONS.md); decisions D09-1 t
   not. New `actions` kinds `org`, `member`, `team`, `passkey`, `session`, `identity`; caps `orgs`,
   `security`. No email anywhere. Pages `/organizations/` and `/account/security/` (science.css only).
 
+## Repository statistics (night phase 12)
+
+Full detail in [docs/STATISTICS.md](docs/STATISTICS.md); decisions D12-1 to D12-5. The Insights tab of
+a `/r/` page, migration `migrations/d1-forge/0017_statistics.sql`.
+
+- **GitHub is the competitor**: every statistic is drawn in the registry's own inline-SVG charts
+  (`src/lib/stats-view.ts`), never a chart library and never a GitHub image; each chart is also a table
+  with a CSV and a PNG. What GitHub can compute (Pulse, contributors, commit activity, code frequency)
+  the reader's browser reads straight from GitHub, on the reader's quota, 0 Worker and 0 Mac requests
+  (D12-1); a 202 is retried, a spent rate limit degrades to a sentence.
+- **"Used by" counts a paper, not only a repository** (D12-2): a repository P is used by a repository D
+  when D's dependency graph names a package P publishes, and every paper linked to D counts. Computed on
+  the Mac (`oscr usedby`, `oscr/usedby.py`), served by `GET /api/forge/stats` by a key range, signed in.
+- **Traffic is aggregate-only and maintainer-only** (D12-3): page views and visits, referrers and
+  pages, refused to anyone but the repository's maintainers (so it never reaches the static layer, the
+  search, a feed, a webhook or the API), **never a unique-visitor count and nothing per person**. Read
+  from Cloudflare with a **read-only** token the owner keeps in the keychain
+  (`org.oscr.cloudflare-analytics`), a Cloudflare secret the code never reads, prints or creates; unset,
+  the view says traffic is not enabled; a local fake in the night build.
+- **The research marks** a chart overlays (a commit a paper or a map cites), the star history and the
+  community research checklist (a reusable licence, a `CITATION.cff`, a linked paper with a tracing map)
+  are the registry's own facts. SVG joined the view tree; colour comes from `science.css` (D12-4). All
+  reads signed in; no email; nothing of a user's code run.
+
 ## The website's style (website/)
 
 - `website/src/styles/science.css` is the **only** source of style of the site. It is

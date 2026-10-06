@@ -441,6 +441,27 @@ Full details in [SECURITY_QUALITY.md](SECURITY_QUALITY.md). In the forge service
   download (built in the browser from the dependency graph). `science.css` holds the styles
   (`.security-*`, `ul.alerts`, `dl.deps`, `form.dep-filter`, `.advisory-*`).
 
+## Repository statistics (night phase 12)
+
+The Insights tab of a `/r/` page (`docs/STATISTICS.md`). GitHub is the competitor, so every statistic
+is drawn in the registry's own inline-SVG charts (`src/lib/stats-view.ts`), never a chart library and
+never a GitHub image; each chart is also a table with a CSV and a PNG.
+
+- **Read in the browser** (0 Worker, 0 Mac requests, D12-1): `stats/commit_activity`,
+  `stats/participation`, `stats/code_frequency`, `stats/contributors` and `community/profile` from
+  GitHub, on the reader's quota; a 202 is retried, a spent rate limit degrades to a sentence.
+- **Reads** (signed in): `GET /api/forge/stats?id=|path=` returns the registry's own facts, by a key
+  range: "Used by" (`repo_stats` counts and the star series, `repo_dependents` sample), the research
+  marks (`repo_marks`) and the star history. `GET /api/forge/traffic?id=|path=` returns a
+  repository's traffic, **maintainers only** (403 otherwise), **aggregate only** (no unique visitors),
+  read from Cloudflare with the owner's read-only token (D12-3).
+- **The Mac** writes `repo_stats`, `repo_dependents`, `repo_marks` through `oscr usedby scan`
+  (`oscr/usedby.py`), within the facts push's budget: "Used by" counts a **paper**, not only a
+  repository (D12-2). Migration `0017_statistics.sql`.
+- **The Insights tab** (`src/scripts/repo-insights.ts`): the community profile and its research
+  checklist (`src/lib/community-view.ts`), "Used by", the maintainer traffic, the GitHub charts and the
+  star history. `science.css` holds the styles (`.insights`, `.chart*`, `.chart-table`, `.checklist`).
+
 ## Budget (PLATFORM_PLAN.md §15.4)
 
 Phase 01's share of a day at ~3,000 repositories: **~900 Worker requests, ~1,300 D1 rows written,
