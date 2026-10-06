@@ -1,0 +1,54 @@
+---
+// /settings/preferences/: what a reader chooses for the whole site (night phase 15). The controls are
+// built at build time from src/lib/preferences.ts, so the page and the site-wide script agree on the
+// keys and the choices. The script (src/scripts/preferences.ts) reads the stored values on load and
+// writes them on change, in this browser only (localStorage, guarded): zero rows, nothing sent to the
+// Worker, and it works signed in or out. Themes are options here, light by default (CLAUDE.md).
+// science.css only.
+import Base from "../../layouts/Base.astro";
+import { PREFERENCES } from "../../lib/preferences";
+import { STRINGS } from "../../lib/strings";
+const s = STRINGS.preferences;
+---
+<Base
+  title={s.title}
+  description="Choose the theme, contrast, colour-vision palette, motion, spacing and more. Kept in your browser only."
+  breadcrumb={[{ text: "Account", href: "/account/" }, { text: s.title }]}
+>
+  <h1>{s.title}</h1>
+  <p class="summary">{s.intro}</p>
+  <noscript><p class="warning">These choices are kept and applied in your browser, which needs JavaScript. Without it the site stays on its defaults (light, normal contrast).</p></noscript>
+  <p id="prefs-storage" class="warning" hidden>{s.storageOff}</p>
+  <form id="prefs-form" autocomplete="off">
+    <dl class="prefs">
+      {PREFERENCES.map((p) => (
+        <>
+          <dt><label for={p.key}>{p.label}</label></dt>
+          <dd>
+            <select id={p.key} name={p.key} data-pref-attr={p.attr}>
+              {p.options.map((o) => <option value={o.value}>{o.label}</option>)}
+            </select>
+            <span class="help">{p.help}</span>
+          </dd>
+        </>
+      ))}
+    </dl>
+    <div class="prefs-actions">
+      <button type="button" id="prefs-reset">{s.reset}</button>
+      <span id="prefs-saved" class="prefs-saved" role="status" aria-live="polite"></span>
+    </div>
+  </form>
+  <h2>How this works</h2>
+  <p>
+    Your choices stay in this browser. Nothing is sent to the registry, and they are not tied to your
+    account, so they do not follow you to another computer. Syncing them to your account, when you ask,
+    is planned. Clearing your browser's site data resets them to the defaults.
+  </p>
+  <p>
+    The command palette (press <kbd>Ctrl</kbd>+<kbd>K</kbd>, or <kbd>Cmd</kbd>+<kbd>K</kbd>) can switch
+    the theme too, and <kbd>?</kbd> opens the list of keyboard shortcuts.
+  </p>
+  <script>
+    import "../../scripts/preferences";
+  </script>
+</Base>

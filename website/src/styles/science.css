@@ -17,6 +17,19 @@
   --highlighter: #fff1a8;
   --font: "Lucida Grande", "Helvetica Neue", Helvetica, Arial, sans-serif;
   --font-code: Menlo, Consolas, "DejaVu Sans Mono", monospace;
+  /* Ease of use (night phase 15): the chrome colours the themes redefine, named once here so a
+     theme (dark, or a colour-vision palette) overrides them in one place under html[data-theme=…].
+     Light stays the default: no theme attribute, these values. */
+  --panel: #fff;              /* raised surfaces: reader buttons, the legend, the palette */
+  --border-strong: var(--border-strong);      /* the darker rules of inputs, buttons, panels */
+  --pane-border: #a9b3bc;     /* the reader's panes and buttons */
+  --focus: #e8a200;           /* the focus ring, visible on every theme */
+  --shadow: rgba(0, 0, 0, .14);
+  /* How wide the text reflows and how it spaces: the preferences (line spacing, tab size) change
+     these, nothing else. */
+  --line-height: 1.45;
+  --tab-size: 4;
+  --md-font: var(--font);     /* the Markdown body font; a preference can make it fixed-width */
   --width: 1100px;
   /* The registry's own charts (statistics, night phase 12): one muted palette, defined here only, so
      a future theme redefines it in one place. Additions green, deletions brown, like a diff. */
@@ -41,13 +54,15 @@ body {
   background: var(--bg);
   color: var(--text);
   font: 15px/1.45 var(--font);
+  line-height: var(--line-height);
 }
+pre, code, .code, textarea { tab-size: var(--tab-size); -moz-tab-size: var(--tab-size); }
 
 a { color: var(--link); text-decoration: none; }
 a:hover { text-decoration: underline; }
 a:visited { color: var(--link-visited); }
 a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible {
-  outline: 2px solid #e8a200; outline-offset: 1px;
+  outline: 2px solid var(--focus); outline-offset: 1px;
 }
 
 /* Top masthead: site name on the left, search on the right */
@@ -62,7 +77,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
 .masthead form { display: flex; gap: .3em; align-items: center; font-size: .9em; }
 .masthead input[type="search"] {
   font: inherit; width: 16em; padding: .15em .35em;
-  border: 1px solid #777; border-radius: 0;
+  border: 1px solid var(--border-strong); border-radius: 0;
 }
 .masthead select, .masthead button { font: inherit; border-radius: 0; }
 /* The ways in (Browse, DOI lookup) in the masthead (approved by the owner, 2026-09-27) */
@@ -72,12 +87,12 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
 /* A button anywhere in a page (the forms, the citations' "Copy") and a form's menus, like the
    masthead's (proposed in Phases 3 and 4; the owner said not to wait, 2026-09-28) */
 main form input[type="text"], main form input[type="url"], main form input[type="search"], main button, main form select { font: inherit; border-radius: 0; }
-main form input[type="text"], main form input[type="url"], main form input[type="search"] { width: min(28em, 100%); padding: .15em .35em; border: 1px solid #777; box-sizing: border-box; }
+main form input[type="text"], main form input[type="url"], main form input[type="search"] { width: min(28em, 100%); padding: .15em .35em; border: 1px solid var(--border-strong); box-sizing: border-box; }
 /* The contribution forms (Phase 6: submit a paper, claim it, correct it, ask for its removal): a
    text of several lines like a field, a group of fields ruled like the sidebar, its legend in bold */
 main form textarea {
   font: inherit; width: min(40em, 100%); padding: .2em .35em;
-  border: 1px solid #777; border-radius: 0; box-sizing: border-box;
+  border: 1px solid var(--border-strong); border-radius: 0; box-sizing: border-box;
 }
 main fieldset { margin: .8em 0; padding: .3em .8em .6em; border: 1px solid var(--rule); min-width: 0; }
 main legend { padding: 0 .3em; font-weight: bold; }
@@ -178,12 +193,12 @@ a.reader-link {
 .reader-tools { display: flex; flex-wrap: wrap; gap: .35em; }
 .reader button, .reader .menu > summary {
   font: inherit; font-size: .84em; line-height: 1.4; padding: .12em .6em;
-  border: 1px solid #a9b3bc; border-radius: 0; background: #fff; color: var(--text);
+  border: 1px solid var(--pane-border); border-radius: 0; background: var(--panel); color: var(--text);
   cursor: pointer; white-space: nowrap;
 }
-.reader button:hover, .reader .menu > summary:hover { background: #eef1f4; }
-.reader button[aria-pressed="true"] { background: #dde5ec; border-color: #7d8b98; }
-.reader button:disabled { color: #9aa1a8; background: #fff; cursor: default; }
+.reader button:hover, .reader .menu > summary:hover { background: var(--bg-sidebar); }
+.reader button[aria-pressed="true"] { background: var(--bg-sidebar); border-color: var(--border-strong); }
+.reader button:disabled { color: var(--muted); background: var(--panel); cursor: default; }
 #toggle-paper { font-weight: bold; }
 
 /* The legend: every match, folded; each entry opens it on both sides */
@@ -191,7 +206,7 @@ a.reader-link {
 .legend > summary { cursor: pointer; color: var(--link); width: max-content; max-width: 100%; }
 .legend ol {
   margin: .3em 0 0; padding: .35em .8em .35em 2.6em; max-height: 13em; overflow: auto;
-  border: 1px solid var(--rule); background: #fff;
+  border: 1px solid var(--rule); background: var(--panel);
 }
 .legend li { margin: .1em 0; }
 .legend a { color: var(--text); }
@@ -288,7 +303,7 @@ a.reader-link {
 .menu > ul {
   position: absolute; right: 0; top: calc(100% + 2px); z-index: 5;
   min-width: 17em; margin: 0; padding: .3em 0; list-style: none;
-  background: #fff; border: 1px solid #a9b3bc; box-shadow: 0 2px 8px rgba(0, 0, 0, .14);
+  background: var(--panel); border: 1px solid var(--pane-border); box-shadow: 0 2px 8px var(--shadow);
   font-size: .86em;
 }
 .menu > ul li { padding: .25em .9em; white-space: nowrap; color: var(--muted); }
@@ -541,7 +556,7 @@ details.refs .refs-panel {
 }
 details.refs .refs-panel h3 { font-size: .95em; margin: .6em 0 .2em; }
 details.refs .refs-panel label { display: block; font-size: .9em; color: var(--muted); }
-details.refs .refs-panel input { width: 100%; box-sizing: border-box; font: inherit; padding: .15em .35em; border: 1px solid #777; border-radius: 0; }
+details.refs .refs-panel input { width: 100%; box-sizing: border-box; font: inherit; padding: .15em .35em; border: 1px solid var(--border-strong); border-radius: 0; }
 ul.ref-list { margin: 0; padding: 0; list-style: none; font-family: var(--font-code); font-size: .88em; }
 ul.ref-list li { padding: .1em 0; overflow-wrap: anywhere; }
 
@@ -647,7 +662,7 @@ ol.commit-list .title { font-size: 1em; margin: 0; overflow-wrap: anywhere; }
 ol.commit-list .line { color: var(--muted); font-size: .9em; }
 form.commit-filters, form.compare-form { margin: .5em 0 1em; font-size: .93em; }
 form.commit-filters input[type="text"], form.compare-form input[type="text"] { width: 12em; }
-form.commit-filters input[type="date"] { font: inherit; border: 1px solid #777; border-radius: 0; padding: .1em .3em; }
+form.commit-filters input[type="date"] { font: inherit; border: 1px solid var(--border-strong); border-radius: 0; padding: .1em .3em; }
 p.pager { margin: 1em 0; }
 p.diff-options { font-size: .92em; margin: .4em 0 .8em; }
 p.diff-options input { width: 12em; }
@@ -848,7 +863,7 @@ a.search-line-num { display: inline-block; min-width: 3em; text-align: right; co
 .edit-head .path-crumbs { margin: 0; font-family: var(--font-code); font-size: .92em; overflow-wrap: anywhere; }
 .edit-head .edit-name { margin: 0; flex: 1 1 16em; }
 main .edit-head .edit-name input[type="text"], .edit-head .edit-name input[type="text"] {
-  font: inherit; font-family: var(--font-code); font-size: .92em; width: min(24em, 100%); padding: .15em .35em; border: 1px solid #777; border-radius: 0; box-sizing: border-box;
+  font: inherit; font-family: var(--font-code); font-size: .92em; width: min(24em, 100%); padding: .15em .35em; border: 1px solid var(--border-strong); border-radius: 0; box-sizing: border-box;
 }
 .edit-head .edit-branch { color: var(--muted); font-size: .92em; }
 .edit-head .edit-actions { margin: 0; }
@@ -869,14 +884,14 @@ button.primary:hover { text-decoration: underline; }
 .editor-tools, .editor-find p, form.editor-goto { margin: .4em 0; font-size: .9em; }
 .editor-tools select, .editor-find input, .editor-find button, form.editor-goto input, form.editor-goto button { font: inherit; border-radius: 0; }
 .editor-find { border: 1px solid var(--rule); background: var(--bg-sidebar); padding: 0 .6em; }
-.editor-find input[type="search"], .editor-find input[type="text"] { width: min(18em, 100%); padding: .1em .3em; border: 1px solid #777; box-sizing: border-box; }
+.editor-find input[type="search"], .editor-find input[type="text"] { width: min(18em, 100%); padding: .1em .3em; border: 1px solid var(--border-strong); box-sizing: border-box; }
 .editor-find .find-said { color: var(--muted); }
-form.editor-goto input { width: 6em; padding: .1em .3em; border: 1px solid #777; }
+form.editor-goto input { width: 6em; padding: .1em .3em; border: 1px solid var(--border-strong); }
 .editor-surface {
   overflow-x: auto; border: 1px solid var(--rule); background: var(--bg);
   font-family: var(--font-code); font-size: .85em; line-height: 1.5;
 }
-.editor-surface:focus-within { outline: 2px solid #e8a200; outline-offset: 1px; }
+.editor-surface:focus-within { outline: 2px solid var(--focus); outline-offset: 1px; }
 .editor-stack { display: grid; grid-template-columns: 100%; width: max-content; min-width: 100%; }
 .editor-stack > * { grid-area: 1 / 1; }
 .editor-surface ol.lines.code.editor-lines { margin: 0; border: 0; font-size: 1em; overflow: visible; pointer-events: none; }
@@ -904,7 +919,7 @@ p.draft-note { margin: .3em 0; padding: .3em .6em; background: var(--highlighter
 section.commit-dialog { margin: 1em 0; padding: .4em .9em .6em; border: 1px solid var(--masthead); background: var(--bg-sidebar); }
 section.commit-dialog h2 { margin: .3em 0 .5em; font-size: 1.15em; }
 section.commit-dialog input[type="text"], section.commit-dialog textarea {
-  font: inherit; width: min(40em, 100%); padding: .15em .35em; border: 1px solid #777; border-radius: 0; box-sizing: border-box; background: var(--bg);
+  font: inherit; width: min(40em, 100%); padding: .15em .35em; border: 1px solid var(--border-strong); border-radius: 0; box-sizing: border-box; background: var(--bg);
 }
 section.commit-dialog textarea { min-height: 4.5em; resize: vertical; }
 section.commit-dialog fieldset.choices legend { font-weight: bold; }
@@ -932,7 +947,7 @@ p.editor-extra { margin: .3em 0; font-size: .9em; color: var(--muted); }
 .template-picker { padding: .2em .8em; border: 1px solid var(--rule); background: var(--bg-sidebar); }
 .template-picker p { margin: .35em 0; }
 .template-picker select, .template-picker input, .template-picker button { font: inherit; border-radius: 0; }
-.template-picker input[type="text"] { padding: .1em .3em; border: 1px solid #777; width: min(14em, 100%); }
+.template-picker input[type="text"] { padding: .1em .3em; border: 1px solid var(--border-strong); width: min(14em, 100%); }
 .template-picker .explain { color: var(--muted); font-size: .92em; }
 .md-toolbar { margin: .4em 0 0; font-size: .88em; }
 .md-toolbar button { font: inherit; border-radius: 0; border: 1px solid var(--rule); background: var(--bg-sidebar); padding: .05em .5em; margin: 0 0 .2em; cursor: pointer; }
@@ -958,7 +973,7 @@ p.pull-bulk { font-size: .92em; }
 section.pull-form { margin: 1em 0; padding: .4em .9em .6em; border: 1px solid var(--masthead); background: var(--bg-sidebar); }
 section.pull-form h2 { margin: .3em 0 .5em; font-size: 1.15em; overflow-wrap: anywhere; }
 section.pull-form input[type="text"], section.pull-form textarea, textarea.pull-text {
-  font: inherit; width: min(48em, 100%); padding: .15em .35em; border: 1px solid #777; border-radius: 0; box-sizing: border-box; background: var(--bg);
+  font: inherit; width: min(48em, 100%); padding: .15em .35em; border: 1px solid var(--border-strong); border-radius: 0; box-sizing: border-box; background: var(--bg);
 }
 section.pull-form textarea, textarea.pull-text { min-height: 8em; resize: vertical; font-family: var(--font-code); font-size: .9em; }
 section.pull-form select { font: inherit; border-radius: 0; }
@@ -1006,7 +1021,7 @@ p.thread-actions, p.suggestion-note { margin: .3em 0; font-size: .9em; }
 section.merge-box { margin: 1em 0; padding: .3em .9em .6em; border: 1px solid var(--masthead); background: var(--bg-sidebar); }
 section.merge-box h3 { margin: .3em 0; }
 section.merge-box p { margin: .35em 0; }
-.merge-form input[type="text"] { font: inherit; width: min(40em, 100%); padding: .15em .35em; border: 1px solid #777; border-radius: 0; box-sizing: border-box; background: var(--bg); }
+.merge-form input[type="text"] { font: inherit; width: min(40em, 100%); padding: .15em .35em; border: 1px solid var(--border-strong); border-radius: 0; box-sizing: border-box; background: var(--bg); }
 .merge-form select { font: inherit; border-radius: 0; }
 .merge-form .explain { color: var(--muted); font-size: .9em; }
 a.primary-link { font-weight: bold; }
@@ -1014,7 +1029,7 @@ section.comment-form { margin: 1em 0; }
 section.comment-form h3 { margin: .3em 0; }
 ul.reviewers { margin: .2em 0 .5em; padding-left: 1.2em; }
 ul.reviewers li { margin: .15em 0; overflow-wrap: anywhere; }
-p.ask-review input[type="text"] { font: inherit; width: 10em; padding: .1em .3em; border: 1px solid #777; border-radius: 0; }
+p.ask-review input[type="text"] { font: inherit; width: 10em; padding: .1em .3em; border: 1px solid var(--border-strong); border-radius: 0; }
 .sidebar p.summary-line { margin: .25em 0; font-size: .9em; }
 .sidebar p.explain { color: var(--muted); font-size: .88em; }
 
@@ -1117,7 +1132,7 @@ p.comment-actions select { font: inherit; border-radius: 0; }
 p.reactions { margin: .4em 0 0; font-size: .9em; }
 .reaction { white-space: nowrap; }
 .edit-box { margin: .5em 0; }
-.edit-box input[type="text"] { font: inherit; width: min(40em, 100%); padding: .15em .35em; border: 1px solid #777; border-radius: 0; box-sizing: border-box; }
+.edit-box input[type="text"] { font: inherit; width: min(40em, 100%); padding: .15em .35em; border: 1px solid var(--border-strong); border-radius: 0; box-sizing: border-box; }
 section.task-panel { margin: 1em 0; padding: .2em .8em .5em; border: 1px solid var(--rule); background: var(--bg); }
 section.task-panel h3 { margin: .3em 0; font-size: 1em; }
 ul.task-list { list-style: none; margin: .2em 0; padding: 0; }
@@ -1130,7 +1145,7 @@ ul.sub-issues li { margin: .1em 0; overflow-wrap: anywhere; }
 /* The current tab of a repository's bar (Code, Issues, Pull requests…), in words and weight */
 nav.tabs a[aria-current="page"] { font-weight: bold; color: var(--text); }
 #issue-actions input[type="text"], #issue-actions select { font: inherit; border-radius: 0; max-width: 100%; }
-#issue-actions input[type="text"] { padding: .1em .3em; border: 1px solid #777; }
+#issue-actions input[type="text"] { padding: .1em .3em; border: 1px solid var(--border-strong); }
 
 /* Releases (night phase 07, E4): the list as ruled rows, a release's states in words (Latest,
    Pre-release, Draft, Immutable: never a pill), its files as a ruled table with their SHA-256 in the
@@ -1160,7 +1175,7 @@ code.digest, td.digest code { font-family: var(--font-code); font-size: .9em; ov
 .tie p.warning { color: var(--warning); }
 form.release-research p, form.tag-form p { margin: .4em 0; }
 form.release-research select, form.release-research input[type="text"], form.tag-form input[type="text"] { font: inherit; border-radius: 0; max-width: 100%; }
-form.release-research input[type="text"], form.tag-form input[type="text"] { padding: .1em .3em; border: 1px solid #777; }
+form.release-research input[type="text"], form.tag-form input[type="text"] { padding: .1em .3em; border: 1px solid var(--border-strong); }
 section.release-form input[type="text"] { width: min(24em, 100%); }
 section.release-form #rel-name { width: min(40em, 100%); }
 section.release-form select { max-width: 100%; }
@@ -1188,7 +1203,7 @@ section.asset-form { margin: .6em 0 1em; padding: .1em .9em .5em; border: 1px so
 section.asset-form h4 { margin: .4em 0 .2em; }
 section.asset-form p { margin: .35em 0; }
 section.asset-form input[type="text"], section.asset-form select { font: inherit; border-radius: 0; max-width: 100%; }
-section.asset-form input[type="text"] { width: min(24em, 100%); padding: .1em .3em; border: 1px solid #777; box-sizing: border-box; }
+section.asset-form input[type="text"] { width: min(24em, 100%); padding: .1em .3em; border: 1px solid var(--border-strong); box-sizing: border-box; }
 
 /* Night phase 08: the search's other types (src/scripts/search-types.ts): the results numbered, their
    second line quieter; the form's help. */
@@ -1196,7 +1211,7 @@ ol.results { padding-left: 2em; }
 ol.results li { margin: .7em 0; }
 ol.results p.line { margin: .15em 0 0; color: var(--muted); font-size: .92em; }
 form.search-form p.explain { color: var(--muted); font-size: .92em; margin-top: .2em; }
-form.search-form input[type="search"] { font: inherit; padding: .15em .3em; border: 1px solid #777; border-radius: 0; width: min(28em, 100%); box-sizing: border-box; }
+form.search-form input[type="search"] { font: inherit; padding: .15em .3em; border: 1px solid var(--border-strong); border-radius: 0; width: min(28em, 100%); box-sizing: border-box; }
 
 /* Night phase 08: the social pages. Star, Watch and Follow as plain buttons with their counts in
    words (never a badge); the inbox as ruled rows, an unread one in bold with a rule on its left; the
@@ -1223,14 +1238,14 @@ ul.notices p.line { margin: .1em 0 0; color: var(--muted); font-size: .9em; }
 ul.notices p.notice-actions { margin: .25em 0 0; font-size: .9em; }
 ul.notices button, p.notice-bulk button, p.notice-filters button, ul.watching button, section.star-list button, ul.stars button { font: inherit; font-size: .9em; border-radius: 0; }
 h2.notice-group { font-size: 1em; margin: 1em 0 .2em; border-bottom: 1px solid var(--rule); }
-form.notice-filter input[type="search"] { font: inherit; width: min(30em, 100%); box-sizing: border-box; padding: .15em .3em; border: 1px solid #777; border-radius: 0; }
+form.notice-filter input[type="search"] { font: inherit; width: min(30em, 100%); box-sizing: border-box; padding: .15em .3em; border: 1px solid var(--border-strong); border-radius: 0; }
 p.notice-filters, p.notice-bulk { font-size: .92em; margin: .4em 0; }
 ul.watching li { margin: .25em 0; }
 section.notice-settings { margin-top: 1.5em; }
 ul.stars { padding-left: 1.2em; }
 ul.stars li { margin: .3em 0; overflow-wrap: anywhere; }
 p.star-filters input[type="search"], p.star-filters select, form.list-form input[type="text"] { font: inherit; border-radius: 0; }
-p.star-filters input[type="search"], form.list-form input[type="text"] { padding: .1em .3em; border: 1px solid #777; max-width: 100%; box-sizing: border-box; }
+p.star-filters input[type="search"], form.list-form input[type="text"] { padding: .1em .3em; border: 1px solid var(--border-strong); max-width: 100%; box-sizing: border-box; }
 section.star-list { margin: .8em 0; padding: .1em .9em .5em; border: 1px solid var(--rule); }
 section.star-list h3 { margin: .4em 0 .2em; }
 section.star-list .list-state { font-weight: normal; color: var(--muted); font-size: .85em; }
@@ -1249,7 +1264,7 @@ table.identicon.hue-5 td.on { background: #b60205; }
 table.identicon.hue-6 td.on { background: #008672; }
 table.identicon.hue-7 td.on { background: #5a3696; }
 form.profile-form p.line label { display: inline-block; min-width: 12em; }
-form.profile-form input[type="text"] { font: inherit; width: min(28em, 100%); box-sizing: border-box; padding: .1em .3em; border: 1px solid #777; border-radius: 0; }
+form.profile-form input[type="text"] { font: inherit; width: min(28em, 100%); box-sizing: border-box; padding: .1em .3em; border: 1px solid var(--border-strong); border-radius: 0; }
 .calendar-scroll { overflow-x: auto; }
 table.calendar { border-collapse: separate; border-spacing: 2px; }
 table.calendar td { width: 10px; height: 10px; padding: 0; font-size: 8px; line-height: 10px; text-align: center; color: #000; background: #ebedf0; }
@@ -1383,7 +1398,7 @@ form.lookup input[type="text"] { width: min(28em, 100%); }
 /* Night phase 14: a command line's sign-in, approved on /device/. The code the person types from their
    terminal is set in the code font, its letters spaced, as the terminal prints it; the request is the
    settings' own list. */
-input.device-code { font-family: var(--font-code); font-size: 1.25em; letter-spacing: .12em; text-transform: uppercase; width: 9em; max-width: 100%; padding: .15em .4em; border: 1px solid #777; border-radius: 0; }
+input.device-code { font-family: var(--font-code); font-size: 1.25em; letter-spacing: .12em; text-transform: uppercase; width: 9em; max-width: 100%; padding: .15em .4em; border: 1px solid var(--border-strong); border-radius: 0; }
 .panel dl.settings dd ul { margin: .2em 0; padding-left: 1.2em; }
 /* Night phase 11: the Security (and quality) tab. The dependency graph is a definition list, as the
    catalogue's listing; its facts are said in words (.ok or .warning), never a pill or an uppercase
@@ -1394,7 +1409,7 @@ input.device-code { font-family: var(--font-code); font-size: 1.25em; letter-spa
 .dep-summary { color: var(--muted); margin: .2em 0 .6em; }
 form.dep-filter { display: flex; flex-wrap: wrap; gap: .4em 1.2em; align-items: end; margin: .4em 0 .8em; }
 form.dep-filter label { display: flex; flex-direction: column; font-size: .9em; color: var(--muted); gap: .15em; }
-form.dep-filter input, form.dep-filter select { font: inherit; padding: .15em .35em; border: 1px solid #777; border-radius: 0; background: var(--bg); }
+form.dep-filter input, form.dep-filter select { font: inherit; padding: .15em .35em; border: 1px solid var(--border-strong); border-radius: 0; background: var(--bg); }
 dl.deps { margin: .3em 0; }
 dl.deps dt { font-weight: normal; margin-top: .5em; }
 dl.deps dt .dep-name { font-weight: bold; }
@@ -1424,7 +1439,7 @@ ul.alerts code { font-size: .85em; overflow-wrap: anywhere; }
 .security-licences { margin: 1.2em 0; }
 .security-licences h3 { margin: .2em 0 .3em; }
 .sbom-actions { margin: .5em 0; }
-.alert-actions button, .sbom-actions button { font: inherit; padding: .1em .6em; border: 1px solid #777; border-radius: 0; background: var(--bg-sidebar); cursor: pointer; }
+.alert-actions button, .sbom-actions button { font: inherit; padding: .1em .6em; border: 1px solid var(--border-strong); border-radius: 0; background: var(--bg-sidebar); cursor: pointer; }
 .alert-actions button:hover, .sbom-actions button:hover { background: #e8e8e8; }
 .alert-actions { margin: .2em 0; }
 li.alert.is-dismissed { opacity: .65; }
@@ -1440,7 +1455,7 @@ ul.advisory-posts { list-style: none; margin: .2em 0; padding: 0; }
 ul.advisory-posts li { margin: .2em 0; }
 details.advisory-new { margin: .8em 0; }
 form.advisory-form label { display: block; margin: .3em 0; }
-form.advisory-form input, form.advisory-form select { font: inherit; padding: .15em .35em; border: 1px solid #777; border-radius: 0; min-width: min(28em, 100%); }
+form.advisory-form input, form.advisory-form select { font: inherit; padding: .15em .35em; border: 1px solid var(--border-strong); border-radius: 0; min-width: min(28em, 100%); }
 
 /* Repository statistics (night phase 12): the registry draws every chart itself, in inline SVG, and
    shows the same numbers as a table. No chart library, no GitHub image. Colour is set here, never as
@@ -1510,3 +1525,121 @@ dd.snippet-row .title { display: block; }
 .snippet-file textarea { display: block; width: 100%; font-family: var(--mono, monospace); font-size: .9em; }
 .comments ol { list-style: none; margin: .4em 0; padding: 0; }
 .comments .comment { margin: 0 0 .6em; }
+
+/* ─── Ease of use (night phase 15) ──────────────────────────────────────────── */
+
+/* The skip link: the first focusable element, off-screen until focused, so a keyboard or a
+   screen reader jumps straight to the content (WCAG 2.4.1 Bypass blocks). */
+.skip-link {
+  position: absolute; left: .5em; top: -3em; z-index: 50;
+  background: var(--panel); color: var(--link); border: 1px solid var(--border-strong);
+  padding: .35em .7em; border-radius: 0;
+}
+.skip-link:focus { top: .5em; }
+
+/* Themes are options, never the default. Light stays the default (no data-theme). A dark theme and
+   the colour-vision palettes redefine the tokens of :root, and nothing else: every rule above reads
+   these tokens, so one override repaints the whole site, light and dark alike (CLAUDE.md: no dark
+   theme by default). */
+html[data-theme="dark"] {
+  --text: #e8e8e8;
+  --muted: #a6adb4;
+  --rule: #3a4047;
+  --bg: #15181c;
+  --bg-sidebar: #1d2228;
+  --link: #74a7ff;
+  --link-visited: #c3a6ea;
+  --ok: #5fc25f;
+  --warning: #e3ad52;
+  --highlighter: #5a4a00;
+  --panel: #1b2026;
+  --border-strong: #5a626b;
+  --pane-border: #4a525b;
+  --shadow: rgba(0, 0, 0, .5);
+  --chart-ink: #d2d2d2;
+  --chart-grid: #3a4047;
+  color-scheme: dark;
+}
+
+/* Increased contrast: for signed-out visitors too. It darkens text, muted text and rules, and
+   thickens the focus ring (WCAG 1.4.11). It stacks with the theme (it only re-reads the tokens). */
+html[data-contrast="more"] {
+  --muted: #333;
+  --rule: #999;
+  --border-strong: #333;
+  --pane-border: #555;
+}
+html[data-theme="dark"][data-contrast="more"] {
+  --text: #fff;
+  --muted: #d4d4d4;
+  --rule: #6a727a;
+  --border-strong: #8a929a;
+  --pane-border: #7a828a;
+}
+html[data-contrast="more"] a:focus-visible,
+html[data-contrast="more"] button:focus-visible,
+html[data-contrast="more"] input:focus-visible,
+html[data-contrast="more"] select:focus-visible { outline-width: 3px; }
+
+/* Colour-vision palettes: the registry's own charts and the coloured marks use a token palette
+   (defined once on :root, night phase 12). A reader who does not tell green from brown (the diff
+   colours) can pick a palette that keeps every series distinct. Geometry is untouched; only the
+   tokens change, so a chart reads the same whatever the theme. */
+html[data-vision="deuteranopia"], html[data-vision="protanopia"] {
+  --series-1: #004c8c;
+  --series-2: #d55e00;
+  --series-3: #0072b2;
+  --series-4: #cc79a7;
+  --series-5: #332288;
+  --series-6: #555;
+  --chart-add: #0072b2;
+  --chart-del: #d55e00;
+  --mark-paper: #004c8c;
+  --mark-map: #cc79a7;
+  --mark-tag: #d55e00;
+}
+html[data-vision="tritanopia"] {
+  --series-1: #006d77;
+  --series-2: #d62246;
+  --series-3: #009e9e;
+  --series-4: #b5179e;
+  --series-5: #005f73;
+  --series-6: #555;
+  --chart-add: #009e9e;
+  --chart-del: #d62246;
+  --mark-paper: #006d77;
+  --mark-map: #b5179e;
+  --mark-tag: #d62246;
+}
+
+/* Link underlines: a reader can ask for an underline on every link, not only on hover. */
+html[data-underline="always"] a { text-decoration: underline; }
+
+/* Line spacing and tab size: the preferences change the tokens, nothing else. */
+html[data-line="roomy"] { --line-height: 1.8; }
+html[data-line="tight"] { --line-height: 1.3; }
+html[data-tab="2"] { --tab-size: 2; }
+html[data-tab="8"] { --tab-size: 8; }
+
+/* A fixed-width font for rendered Markdown, for a reader who prefers it (code and prose align). */
+html[data-md="fixed"] { --md-font: var(--font-code); }
+.rich, .markdown-body, .readme-body { font-family: var(--md-font); }
+
+/* Reduced motion: the site carries almost no animation, but the preference (and the system
+   setting, honoured by default) stops every transition and animation (WCAG 2.3.3). */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; scroll-behavior: auto !important; }
+}
+html[data-motion="reduced"] *, html[data-motion="reduced"] *::before, html[data-motion="reduced"] *::after {
+  animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; scroll-behavior: auto !important;
+}
+
+/* The preferences page (/settings/preferences/): a plain list of controls, the archive density. */
+.prefs { display: grid; grid-template-columns: minmax(0, 18em) minmax(0, 1fr); gap: .5em 1.2em; margin: 1em 0; }
+.prefs dt { font-weight: bold; }
+.prefs dd { margin: 0; }
+.prefs dd .help { display: block; color: var(--muted); font-size: .9em; margin-top: .15em; }
+.prefs select, .prefs input { font: inherit; border-radius: 0; }
+.prefs-saved { color: var(--ok); margin-left: .6em; }
+.prefs-actions { margin: 1em 0; display: flex; flex-wrap: wrap; gap: .6em; align-items: center; }
+.prefs-actions button { font: inherit; border-radius: 0; cursor: pointer; }

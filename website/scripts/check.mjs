@@ -97,9 +97,9 @@ for (const t of ENTITY_TYPES) {
 // static pages' Content-Security-Policy.
 if (all.has("/paper/404.html")) {
   const shell = readFileSync(join(DIST, "paper/404.html"), "utf8");
-  for (const [what, re] of [["<main>", /<main>[\s\S]*<\/main>/], ["<title>", /<title>[^<]*<\/title>/],
+  for (const [what, re] of [["<main>", /<main[^>]*>[\s\S]*<\/main>/], ["<title>", /<title>[^<]*<\/title>/],
     ["the breadcrumb's #crumb", /<span id="crumb">[^<]*<\/span>/], ["application-name", /<meta name="application-name" content="/],
-    ["module script in <main>", /<main>[\s\S]*<script type="module" src="\/[^"]+"><\/script>[\s\S]*<\/main>/]]) {
+    ["module script in <main>", /<main[^>]*>[\s\S]*<script type="module" src="\/[^"]+"><\/script>[\s\S]*<\/main>/]]) {
     if (!re.test(shell)) problems.push(`/paper/404.html: no ${what}, which the Worker fills`);
   }
   if (/<script(?![^>]*\ssrc=)[^>]*>/.test(shell)) problems.push("/paper/404.html: an inline script, which its Content-Security-Policy forbids");
@@ -153,7 +153,7 @@ for (const a of catalog.articles) {
   // the page /removal/ and the Worker read it there, and stop reading.
   if (file) {
     const html = readFileSync(join(DIST, `paper/${a.slug}/index.html`), "utf8");
-    const m = html.match(/<main><script type="application\/json" id="paper-facts">([^<]*)<\/script>/);
+    const m = html.match(/<main[^>]*><script type="application\/json" id="paper-facts">([^<]*)<\/script>/);
     let facts = null;
     try {
       facts = m ? JSON.parse(m[1]) : null;
