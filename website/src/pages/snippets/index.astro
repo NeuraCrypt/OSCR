@@ -1,0 +1,40 @@
+---
+// /snippets/: the ONE static shell of the registry's snippets, OSCR's gists (night phase 13;
+// public/_redirects: "/snippets/* /snippets/ 200" and "/snippet/* /snippets/ 200"; no file per
+// snippet). Its script (src/scripts/snippets.ts) reads the address:
+//   /snippets/                      discover (public snippets, newest first)
+//   /snippets/new                   the create form
+//   /snippets/?owner=<login>        a person's snippets
+//   /snippet/<owner>/<folder>/      one snippet (also /snippets/?id=<n>)
+// Signed in, it reads the Worker live (GET /api/forge/snippets, 1 request). A snippet's files are
+// shown by the registry's own reader (/r/<owner>/snippets/blob/<revision>/<folder>/<file>): no copy,
+// GitHub as a last resort.
+//
+// science.css only; the platform's name from src/config.ts, handed to the script in data-site (the
+// browser scripts never name the platform).
+import Base from "../../layouts/Base.astro";
+import { SITE_NAME } from "../../config";
+---
+<Base
+  title="Snippets"
+  description="Snippets, the registry's gists: a few lines of code, shared and discussed, tied to a paper's passage, in the registry's own reader."
+  breadcrumb={[{ text: "Snippets" }]}
+>
+  <div id="snippets-shell" data-site={SITE_NAME}>
+    <h1>Snippets</h1>
+    <p class="summary" aria-live="polite">Reading…</p>
+    <noscript>
+      <p class="warning">This page reads snippets in your browser, which needs JavaScript.</p>
+    </noscript>
+    <p>
+      Snippets are {SITE_NAME}'s own gists: a few lines of code shared on their own, tied to a
+      paper's passage, read and discussed in the registry's reader. Each snippet lives in a folder of
+      your <code>snippets</code> repository in your own GitHub account; the registry never writes
+      there on its own.
+    </p>
+  </div>
+
+  <script>
+    import "../../scripts/snippets";
+  </script>
+</Base>

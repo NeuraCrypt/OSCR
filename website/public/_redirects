@@ -36,3 +36,9 @@
 # People's pages (night phase 08): ONE shell serves /u/<GitHub login or ORCID iD>/, and its script reads
 # the profile (last night's static shard signed out, the Worker signed in). No file per person.
 /u/* /u/ 200
+
+# Snippets, OSCR's gists (night phase 13): ONE shell serves discover (/snippets/), the new form
+# (/snippets/new), a person's list (/snippets/?owner=…) and one snippet (/snippet/<owner>/<folder>/, and
+# /snippets/?id=<n>); its script reads the Worker. No file per snippet.
+/snippets/* /snippets/ 200
+/snippet/* /snippets/ 200
