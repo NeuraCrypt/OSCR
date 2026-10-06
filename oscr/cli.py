@@ -460,6 +460,17 @@ def main(argv: list[str] | None = None) -> int:
     so.add_argument("--handle", default="", help="accept, decline: the person who proposed the list (GitHub login or ORCID iD)")
     so.add_argument("--list", type=int, default=0, help="accept, decline: the list's number")
 
+    st = sp.add_parser("status", help="night phase 15: the static /status page's data (90 days of availability and "
+                                      "incidents), from the Mac's OWN outbound checks of the site every five minutes. The "
+                                      "real checks are a launchd step the owner enables; nothing contacts the outside on "
+                                      "its own. `init` writes a placeholder, `check` records one check, `build` writes the page's data.")
+    st.add_argument("action", choices=["init", "check", "build"])
+    st.add_argument("--export", default="data/public", help="the public export whose site-status.json the page reads")
+    st.add_argument("--store", default="data/status/checks.jsonl", help="the raw checks the aggregation reads")
+    st.add_argument("--url", default=cfg.get("OSCR_SITE_URL", "https://openscicode.org/"),
+                    help="check: the site address to reach (the owner's step)")
+    st.add_argument("--window", type=int, default=90, help="days of history to keep (default 90)")
+
     n = sp.add_parser("nightly", help="the publication: public catalogue, then Hugging Face and the website")
     n.add_argument("--out", default="data/public", help="a separate folder, only ever generated in public mode")
     n.add_argument("--dataset", default=cfg.get("OSCR_HF_DATASET", ""), help="Hugging Face user/dataset (empty: send nothing)")
@@ -696,6 +707,10 @@ def main(argv: list[str] | None = None) -> int:
             print(social.command(con, a.action, target="remote" if a.remote else "local" if a.local else None,
                                  out=Path(a.export), settings=cfg, persist_to=Path(a.persist_to) if a.persist_to else None,
                                  handle=a.handle, list_id=a.list, folder=Path(a.folder)))
+        elif a.command == "status":
+            from . import sitestatus
+            print(sitestatus.command(a.action, export=Path(a.export), store=Path(a.store), url=a.url,
+                                     window_days=a.window))
         elif a.command == "zenodo":
             _zenodo(con, a)
         elif a.command == "d1":

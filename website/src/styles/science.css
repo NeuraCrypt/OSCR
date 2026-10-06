@@ -1679,3 +1679,14 @@ td.shortcut-keys kbd, .shortcut-help kbd {
 .palette-results li.palette-option[aria-selected="true"] { background: var(--bg-sidebar); }
 .palette-results li.palette-option mark { background: var(--highlighter); color: inherit; }
 .palette-empty { padding: .6em .9em; color: var(--muted); }
+
+/* The service status page (/status/, night phase 15): a 90-day grid of small cells, each a day,
+   coloured by availability from the tokens. Also readable as text (title and aria-label per cell). */
+.status-grid { list-style: none; margin: .6em 0; padding: 0; display: flex; flex-wrap: wrap; gap: 2px; }
+.status-day { display: inline-block; width: 11px; height: 16px; border: 1px solid var(--rule); border-radius: 0; vertical-align: middle; }
+.status-day.state-up { background: var(--ok); border-color: var(--ok); }
+.status-day.state-partial { background: var(--warning); border-color: var(--warning); }
+.status-day.state-down { background: var(--chart-del); border-color: var(--chart-del); }
+.status-day.state-none { background: var(--bg-sidebar); }
+.status-key { display: flex; flex-wrap: wrap; gap: .4em 1em; align-items: center; }
+.status-key .status-day { margin-right: .25em; }

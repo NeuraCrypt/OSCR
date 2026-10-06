@@ -318,6 +318,45 @@ if (existsSync(`${source}/forge/moderation.json`)) {
 }
 writeFileSync("src/data/moderation.json", JSON.stringify(moderation));
 
+// Night phase 15: the /status page's availability, from the Mac's own outbound checks
+// (oscr/sitestatus.py writes site-status.json into the export). Read at build time only:
+// src/data/site-status.json. Absent (the owner has not enabled the checks): a placeholder that
+// says so, so the page shows the quotas alone. The site never checks itself; the Mac reaches out.
+const STATUS_STATES = new Set(["up", "partial", "down", "none"]);
+let siteStatus = {
+  enabled: false, generated_at: "", window_days: 90, checks_per_day: 288, interval_seconds: 300,
+  days: [], incidents: [], total_checks: 0, ok_checks: 0, overall_uptime: null,
+};
+if (existsSync(`${source}/site-status.json`)) {
+  const s = JSON.parse(readFileSync(`${source}/site-status.json`, "utf8"));
+  const days = (Array.isArray(s?.days) ? s.days : []).slice(0, 400).filter((d) => d && typeof d === "object").map((d) => ({
+    date: /^\d{4}-\d{2}-\d{2}$/.test(d.date) ? d.date : "",
+    checks: Number(d.checks) || 0,
+    ok: Number(d.ok) || 0,
+    state: STATUS_STATES.has(d.state) ? d.state : "none",
+    uptime: typeof d.uptime === "number" ? d.uptime : null,
+  }));
+  const incidents = (Array.isArray(s?.incidents) ? s.incidents : []).slice(0, 500).filter((i) => i && typeof i === "object").map((i) => ({
+    start: String(i.start ?? "").slice(0, 32),
+    end: String(i.end ?? "").slice(0, 32),
+    checks: Number(i.checks) || 0,
+    title: String(i.title ?? "").slice(0, 120),
+  }));
+  siteStatus = {
+    enabled: s?.enabled === true,
+    generated_at: String(s?.generated_at ?? "").slice(0, 32),
+    window_days: Number(s?.window_days) || 90,
+    checks_per_day: Number(s?.checks_per_day) || 288,
+    interval_seconds: Number(s?.interval_seconds) || 300,
+    days,
+    incidents,
+    total_checks: Number(s?.total_checks) || 0,
+    ok_checks: Number(s?.ok_checks) || 0,
+    overall_uptime: typeof s?.overall_uptime === "number" ? s.overall_uptime : null,
+  };
+}
+writeFileSync("src/data/site-status.json", JSON.stringify(siteStatus));
+
 const withCode = catalog.articles.filter((a) => a.code.length > 0).length;
 const withPage = catalog.articles.filter((a) => a.page === true || a.code.length > 0).length;
 const aligned = catalog.articles.filter((a) => a.alignment?.pairs > 0).length;
