@@ -28,6 +28,7 @@ const HUMAN_ROUTES = new Set([
   "/api/forge/research/open", "/api/forge/research/comment", "/api/forge/social/profile", "/api/forge/social/list",
   "/api/forge/tokens/write", "/api/forge/hooks/write", "/api/forge/report", "/api/forge/appeal", "/api/forge/rights",
   "/api/forge/discussions/open", "/api/forge/discussions/comment", "/api/forge/projects/create", "/api/forge/projects/item",
+  "/api/forge/snippets/comment",
 ]);
 
 /** A browser over real HTTP: a cookie jar for the site, redirects followed by hand. */
@@ -175,6 +176,82 @@ if (process.argv[2] === "phase06" || process.argv[2] === "phase06-fail") {
   const wikiHead = String(((await (await fetch(`${FAKE}/api/repos/oscr-fixture/eeg-analysis/branches/wiki`)).json()) as Json).commit?.sha ?? "");
   const editWiki = await ada.act("wiki_edit", { forge: "github", id: REPO_ID }, { base: wikiHead, message: "Update Home", pages: [{ slug: "Home", content: "# Home\nUpdated." }] }, "/r/oscr-fixture/eeg-analysis/wiki/Home", { branch: "wiki", expectedHead: wikiHead });
   check("phase06: a later wiki commit builds the branch's history", editWiki.status === 200 && editWiki.data.result?.base?.sha === wikiHead, editWiki.data);
+
+  console.log(failures ? `${failures} check(s) failed` : "every check passed");
+  process.exit(failures ? 1 : 0);
+}
+
+// Night phase 13: snippets, OSCR's gists (docs/SNIPPETS.md). The Worker runs with FORGE_OPEN=true and
+// Turnstile's passing secret. Ada creates a public snippet through one authorized action (a commit to
+// her own `snippets` repository on the fake GitHub), comments on it (behind the human check) and hides
+// that comment as the owner (gone for Bob); she creates an unlisted snippet, absent from discover yet
+// reachable by its link; she ties a snippet to a paper passage; Bob forks her public snippet into his
+// own account. A second run (phase13-fail) checks the human check refuses a comment when Turnstile fails.
+if (process.argv[2] === "phase13" || process.argv[2] === "phase13-fail") {
+  const PAPER = "doi:10.5555/oscr.fixture.1";
+  // Sign in as a person of the double AND make the fake GitHub approve the next authorized action as
+  // the same account (POST /control): the sign-in's id must be the fake's, and the login its own.
+  const asPerson = async (id: string, login: string): Promise<Client> => {
+    await post(`${MOCK}/control`, { who: { github: { id: Number(id), login, name: login } } });
+    await post(`${FAKE}/control`, { login });
+    const c = new Client();
+    await c.navigate(`${SITE}/api/auth/github/start?return=/snippets/`);
+    return c;
+  };
+  // Switch who the fake GitHub approves as, for a later action by a person already signed in.
+  const approveAs = async (login: string): Promise<void> => void (await post(`${FAKE}/control`, { login }));
+  const snippetId = async (c: Client, owner: string, folder: string): Promise<number> => {
+    const r = (await (await c.request(`${SITE}/api/forge/snippets?owner=${owner}&folder=${folder}`, { headers: { Accept: "application/json" } })).json()) as Json;
+    return Number(r.snippet?.id ?? 0);
+  };
+  const snippetRead = async (c: Client, query: string): Promise<Json> =>
+    (await (await c.request(`${SITE}/api/forge/snippets${query}`, { headers: { Accept: "application/json" } })).json()) as Json;
+  const BOB = "bob-fixture";
+  const ada = await asPerson(seed.ada.id, "ada-fixture");
+
+  if (process.argv[2] === "phase13-fail") {
+    const made = await ada.act("snippet_create", null, { title: "Fails", visibility: "public", files: [{ path: "a.py", content: "x=1\n" }] }, "/snippets/");
+    const id = await snippetId(ada, "ada-fixture", String(made.data.result?.folder));
+    const refused = await ada.post("/api/forge/snippets/comment", { id, body: "should fail" });
+    check("phase13: the human check refuses a comment when Turnstile fails", refused.status === 403 && refused.data.error?.code === "human_check", refused.data);
+    console.log(failures ? `${failures} check(s) failed` : "every check passed");
+    process.exit(failures ? 1 : 0);
+  }
+
+  // 1. A public snippet, created as one authorized action (a commit to Ada's `snippets` repository).
+  const created = await ada.act("snippet_create", null, { title: "Band-pass filter", description: "A 1-40 Hz filter. Mail ada@example.org.", visibility: "public", files: [{ path: "filter.py", content: "import numpy as np\n" }], passage: { paperId: PAPER, section: "Methods" } }, "/snippets/");
+  check("phase13: a public snippet is created through one authorized action", created.status === 200 && created.data.result?.owner === "ada-fixture" && /^[0-9a-f]{40}$/.test(String(created.data.result?.revision)), created.data);
+  const pubId = await snippetId(ada, "ada-fixture", String(created.data.result?.folder));
+  const pubRead = await snippetRead(ada, `?id=${pubId}`);
+  check("phase13: the snippet's description keeps no email address", /\[email hidden\]/.test(String(pubRead.snippet?.description)), pubRead.snippet?.description);
+  check("phase13: the snippet is tied to a paper passage, beside it (never a map, never a DOI of its own)", pubRead.snippet?.passage?.paperId === PAPER && pubRead.snippet?.passage?.section === "Methods", pubRead.snippet?.passage);
+
+  // 2. A comment behind the human check, then hidden by the owner (gone for Bob).
+  const comment = await ada.post("/api/forge/snippets/comment", { id: pubId, body: "Nice. Mail ada@example.org" });
+  check("phase13: a comment is posted behind the human check", comment.status === 201, comment.data);
+  const hide = await ada.post("/api/forge/snippets/comment", { id: pubId, n: 1, hide: "off-topic" });
+  check("phase13: the owner hides the comment", hide.status === 200, hide.data);
+
+  // 3. An unlisted snippet: absent from discover, reachable by its link, absent from the public API.
+  const unlisted = await ada.act("snippet_create", null, { title: "Private helper", visibility: "unlisted", files: [{ path: "h.py", content: "y=2\n" }] }, "/snippets/");
+  const unId = await snippetId(ada, "ada-fixture", String(unlisted.data.result?.folder));
+  const discover = await snippetRead(ada, "");
+  check("phase13: the unlisted snippet is absent from discover", !((discover.snippets ?? []) as Json[]).some((x) => x.id === unId), discover.snippets);
+  const byLink = await snippetRead(ada, `?id=${unId}`);
+  check("phase13: the unlisted snippet is reachable by its direct link", byLink.snippet?.id === unId && byLink.snippet?.visibility === "unlisted", byLink.snippet);
+  const api = await ada.request(`${SITE}/api/v1/snippets/${unId}`);
+  check("phase13: the public API has no snippet endpoint (unlisted never leaks there)", api.status === 404, api.status);
+
+  // 4. Bob forks Ada's public snippet into his own account; the hidden comment is gone for him.
+  const bob = await asPerson(seed.bob.id, BOB);
+  const bobView = await snippetRead(bob, `?id=${pubId}`);
+  const bobComment = ((bobView.comments ?? []) as Json[])[0];
+  check("phase13: the hidden comment's body is gone for Bob", bobComment && bobComment.body === "" && bobComment.hidden === "off-topic", bobComment);
+  await approveAs(BOB);
+  const forked = await bob.act("snippet_fork", null, { id: pubId }, "/snippets/");
+  check("phase13: Bob forks the public snippet into his own account", forked.status === 200 && forked.data.result?.owner === BOB && forked.data.result?.forkedFrom === pubId, forked.data);
+  const afterFork = await snippetRead(bob, `?id=${pubId}`);
+  check("phase13: the source snippet's fork count rose", (afterFork.snippet?.forks ?? 0) >= 1, afterFork.snippet?.forks);
 
   console.log(failures ? `${failures} check(s) failed` : "every check passed");
   process.exit(failures ? 1 : 0);

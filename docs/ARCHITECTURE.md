@@ -1002,6 +1002,30 @@ with a CSV and a PNG.
   `repo_marks`). SVG joined the view tree (`repo-view.ts`, `dom.ts`), colour by `science.css` (D12-4).
 - **The screenshots**: `docs/night-screenshots/phase-12/` (desktop 1280×860 and phone 390×844).
 
+### Snippets (phase 13): OSCR's gists
+
+Full detail in [SNIPPETS.md](SNIPPETS.md), decisions D13-1 to D13-5.
+
+- **The files** live in a `snippets` repository in the researcher's own GitHub account, one folder per
+  snippet, written by authorized commits (`website/worker/forge/service/act-snippet.ts`:
+  `snippet_create`, `snippet_revise`, `snippet_fork`): the phase-03 model, no Gists permission (D00-14),
+  OSCR never writes to GitHub itself.
+- **The record** is in `oscr_forge` (`migrations/d1-forge/0018_snippets.sql`: `snippets`,
+  `snippet_comments`, `snippet_stars`), with the files' **manifest** only (path, language, size, lines),
+  no content and no git text (the row budget). The files are shown in the registry's own reader at the
+  pinned revision (`/r/…/blob/…`), GitHub a last resort.
+- **The routes** (`snippets.ts`): `GET /api/forge/snippets` (one, discover, a person's list),
+  `POST .../edit`, `.../comment`, `.../star`. Public or **unlisted** (out of discover, search, feeds,
+  the public API and the sitemap, `noindex`; reachable by link; unlisted to public, never back, D13-2).
+  One explicit index per table. A snippet may be tied to a **paper passage** (shown beside the maps,
+  never a map, never a DOI, D13-3).
+- **The pages**: `/snippets/` and `/snippet/<owner>/<folder>/` (`src/pages/snippets/index.astro`,
+  `src/scripts/snippets.ts`), `science.css` only.
+- **Public free text** (D13-4): masking, Turnstile, caps, blocks, triagers' hide/delete on the rows'
+  own columns; phase 16's central moderation and data-rights erasure still to cover `snippet` and
+  `snippet_comment`.
+- **The screenshots**: `docs/night-screenshots/phase-13/`.
+
 ## Organizations and account security (night phase 09)
 
 OSCR's own organizations (a lab, a group, a project), teams, roles, research permissions, a

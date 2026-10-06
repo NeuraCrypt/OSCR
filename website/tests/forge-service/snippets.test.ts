@@ -121,8 +121,8 @@ describe("edit, comment, star, hide", () => {
 
   test("a comment needs the human check; it is masked; an edit keeps a history; delete and hide", async () => {
     const { b, id } = await one();
-    // Without the human check, refused.
-    assert.equal((await b.post("/api/forge/snippets/comment", { id, body: "hi" })).status, 403);
+    // Without a passing human check, refused.
+    assert.equal((await b.post("/api/forge/snippets/comment", { id, body: "hi", turnstile: "" })).status, 403);
     const made = await b.post("/api/forge/snippets/comment", { id, body: "Reach me at ada@example.org", turnstile: HUMAN_TOKEN });
     assert.equal(made.status, 201, JSON.stringify(await body(made)));
     const c = forgeRows(w.forge, "snippet_comments")[0];

@@ -743,3 +743,88 @@ sur `:root` (`--series-1..6`, `--chart-add`, `--chart-del`, `--mark-*`), puis `.
 et ses `.line/.area/.col/.bar/.mark`, `.chart-legend`, `table.chart-table`, `.chart-downloads`,
 `.checklist`. Les formes SVG ne portent que la géométrie ; la couleur vient de ces classes (pas de
 pastille, pas de majuscule décorative, pas de tiret cadratin).
+
+## 10. Phase 13 (snippets, les gists du registre)
+
+Construit sur `night/phase-12-statistics`, pas fusionné, pas déployé, pas poussé sur `main`. Toute
+écriture du registre derrière `FORGE_OPEN` ; rien du code d'un utilisateur n'est exécuté ; aucune
+adresse e-mail nulle part ; aucune mention de Claude ; aucun tiret cadratin. Détail :
+[`docs/SNIPPETS.md`](SNIPPETS.md), décisions D13-1 à D13-5.
+
+L'idée simple : un « snippet », c'est quelques lignes de code partagées toutes seules, comme un « gist »
+de GitHub. Chez nous, un snippet vit dans un dépôt nommé `snippets` **dans ton propre compte GitHub**,
+un dossier par snippet. Le registre ne crée ni ne modifie ce dépôt tout seul : c'est **toi** qui
+l'autorises, une fois, action par action (ton jeton GitHub sert une seule fois, n'est jamais gardé). Le
+registre ne demande jamais la permission « Gists », et n'écrit jamais chez GitHub de son côté.
+
+### Ce qui marche
+
+- **La fiche du snippet** vit dans `oscr_forge` (la base du côté GitHub) : son titre, sa description, où
+  sont ses fichiers (le dépôt et le dossier), la version (le commit) montrée, s'il est public ou non
+  listé, la liste de ses fichiers (le chemin, le langage, la taille, le nombre de lignes), et le passage
+  d'article auquel il se rattache. **Le contenu des fichiers n'entre jamais dans la base** (ni aucun
+  objet Git) : c'est la règle du budget de lignes. Les fichiers sont lus chez GitHub à la version
+  épinglée et montrés **dans le lecteur du registre** (pas une copie ; GitHub en tout dernier recours).
+- **Créer, réviser, dupliquer** sont des actions autorisées (un commit, fait par GitHub en ton nom) :
+  `snippet_create` et `snippet_revise` écrivent le dossier dans ton dépôt `snippets` (créé avec un
+  README au premier snippet) ; `snippet_fork` recopie le dossier d'un snippet dans **ton** dépôt
+  `snippets` en un commit, et enregistre une nouvelle fiche (elle garde le lien vers l'original).
+- **Les écritures propres du registre** (routes `snippets.ts`, comptées sur un plafond à elles,
+  `snippets`) : lire un snippet (par son numéro ou par `compte/dossier`), découvrir les snippets publics,
+  lister ceux d'une personne ; modifier la fiche (titre, description, passer en public, activer ou couper
+  les commentaires, le passage d'article, masquer) ; commenter (derrière la vérification humaine, avec un
+  historique des modifications, supprimer, masquer) ; mettre une étoile (avec la liste des personnes qui
+  en ont mis une).
+- **Public ou non listé** : un snippet non listé n'apparaît ni dans la découverte, ni dans la recherche,
+  ni dans les flux, ni dans l'API publique, ni dans le plan du site (`noindex`), mais il reste joignable
+  **par son lien direct** (et par qui peut lire le dépôt GitHub : la page le dit en mots). On peut rendre
+  public un snippet non listé, **jamais l'inverse**.
+- **Rattaché à un article** : un snippet peut nommer un passage d'un article (un DOI et un paragraphe des
+  « Méthodes », avec les lignes à la version). Il est montré **à côté** des cartes de traçage, **jamais
+  comme une carte, et jamais avec un DOI** à lui. La page montre aussi une **citation** toute prête.
+- **Le texte public** (descriptions, commentaires) est protégé comme les discussions : adresses e-mail
+  masquées, vérification humaine (Turnstile) sur les formulaires d'écriture, plafonds par compte,
+  blocages et limites d'interaction, et les personnes qui modèrent peuvent masquer ou supprimer, par les
+  colonnes propres des lignes.
+
+### Ce que Yann doit faire (ou savoir)
+
+- **La migration** : `migrations/d1-forge/0018_snippets.sql` (trois tables : `snippets`,
+  `snippet_comments`, `snippet_stars`). Elle refait aussi la table `actions` pour y ajouter les nouveaux
+  genres d'action. À appliquer avec les autres quand la phase sera fusionnée.
+- **Rien de nouveau à régler chez un fournisseur** : pas de nouvelle clé, pas de nouveau service, aucun
+  coût. Les snippets se posent sur ce qui existe déjà (ton App GitHub et le dépôt de chaque chercheur).
+- **À finir quand la phase 16 (règles) sera réconciliée** (D13-4) : la file de modération du propriétaire
+  et le signalement public (la table `moderation`, le code `src/lib/moderation.ts`, la purge statique du
+  Mac `oscr/moderation.py`) et **l'effacement des données** (`oscr/rights.py`) doivent aussi couvrir les
+  genres `snippet` et `snippet_comment`. Le signalement (`content_reports`) les accepte déjà ; la table
+  `moderation` ne les liste pas encore.
+- **Lecture et écriture connectées** : comme ailleurs, les routes des snippets demandent d'être connecté
+  et respectent `FORGE_OPEN` (jusqu'à la phase 16, toi seul peux écrire).
+
+### Ce qui est reporté (noté, pas fait cette nuit, D13-5)
+
+L'intégration par balise `<script>` (un fichier ou tous) ; la vue des différences entre versions, les
+liens permanents et le téléchargement ZIP (Git et GitHub les servent déjà) ; les abonnements et la
+diffusion des notifications pour les snippets ; les épingles sur la page d'une personne ; les analyses
+façon discussions ; et le geste, depuis la vue du code, pour faire un snippet à partir de lignes
+choisies (l'API accepte déjà un passage et les fichiers). Chaque report est additif, jamais un fichier
+par snippet.
+
+### Vérifications à la clôture
+
+Toute la suite verte : pytest 592, ruff propre, `npm test` 1 586 ; la construction et `check
+--every-route` dans le budget. L'essai de bout en bout étendu (étape 13, `e2e.ts phase13` et
+`phase13-fail`) et l'ensemble a réussi (sortie 0) : un snippet public créé par une seule action
+autorisée (un commit dans le dépôt `snippets` d'Ada sur le faux GitHub), un commentaire masqué par la
+propriétaire et invisible pour Bob, un snippet non listé absent de la découverte mais joignable par son
+lien et jamais sur l'API, un snippet rattaché à un passage d'article, Bob qui duplique le snippet public
+dans son propre compte, et la vérification humaine qui refuse un commentaire quand Turnstile échoue.
+Captures d'écran dans `docs/night-screenshots/phase-13/` (bureau 1280×860 et téléphone 390×844, contre
+un serveur local, toute adresse extérieure bloquée ; le port 8790 n'a pas été touché).
+
+### `science.css`
+
+Ajouts dans l'esprit de la feuille (une seule source de style, pas de pastille, pas de majuscule
+décorative, pas de tiret cadratin) : `dd.snippet-row`, `.snippet-actions`, `.owner-actions`,
+`.snippet-file` et ses `input`/`textarea`, et `.comments` (une liste sans puce).

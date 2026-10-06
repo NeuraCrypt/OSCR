@@ -112,7 +112,7 @@ function fileList(s: SnippetView): Node {
     ...s.files.map((f: FileMeta) =>
       el("li", {},
         el("a", { href: fileHref(s.owner, s.folder, s.revision, f.path) }, f.path),
-        el("span", { class: "muted" }, ` — ${f.language || "text"}, ${f.lines} ${f.lines === 1 ? "line" : "lines"}, ${f.size} bytes`),
+        el("span", { class: "muted" }, `: ${f.language || "text"}, ${f.lines} ${f.lines === 1 ? "line" : "lines"}, ${f.size} bytes`),
       ),
     ),
   );

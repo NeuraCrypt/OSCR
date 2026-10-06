@@ -3132,3 +3132,60 @@ commit's own date (tonight a paper mark sits at the paper's publication day); th
 by" counter for signed-out readers; discussion insights, CI metrics as GitHub reports, rule insights,
 lab research insights for an organization, and transparency reporting of moderation (counts only).
 Each is additive: a later element adds a section or a Mac fact, never a file per repository.
+
+## Night phase 13 (snippets)
+
+### D13-1. A snippet is a folder of a `snippets` repository in the researcher's own account
+
+**Decision.** A snippet's files live in a `snippets` repository in the researcher's **own GitHub
+account**, one folder per snippet, created with a README on the first snippet and revised by
+**authorized commits** (the phase-03 model, `act-snippet.ts`: `snippet_create`, `snippet_revise`,
+`snippet_fork`, in `types.ts` ACTION_KINDS). OSCR never asks for the Gists permission (D00-14), and
+the terms reading of D00-2 covered repositories, not gists; so OSCR's gists are plain repositories,
+not GitHub gists. The person's token is used once and never stored; OSCR never writes to GitHub on its
+own. A fork copies the folder into the forker's own `snippets` repository in one commit. The record
+(title, visibility, paper passage, stars, comments, forks) lives in `oscr_forge`
+(`migrations/d1-forge/0018_snippets.sql`), keyed by a numeric id (`snippet:<id>`, the reference
+`moderation-core.ts` already expects). **No file content and no git text ever enter D1** (the row
+budget): the manifest (path, language, size, lines) is enough, and the files are read from GitHub at
+the pinned revision, shown in the registry's own reader (GitHub a last resort).
+
+### D13-2. Public or unlisted; one explicit index; the native writes' cap
+
+**Decision.** A snippet is **public** (in discover and lists) or **unlisted** (out of discover,
+search, feeds, the public API and the sitemap, `noindex`; reachable by a direct link and by anyone who
+can read the GitHub repository, said on the form); unlisted may be made public, never back. The
+`snippets` table keeps the migration's **one-index-per-table** rule: `(owner_login, folder)` is a
+UNIQUE auto-index (the public handle and a person's list), and `snippets_discover (visibility, id)` is
+the only explicit index (public snippets, newest first; unlisted never in its range). The record's own
+writes (edit, comment, star) are the registry's native routes, logged in `actions` with **one cap**
+(`caps.ts` `snippets`, 300 a day, standing on its own); creating, revising and forking a snippet are
+authorized commits and count toward the 100 authorized actions.
+
+### D13-3. A snippet tied to a paper passage, shown beside the maps, never a map
+
+**Decision.** A snippet may name a **paper passage**: a DOI and a Methods paragraph, with lines at the
+revision. It is shown **beside** the tracing maps, **never as a map and never given a DOI** of its own
+(Zenodo DOIs are for author-validated maps only, D00's Zenodo rule). The author's role on a snippet is
+**verified author** when the passage's paper is one they are a verified author of, else none. A snippet
+carries a plain-text **citation** on its page.
+
+### D13-4. Phase 16 must cover `snippet` and `snippet_comment` (extends D06-6)
+
+**Decision.** Snippet descriptions, comments and the content shown are the registry's public,
+user-written free text. Tonight they are protected by Turnstile on the write forms, the per-account
+caps, the blocks and interaction limits (`mayInteract`), email masking (the shared `maskEmails`),
+control characters stripped, the 65,536-character comment limit, and triagers' hide/delete through the
+rows' own `hidden` and `deleted` columns. **To do when phase 16 reconciles** (extends the D06-6 note):
+the central owner-moderation queue and `moderation`/HIDDEN_KINDS, the Mac's `oscr/moderation.py` static
+drop, and data-rights **erasure** (`oscr/rights.py`) must be extended to the kinds `snippet` and
+`snippet_comment`. `content_reports` already lists `snippet`, so reports are kept; the `moderation`
+CHECK does not yet list it.
+
+### D13-5. What phase 13 defers (noted, not built tonight)
+
+**Deferred.** Embedding with a script tag (one file or all); a revision diff view, a permalink UI and
+a ZIP download (git and GitHub serve these); subscriptions and notification fan-out for snippets; pins
+on a person's page; discussion-style insights; and the code-view affordance to make a snippet from
+selected lines (the API already accepts a passage and the files). Each is additive, never a file per
+snippet.

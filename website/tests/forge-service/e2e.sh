@@ -270,3 +270,14 @@ start_worker --var "TURNSTILE_SECRET_KEY:$TURNSTILE_PASS" --var "FORGE_OPEN:true
   --var "CLOUDFLARE_ANALYTICS_TOKEN:ro-test-token" --var "CLOUDFLARE_ACCOUNT_ID:acc-test" \
   --var "CLOUDFLARE_ANALYTICS_SITE_TAG:site-test" --var "CLOUDFLARE_ANALYTICS_URL:$CF/graphql"
 env SITE="$SITE" MOCK="$MOCK" FAKE="$FAKE" REPO_ID="$REPO_ID" node --experimental-strip-types tests/forge-service/e2e-statistics.ts
+
+# 13. Night phase 13 (tests/forge-service/e2e.ts phase13): snippets, OSCR's gists. Ada creates a public
+# snippet through one authorized action (a commit to her own `snippets` repository on the fake GitHub),
+# comments on it behind the human check and hides that comment (gone for Bob); she creates an unlisted
+# snippet, absent from discover yet reachable by its link and never on the public API; she ties a
+# snippet to a paper passage; Bob forks her public snippet into his own account. A second run with
+# Turnstile's always-failing secret checks the human check refuses a comment.
+start_worker --var "TURNSTILE_SECRET_KEY:$TURNSTILE_PASS" --var "FORGE_OPEN:true"
+env SITE="$SITE" MOCK="$MOCK" FAKE="$FAKE" node --experimental-strip-types tests/forge-service/e2e.ts phase13
+start_worker --var "TURNSTILE_SECRET_KEY:$TURNSTILE_FAIL" --var "FORGE_OPEN:true"
+env SITE="$SITE" MOCK="$MOCK" FAKE="$FAKE" node --experimental-strip-types tests/forge-service/e2e.ts phase13-fail

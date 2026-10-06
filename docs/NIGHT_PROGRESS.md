@@ -513,11 +513,51 @@ Deferred (D12-5): the network graph and forks tree/activity; tag marks and commi
 static-layer "Used by" counter for signed-out readers; discussion insights, CI metrics, rule insights,
 lab research insights, moderation transparency reporting.
 
+## Phase 13: what it produced
+
+Snippets, OSCR's gists, on `night/phase-13-snippets` (from `night/phase-12-statistics`). Built on
+phase 12; not merged, not deployed, not pushed to main. Every registry write behind `FORGE_OPEN`;
+nothing of a user's code run; no email; no mention of Claude; no em dash. Detail: `docs/SNIPPETS.md`,
+decisions D13-1 to D13-5.
+
+- **E1 the record and the authorized actions** (`migrations/d1-forge/0018_snippets.sql`,
+  `snippets-core.ts`, `act-snippet.ts`): a snippet's record (its git location, revision, visibility,
+  title, description, a files manifest with no content, an optional paper passage, the counts), its
+  comments (the discussions model, with an edit history) and its stars; the commits `snippet_create`,
+  `snippet_revise`, `snippet_fork` into the person's own `snippets` repository (D13-1). One index per
+  table; the native writes share one cap (`snippets`); the files' content never enters D1 (D13-2).
+- **E3 the native routes** (`snippets.ts`, wired in `index.ts`): read one (by id or handle), discover
+  (public, never unlisted), a person's list; edit (title, description, make public, comments on/off,
+  the paper passage, a hide); comment (behind the human check, edit with a history, delete, hide);
+  star (with stargazers). Masking, blocks and interaction limits, triagers' hide/delete.
+- **E4 forks, stargazers, the paper passage, a citation**: a fork copies the folder into the forker's
+  own repository and records a new snippet (`forked_from`); a snippet tied to a paper passage shown
+  **beside** the maps, never a map, never a DOI (D13-3); a plain-text citation on the page.
+- **E5 the pages** (`src/pages/snippets/index.astro`, `src/scripts/snippets.ts`, `public/_redirects`,
+  `science.css`): `/snippets/` (discover, a person's list, the create form) and
+  `/snippet/<owner>/<folder>/` (one snippet; its files linked into the registry's own reader at the
+  pinned revision, GitHub a last resort).
+
+The close: the whole suite green (pytest 592, ruff clean, `npm test` 1 586, build and `check
+--every-route` within the budget); the end-to-end run extended (stage 13, `e2e.ts phase13` and
+`phase13-fail`: a public snippet created through one authorized action, a comment hidden by the owner
+and gone for Bob, an unlisted snippet absent from discover yet reachable by its link and never on the
+API, a snippet tied to a paper passage, Bob's fork into his own account, and the human check refusing a
+comment when Turnstile fails) and the whole run passed (exit 0). Screenshots in
+`docs/night-screenshots/phase-13/`. Docs: `SNIPPETS.md`, `FORGE.md`, `ARCHITECTURE.md`, `CLAUDE.md`,
+`DECISIONS.md` D13-*.
+
+Deferred (D13-5): embedding with a script tag; a revision diff view, permalink UI and ZIP download
+(git and GitHub serve these); subscriptions and notification fan-out; pins on a person's page;
+discussion-style insights; the code-view affordance to make a snippet from selected lines; phase 16's
+central moderation and data-rights erasure of `snippet` and `snippet_comment` (D13-4).
+
 ## Next step
 
-Phase 13, snippets (the registry's gists), on branch `night/phase-13-snippets` (created from
-`night/phase-12-statistics`, nothing built on it). See `docs/PLATFORM_PLAN.md` §15 "Phase 13,
-Snippets": a snippet lives in a `snippets` repository in the researcher's own GitHub account (created
-through an authorized action), its record in `oscr_forge`; public or unlisted; revisions, forks, stars,
-comments, embedding; the research additions (a snippet attached to a paper passage). Depends on 01, 02,
-03, 08, 16. **The owner's go is granted in advance** for the next phases.
+Phase 15, ease of use, on branch `night/phase-15-ease-of-use` (created from `night/phase-13-snippets`,
+nothing built on it), the **last** phase in the plan's order. See `docs/PLATFORM_PLAN.md` §15.6
+"Phase 15, Ease of use": keyboard shortcuts, the command palette, preferences (themes are options in
+`science.css`, light by default), accessibility, phones and tablets, global navigation, localization
+(English only for now, the interface texts in one place), and a static status and help page. It covers
+every page that exists, so it depends on every phase before it. **The owner's go is granted in
+advance** for the next phases.

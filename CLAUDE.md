@@ -345,6 +345,29 @@ a `/r/` page, migration `migrations/d1-forge/0017_statistics.sql`.
   are the registry's own facts. SVG joined the view tree; colour comes from `science.css` (D12-4). All
   reads signed in; no email; nothing of a user's code run.
 
+## Snippets (night phase 13)
+
+Full detail in [docs/SNIPPETS.md](docs/SNIPPETS.md); decisions D13-1 to D13-5. Migration
+`migrations/d1-forge/0018_snippets.sql`; `snippets-core.ts`, `snippets.ts`, `act-snippet.ts`; the
+pages at `/snippets/` and `/snippet/<owner>/<folder>/`.
+
+- **A snippet is OSCR's gist**: a few lines of code shared on their own, tied to a paper's passage.
+  Its **files** live in a `snippets` repository in the researcher's **own GitHub account**, one folder
+  per snippet, created and revised by **authorized commits** (D13-1): OSCR never asks for the Gists
+  permission (D00-14) and never writes to GitHub itself. Its **record** lives in `oscr_forge`; **no
+  file content and no git text ever enter D1** (the row budget). The files are shown in the registry's
+  own reader (`/r/…/blob/…` at the pinned revision), GitHub a last resort.
+- **Public or unlisted** (D13-2): unlisted is out of discover, search, feeds, the public API and the
+  sitemap, `noindex`, reachable only by its link (and by anyone who can read the repository, said on
+  the form); unlisted to public, never back. One explicit index per table; the native writes (edit,
+  comment, star) share one cap (`snippets`), out of the 100 authorized actions.
+- **Tied to a paper passage** (D13-3): a DOI and a Methods paragraph, shown **beside** the maps,
+  **never a map, never given a DOI**.
+- **Public free text**: descriptions and comments are masked for addresses, behind Turnstile, under
+  the caps, blocks and interaction limits, with triagers' hide/delete on the rows' own columns. Phase
+  16's central moderation and data-rights erasure must still be extended to `snippet` and
+  `snippet_comment` (D13-4, extends D06-6).
+
 ## The website's style (website/)
 
 - `website/src/styles/science.css` is the **only** source of style of the site. It is

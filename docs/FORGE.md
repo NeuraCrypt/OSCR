@@ -462,6 +462,28 @@ never a GitHub image; each chart is also a table with a CSV and a PNG.
   checklist (`src/lib/community-view.ts`), "Used by", the maintainer traffic, the GitHub charts and the
   star history. `science.css` holds the styles (`.insights`, `.chart*`, `.chart-table`, `.checklist`).
 
+## Snippets (night phase 13)
+
+OSCR's gists (`docs/SNIPPETS.md`; D13-*). A snippet's files are a folder of a `snippets` repository in
+the person's own GitHub account, written by authorized commits; the record is in `oscr_forge`
+(`0018_snippets.sql`), with no file content in D1.
+
+- **Authorized actions** (`act-snippet.ts`, in ACTION_KINDS, counted toward the 100): `snippet_create`
+  and `snippet_revise` commit the folder into the person's `snippets` repository (created with a README
+  on the first); `snippet_fork` copies a snippet's folder into the forker's own `snippets` repository
+  in one commit and records a new snippet (`forked_from`). None asks for the Gists permission; OSCR
+  never writes to GitHub itself.
+- **Native reads and writes** (`snippets.ts`, kind `snippet_edit`/`snippet_comment`/`snippet_star`, one
+  cap `snippets`): `GET /api/forge/snippets` (one by `?id=`/`?owner=&folder=`, discover, or a person's
+  list), `POST /api/forge/snippets/edit` (title, description, make public, comments on/off, the paper
+  passage, a hide), `/comment` (behind the human check, edit with a history, delete, hide) and `/star`.
+- **Unlisted** snippets are out of discover, search, feeds, the public API and the sitemap, `noindex`,
+  reachable only by their link (D13-2); unlisted to public, never back. One explicit index per table
+  (`snippets_discover`; `(owner_login, folder)` is a unique auto-index).
+- **Public free text**: masking, Turnstile, caps, blocks and interaction limits, and triagers'
+  hide/delete on the rows' own columns; phase 16's central moderation and data-rights erasure to be
+  extended to `snippet` and `snippet_comment` (D13-4).
+
 ## Budget (PLATFORM_PLAN.md §15.4)
 
 Phase 01's share of a day at ~3,000 repositories: **~900 Worker requests, ~1,300 D1 rows written,
