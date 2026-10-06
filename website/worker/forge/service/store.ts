@@ -465,6 +465,27 @@ export function licencesOf(db: D1Database, forge: string, repoId: string): D1Pre
   return db.prepare("SELECT licence, summary FROM repo_licences WHERE forge = ? AND repo_id = ?").bind(forgeOf(forge), repoId);
 }
 
+/** A repository's statistics summary (repo_stats, night phase 12): the key, 1 row. */
+export function statsOf(db: D1Database, forge: string, repoId: string): D1PreparedStatement {
+  return db.prepare("SELECT usedby_papers, usedby_repos, stars FROM repo_stats WHERE forge = ? AND repo_id = ?").bind(forgeOf(forge), repoId);
+}
+
+/** A repository's "Used by" dependant sample (repo_dependents), by the key's prefix: a key range,
+ *  papers before repositories. */
+export function dependentsOf(db: D1Database, forge: string, repoId: string): D1PreparedStatement {
+  return db
+    .prepare("SELECT dep_kind, dep_ref, via, owner, name, slug, title FROM repo_dependents "
+      + "WHERE forge = ? AND repo_id = ? ORDER BY dep_kind, dep_ref")
+    .bind(forgeOf(forge), repoId);
+}
+
+/** A repository's research marks (repo_marks), by the key's prefix: a key range. */
+export function marksOf(db: D1Database, forge: string, repoId: string): D1PreparedStatement {
+  return db
+    .prepare("SELECT kind, ref, t, label FROM repo_marks WHERE forge = ? AND repo_id = ? ORDER BY t")
+    .bind(forgeOf(forge), repoId);
+}
+
 /** One alert's finding row (to check it exists before triaging it: the key, 1 row). */
 export function alertByRef(db: D1Database, forge: string, repoId: string, kind: string, ref: string): D1PreparedStatement {
   return db.prepare("SELECT kind, ref FROM security_alerts WHERE forge = ? AND repo_id = ? AND kind = ? AND ref = ?")

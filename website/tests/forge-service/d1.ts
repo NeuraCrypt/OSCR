@@ -176,4 +176,5 @@ export const SOCIAL_EMPTY = {
   webauthn_credentials: 0, security_log: 0, sudo_sessions: 0,
   discussion_spaces: 0, discussions: 0, discussion_comments: 0, discussion_votes: 0,
   projects: 0, project_fields: 0, project_items: 0,
+  repo_stats: 0, repo_dependents: 0, repo_marks: 0,
 } as const;

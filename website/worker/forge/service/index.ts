@@ -87,6 +87,7 @@ import { handleDeviceDecide, handleDeviceRead } from "./device.ts";
 import { handleHookDeliveries, handleHooks, handleHookWrite } from "./hooks.ts";
 import { handleStatuses } from "./statuses.ts";
 import { handleSecurity, handleTriage } from "./security.ts";
+import { handleStats } from "./statistics.ts";
 import { handleAdvisoryEdit, handleAdvisoryOpen, handleAdvisoryPost, handleAdvisoryRead } from "./advisory.ts";
 import { handleAppeal, handleModerationMine, handleModerationRead, handleModerationWrite, handleReport } from "./moderation.ts";
 import { handleBlocks, handleBlockWrite, handleLimits, handleLimitWrite } from "./blocks.ts";
@@ -155,6 +156,9 @@ export const FORGE_ROUTES: Readonly<Record<string, Route>> = {
   "/api/forge/hooks/write": { method: "POST", signedIn: true, handle: (r) => handleHookWrite(r) },
   // Phase 10: the statuses outside services posted on a commit (statuses.ts; posted through the API).
   "/api/forge/statuses": { method: "GET", signedIn: true, handle: (r) => handleStatuses(r) },
+  // Phase 12: repository statistics the registry alone has (statistics.ts), the Mac's facts: "Used
+  // by", the research marks, the star history. GitHub's charts are read in the browser (0 requests).
+  "/api/forge/stats": { method: "GET", signedIn: true, handle: (r) => handleStats(r) },
   // Phase 11: the security and quality layer of a repository (security.ts), the Mac's facts.
   "/api/forge/security": { method: "GET", signedIn: true, handle: (r) => handleSecurity(r) },
   "/api/forge/security/triage": { method: "POST", signedIn: true, handle: (r) => handleTriage(r) },

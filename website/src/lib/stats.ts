@@ -51,7 +51,7 @@ export interface Dependent {
  *  them; the Worker reads a key range, never a scan). The GitHub charts are read in the browser and
  *  are not here; these are the parts only OSCR has. */
 export interface StatsFacts {
-  forge: "github";
+  forge: string;
   id: string | null;
   /** "Used by": how many papers and repositories depend on this one, and a sample of each. */
   usedBy: {

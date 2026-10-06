@@ -12,7 +12,7 @@
 // live SVG in the browser, colours inlined, so nothing leaves the page). Like every browser script,
 // it never names the platform.
 
-import type { StatsFacts } from "../lib/stats.ts";
+import type { Dependent, StatsFacts } from "../lib/stats.ts";
 import {
   dataTable, dayOf, divergingColumns, parseCodeFrequency, parseCommitActivity, parseContributors, parseParticipation,
   rankedBars, timeSeriesChart, toCsv,
@@ -20,7 +20,7 @@ import {
 } from "../lib/stats-view.ts";
 import { h } from "../lib/repo-view.ts";
 import { number } from "../lib/format.ts";
-import { show, toDom } from "./dom.ts";
+import { toDom } from "./dom.ts";
 import { getJson } from "./social-client.ts";
 import { codeViews, type CodeEnv } from "./repo-code.ts";
 
@@ -241,6 +241,35 @@ async function mountContributors(sec: HTMLElement, env: CodeEnv): Promise<void> 
   place(sec, chart, { caption: "Contributors by commit count", headers: ["Contributor", "Commits"], rows: bars.map((b) => [b.label, number(b.value)]) }, `${env.repo.name}-contributors`);
 }
 
+/** A dependant as a list item: a paper links to its page (or a DOI lookup), a repository to its /r/. */
+function dependentItem(d: Dependent): ReturnType<typeof h> {
+  if (d.kind === "paper") {
+    const href = d.slug ? `/paper/${d.slug}/` : `/lookup/?doi=${encodeURIComponent((d.doi ?? "").replace(/^doi:/, ""))}`;
+    return h("li", null, h("a", { href }, d.title || d.doi || "a paper"), d.via ? h("span", { class: "muted" }, ` (via ${d.via})`) : null);
+  }
+  const path = d.owner && d.name ? `/r/${encodeURIComponent(d.owner)}/${encodeURIComponent(d.name)}/` : null;
+  const label = d.owner && d.name ? `${d.owner}/${d.name}` : "a repository";
+  return h("li", null, path ? h("a", { href: path }, label) : label, d.via ? h("span", { class: "muted" }, ` (via ${d.via})`) : null);
+}
+
+function mountUsedBy(sec: HTMLElement, facts: StatsFacts | null): void {
+  if (!facts) return saySection(sec, "Sign in to see which papers and repositories use this one.");
+  const { papers, repos, dependents } = facts.usedBy;
+  if (!papers && !repos) return saySection(sec, "No paper or repository in the registry is known to depend on this one yet.");
+  const box = document.createElement("div");
+  box.append(toDom(h("p", null,
+    "Used by ", h("span", { class: "used-by-count" }, `${number(papers)} ${papers === 1 ? "paper" : "papers"}`),
+    " and ", h("span", { class: "used-by-count" }, `${number(repos)} ${repos === 1 ? "repository" : "repositories"}`),
+    " in the registry. A paper counts when a repository that cites it depends on this code.")));
+  const paperItems = dependents.filter((d) => d.kind === "paper");
+  const repoItems = dependents.filter((d) => d.kind === "repo");
+  if (paperItems.length) box.append(toDom(h("h4", null, "Papers")), toDom(h("ul", null, ...paperItems.map(dependentItem))));
+  if (repoItems.length) box.append(toDom(h("h4", null, "Repositories")), toDom(h("ul", null, ...repoItems.map(dependentItem))));
+  if (dependents.length < papers + repos) box.append(toDom(h("p", { class: "muted" }, `A sample of ${number(dependents.length)} is shown.`)));
+  const heading = sec.querySelector("h3");
+  sec.replaceChildren(...(heading ? [heading] : []), box);
+}
+
 function mountStars(sec: HTMLElement, env: CodeEnv, stars: Point[]): void {
   if (!stars.length) return saySection(sec, "No stars in the registry yet.");
   const chart = timeSeriesChart({
@@ -256,18 +285,19 @@ codeViews.insights = async (slot, env) => {
   root.className = "insights";
   root.append(toDom(h("h2", null, "Insights")));
   root.append(toDom(h("p", { class: "at-source" }, "The registry draws these charts itself. The source's own statistics are read in your browser, on your quota; the research marks and the star history are the registry's.")));
+  const secUsedBy = section("used_by", "Used by");
   const secCommits = section("commit_activity", "Commit activity");
   const secParticipation = section("participation", "Participation");
   const secCode = section("code_frequency", "Code frequency");
   const secContributors = section("contributors", "Contributors");
   const secStars = section("stars", "Star history");
-  root.append(secCommits, secParticipation, secCode, secContributors, secStars);
-  show(slot, h("div", { class: "insights" }));
+  root.append(secUsedBy, secCommits, secParticipation, secCode, secContributors, secStars);
   slot.replaceChildren(root);
 
   const facts = await readFacts(env);
   const marks = facts?.marks ?? [];
   const stars = facts?.stars ?? [];
+  mountUsedBy(secUsedBy, facts);
   // The GitHub reads run together; the facts are already in.
   await Promise.all([
     mountCommitActivity(secCommits, env, marks),

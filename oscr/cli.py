@@ -434,6 +434,19 @@ def main(argv: list[str] | None = None) -> int:
     se.add_argument("--sbom-out", default="data/security/sbom", help="sbom: the folder for the SPDX files")
     se.add_argument("--sbom-format", choices=["json", "tag-value"], default="json", help="sbom: the SPDX shape")
 
+    ub = sp.add_parser("usedby", help="night phase 12: repository statistics the registry alone has (docs/STATISTICS.md): "
+                                      "\"Used by\" (the papers and repositories that depend on a repository, counting papers), "
+                                      "the star history and the paper research marks, pushed to oscr_forge. GitHub's own "
+                                      "statistics are read in the reader's browser (0 requests).")
+    ub.add_argument("action", choices=["scan", "status"])
+    ub_where = ub.add_mutually_exclusive_group()
+    ub_where.add_argument("--local", action="store_true", help="the local D1 of `wrangler dev --env local`")
+    ub_where.add_argument("--remote", action="store_true", help="the Cloudflare database oscr_forge")
+    ub.add_argument("--folder", default="data/community", help="the state (the budget ledger, shared with the other pushers)")
+    ub.add_argument("--persist-to", default="", help="the local D1's state folder, when not website/.wrangler/state")
+    ub.add_argument("--budget", type=int, default=int(cfg.get("OSCR_COMMUNITY_BUDGET", "10000")),
+                    help="rows written a day, the facts push's included (default 10,000)")
+
     so = sp.add_parser("social", help="the social layer (night phase 08): the static shards of stars, follows and "
                                       "profiles, the Explore page, the collections (docs/SOCIAL.md)")
     so.add_argument("action", choices=["layer", "search", "collections", "accept", "decline"])
@@ -672,6 +685,12 @@ def main(argv: list[str] | None = None) -> int:
                                    persist_to=Path(a.persist_to) if a.persist_to else None, client=client,
                                    repo_filter=a.repo, out_dir=Path(a.sbom_out), sbom_format=a.sbom_format,
                                    report=lambda m: print(m, flush=True)))
+        elif a.command == "usedby":
+            from . import usedby
+            print(usedby.command(con, a.action, target="remote" if a.remote else "local" if a.local else None,
+                                 folder=Path(a.folder), budget=a.budget, settings=cfg,
+                                 persist_to=Path(a.persist_to) if a.persist_to else None,
+                                 report=lambda m: print(m, flush=True)))
         elif a.command == "social":
             from . import social
             print(social.command(con, a.action, target="remote" if a.remote else "local" if a.local else None,

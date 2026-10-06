@@ -34,7 +34,9 @@ TABLES = {"repos", "repo_papers", "installations", "traced_paths", "actions", "d
           "webauthn_credentials", "security_log", "sudo_sessions",
           # Night phase 06: discussions (0014_discussions.sql) and projects (0015_projects.sql).
           "discussion_spaces", "discussions", "discussion_comments", "discussion_votes",
-          "projects", "project_fields", "project_items"}
+          "projects", "project_fields", "project_items",
+          # Night phase 12: repository statistics (0017_statistics.sql).
+          "repo_stats", "repo_dependents", "repo_marks"}
 T = 1_790_596_800
 
 
