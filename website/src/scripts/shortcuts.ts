@@ -49,6 +49,9 @@ function openHelp(): void {
   if (!dialog.open) dialog.showModal();
 }
 
+// The command palette can ask to open this help ("Show the keyboard shortcuts").
+document.addEventListener("oscr:open-shortcuts", () => openHelp());
+
 function runGlobal(s: Shortcut): void {
   if (s.action === "help") {
     openHelp();
