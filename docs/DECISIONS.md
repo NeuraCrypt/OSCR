@@ -3251,3 +3251,61 @@ features' strings are centralised, with the seam ready); the dark-theme refineme
 label and diff colours; hovercards, the repository switcher in the breadcrumb, feature-preview
 toggles and a global recent-items navigation; and the flash-prevention of the theme (D15-6). Each is
 additive.
+
+## Reconciliation (the `reconcile` branch, merging the GitHub side into main)
+
+The 16 night phases (`origin/night/phase-15-ease-of-use`, cumulative) were merged into the live
+`main`. Main stays authoritative for the public live site; the GitHub side (forge) is additive and
+dormant behind `FORGE_OPEN` (never set). The decisions taken at the merge:
+
+### DR-1. The public keyless API keeps `/api/v1`; the forge token API moves to `/api/forge/v1`
+
+Both sides served an `/api/v1`. The keyless, read-only public API (`website/worker/v1/`,
+`docs/API_PUBLIC.md`) owns `/api/v1`: a token is never required to read. The forge's authenticated
+bearer API moved to `/api/forge/v1` (one source: `API_PREFIX` in
+`website/worker/forge/service/api.ts`, which cascades to `API_ROUTES`, `isApiPath`, the OpenAPI
+document, the `/developers/` reference, the CLI `oscr_cli.oscr_api.API` and every forge-service and
+CLI test). It requires a token (`401` without one) and is wired in `worker/index.ts` before the
+`/api/forge/*` service prefix, so the two namespaces never collide. The forge routes stay behind
+`FORGE_OPEN`.
+
+### DR-2. Moderation: main's public-site moderator is authoritative; the forge's is separate
+
+`oscr/moderation.py` and `website/src/lib/moderation.ts` were an add/add conflict of two unrelated
+modules. Main's is the live public-site automatic moderator (removal requests, submissions, claims,
+the GDPR data-rights deadlines); it is kept unchanged and authoritative. The night's Python module
+(the "what moderation hid" export helper: `Hidden`, `read`, `write`, `notices`) moved to its own
+self-contained `oscr/forgehidden.py` (its test to `tests/test_forgehidden.py`), and its two Mac
+consumers (`oscr/social.py`, `oscr/forgelayer.py`) were repointed. The forge's own object moderation
+stays self-contained in `website/worker/forge/service/` (`moderation.ts`, `moderation-core.ts`,
+`hidden.ts`, `hidden-search.ts`). `website/src/lib/moderation.ts` is a union: main's removal-request
+rules plus the forge's report-kind words re-exported from `moderation-core.ts`, additive, with no
+name collision. The forge moderation never edits or weakens the public-site moderator.
+
+### DR-3. File budget: one file per paper ("code first") kept; `FIXED_FILES_MAX` raised to 4,000
+
+Main's "code first" decision makes a paper's page one file (the reader is on it), so `STATIC_PAPERS`
+stays 6,000 (the night had lowered it to 5,700 on the assumption of two files per paper).
+`FIXED_FILES_MAX` was raised from 3,500 to 4,000 to hold the launch pages (list, sitemap, info
+pages) and the GitHub side's fixed files (`GITHUB_SIDE_SHARDS` = 321, plus the forge pages and
+bundles) together. `STATIC_PAPERS` + `FIXED_FILES_MAX` = 10,000, under the 15,000 check margin; 2 x
+`STATIC_PAPERS` + `FIXED_FILES_MAX` = 16,000, under the 20,000 Worker limit. `check:growth` on the
+grown fixture reports 3,416 fixed files, well within the margin.
+
+### DR-4. Public-facing pages and headers kept main's; the night's additions folded in additively
+
+The privacy, data-rights and account pages keep main's live, tested GDPR substance; the account page
+adds the forge Automation and Safety links. `public/_headers` keeps main's site-wide block, the CSP
+reset pattern and the `/paper/:slug/` source-fetch origins, and adds the forge page rules (`/r/*`,
+`/research/*`, social and settings); the night's duplicate `/data-rights/` rule (Turnstile-relaxed)
+was dropped so the GDPR page keeps its strict, self-only policy. `science.css` is the union of both
+rule sets. The em dash is removed from every merged night source so the guards pass
+(`website/scripts/check.mjs`, `tests/test_no_em_dash.py`).
+
+### DR-5. Migrations
+
+Main's and the night's D1 migrations live in separate directories (`migrations/d1/`,
+`migrations/d1-community/`, `migrations/d1-forge/`), so no migration number collided across the two
+sides; the sequences were kept as each side wrote them. The forge binding (`oscr_forge`) is in
+`wrangler.toml`'s `env.local` for tests and dev; the production binding is added by the owner with
+`tools/setup_cloudflare.sh`, so `/api/forge/*` answers 503 until then.
