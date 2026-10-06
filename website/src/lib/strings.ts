@@ -14,7 +14,7 @@ export interface Strings {
     placeholder: string;
     empty: string;
     hint: string;
-    groups: { go: string; commands: string; issues: string; people: string; repos: string };
+    groups: { go: string; commands: string; issues: string; people: string; search: string };
     close: string;
   };
   shortcuts: {
@@ -39,7 +39,7 @@ export const STRINGS: Strings = {
     placeholder: "Jump to a page, or type a command",
     empty: "Nothing matches.",
     hint: "Type to filter. # for issues and pull requests, @ for people and organizations, > for commands. Enter opens, Escape closes.",
-    groups: { go: "Go to", commands: "Commands", issues: "Issues and pull requests", people: "People and organizations", repos: "Repositories" },
+    groups: { go: "Go to", commands: "Commands", issues: "Issues and pull requests", people: "People and organizations", search: "Search" },
     close: "Close",
   },
   shortcuts: {
@@ -56,3 +56,17 @@ export const STRINGS: Strings = {
     storageOff: "This browser is not keeping the choices (a private window, or site data is blocked). They last until you leave the page.",
   },
 };
+
+// The seam a translation uses later (D15-n): one table per language, of the same shape as STRINGS,
+// added to STRINGS_BY_LANG, and stringsFor(lang) picks it by the page's html lang (falling back to
+// English). English is the only language for now, so every page gets STRINGS; no page passes a lang
+// yet. The rest of the pages' own text stays in place until a translation is actually started.
+export const STRINGS_BY_LANG: Record<string, Strings> = {
+  en: STRINGS,
+};
+
+/** The strings for a language code (just its base, e.g. "en" from "en-GB"); English when unknown. */
+export function stringsFor(lang: string | null | undefined): Strings {
+  const base = (lang ?? "en").toLowerCase().split("-")[0];
+  return STRINGS_BY_LANG[base] ?? STRINGS;
+}

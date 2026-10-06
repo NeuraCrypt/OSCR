@@ -11,6 +11,8 @@
 //
 // It never names the platform: a sentence that needs the registry's name takes it from the page.
 
+import { STRINGS } from "./strings.ts";
+
 export type Kind = "go" | "command" | "issues" | "people" | "search";
 
 export interface PaletteEntry {
@@ -124,12 +126,14 @@ export interface ResultGroup {
   matches: Match[];
 }
 
+// The group titles come from the central strings module (night phase 15, localization), so one
+// translation of those labels serves the palette too.
 const GROUP_TITLES: Record<Kind, string> = {
-  go: "Go to",
-  command: "Commands",
-  issues: "Issues and pull requests",
-  people: "People and organizations",
-  search: "Search",
+  go: STRINGS.palette.groups.go,
+  command: STRINGS.palette.groups.commands,
+  issues: STRINGS.palette.groups.issues,
+  people: STRINGS.palette.groups.people,
+  search: STRINGS.palette.groups.search,
 };
 
 const searchHref = (type: string, q: string): string => `/search/?q=${encodeURIComponent(q)}&type=${type}`;
