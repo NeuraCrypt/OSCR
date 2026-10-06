@@ -617,3 +617,12 @@ POST /api/forge/projects/create | /edit | /field | /item          create, edit, 
 - **Public free text** (D06-6): these are OSCR's first public user-written free text; the central
   owner-moderation, reporting and the nightly static drop must be extended to `discussion` and
   `discussion_comment` when phase 06 merges. The e2e harness exercises all of this in stage 11.
+
+## Ease of use (night phase 15)
+
+The comfort layer (keyboard shortcuts, the command palette, preferences and themes, accessibility,
+localization, `/status`) is client-side and static: it touches no forge route and writes no row (see
+[EASE_OF_USE.md](EASE_OF_USE.md), DECISIONS.md D15-*). The only forge interaction it would add,
+**syncing a reader's preferences to their account on request**, is deferred (D15-7); when built it is
+an authorized write, so it sits behind `FORGE_OPEN` like every other write. The `/status` page's data
+comes from the Mac's own outbound checks (`oscr/sitestatus.py`, `oscr status`), not from the forge.

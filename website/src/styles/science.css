@@ -1649,7 +1649,15 @@ html[data-motion="reduced"] *, html[data-motion="reduced"] *::before, html[data-
 dialog.shortcuts-dialog, dialog.command-palette {
   padding: 0; border: 1px solid var(--border-strong); border-radius: 0;
   background: var(--panel); color: var(--text); box-shadow: 0 4px 20px var(--shadow);
-  max-width: 44em; width: calc(100% - 2em);
+  max-width: 44em; width: calc(100% - 2em); max-height: 90vh; overflow: hidden;
+  display: flex; flex-direction: column;
+  /* Anchor near the top rather than vertically centred, so a tall dialog is never clipped on a
+     phone and it opens where the eye expects it (like a command bar). */
+  margin: 4vh auto auto;
+}
+@media (max-width: 480px) {
+  dialog.shortcuts-dialog, dialog.command-palette { width: calc(100% - 1em); max-width: none; }
+  td.shortcut-keys { width: 6em; }
 }
 dialog.shortcuts-dialog::backdrop, dialog.command-palette::backdrop { background: rgba(0, 0, 0, .35); }
 .dialog-head { display: flex; align-items: baseline; justify-content: space-between; gap: 1em; padding: .6em .9em; border-bottom: 1px solid var(--rule); }
@@ -1657,7 +1665,7 @@ dialog.shortcuts-dialog::backdrop, dialog.command-palette::backdrop { background
 .dialog-head button { font: inherit; border-radius: 0; cursor: pointer; }
 
 /* The shortcut help: one table per group, keys on the left. */
-.shortcut-help { padding: .6em .9em 1em; max-height: 70vh; overflow: auto; }
+.shortcut-help { padding: .6em .9em 1em; flex: 1 1 auto; overflow: auto; }
 .shortcut-group { margin: .6em 0 1em; }
 .shortcut-group h3 { margin: .4em 0 .3em; font-size: 1em; }
 table.shortcut-table { border-collapse: collapse; width: 100%; }

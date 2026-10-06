@@ -399,6 +399,38 @@ pages at `/snippets/` and `/snippet/<owner>/<folder>/`.
     paragraph and the lines that match it share one class of `.pair-1` to `.pair-6`; the
     selected pair is marked `.is-active` on both sides.
 
+## Ease of use (night phase 15)
+
+The comfort layer over every page (`docs/EASE_OF_USE.md`, `DECISIONS.md` D15-*). It adds to every
+earlier phase and removes nothing; `science.css` stays the only style, and the client features ask
+the Worker for nothing.
+
+- **Preferences** (theme, contrast, colour-vision palette, link underlines, motion, line spacing, tab
+  size, Markdown font, hovercards, animated-image autoplay, character shortcuts, emoji skin tone) live
+  in the browser (`localStorage`, guarded; zero rows). One schema, `src/lib/preferences.ts`; one
+  site-wide script, `src/scripts/site.ts` (imported once by `Base.astro`), applies them to `<html>`
+  and exposes `window.oscr`. The page is `/settings/preferences/`.
+- **Themes are options in `science.css`, light by default.** The dark theme and the colour-vision
+  palettes redefine the `:root` tokens under `html[data-theme=…]`/`html[data-vision=…]`; **never a
+  dark theme by default** (D15-2). A reader with nothing stored carries no theme attribute at all.
+- **Keyboard shortcuts** (`src/lib/shortcuts.ts`, `src/scripts/shortcuts.ts`): `?` opens the help, the
+  global ones navigate, the context ones (code, lists, issues, pull requests, notifications) are
+  dispatched as a cancelable `oscr:shortcut` event for the owning view; the keys match GitHub's. The
+  single-key shortcuts obey a preference; `?` and the palette always work.
+- **The command palette** (`Ctrl/Cmd+K`, `src/lib/palette.ts`) is a STATIC index of destinations and
+  commands; a prefix (`#`, `@`, `>`/`/`) turns the query into a search. 0 requests, no file per
+  entity.
+- **Accessibility:** a skip link, the `<main id="main">` landmark, one `h1`, banner and footer
+  landmarks on every page (audited in `tests/forge-pages/accessibility.test.ts`); the statement is
+  `/accessibility/`; the phase-12 charts carry `role="img"`, `aria-label`, `<title>`/`<desc>` and a
+  table and CSV alternative.
+- **Localization:** the new features' interface strings live in `src/lib/strings.ts`, with
+  `stringsFor(lang)` (English only for now). The rest is deferred (D15-7).
+- **Service status:** `/status/` shows 90 days of availability and incidents (from the Mac's own
+  outbound checks, `oscr/sitestatus.py`, `oscr status`) and the daily quotas in words. Static: it says
+  when it was built. The five-minute checks are the owner's launchd step; nothing on the site checks
+  itself.
+
 ## Already in force
 
 - Neither the PDF nor the full text of a paper leaves: the site links to it by its DOI. Its

@@ -1056,3 +1056,43 @@ research-issue model. Detail: `docs/DISCUSSIONS.md`, decisions D06-1 to D06-6.
 - **Public free text** (D06-6): the first public user-written free text; the phase-16 reconciliation
   (central moderation, reporting, the nightly static drop over `discussion`/`discussion_comment`) is
   deferred to the merge and recorded in CLAUDE.md and `docs/DISCUSSIONS.md`.
+
+## Ease of use (night phase 15)
+
+The comfort layer over every page ([EASE_OF_USE.md](EASE_OF_USE.md), DECISIONS.md D15-*). `science.css`
+stays the only style; the client features ask the Worker for nothing.
+
+- **The site-wide script** `website/src/scripts/site.ts`, imported once by `Base.astro`, applies the
+  reader's preferences to `<html>` (from `localStorage`, guarded), keeps tabs in step, and sets up the
+  keyboard shortcuts (`shortcuts.ts`) and the command palette (`palette.ts`). It exposes `window.oscr`
+  for the preferences page and the palette's theme command.
+- **Preferences and themes** (`src/lib/preferences.ts`): one schema; a default sets no attribute, so
+  light is the default and no dark theme is ever forced. Themes and palettes redefine `science.css`'s
+  `:root` tokens under `html[data-theme=…]`/`html[data-vision=…]`. The page: `/settings/preferences/`.
+- **Shortcuts** (`src/lib/shortcuts.ts`): the global ones act; the context ones dispatch an
+  `oscr:shortcut` event the owning view handles. **The palette** (`src/lib/palette.ts`): a static
+  index; a prefix searches, so 0 requests and no file per entity.
+- **Accessibility** (`src/pages/accessibility.astro`, `tests/forge-pages/accessibility.test.ts`): the
+  skip link, the `<main id="main">` landmark, one `h1` and the banner/footer landmarks on every page;
+  the charts carry `role="img"`, `aria-label`, `<title>`/`<desc>` and a table alternative. `fillShell`
+  (`worker/pages.ts`) matches `<main[^>]*>` so the id does not break the on-demand pages.
+- **Localization** (`src/lib/strings.ts`): the new features' strings in one place, `stringsFor(lang)`,
+  English only for now.
+- **Service status** (`/status/`, `src/lib/status-page.ts`, `src/data/site-status.json`): 90 days of
+  availability and incidents, and the daily quotas in words. Static: it says when it was built. The
+  data is written by the Mac (`oscr/sitestatus.py`, `oscr status`) from its own outbound checks; the
+  build generates a placeholder when the checks are not enabled yet.
+
+### The owner's step for `/status` [owner]
+
+The availability on `/status` is empty until the owner turns on the five-minute outbound checks:
+
+1. A launchd job (or the Mac's watchdog) runs `oscr status check` every five minutes. It does one GET
+   of `--url` (default `OSCR_SITE_URL`, else `https://openscicode.org/`) and appends the result to the
+   store (`data/status/checks.jsonl`). This is the only command that reaches the outside.
+2. Before each deployment, `oscr status build` aggregates the store into
+   `<export>/site-status.json`, which `npm run build` copies into the site. `oscr status init` writes
+   the placeholder meanwhile.
+
+Nothing on the site checks itself, and nothing contacted the outside during the night build (the
+mechanism is tested against a fake getter, and the fixture status is synthesised).

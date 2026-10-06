@@ -3189,3 +3189,65 @@ a ZIP download (git and GitHub serve these); subscriptions and notification fan-
 on a person's page; discussion-style insights; and the code-view affordance to make a snippet from
 selected lines (the API already accepts a passage and the files). Each is additive, never a file per
 snippet.
+
+## Phase 15 — Ease of use (night run, the last phase)
+
+### D15-1. Preferences live in the browser, applied site-wide, light by default
+
+**Decided.** The reader's preferences (theme, contrast, colour-vision palette, link underlines,
+motion, line spacing, tab size, Markdown font, hovercards, animated-image autoplay, character
+shortcuts, emoji skin tone) are kept in `localStorage` (guarded) and applied to `<html>` by one
+site-wide script (`src/scripts/site.ts`, imported once by `Base.astro`). Zero rows, nothing sent to
+the Worker. `src/lib/preferences.ts` is the single schema. A default sets no attribute, so the site
+stays light with nothing forced: **no dark theme by default** (CLAUDE.md). Syncing preferences to the
+account on request is deferred (D15-7).
+
+### D15-2. Themes are options in `science.css`, tokens only
+
+**Decided.** The dark theme and the colour-vision palettes redefine the `:root` tokens under
+`html[data-theme="dark"]` and `html[data-vision=…]`, and nothing else; "More contrast" re-reads the
+tokens too. A few chrome colours that were hard-coded (`#777`, panel whites, the focus ring) became
+tokens so one override repaints the whole site. The many small label and diff colours stay tuned for
+light first; refining them for dark is deferred (D15-7).
+
+### D15-3. Keyboard shortcuts: global carried out, context dispatched
+
+**Decided.** Global shortcuts (navigation, the search box, the help) are carried out by the site-wide
+script; context shortcuts (code, lists, issues, pull requests, notifications) are dispatched as a
+cancelable `oscr:shortcut` event for the page that owns the view, so a page wires only what it needs
+(NIGHT_RUN §4) and there is no conflict with pages that already handle those keys. The keys match
+GitHub's. `?` and the palette work even when the single-key shortcuts are turned off.
+
+### D15-4. The command palette is static: a prefix searches, never a per-entity list
+
+**Decided.** `Ctrl/Cmd+K` opens a palette built from a fixed index of destinations and in-place
+commands. It never lists issues, people or repositories one by one (that would need a request or a
+file per entity): a prefix (`#`, `@`, `>`/`/`) turns the query into a search of the registry. So the
+palette costs 0 requests and keeps the file budget.
+
+### D15-5. `/status` from the Mac's own outbound checks; the quotas in words from the site
+
+**Decided.** The service-status page shows 90 days of availability and incidents from the Mac's own
+outbound checks (`oscr/sitestatus.py`, one GET every five minutes, a run of consecutive failures is
+one incident); nothing on the site checks itself. The page is static and says when it was built. The
+daily free-tier quotas in words live in the site's own lib (`src/lib/status-page.ts`), always true of
+the documented limits, so the Mac needs to carry only the availability. The checks themselves are the
+owner's launchd step; during the night build nothing contacted the outside (the mechanism is tested
+against a fake getter, and the fixture status is synthesised).
+
+### D15-6. The theme may flash once; no inline script to prevent it
+
+**Decided.** The static pages are served light to everyone and the chosen theme is applied in the
+browser, so a reader who chose dark may see one light frame. The site-wide Content-Security-Policy
+allows this site's script files only, no inline script, so a flash-prevention snippet in `<head>`
+would break the policy (or need a per-page hash exception). The flash is accepted; preventing it is
+deferred rather than weakening the policy.
+
+### D15-7. What phase 15 defers (noted, not built tonight)
+
+**Deferred.** The account sync of preferences (built local only; the forge write would sit behind
+`FORGE_OPEN`); a full translation and the extraction of every existing page's strings (only the new
+features' strings are centralised, with the seam ready); the dark-theme refinement of the many small
+label and diff colours; hovercards, the repository switcher in the breadcrumb, feature-preview
+toggles and a global recent-items navigation; and the flash-prevention of the theme (D15-6). Each is
+additive.

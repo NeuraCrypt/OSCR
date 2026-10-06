@@ -828,3 +828,104 @@ un serveur local, toute adresse extérieure bloquée ; le port 8790 n'a pas ét�
 Ajouts dans l'esprit de la feuille (une seule source de style, pas de pastille, pas de majuscule
 décorative, pas de tiret cadratin) : `dd.snippet-row`, `.snippet-actions`, `.owner-actions`,
 `.snippet-file` et ses `input`/`textarea`, et `.comments` (une liste sans puce).
+
+## 11. Phase 15 (confort d'utilisation, la DERNIÈRE phase)
+
+**Terminée**, branche `night/phase-15-ease-of-use` (partie de `night/phase-13-snippets` à 93031cb),
+poussée. Six éléments, un commit chacun. Rien fusionné dans `main`, rien déployé, rien envoyé à
+l'extérieur. Règles tenues : `science.css` seule source de style ; **pas de thème sombre par défaut**
+(les thèmes sont des options, `html[data-theme]`) ; zéro requête au Worker pour les fonctions côté
+navigateur ; aucune adresse email ; pas de fichier par entité ; pas de tiret cadratin.
+
+Ce que ça fait, en mots simples :
+
+- **E1, préférences et thèmes** (289c6d5). Un lecteur choisit comment le site s'affiche : le thème
+  (clair par défaut, sombre s'il le veut), le contraste, une palette pour qui ne distingue pas bien les
+  couleurs, le soulignement des liens, l'animation réduite, l'espacement, la taille des tabulations, la
+  police du texte, et quelques autres. Ces choix restent dans **son** navigateur (rien n'est envoyé au
+  serveur, zéro ligne écrite), et sont appliqués sur chaque page par un seul petit script
+  (`src/scripts/site.ts`, chargé une fois par `Base.astro`). Un choix laissé par défaut ne pose aucun
+  attribut : le site reste clair, rien n'est forcé. Le schéma est `src/lib/preferences.ts` ; les règles
+  des thèmes redéfinissent les jetons de couleur de `science.css`, et rien d'autre. La page est
+  `/settings/preferences/`. On a aussi ajouté le lien « passer au contenu » (le premier élément qu'on
+  atteint au clavier) et le repère `main`. Pour cela, `fillShell` (le code du Worker) et la
+  vérification de routes acceptent désormais un attribut sur `<main>`.
+- **E2, raccourcis clavier** (28a8bf9). `?` ouvre la liste des raccourcis ; des lettres naviguent
+  (`g` puis `s` va à la recherche, etc.) ; les raccourcis propres au code et aux listes sont **envoyés**
+  à la page concernée (un évènement `oscr:shortcut`) pour qu'elle les exécute. Les touches sont celles
+  de GitHub, pour garder les habitudes. Rien ne se déclenche quand on écrit dans un champ ou qu'une
+  fenêtre est ouverte. Les raccourcis d'une seule lettre s'éteignent dans les préférences ; `?` et la
+  palette marchent quand même.
+- **E3, palette de commandes** (d076498). `Ctrl/Cmd+K` ouvre une boîte où l'on tape pour aller sur une
+  page ou lancer une commande (changer de thème, ouvrir l'aide). Elle ne liste jamais un article ou une
+  personne un par un : un préfixe (`#`, `@`, `>`/`/`) transforme la saisie en **recherche**. Donc zéro
+  requête au Worker et aucun fichier par entité. Elle se pilote au clavier et s'annonce au lecteur
+  d'écran (une liste d'options, `aria-activedescendant`).
+- **E4, accessibilité** (d8d2428). Un test lit les pages **construites** de plusieurs phases et vérifie
+  la base commune : la langue, le lien « passer au contenu », le repère `main`, un seul titre, les
+  repères d'en-tête et de pied. Une page explique l'accessibilité (`/accessibility/`), vraie du code.
+  Les graphiques de la phase 12 reçoivent un `<title>` et un `<desc>` en plus de ce qu'ils avaient déjà
+  (`role=img`, un libellé, et les mêmes chiffres en tableau et en CSV).
+- **E5, langues** (e8c1705). Les mots de l'interface des nouvelles fonctions sont rassemblés à un seul
+  endroit (`src/lib/strings.ts`), avec la place pour une traduction plus tard (`stringsFor(lang)`,
+  anglais seulement pour l'instant). Le reste des textes des pages reste en place (reporté, D15-7).
+- **E6, état du service** (41e4d1b). Une page `/status/` montre 90 jours de disponibilité, les
+  incidents, et les quotas gratuits quotidiens en mots clairs, et dit quand elle a été construite (elle
+  est statique). La disponibilité vient des **propres** vérifications du Mac vers le site
+  (`oscr/sitestatus.py`), une toutes les cinq minutes ; rien sur le site ne se vérifie lui-même. Ce
+  soir, aucune vraie vérification réseau : le mécanisme est testé contre un faux lecteur, et les données
+  de la page de test sont fabriquées.
+
+**Tes étapes pour la phase 15 :**
+- **Activer les vérifications de `/status`** (sinon la page dit « pas encore activé ») : une tâche
+  launchd (ou le chien de garde du Mac) lance `oscr status check` toutes les cinq minutes (un seul GET
+  de `--url`, par défaut `OSCR_SITE_URL` sinon `https://openscicode.org/`, écrit dans
+  `data/status/checks.jsonl`) ; puis, avant chaque déploiement, `oscr status build` agrège l'historique
+  dans `<export>/site-status.json`, que la construction du site recopie. `oscr status init` écrit le
+  substitut en attendant. C'est la seule commande qui contacte l'extérieur.
+
+**Vérifications à la clôture.** pytest 601 et ruff propres ; `npm test` 1665 ; construction et `check
+--every-route` dans le budget. Un essai piloté en Chrome sans affichage (`data/night/phase-15/shots.sh`
+et `shots.mjs`, ports 8793 et 9490, toute adresse extérieure refusée) vérifie : la palette s'ouvre et
+liste des options, `?` ouvre l'aide avec son contenu, le thème sombre tient après un rechargement, le
+lien « passer au contenu » vise `main`, `/status` affiche la grille et les quotas, et aucune page ne
+défile de côté à 390 px (débordement 0). Captures dans `docs/night-screenshots/phase-15/` (bureau
+1280×860 et téléphone 390×844 ; la capture « aide des raccourcis » sur téléphone est blanche, un défaut
+de rendu propre à l'émulation mobile sans affichage ; le contenu est bien présent, confirmé par le
+test, et la capture sur bureau est complète). Le port 8790 n'a pas été touché.
+
+**Ajouts à `science.css`** (dans l'esprit de la feuille, pas de pastille, pas de majuscule décorative,
+pas de tiret cadratin) : les jetons de thème sur `:root` et leurs redéfinitions sous
+`html[data-theme="dark"]`, `html[data-vision=…]`, `html[data-contrast="more"]` et les attributs de
+préférence (`data-underline`, `data-motion`, `data-line`, `data-tab`, `data-md`) ; `.skip-link` ; les
+fenêtres `dialog.shortcuts-dialog` et `dialog.command-palette` et leur contenu ; `.prefs` (la page des
+préférences) ; `.status-grid`/`.status-day` (la grille de disponibilité). Quelques couleurs qui étaient
+écrites en dur (`#777`, les blancs des panneaux, l'anneau de focus) sont devenues des jetons pour qu'un
+thème les change en un seul endroit.
+
+## 12. Mission de nuit terminée
+
+Les seize phases du plan sont construites ou prises en compte ; la phase 15 était la dernière de
+l'ordre. Les branches de nuit **ne sont pas fusionnées** dans `main` et les routes d'écriture de la
+forge restent fermées derrière `FORGE_OPEN` (interdits de `NIGHT_RUN`). Aucune nouvelle branche n'est
+créée : c'est la fin du run.
+
+**Ce qui te reste à faire, rassemblé des phases :**
+- **Les migrations D1** à appliquer sur `oscr_forge` et `oscr_community` via
+  `sh tools/setup_cloudflare.sh` (ou `wrangler d1 migrations apply`) : les migrations `0010` à `0018`
+  des phases 09, 11, 12, 06 et 13 (sécurité, organisations, statistiques, discussions, wiki, projets,
+  snippets), testées sur copie, jamais appliquées à distance cette nuit.
+- **Ouvrir l'écriture** : poser `FORGE_OPEN` et le Turnstile (clé publique au build
+  `TURNSTILE_SITE_KEY`, secret côté Cloudflare) quand les règles de contenu (phase 16) sont prêtes ;
+  jusque-là seules les actions du propriétaire écrivent.
+- **Le jeton Cloudflare d'analytique** (phase 12), en lecture seule, dans le trousseau
+  (`org.oscr.cloudflare-analytics`), pour les comptes de trafic.
+- **Les vérifications de `/status`** (phase 15) : la tâche launchd `oscr status check` toutes les cinq
+  minutes puis `oscr status build` avant déploiement (détail en section 11).
+- **La réconciliation de la phase 16** : le texte libre public (discussions, snippets) doit passer par
+  la modération centrale et l'effacement des données (`discussion`, `discussion_comment`, `snippet`,
+  `snippet_comment`), et la dépose statique nocturne doit les couvrir, avant d'ouvrir l'écriture au
+  public (D06-6, D13-4).
+- Les étapes déjà listées des phases précédentes (App GitHub, `setup_cloudflare.sh`, `OSCR_FORGE_PUSH`,
+  C3, le jeton de session, l'alias de clonage, Software Heritage, PyPI pour l'outil en ligne de
+  commande) restent valables : voir les sections 2 et suivantes.
