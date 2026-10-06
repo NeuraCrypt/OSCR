@@ -154,7 +154,7 @@ export const snippetCreateSpec: ActionSpec<CreateParsed, SnippetDone> = {
     const who: Person = personOf(ctx.user);
     const role = await roleForPassage(ctx.community, ctx.user.id, p.passage);
     const write: Write = insertSnippet(ctx.db, {
-      ownerId: info.owner.id, ownerLogin: info.ref.owner, forge: info.key.forge, repoId: info.key.id, folder, revision: sha,
+      ownerId: ctx.user.id, ownerLogin: info.ref.owner, forge: info.key.forge, repoId: info.key.id, folder, revision: sha,
       visibility: p.visibility, title: p.title, description: p.description, manifest: p.manifest, passage: p.passage, forkedFrom: null, who, role,
     }, ctx.t);
     return {
@@ -243,7 +243,7 @@ export const snippetForkSpec: ActionSpec<ForkParsed, SnippetDone> = {
     const passage = passageOf(src) ?? EMPTY_PASSAGE;
     const writes: Write[] = [
       insertSnippet(ctx.db, {
-        ownerId: info.owner.id, ownerLogin: info.ref.owner, forge: info.key.forge, repoId: info.key.id, folder, revision: sha,
+        ownerId: ctx.user.id, ownerLogin: info.ref.owner, forge: info.key.forge, repoId: info.key.id, folder, revision: sha,
         visibility: "public", title: src.title, description: src.description, manifest, passage, forkedFrom: src.id, who, role: "",
       }, ctx.t),
       bumpForks(ctx.db, src.id, ctx.t),

@@ -79,6 +79,7 @@ import { handleMine, handleRepo } from "./read.ts";
 import { handleResearchComment, handleResearchEdit, handleResearchOpen, handleResearchRead } from "./research.ts";
 import { handleDiscussionComment, handleDiscussionEdit, handleDiscussionOpen, handleDiscussionsRead, handleDiscussionVote } from "./discussions.ts";
 import { handleProjectCreate, handleProjectEdit, handleProjectField, handleProjectItem, handleProjectsRead } from "./projects.ts";
+import { handleSnippetComment, handleSnippetEdit, handleSnippetsRead, handleSnippetStar } from "./snippets.ts";
 import { handleActivity, handleFeed, handleInbox, handleNotices } from "./inbox.ts";
 import { handleSocialFollow, handleSocialList, handleSocialMine, handleSocialPerson, handleSocialProfile, handleSocialStar, handleSocialState } from "./social.ts";
 import { handleStart } from "./start.ts";
@@ -134,6 +135,12 @@ export const FORGE_ROUTES: Readonly<Record<string, Route>> = {
   "/api/forge/projects/edit": { method: "POST", signedIn: true, handle: (r) => handleProjectEdit(r) },
   "/api/forge/projects/field": { method: "POST", signedIn: true, handle: (r) => handleProjectField(r) },
   "/api/forge/projects/item": { method: "POST", signedIn: true, handle: (r) => handleProjectItem(r) },
+  // Night phase 13: snippets, OSCR's gists (snippets.ts). The files are authorized commits (start/act,
+  // kinds snippet_create, snippet_revise, snippet_fork); these are the record's native writes.
+  "/api/forge/snippets": { method: "GET", signedIn: true, handle: (r) => handleSnippetsRead(r) },
+  "/api/forge/snippets/edit": { method: "POST", signedIn: true, handle: (r) => handleSnippetEdit(r) },
+  "/api/forge/snippets/comment": { method: "POST", signedIn: true, handle: (r) => handleSnippetComment(r) },
+  "/api/forge/snippets/star": { method: "POST", signedIn: true, handle: (r) => handleSnippetStar(r) },
   "/api/forge/social": { method: "GET", signedIn: true, handle: (r) => handleSocialState(r) },
   "/api/forge/social/mine": { method: "GET", signedIn: true, handle: (r) => handleSocialMine(r) },
   "/api/forge/social/person": { method: "GET", signedIn: true, handle: (r) => handleSocialPerson(r) },

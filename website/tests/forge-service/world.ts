@@ -15,6 +15,7 @@ import { Browser, world, type World } from "../account/browser.ts";
 import { MemoryBackend } from "../forge/memory.ts";
 import { handleForge, isForgePath } from "../../worker/forge/service/index.ts";
 import { actionRow, deliveryRow, insertJob, insertRepo, linkPapers, newNonce, updateRepo, type NewRepo } from "../../worker/forge/service/store.ts";
+import { insertSnippet, type NewSnippet, type Person } from "../../worker/forge/service/snippets-core.ts";
 import type { Context, ForgeDeps, ForgeServiceEnv, JobKind, Outcome, PaperStatus, RepoState, RowKind, Write } from "../../worker/forge/service/types.ts";
 import { fakeForgeD1, type FakeForgeD1 } from "./d1.ts";
 import { TEST_SECRET_PASS } from "../../worker/forge/service/turnstile.ts";
@@ -159,5 +160,23 @@ export const seed = {
   },
   async job(db: FakeForgeD1, j: { kind: JobKind; forge?: string; repoId: string; ref?: string; userId?: string; notBefore?: number | null }, t = T0): Promise<void> {
     await run(db, [insertJob(db, { forge: "memory", ...j }, t)]);
+  },
+  /** A snippet's record (night phase 13): the row is written straight, for the native routes' tests.
+   *  Its files and revision are an authorized commit elsewhere; here the manifest is enough. */
+  async snippet(
+    db: FakeForgeD1,
+    s: { ownerId: string; ownerLogin: string; repoId: string; folder: string; title: string } & Partial<NewSnippet>,
+    t = T0,
+  ): Promise<number> {
+    const who: Person = s.who ?? { id: s.ownerId, author: s.ownerLogin, via: "github" };
+    const write = insertSnippet(db, {
+      ownerId: s.ownerId, ownerLogin: s.ownerLogin, forge: s.forge ?? "memory", repoId: s.repoId, folder: s.folder,
+      revision: s.revision ?? "a".repeat(40), visibility: s.visibility ?? "public", title: s.title, description: s.description ?? "",
+      manifest: s.manifest ?? [{ path: "a.py", language: "Python", size: 10, lines: 1 }],
+      passage: s.passage ?? { paperId: "", section: "", paragraph: null, startLine: null, endLine: null },
+      forkedFrom: s.forkedFrom ?? null, who, role: s.role ?? "",
+    }, t);
+    await run(db, [write]);
+    return Number((db.sqlite.prepare("SELECT id FROM snippets WHERE owner_login = ? AND folder = ?").get(s.ownerLogin.toLowerCase(), s.folder.toLowerCase()) as { id: number }).id);
   },
 };
