@@ -19,7 +19,7 @@ assignment (``|=``, ``del``), string interpolation, formats (``@csv``…), user-
 person who needs them pipes ``--json`` into jq.
 
 Each result is printed on its own line: a string as it is (cleaned, as every text shown), anything else
-as compact JSON — as ``gh`` prints ``--jq``.
+as compact JSON, as ``gh`` prints ``--jq``.
 """
 from __future__ import annotations
 

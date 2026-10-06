@@ -356,7 +356,7 @@ def test_a_429_backs_off_once_then_stops_openalex_for_the_day(con, monkeypatch, 
                 headers={"x-ratelimit-remaining-usd": "0.5", "x-ratelimit-reset": "7200"})
     client = client_for(fake)
     out = enrich.openalex_pass(con, client)
-    # Paper 1: a 429, a pause, then its answer; paper 2: two 429s — OpenAlex stops, 2 papers left.
+    # Paper 1: a 429, a pause, then its answer; paper 2: two 429s, OpenAlex stops, 2 papers left.
     assert "2 papers found" in out and "2 left" in out and "429" in out
     assert len(fake.requests) == 5
     until = openalex.Budget(con).state()["paused_until"]

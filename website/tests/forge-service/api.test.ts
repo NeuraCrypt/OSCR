@@ -197,7 +197,7 @@ describe("with a token", () => {
     const page = await call("/api/forge/v1/repos/mine?limit=1", { token });
     assert.equal(page.status, 200, JSON.stringify(await body(page)));
     const link = page.headers.get("Link") ?? "";
-    assert.match(link, /<https:\/\/registry\.example\/api\/v1\/repos\/mine\?limit=1&after=a-one>; rel="next"/);
+    assert.match(link, /<https:\/\/registry\.example\/api\/forge\/v1\/repos\/mine\?limit=1&after=a-one>; rel="next"/);
     const head = await call("/api/forge/v1/user", { token, method: "HEAD" });
     assert.equal(head.status, 200);
     assert.equal(await head.text(), "");

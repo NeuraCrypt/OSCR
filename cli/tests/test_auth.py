@@ -66,7 +66,7 @@ def test_status_token_switch_logout(run, world):
     assert run("auth", "login").code == 0
     r = run("auth", "status")
     assert r.code == 0
-    assert r.out.count("valid") == 4 and "bob-fixture — valid (active" in r.out
+    assert r.out.count("valid") == 4 and "bob-fixture, valid (active" in r.out
     r = run("auth", "status", "--json", "service,user,active,valid")
     rows = json.loads(r.out)
     assert {(x["service"], x["user"], x["active"]) for x in rows} >= {("github", "bob-fixture", True), ("github", "ada-fixture", False)}

@@ -1,7 +1,7 @@
 // What is hidden (night phase 16): the reads of the `moderation` table (migrations/d1-forge/0010),
-// shared by every route that shows something of the GitHub side — the research issues and their
+// shared by every route that shows something of the GitHub side, the research issues and their
 // comments, people's profiles, the inbox, the feed and a person's activity, the repository's layer,
-// the outgoing webhooks, the search, the public API — so that hidden content is absent from every
+// the outgoing webhooks, the search, the public API, so that hidden content is absent from every
 // answer the Worker gives. The Mac drops the same things from the static files (oscr/moderation.py).
 //
 // Every read goes by the key (kind, ref): a point lookup, or `IN` over at most CHUNK keys, or a

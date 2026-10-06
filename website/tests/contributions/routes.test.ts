@@ -1,6 +1,6 @@
 // The contributions' routes (worker/contributions/index.ts): which paths are theirs, what a signed-out
-// reader gets, and the guards every write goes through — the session, its CSRF token, the site's
-// Origin — as the accounts' own.
+// reader gets, and the guards every write goes through, the session, its CSRF token, the site's
+// Origin, as the accounts' own.
 import assert from "node:assert/strict";
 import { afterEach, beforeEach, test } from "node:test";
 import { ORIGIN } from "../account/browser.ts";

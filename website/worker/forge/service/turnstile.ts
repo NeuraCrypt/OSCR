@@ -1,6 +1,6 @@
 // Turnstile, Cloudflare's free human check (night phase 16, E1 and E3): every public write form of the
 // GitHub side sends the widget's token, and the Worker verifies it here, server-side, before anything
-// is written — one subrequest to Cloudflare's `siteverify` per protected POST (docs/MODERATION.md
+// is written, one subrequest to Cloudflare's `siteverify` per protected POST (docs/MODERATION.md
 // "Turnstile"; developers.cloudflare.com/turnstile/get-started/server-side-validation/).
 //
 // - The secret key is a Cloudflare secret, `TURNSTILE_SECRET_KEY`, set by the owner with

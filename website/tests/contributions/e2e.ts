@@ -29,7 +29,7 @@ const NEW_DOI = "10.5555/oscr.fixture.7";
 let failures = 0;
 function check(name: string, ok: boolean, detail: unknown = ""): void {
   if (!ok) failures += 1;
-  console.log(`${ok ? "ok  " : "FAIL"} ${name}${detail !== "" ? ` — ${typeof detail === "string" ? detail : JSON.stringify(detail)}` : ""}`);
+  console.log(`${ok ? "ok  " : "FAIL"} ${name}${detail !== "" ? `, ${typeof detail === "string" ? detail : JSON.stringify(detail)}` : ""}`);
 }
 
 async function control(settings: unknown): Promise<void> {

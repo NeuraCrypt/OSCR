@@ -14,7 +14,7 @@ const MOCK = process.env.MOCK ?? "http://127.0.0.1:9471";
 let failures = 0;
 function check(name: string, ok: boolean, detail: unknown = ""): void {
   if (!ok) failures += 1;
-  console.log(`${ok ? "ok  " : "FAIL"} ${name}${detail !== "" ? ` — ${typeof detail === "string" ? detail : JSON.stringify(detail)}` : ""}`);
+  console.log(`${ok ? "ok  " : "FAIL"} ${name}${detail !== "" ? `, ${typeof detail === "string" ? detail : JSON.stringify(detail)}` : ""}`);
 }
 
 async function control(settings: unknown): Promise<void> {

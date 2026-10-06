@@ -218,7 +218,7 @@ describe("generated notes", () => {
 
 test("the changelog: every published release's notes, highest version first, masked", () => {
   const text = changelogText(REPO, [rel("v1.0.0", { body: "First. ada@example.org" }), rel("v1.1.0", { name: "Revision", body: "", publishedAt: "2026-09-20T00:00:00Z" }), rel("v2.0.0", { draft: true })]);
-  assert.equal(text, "# Changelog of ada-fixture/eeg\n\n## [v1.1.0] — 2026-09-20\n\n**Revision**\n\nNo notes.\n\n## [v1.0.0] — 2026-09-01\n\nFirst. [email hidden]\n");
+  assert.equal(text, "# Changelog of ada-fixture/eeg\n\n## [v1.1.0], 2026-09-20\n\n**Revision**\n\nNo notes.\n\n## [v1.0.0], 2026-09-01\n\nFirst. [email hidden]\n");
 });
 
 test("export-ignore and export-subst, as git archive reads them", () => {

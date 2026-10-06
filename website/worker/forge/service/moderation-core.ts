@@ -1,5 +1,5 @@
 // Content rules (night phase 16): the pure part of reports, moderation, appeals, blocks and interaction
-// limits — what a target is, what a reason means, what a payload may hold, and the words people read.
+// limits, what a target is, what a reason means, what a payload may hold, and the words people read.
 // No request, no database: the routes are moderation.ts (reports, the owner's queue, appeals) and
 // blocks.ts (blocks, interaction limits); what the reads drop is hidden.ts. The contract:
 // docs/MODERATION.md; the decisions: docs/DECISIONS.md D16-*.

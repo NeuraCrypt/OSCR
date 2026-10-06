@@ -155,7 +155,7 @@ def _view(ctx: Any, args: argparse.Namespace) -> int:
 
     def human() -> None:
         io = ctx.io
-        io.print(io.style(repo.full, "bold") + (f" — {shown(data['description'])}" if data["description"] else ""))
+        io.print(io.style(repo.full, "bold") + (f", {shown(data['description'])}" if data["description"] else ""))
         io.print(f"  {ctx.config.site_name}: {data['registry']}; " + (f"papers {', '.join(data['papers'])}" if data["papers"] else "no paper linked")
                  + f"; {data['maps']} tracing map{'s' if data['maps'] != 1 else ''}  ({view['source']})")
         io.print(f"  page: {data['page']}")

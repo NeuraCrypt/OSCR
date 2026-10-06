@@ -10,7 +10,7 @@
 
 //
 // Night phase 16: a write (post) from a suspended account (hidden.ts `accountHidden`) is refused here,
-// for every shared route, 403 suspended — but an appeal and a data-rights request (`suspendedOk`).
+// for every shared route, 403 suspended, but an appeal and a data-rights request (`suspendedOk`).
 
 import { signedIn, type SignedIn } from "../../account/guard.ts";
 import { accountHidden, suspended } from "./hidden.ts";

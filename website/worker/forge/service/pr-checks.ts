@@ -1,5 +1,5 @@
 // The registry's checks on every pull request (night phase 10, E4; docs/AUTOMATION.md "Checks"; D00-4,
-// D00-11): on the App's `pull_request` deliveries (opened, synchronize — every push —, reopened,
+// D00-11): on the App's `pull_request` deliveries (opened, synchronize, every push -, reopened,
 // ready_for_review; drafts and bots' pull requests included), in waitUntil after the delivery is
 // answered, the App's installation reads the pull request's head (its tree, three files as text, its
 // changed files: never anything run), checks-core.ts judges, and ONE check run is posted on the head

@@ -10,7 +10,7 @@
 //   scripts/NN.json   → public/scripts/NN.json       (the scripts' text, keyed by sha256 and
 //                                                     deduplicated, fetched by the reader on demand)
 //   scriptmeta/NN.json → src/data/scriptmeta/NN.json (read at build time: the per-repository facts
-//                                                     the site is built from — never served)
+//                                                     the site is built from, never served)
 //   entities/*.json   → src/data/entities/*.json     (read at build time: authors, journals,
 //                                                     institutions, tools, datasets, categories)
 //   lookup/NN.json    → public/lookup/NN.json        (fetched by the DOI lookup page)

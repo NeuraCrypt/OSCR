@@ -243,7 +243,7 @@ export async function seedCodeTour(org: GitSession, repo: T.RepoRef): Promise<vo
   await org.git.createBranch(repo, "feature/epochs-v2", v2);
 }
 
-/** Phase 04: a pull request from a fork, reviewed, with a suggestion and a reply — what the pull
+/** Phase 04: a pull request from a fork, reviewed, with a suggestion and a reply, what the pull
  *  request pages show (the screenshots), and a CODEOWNERS file. Bob forks the study's repository
  *  and proposes a Hann window in band_power (the lines the paper's map links: its Methods'
  *  paragraph); Ada, who owns the Python files, suggests a change; Bob answers. Returns the numbers. */

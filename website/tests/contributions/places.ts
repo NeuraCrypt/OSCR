@@ -1,4 +1,4 @@
-// Test support: the places the Worker's checks ask (worker/contributions/checks.ts) — the DOI proxy's
+// Test support: the places the Worker's checks ask (worker/contributions/checks.ts), the DOI proxy's
 // handle API and the pages of forges and archives. The unit tests install it as `fetch` beside the
 // mock providers (world.ts); the end-to-end run serves it over HTTP under /checks/
 // (tests/account/mock-server.ts), where the Worker's CHECKS_URL points.

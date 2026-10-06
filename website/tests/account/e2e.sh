@@ -144,7 +144,7 @@ held = [tuple(r) for r in con.execute("SELECT scope, repo, path FROM withheld")]
 files = {f["path"]: f["text"] for lot in catalog.script_lots(con, True).values() for repo, e in lot.items()
          if repo == "github.com/oscr-fixture/eeg-analysis" for f in e["files"]}
 ok = held == [("file", "github.com/oscr-fixture/eeg-analysis", "plot.py")] and files["plot.py"] is None and files["analysis.py"]
-print(f"{'ok  ' if ok else 'FAIL'} the Mac withholds the file's copy, and only it — {held}")
+print(f"{'ok  ' if ok else 'FAIL'} the Mac withholds the file's copy, and only it, {held}")
 sys.exit(0 if ok else 1)
 PY
 )

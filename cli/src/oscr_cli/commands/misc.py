@@ -1,5 +1,5 @@
 """``oscr search``, ``oscr api``, ``oscr browse``, ``oscr run``, ``oscr workflow`` (D14-10): the registry
-first — its search, its API, its pages, its Checks view — and GitHub's only for what only GitHub holds
+first, its search, its API, its pages, its Checks view, and GitHub's only for what only GitHub holds
 (its code search, its API with --github, its blame and CI logs), each time said why."""
 from __future__ import annotations
 
@@ -258,7 +258,7 @@ def _run_view(ctx: Any, args: argparse.Namespace) -> int:
         ctx.io.print(ctx.io.style(f"{shown(row['name'])}: {word}", style))
         ctx.io.print(f"  {shown(row['event'])} on {shown(row['branch'])} at {row['sha'][:12]}, {ago(row['created_at'])}")
         for j in row["jobs"]:
-            ctx.io.print(f"  job {shown(j['name'])}: {shown(j['conclusion'] or 'running')}" + (f" — failed at: {', '.join(shown(s) for s in j['failed_steps'])}" if j["failed_steps"] else ""))
+            ctx.io.print(f"  job {shown(j['name'])}: {shown(j['conclusion'] or 'running')}" + (f", failed at: {', '.join(shown(s) for s in j['failed_steps'])}" if j["failed_steps"] else ""))
         ctx.io.print(f"  checks of this commit: {row['page']}")
         show_github(ctx, row["github_url"], "the run's logs are GitHub's own page (downloading them needs a GitHub sign-in, D10-10)")
 

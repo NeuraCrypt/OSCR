@@ -100,7 +100,7 @@ def test_in_public_mode_every_repository_is_shown_but_only_licensed_ones_leave_i
     # The very same file in both repositories is stored ONCE (deduplicated by sha256).
     assert open_files["analysis.py"]["sha256"] == closed["analysis.py"]["sha256"]
     # But only the licensed repository leaves as a redistributable COPY (scripts.jsonl, the mirror,
-    # the public database) — the licence still gates the bulk outputs.
+    # the public database), the licence still gates the bulk outputs.
     lines = (tmp_path / "out" / "scripts.jsonl").read_text().splitlines()
     assert {json.loads(l)["repo"] for l in lines} == {"github.com/open/repo"}
     pub = sqlite3.connect(tmp_path / "out" / "oscr_public.db")

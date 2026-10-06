@@ -1,6 +1,6 @@
 """Shown from the source (decided 2026-09-29, docs/SCRIPT_STORAGE.md): a file whose license does not
-allow copying it is never copied — no text in the site's lots, the public database or the Hugging Face
-dataset — but the export publishes its facts (digest, size, lines, the pinned version) and where a
+allow copying it is never copied, no text in the site's lots, the public database or the Hugging Face
+dataset, but the export publishes its facts (digest, size, lines, the pinned version) and where a
 reader's browser fetches it itself (catalog.source_of). What a removal request withheld gets none. And
 the email addresses of a text are masked the same way here and in the reader's browser: one fixture
 (tests/fixtures/mask_emails.json), read by this file and by website/tests/source.test.ts."""
@@ -144,7 +144,7 @@ def test_an_unlicensed_repository_is_shown_from_oscrs_own_copy(tmp_path):
     assert (files["run.py"]["sha256"], files["run.py"]["size"], files["run.py"]["lines"]) == (DIGEST, 30, 1)
     assert files["run.py"]["text_lot"] == f"{catalog.lot_of(DIGEST):02d}"
     assert "email addresses hidden" in files["run.py"]["note"] and "me@lab.org" not in json.dumps(lots)
-    # big.py past SOURCE_MAX_BYTES is stored too — every file is shown.
+    # big.py past SOURCE_MAX_BYTES is stored too, every file is shown.
     assert files["big.py"]["text"] == "x = 1\n" and files["big.py"]["sha256"] == "c" * 64
     # A binary file has no text; a file read before digests were kept keeps its text but no lot key.
     assert files["fig.mlx"]["text"] is None and "sha256" not in files["fig.mlx"]
@@ -199,7 +199,7 @@ def test_the_copy_filter_is_the_audited_one(tmp_path):
 def test_a_license_its_repository_does_not_confirm_is_not_copied_in_bulk(tmp_path):
     """A license known from a README's sentence (recorded 'MIT', no license file): the site's reader
     still SHOWS it from OSCR's own copy (the licence no longer gates display), but it does not leave
-    as a redistributable COPY — neither the public database nor the Hugging Face dataset — until its
+    as a redistributable COPY, neither the public database nor the Hugging Face dataset, until its
     own license file confirms it (2026-09-29, `copyable`)."""
     con = _world(tmp_path)
     con.execute("UPDATE repository SET license = 'MIT', redistributable = 'yes' WHERE repo = 'github.com/lab/code'")

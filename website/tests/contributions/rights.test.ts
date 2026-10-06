@@ -1,6 +1,6 @@
 // Data rights (worker/rights/index.ts, with the rules of src/lib/rights.ts; the page /data-rights/):
 // what the site's database holds about the account, shown to it; a request recorded with the account's
-// own ORCID iD — never one the form names — and its legal deadline; one open request per right, five a
+// own ORCID iD, never one the form names, and its legal deadline; one open request per right, five a
 // day; no email address, anywhere; the guards every write goes through. The Mac's answers are
 // tests/test_rights.py's.
 import assert from "node:assert/strict";

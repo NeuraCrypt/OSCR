@@ -305,7 +305,7 @@ export function runChecks(x: CheckInput): Report {
     : warned
       ? `${passed} passed, ${warned} to look at`
       : `All ${findings.length} checks passed`;
-  const lines = findings.map((f) => `- **${CHECK_WORDS[f.id]}** — ${LEVEL_WORDS[f.level]}. ${f.words}${f.fix ? ` ${f.fix}` : ""}`);
+  const lines = findings.map((f) => `- **${CHECK_WORDS[f.id]}**, ${LEVEL_WORDS[f.level]}. ${f.words}${f.fix ? ` ${f.fix}` : ""}`);
   const notes: string[] = [];
   if (x.truncated) notes.push("The forge cut the tree's listing: files beyond it were not looked at.");
   if (x.change?.truncated) notes.push("The change has more files than the registry reads: the tracing maps were checked against the first ones.");

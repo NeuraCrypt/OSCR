@@ -78,12 +78,12 @@ def test_an_error_page_fits_on_one_line_in_the_log(tmp_path, monkeypatch):
     con = db.open_db(tmp_path / "b.db")
     Recorder(monkeypatch)
     monkeypatch.setattr(harvest, "run_pass", lambda *a, **k: (_ for _ in ()).throw(Outage(
-        "Europe PMC /search: HTTP 503 — <html>\n<head><title>503 Service Temporarily Unavailable"
+        "Europe PMC /search: HTTP 503, <html>\n<head><title>503 Service Temporarily Unavailable"
         "</title></head>\n<body><hr><center>nginx</cente")))
     messages = []
     harvest.watch(con, Client(offline=True), "neuro", harvest.Options(), iterations=1, report=messages.append)
     assert len(messages) == 1 and "\n" not in messages[0]
-    assert messages[0].endswith(" ! Outage: Europe PMC /search: HTTP 503 — "
+    assert messages[0].endswith(" ! Outage: Europe PMC /search: HTTP 503, "
                                 "503 Service Temporarily Unavailable nginx, resuming in 2 min")
 
 

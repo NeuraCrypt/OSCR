@@ -1,5 +1,5 @@
 // Submissions (worker/contributions/index.ts, checks.ts, links.ts): a DOI and code links, checked at
-// once — the DOI resolves, each link answers, the place is one the registry knows — then a row and a
+// once, the DOI resolves, each link answers, the place is one the registry knows, then a row and a
 // job for the Mac; the draft it writes back, revised and published by the submitter.
 import assert from "node:assert/strict";
 import { afterEach, beforeEach, test } from "node:test";

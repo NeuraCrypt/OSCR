@@ -1,5 +1,5 @@
 #!/bin/bash
-# nuit.sh — fait travailler Claude Code toute la nuit sur docs/NIGHT_RUN.md.
+# nuit.sh, fait travailler Claude Code toute la nuit sur docs/NIGHT_RUN.md.
 # Si une session s'arrête (limite d'usage, erreur, blocages répétés), elle est relancée
 # et reprend grâce à docs/NIGHT_PROGRESS.md.
 #

@@ -2,7 +2,7 @@
 // 1–3; docs/FORGE.md "One authorized action").
 //
 // Signed in (account/guard.ts `signedIn`: the site's Origin and the session's CSRF token), a JSON
-// body of at most START_BODY_BYTES: {kind, repo, branch, expectedHead, digest, back, install?} — the
+// body of at most START_BODY_BYTES: {kind, repo, branch, expectedHead, digest, back, install?}, the
 // declared action, never its payload (the page keeps it, and posts it to act after GitHub). In
 // order:
 //   1. the kind is one the registry has (deps.actions in the tests), the declared parameters have

@@ -544,7 +544,7 @@ def test_an_accounts_name_is_public_only_when_it_is_a_name(given, kept):
 
 def test_corrections_and_validations_are_still_only_verified_peoples(w):
     """The Worker refuses them to anyone else (tests/contributions/routes.test.ts); the Mac applies what
-    comes, without a rule of its own — and never logs them as moderated."""
+    comes, without a rule of its own, and never logs them as moderated."""
     eid = w.request("edits", "edit", {"user_id": "u_ada", "paper_id": P1, "as_role": "verified_author", "repo": "",
                                       "changes": json.dumps([{"op": "role", "repo": EEG, "role": "tool"}]), "created_at": T})
     w.poll()

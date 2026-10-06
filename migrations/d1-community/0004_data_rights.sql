@@ -2,7 +2,7 @@
 -- `oscr_community`. See docs/CONTRIBUTIONS.md, "Data rights", and the page /privacy/.
 --
 -- A signed-in person asks one right of the EU's General Data Protection Regulation about what the
--- registry holds on them — their account, their requests, and, when they are a paper's author, the
+-- registry holds on them, their account, their requests, and, when they are a paper's author, the
 -- contact details the registry keeps privately from the papers (oscr/contacts.py, on the Mac only):
 --
 -- - 'access': what the registry holds about me (GDPR art. 15);
@@ -46,7 +46,7 @@ CREATE TABLE rights (
     -- The person's words: optional, required for a rectification. Plain text, no email address.
     details     TEXT NOT NULL DEFAULT '' CHECK (length(details) <= 1000 AND instr(details, '@') = 0),
     -- The ORCID iD of the account's ORCID identity when it asked ('' without one): the contact details
-    -- concerned are the rows with this iD. `proof`: which ORCID signed it in — 'orcid' (orcid.org), or
+    -- concerned are the rows with this iD. `proof`: which ORCID signed it in, 'orcid' (orcid.org), or
     -- 'orcid-sandbox' (its sandbox, whose iDs are tests: the Mac shows no contact detail to them).
     orcid       TEXT NOT NULL DEFAULT ''
                 CHECK (orcid = '' OR (length(orcid) = 19 AND substr(orcid, 5, 1) = '-' AND substr(orcid, 10, 1) = '-'

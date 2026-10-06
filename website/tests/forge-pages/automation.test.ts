@@ -50,7 +50,7 @@ describe("webhooks", () => {
   test("the list: the address, the subject, the events, its state in words; its buttons", () => {
     const el = hooksList([{ id: "h".repeat(16), subject: "paper:doi:10.1/x", url: "https://hooks.lab.example/in", events: ["research_opened"], active: false, created_at: "", updated_at: "" }]);
     const text = textOf(el);
-    assert.match(text, /hooks\.lab\.example\/in — the paper 10\.1\/x, research opened\./);
+    assert.match(text, /hooks\.lab\.example\/in, the paper 10\.1\/x, research opened\./);
     assert.match(text, /Paused: it receives nothing until a ping is answered/);
     const ops = all(el).filter((n) => n.tag === "button").map((n) => n.attrs["data-op"]);
     assert.deepEqual(ops, ["ping", "deliveries", "rotate", "delete"]);

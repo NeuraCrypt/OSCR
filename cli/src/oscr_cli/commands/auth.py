@@ -138,7 +138,7 @@ def _status(ctx: Any, args: argparse.Namespace) -> int:
             state = {True: ctx.io.style("valid", "ok"), False: ctx.io.style("refused", "failure"), None: "not checked"}[r["valid"]]
             if r.get("problem"):
                 state = ctx.io.style(r["problem"], "failure")
-            ctx.io.print(f"{clean_line(head)} — {state}" + (f" ({'; '.join(bits)})" if bits else ""))
+            ctx.io.print(f"{clean_line(head)}, {state}" + (f" ({'; '.join(bits)})" if bits else ""))
 
     emit(ctx.io, args, rows, human)
     return 0 if all(r["valid"] is not False for r in rows) else 1

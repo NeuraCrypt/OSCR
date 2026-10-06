@@ -1,6 +1,6 @@
 """The tool's settings and its list of accounts (``oscr config``; docs/CLI.md "Configuration").
 
-Where: ``$OSCR_CONFIG_DIR``, else ``$XDG_CONFIG_HOME/oscr-cli``, else ``~/.config/oscr-cli`` — never the
+Where: ``$OSCR_CONFIG_DIR``, else ``$XDG_CONFIG_HOME/oscr-cli``, else ``~/.config/oscr-cli``, never the
 harvester's ``~/.config/oscr/settings`` (D14-1). Two files, both JSON, both mode 0600:
 
 - ``config.json``: the settings below and the aliases;

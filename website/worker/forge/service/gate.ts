@@ -3,7 +3,7 @@
 // - FORGE_OPEN (D01-1). Until phase 16's content rules, the write routes (start, act) answer only
 //   to the owner: the GitHub account whose numeric id is FORGE_OWNER_GITHUB_ID. `mayWrite` is asked
 //   at start (the GitHub identity linked to the signed-in account) and again at act (the account
-//   GitHub says authorized the action). FORGE_OPEN="true" opens them to every signed-in account —
+//   GitHub says authorized the action). FORGE_OPEN="true" opens them to every signed-in account -
 //   night phase 16: only once the content rules are in force (`rulesReady`: Turnstile's secret set).
 //   Webhooks and the signed-in reads are not gated.
 // - The per-account caps (100 authorized actions, 10 repositories created, 20 linked in 24 hours):

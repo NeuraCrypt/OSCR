@@ -114,7 +114,7 @@ export interface RepoLayerAnswer {
   paths: number;
   jobs: PendingJob[];
   /** Phase 04 (D04-*): the linked papers' verified authors who signed in with GitHub, by their
-   *  GitHub login — the reviewers a pull request's page suggests. Answered only to a reader who
+   *  GitHub login, the reviewers a pull request's page suggests. Answered only to a reader who
    *  manages the repository or authored one of its papers; empty for anyone else. */
   reviewers: { login: string; papers: string[] }[];
   /** Phase 07: the releases tied to a version of a paper, live (the static layer has them as of last

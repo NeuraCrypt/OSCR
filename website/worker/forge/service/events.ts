@@ -18,7 +18,7 @@
 //
 // What an event holds: a title (masked, 200 characters), a path of this site (the registry shows
 // everything; GitHub only as a last resort), the actor (their account's id when they acted in the
-// registry — never answered —, their GitHub id and login), the thread's author, the logins the text
+// registry, never answered -, their GitHub id and login), the thread's author, the logins the text
 // names. Never a text, never an address, never a private repository (the webhook drops them, D00-14,
 // and the inbox drops the events of a repository that left the registry).
 

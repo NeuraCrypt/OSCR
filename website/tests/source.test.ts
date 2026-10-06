@@ -121,7 +121,7 @@ describe("where a file is fetched", () => {
 });
 
 describe("the fetch, checked", () => {
-  const TEXT = "% run the analysis — Jérôme, jerome@lab.example.org\ndisp('run')\n";
+  const TEXT = "% run the analysis, Jérôme, jerome@lab.example.org\ndisp('run')\n";
   const BYTES = new TextEncoder().encode(TEXT);
   const DIGEST = hex(BYTES);
   const expect = { path: "run.m", sha256: DIGEST, size: BYTES.length };

@@ -1,6 +1,6 @@
 // Research issues: the registry's own issues (night phase 05, E2; docs/ISSUES.md; D00-6, D05-*).
-// This file is their pure core — the words, the references, what a new issue, a comment and a change
-// say, the rows as statements, the views the pages read — shared by the routes (research.ts), the
+// This file is their pure core, the words, the references, what a new issue, a comment and a change
+// say, the rows as statements, the views the pages read, shared by the routes (research.ts), the
 // merge that closes them (act-pulls.ts), their copy on GitHub (act-research.ts) and the pages.
 //
 // Three types a researcher files about a paper's code, which GitHub has no word for:
@@ -31,9 +31,9 @@
 // 20 research issues) and the day's 5,000 rows, counted from the action rows each write adds.
 //
 // Who may do what: anyone signed in opens and comments (a locked issue takes comments from its
-// triagers only); the issue's author edits its title and text, closes and reopens it; its triagers —
+// triagers only); the issue's author edits its title and text, closes and reopens it; its triagers -
 // the paper's verified authors, the repository's maintainers (oscr_community roles), the
-// registry's moderators — do that too, and label, lock, pin, hide comments. Every text is masked for
+// registry's moderators, do that too, and label, lock, pin, hide comments. Every text is masked for
 // email addresses before it is stored (CLAUDE.md; oscr_forge holds none), and rendered by the pages
 // as view trees, never as HTML.
 

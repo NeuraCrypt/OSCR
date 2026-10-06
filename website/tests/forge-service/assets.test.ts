@@ -159,7 +159,7 @@ describe("POST /api/forge/asset", () => {
 
 describe("the pieces", () => {
   test("base64url both ways, UTF-8 names kept; anything else refused", () => {
-    const text = JSON.stringify({ name: "données α.csv", label: "Figure 2 — source" });
+    const text = JSON.stringify({ name: "données α.csv", label: "Figure 2, source" });
     assert.equal(fromBase64url(toBase64url(text)), text);
     for (const v of [null, "", "a+b", "a/b", "==", "x".repeat(9000)]) assert.equal(fromBase64url(v), null, String(v).slice(0, 10));
   });

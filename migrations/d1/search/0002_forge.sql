@@ -11,7 +11,7 @@
 -- - Contentless (content=''), rows replaced or deleted without their old values
 --   (contentless_delete=1), the UNINDEXED `fx` stored (contentless_unindexed=1): the JSON a result
 --   shows (its words and its address), already public.
--- - `kind`: the filters as tokens — "zzk" + the type (repository, issue, person, topic), "zzkall" in
+-- - `kind`: the filters as tokens, "zzk" + the type (repository, issue, person, topic), "zzkall" in
 --   every row, "zzs" + a research issue's state, "zzt" + its type; a filter is a MATCH on this
 --   column, as paper_fts's facets.
 -- - Ranking: bm25 over title, text, ids (the kind and fx weigh nothing).

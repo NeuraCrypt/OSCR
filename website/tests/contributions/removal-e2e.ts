@@ -32,7 +32,7 @@ const JUSTIFICATION =
 let failures = 0;
 function check(name: string, ok: boolean, detail: unknown = ""): void {
   if (!ok) failures += 1;
-  console.log(`${ok ? "ok  " : "FAIL"} ${name}${detail !== "" ? ` — ${typeof detail === "string" ? detail : JSON.stringify(detail)}` : ""}`);
+  console.log(`${ok ? "ok  " : "FAIL"} ${name}${detail !== "" ? `, ${typeof detail === "string" ? detail : JSON.stringify(detail)}` : ""}`);
 }
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const visible = (id: string) => `(() => { const e = document.getElementById(${JSON.stringify(id)}); return !!e && !e.closest("[hidden]"); })()`;

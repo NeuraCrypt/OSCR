@@ -12,8 +12,8 @@ routes = [{ pattern = "openscicode.org", custom_domain = true }]
 # the data rights /api/rights, and the GitHub side's /api/forge/* with its token API /api/forge/v1/*
 # (night phases 01 and 10, docs/FORGE.md, docs/API.md; moved off /api/v1 so it never collides with the
 # keyless read API). The forge's database, oscr_forge (FORGE), is bound by tools/setup_cloudflare.sh once
-# the owner has created it; until then /api/forge/* answers 503 not_configured. Its switch FORGE_OPEN is
-# never set here (closed until the owner opens the GitHub side).
+# the owner has created it; until then /api/forge/* answers 503 not_configured.
+# Its switch FORGE_OPEN is never set here (closed until the owner opens the GitHub side).
 main = "worker/index.ts"
 
 [assets]
@@ -27,8 +27,8 @@ html_handling = "auto-trailing-slash"
 # is spent, those answer an error and the static pages stay up.
 #
 # The owner's switch to spend no request at all on pages (docs/PLATFORM_PLAN.md §6): set
-# `not_found_handling = "404-page"`. The assets then serve the nearest 404.html themselves —
-# dist/paper/404.html for a missing /paper/…, whose script renders the paper in the browser —
+# `not_found_handling = "404-page"`. The assets then serve the nearest 404.html themselves -
+# dist/paper/404.html for a missing /paper/…, whose script renders the paper in the browser -
 # but with the status 404, which search engines do not index.
 not_found_handling = "none"
 run_worker_first = ["/api/*"]

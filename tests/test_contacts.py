@@ -133,7 +133,7 @@ def _license_file(con, repo: str) -> None:
 
 def test_the_digest_lots_deduplicate_and_stay_under_a_safe_size(tmp_path):
     """Since 2026-09-29 the scripts' text is keyed by SHA-256 and DEDUPLICATED: the very same file
-    in two repositories is stored once. No lot may approach the 25 MiB Cloudflare asset limit — a
+    in two repositories is stored once. No lot may approach the 25 MiB Cloudflare asset limit, a
     bug (grouping too much text) would show here, and the site is built against it too."""
     con = _db_with_contacts(tmp_path)
     for name in ("one", "two"):

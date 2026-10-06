@@ -17,7 +17,7 @@ const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET ?? "e2e-webhook-secret";
 let failures = 0;
 function check(name: string, ok: boolean, detail: unknown = ""): void {
   if (!ok) failures += 1;
-  console.log(`${ok ? "ok  " : "FAIL"} ${name}${detail !== "" ? ` — ${typeof detail === "string" ? detail : JSON.stringify(detail)}` : ""}`);
+  console.log(`${ok ? "ok  " : "FAIL"} ${name}${detail !== "" ? `, ${typeof detail === "string" ? detail : JSON.stringify(detail)}` : ""}`);
 }
 const post = (url: string, body: unknown) => fetch(url, { method: "POST", body: JSON.stringify(body) });
 
@@ -258,7 +258,7 @@ if (process.argv[2] === "phase13" || process.argv[2] === "phase13-fail") {
 }
 
 // Phase 07, after the Mac's forge poll (e2e.sh runs it between the two): the tracing map versioned
-// with the release, and the deposit of its validated map on the MOCK Zenodo sandbox — never a real one.
+// with the release, and the deposit of its validated map on the MOCK Zenodo sandbox, never a real one.
 const STATE_FILE = process.env.E2E_STATE ?? "";
 // Phase 08, after the Mac's night (e2e.sh: the forge layer, the social layer, the search's index): the
 // static files of a signed-out reader, and the search of the registry's own objects.
@@ -414,7 +414,7 @@ check("commit: main untouched by the new branch", (await headOf()) === after1);
 const moved = await ada.act("commit", { forge: "github", id }, { branch: "main", base: after1, message: "Move the docs", propose: false, changes: [{ op: "move", from: "docs/methods.md", to: "docs/methods/index.md" }] }, "/r/oscr-fixture/eeg-analysis/", { branch: "main", expectedHead: after1 });
 check("commit: a move through the Git data API", moved.status === 200 && (await rawAt("main", "docs/methods/index.md")).length > 0, moved.data);
 
-// 4c. Phase 04: pull requests through the fake GitHub — open one, comment on a line with a
+// 4c. Phase 04: pull requests through the fake GitHub, open one, comment on a line with a
 // suggestion, apply it (a commit on the pull request's branch), a merge at a head that moved refused,
 // the merge, and a second pull request refused on its conflict.
 for (const page of [

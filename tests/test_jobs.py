@@ -1,4 +1,4 @@
-"""The job runner (oscr/jobs.py): the site's requests read from D1 community and answered — a
+"""The job runner (oscr/jobs.py): the site's requests read from D1 community and answered, a
 submission harvested into a draft and published, a correction applied as a new version with its
 provenance, a map validated with the author's ORCID iD and deposited on the Zenodo SANDBOX, claims
 and removal requests decided by the owner. D1 is an SQLite database made from the real migrations;
@@ -379,7 +379,7 @@ def test_a_validation_deposits_the_map_on_the_sandbox_with_the_authors_orcid(w):
     assert w.zenodo.maps[0]["validated"] == {"by": "Example, Ben", "orcid": BEN, "on": w.zenodo.maps[0]["validated"]["on"],
                                              "proof": "orcid"}
     assert "POST /api/records/r1/draft/actions/submit-review" in w.zenodo.calls        # into the community
-    # On the Mac: the validation (proof orcid), the sandbox's DOI — which no public output shows.
+    # On the Mac: the validation (proof orcid), the sandbox's DOI, which no public output shows.
     assert w.mac.execute("SELECT proof FROM validation WHERE article_id = ? AND orcid = ?", (P2, BEN)).fetchone()[0] == "orcid"
     assert w.mac.execute("SELECT doi FROM card_doi WHERE article_id = ? AND instance = 'sandbox'", (P2,)).fetchone()[0] == \
         "10.5072/zenodo.r1"

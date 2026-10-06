@@ -83,7 +83,7 @@ describe("the views", () => {
     assert.match(textOf(postedView(null, false)), /Sign in to see/);
     assert.match(textOf(postedView({ state: null, statuses: [] }, true)), /None: no outside service/);
     const text = textOf(postedView({ state: "success", statuses: [{ context: "repro/figure-2", state: "success", description: "matches", target_url: "https://repro.example/1", by: "GitHub Actions: Tests", via: "oidc", at: "2026-09-29T10:00:00Z" }] }, true));
-    assert.match(text, /repro\/figure-2: passed — matches — posted by GitHub Actions: Tests \(GitHub Actions, its own token\), 2026-09-29/);
+    assert.match(text, /repro\/figure-2: passed, matches, posted by GitHub Actions: Tests \(GitHub Actions, its own token\), 2026-09-29/);
   });
 
   test("the papers' cited commits, once each", () => {

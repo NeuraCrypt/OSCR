@@ -2,7 +2,7 @@
 // (src/lib/commit-view.ts, the Worker's own sentence), started with the editor's draft named
 // (forge-client.ts `startAction(…, {drafts})`), approved on the double's GitHub, and carried out by
 // the callback page (forge-authorized.ts `arrive`): the answer's links are the registry's own
-// viewer (never another site), and the draft is dropped on success only — a refused commit (the
+// viewer (never another site), and the draft is dropped on success only, a refused commit (the
 // branch moved) keeps it for the editor.
 import assert from "node:assert/strict";
 import { afterEach, beforeEach, describe, test } from "node:test";

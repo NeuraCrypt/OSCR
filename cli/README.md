@@ -1,8 +1,8 @@
-# oscr — research code and its paper, from the terminal
+# oscr, research code and its paper, from the terminal
 
 `oscr` is the command line of the **Open Scientific Code Registry**, for researchers. It links your
 repository to its paper, checks it the way the registry checks it, traces its lines to the paper's
-Methods, cites it, and works with its GitHub repository — the registry's view first.
+Methods, cites it, and works with its GitHub repository, the registry's view first.
 
 It needs Python 3.10 or later and git. It uses the standard library only: nothing else is installed.
 
@@ -32,7 +32,7 @@ Two credentials, each approved in your browser:
 
 Both are kept **only in your system's keychain** (macOS keychain; Linux Secret Service through
 `secret-tool`). `oscr auth status` says who is signed in; `oscr auth logout` signs out (the
-registry's token is revoked). `oscr auth setup-git` lets git use your GitHub token — for GitHub's host
+registry's token is revoked). `oscr auth setup-git` lets git use your GitHub token, for GitHub's host
 only.
 
 ## The registry's own commands

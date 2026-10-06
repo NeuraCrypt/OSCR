@@ -69,7 +69,7 @@ describe("the rows", () => {
     assert.match(textOf(closingNotice(refs, false, "dev", REPO)), /only when a pull request merges into the default branch, not dev/);
     assert.equal(closingNotice([], true, "main", REPO), null);
     const fork = { ref: { forge: "github", owner: "bob", name: "eeg" }, pushedAt: "2026-09-01T00:00:00Z", description: "Bob's copy" } as T.RepoInfo;
-    assert.equal(textOf(forkRow(fork)), "bob/eeg · last pushed 2026-09-01 — Bob's copy");
+    assert.equal(textOf(forkRow(fork)), "bob/eeg · last pushed 2026-09-01, Bob's copy");
     assert.equal(forkStatusWords("main", "ada/eeg:main", 0, 0), "This fork's main is even with ada/eeg:main.");
     assert.equal(forkStatusWords("main", "ada/eeg:main", 3, 0), "This fork's main is 3 commits behind ada/eeg:main.");
     assert.equal(forkStatusWords("main", "ada/eeg:main", 0, 1), "This fork's main is 1 commit ahead of ada/eeg:main.");

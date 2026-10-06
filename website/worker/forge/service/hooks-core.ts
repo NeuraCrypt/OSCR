@@ -17,7 +17,7 @@
 //   sha256=<hex>`, GitHub's own scheme, so the receivers' usual code verifies it). The secret is never
 //   stored: it is derived from the server key (SESSION_KEY, purpose "hook") and the hook's id and
 //   `salt`; it is answered once, when the hook is made or its secret rotated (a new salt).
-// - What a delivery holds: the event as the inbox shows it (its kind, its title — masked —, the
+// - What a delivery holds: the event as the inbox shows it (its kind, its title, masked -, the
 //   address of its page in the registry, its time, the actor's GitHub id and login), never a text,
 //   never an address of a person, never an account's id.
 

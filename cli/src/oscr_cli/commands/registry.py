@@ -152,7 +152,7 @@ def _trace_list(ctx: Any, args: argparse.Namespace) -> int:
         for m in maps:
             state = "validated" + (f", map DOI {m.get('mapDoi')}" if m.get("mapDoi") else "") if m.get("validated") else "proposed"
             ctx.io.print(f"{ctx.io.style(shown(m.get('doi')), 'bold')}  {shown(m.get('title'))}")
-            ctx.io.print(f"  pinned at {str(m.get('commit'))[:12]} — {state}; {len(m.get('pairs') or [])} links")
+            ctx.io.print(f"  pinned at {str(m.get('commit'))[:12]}, {state}; {len(m.get('pairs') or [])} links")
             for p in m.get("pairs") or []:
                 ctx.io.print(f"    {shown(p.get('path'))}:{p.get('start')}–{p.get('end')}  ↔  {shown(p.get('section'))} ¶{p.get('paragraph')}")
 

@@ -45,7 +45,7 @@ def statement(con, aid: str, kind: str, text: str, title: str = "Availability") 
 
 
 def links_of(con, aid: str, *found: tuple[str, str, str]) -> None:
-    """(url, role, found_by) — a paper's links, replaced all at once like a scan. A DOI is a
+    """(url, role, found_by), a paper's links, replaced all at once like a scan. A DOI is a
     data link to an invented DOI, as tools/make_fixture.py writes one."""
     def link(url: str) -> links.Link:
         if url.startswith("https://doi.org/"):

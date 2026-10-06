@@ -172,9 +172,9 @@ SITE="$SITE" MOCK="$MOCK" FAKE="$FAKE" WEBHOOK_SECRET="$WEBHOOK_SECRET" MAP_DIGE
   || { echo "the Mac's forge poll failed:"; tail -20 "$TMP/mac-forge.log"; exit 1; }
 SITE="$SITE" MOCK="$MOCK" FAKE="$FAKE" E2E_STATE="$TMP/phase07.json" node --experimental-strip-types tests/forge-service/e2e.ts after-mac
 
-# 6. Phase 08: the Mac's night on the same local D1s — the forge layer, the social layer (stars,
+# 6. Phase 08: the Mac's night on the same local D1s, the forge layer, the social layer (stars,
 # follows, public profiles, Explore) and the search's index of the GitHub side built from those public
-# files — then the search and the static files checked.
+# files, then the search and the static files checked.
 mkdir -p "$TMP/export"
 OSCR="$PYTHON -m oscr --db $TMP/mac.db --cache $TMP/cache --offline --no-verify --no-metadata --no-swh --no-contents --no-records"
 (cd "$ROOT" && $OSCR forge layer --local --persist-to "$TMP/state" --folder "$TMP/community" --export "$TMP/export") >"$TMP/mac-social.log" 2>&1 \

@@ -27,7 +27,7 @@ type Json = Record<string, any>; // deno-lint-ignore no-explicit-any
 let failures = 0;
 function check(name: string, ok: boolean, detail: unknown = ""): void {
   if (!ok) failures += 1;
-  console.log(`${ok ? "ok  " : "FAIL"} ${name}${detail !== "" ? ` — ${typeof detail === "string" ? detail : JSON.stringify(detail).slice(0, 400)}` : ""}`);
+  console.log(`${ok ? "ok  " : "FAIL"} ${name}${detail !== "" ? `, ${typeof detail === "string" ? detail : JSON.stringify(detail).slice(0, 400)}` : ""}`);
 }
 
 /** A browser over real HTTP: a cookie jar, redirects followed by hand. */

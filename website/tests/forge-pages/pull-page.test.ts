@@ -102,6 +102,6 @@ describe("the conversation", () => {
     assert.deepEqual(checkWords(run("completed", "success")), { text: "tests: passed", tone: "ok" });
     assert.deepEqual(checkWords(run("completed", "timed_out")), { text: "tests: took too long (timed out)", tone: "warning" });
     assert.deepEqual(checkWords(run("in_progress", null)), { text: "tests: running", tone: "" });
-    assert.deepEqual(statusWords({ context: "ci/lint", state: "failure", description: "3 errors", targetUrl: null }), { text: "ci/lint: failed — 3 errors", tone: "warning" });
+    assert.deepEqual(statusWords({ context: "ci/lint", state: "failure", description: "3 errors", targetUrl: null }), { text: "ci/lint: failed, 3 errors", tone: "warning" });
   });
 });

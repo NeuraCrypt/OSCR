@@ -395,7 +395,7 @@ def run_checks(x: dict[str, Any]) -> Report:
         title = f"{passed} passed, {warned} to look at"
     else:
         title = f"All {len(findings)} checks passed"
-    lines = [f"- **{CHECK_WORDS[f.id]}** — {LEVEL_WORDS[f.level]}. {f.words}{' ' + f.fix if f.fix else ''}" for f in findings]
+    lines = [f"- **{CHECK_WORDS[f.id]}**, {LEVEL_WORDS[f.level]}. {f.words}{' ' + f.fix if f.fix else ''}" for f in findings]
     notes = []
     if x.get("truncated"):
         notes.append("The forge cut the tree's listing: files beyond it were not looked at.")

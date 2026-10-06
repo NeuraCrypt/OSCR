@@ -1,5 +1,5 @@
 """Data rights (oscr/rights.py; the page /data-rights/): every right, answered by `oscr jobs poll` in
-the safe direction — access, erasure and objection for an account signed in with its ORCID iD, the
+the safe direction, access, erasure and objection for an account signed in with its ORCID iD, the
 account deleted; the rest handed to the operator with its legal deadline, never closed unanswered. The
 contact details' suppression list (oscr/contacts.py), which the collection and the private dataset
 honour, the private dataset's history rewritten after an erasure (a mocked HfApi: never Hugging Face),

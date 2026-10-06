@@ -66,7 +66,7 @@ describe("the tracing-map links a change touches", () => {
     const n = mapNotice(touchedLinks([{ path: "analysis.py", kind: "edit", before, after: before.replace("b", "B"), located: [located(2, 3)] }]), "main");
     const said = text(n as never);
     assert.match(said, /touches a link of a tracing map/);
-    assert.match(said, /analysis\.py, lines 2 to 3: Paragraph 3 of Methods › Spectral analysis of Band power in resting EEG — lines 2 to 3 change\./);
+    assert.match(said, /analysis\.py, lines 2 to 3: Paragraph 3 of Methods › Spectral analysis of Band power in resting EEG, lines 2 to 3 change\./);
     assert.match(said, /keeps pointing at its own commit/);
     assert.equal(mapNotice([], "main"), null);
   });
