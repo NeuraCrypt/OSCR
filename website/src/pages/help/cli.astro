@@ -1,0 +1,310 @@
+---
+// Help: the researchers' command line, the full guide. Every statement is true of the tool in
+// cli/ (docs/CLI.md, DECISIONS.md D14-*) and was checked against `oscr <command> --help`. The
+// package on PyPI is `openscicode`; the command is `oscr`. Classes of science.css only; no inline
+// script or style; no em dash.
+import Info from "../../components/Info.astro";
+import { SITE_NAME, SOURCE_URL } from "../../config";
+
+const PYPI = "openscicode";
+const toc = [
+  { id: "what", text: "What it is" },
+  { id: "install", text: "Install" },
+  { id: "signin", text: "Sign in" },
+  { id: "registry", text: "Checking, citing and tracing your code" },
+  { id: "paper", text: "Linking a repository to its paper" },
+  { id: "repo", text: "Making a repository and sending it to GitHub" },
+  { id: "collab", text: "Pull requests, issues and releases" },
+  { id: "find", text: "Search, browse and the API" },
+  { id: "ci", text: "Your CI runs" },
+  { id: "output", text: "Output, scripting and exit codes" },
+  { id: "mcp", text: "The MCP server, for an assistant" },
+  { id: "settings", text: "Settings, aliases and completion" },
+  { id: "safety", text: "What it never does" },
+  { id: "coming", text: "What is coming" },
+  { id: "more", text: "More" },
+];
+---
+<Info
+  title="The command line (oscr)"
+  description={`The free oscr command line for researchers: install, sign in with GitHub and ${SITE_NAME}, check, cite and trace your code, and work with its GitHub repository from the terminal.`}
+  group="help"
+  path="/help/cli/"
+  parents={[{ text: "Help", href: "/help/" }]}
+  toc={toc}
+>
+  <p class="lead" slot="lead">
+    <code>oscr</code> is {SITE_NAME}'s command line for researchers. From your terminal it links your
+    repository to its paper, checks it the way the registry checks it, traces its lines to the paper's
+    Methods, cites it, and works with its GitHub repository (the registry's view first). It is free and
+    open (Apache-2.0), needs only Python and git, and never asks for, shows or keeps an email address.
+  </p>
+
+  <h2 id="what">What it is</h2>
+  <p>
+    The tool is for anyone who publishes research code: it brings {SITE_NAME}'s own checks, citations and
+    tracing maps to where you work. It talks to <strong>GitHub directly with your own GitHub token</strong>
+    (the registry never sees it) and to <strong>the registry with the registry's token</strong>, and for
+    every action it shows the registry's own page first, GitHub's address only when the registry cannot
+    show the thing. It uses the <strong>standard library only</strong>: once Python is there, nothing else
+    is installed. The package on PyPI is <code>{PYPI}</code>; the command you type is <code>oscr</code>.
+  </p>
+
+  <h2 id="install">Install</h2>
+  <p>With <a href="https://pipx.pypa.io/">pipx</a> (recommended: it gives the tool an environment of its own):</p>
+  <pre>{`pipx install ${PYPI}
+oscr --version`}</pre>
+  <p>Or with plain pip, or with uv:</p>
+  <pre>{`pip install ${PYPI}
+# or
+uv tool install ${PYPI}`}</pre>
+  <p>
+    You need <strong>Python 3.10 or later</strong> and <strong>git</strong>. There is no other dependency.
+    The short name <code>oscr</code> is already taken on PyPI by an unrelated project, so the distribution
+    is called <code>{PYPI}</code> (it matches this site's domain); the command stays <code>oscr</code>.
+    Every command has <code>--help</code> with examples, and <code>oscr help &lt;topic&gt;</code> opens the
+    manual's topics (<code>formatting</code>, <code>exit-codes</code>, <code>environment</code>,{" "}
+    <code>repository</code>, <code>auth</code>, <code>safety</code>, <code>mcp</code>).
+  </p>
+
+  <h2 id="signin">Sign in</h2>
+  <p>
+    Reading the registry needs no account. Signing in lets you act as yourself: link a paper, open a
+    research issue, create a repository. One command signs you in to both GitHub and the registry, each
+    approved in your browser:
+  </p>
+  <pre>{`oscr auth login                  # GitHub, then the registry (both approved in your browser)
+oscr auth login --github         # only GitHub
+oscr auth login --oscr --scopes repos:read,research:write --days 90`}</pre>
+  <p>Two credentials are obtained, by two separate device flows:</p>
+  <dl class="terms">
+    <dt>GitHub, through GitHub's own device flow</dt>
+    <dd>
+      The tool asks GitHub directly, with the registry's GitHub App's public client id. You type the code
+      on GitHub's page. Your GitHub token goes from GitHub to your keychain and <strong>never reaches the
+      registry</strong>. It lives 8 hours; <code>oscr auth refresh --github</code>, or any command once it
+      expired, renews it.
+    </dd>
+    <dt>The registry, through its own device-code flow</dt>
+    <dd>
+      The terminal prints the registry's approval page and an 8-letter code. On the page, signed in with
+      ORCID, GitHub or Google, you type that code, read what the token may do and for how long, and approve
+      or refuse. By default the token may <code>repos:read</code> and <code>research:read</code> for 90
+      days; <code>--scopes</code> and <code>--days</code> ask for others.
+    </dd>
+  </dl>
+  <p>
+    Both are kept <strong>only in your system's keychain</strong>: the macOS login keychain, or the Linux
+    Secret Service (GNOME Keyring, KWallet) through <code>secret-tool</code>; a plain file only when you
+    ask (<code>--insecure-storage</code>), with a warning each time. The rest of the auth commands:
+  </p>
+  <div class="table-wrap">
+    <table class="facts">
+      <thead><tr><th>Command</th><th>What it does</th></tr></thead>
+      <tbody>
+        <tr><td><code>oscr auth status</code></td><td>Who is signed in, where each credential is kept, whether it still works (<code>--offline</code> to ask nothing).</td></tr>
+        <tr><td><code>oscr auth token --github|--oscr</code></td><td>Print the active token, for a script's environment.</td></tr>
+        <tr><td><code>oscr auth switch</code></td><td>Make another signed-in account the active one.</td></tr>
+        <tr><td><code>oscr auth refresh</code></td><td>Renew GitHub's token; approve the registry's again.</td></tr>
+        <tr><td><code>oscr auth logout</code></td><td>Sign out: the registry's token revokes itself, both leave the keychain.</td></tr>
+        <tr><td><code>oscr auth setup-git</code></td><td>Make the tool git's credential helper, for GitHub's host only.</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>
+    In a CI job, the environment variables <code>OSCR_TOKEN</code> (the registry's) and{" "}
+    <code>OSCR_GITHUB_TOKEN</code> or <code>GH_TOKEN</code> (GitHub's) win over the keychain, so no browser
+    is needed.
+  </p>
+
+  <h2 id="registry">Checking, citing and tracing your code</h2>
+  <p>
+    These read your files <strong>as text</strong> and <strong>never run your code</strong>; git runs with
+    its hooks off. <code>oscr check</code> runs the same seven checks the registry runs on a pull request:
+    a licence, an environment file, the paper's DOI, <code>CITATION.cff</code>, the tracing maps' files,
+    files over 50 MiB, and a README that says how to run the code.
+  </p>
+  <pre>{`oscr check                       # the registry's checks at HEAD
+oscr check --base main           # the change from main, as the registry checks a pull request
+oscr check --rev v1.0 --json conclusion,findings
+oscr check --offline             # ask the registry nothing`}</pre>
+  <p>
+    <code>oscr cite</code> builds the citation the site shows, from <code>CITATION.cff</code> (or{" "}
+    <code>codemeta.json</code>), in APA and BibTeX:
+  </p>
+  <pre>{`oscr cite                        # APA and BibTeX
+oscr cite --format bibtex >> refs.bib
+oscr cite --software             # the software itself, not the paper the file prefers
+oscr cite --release v1.2.0       # that version, with the DOI its release notes name
+oscr cite --swhid                # the commit's Software Heritage identifiers`}</pre>
+  <p>
+    <code>oscr trace</code> works with the <a href="/help/maps/">tracing maps</a> that tie a paper's Methods
+    paragraphs to lines of its code at a pinned commit. <code>check</code> finds each link's lines again at
+    another commit the way the site's reader does (the same lines, the nearest copy, else the map's symbol):
+  </p>
+  <pre>{`oscr trace list                  # the maps the registry holds for this repository
+oscr trace check                 # their lines at HEAD: same, moved, changed, gone
+oscr trace check --commit v2.0 --paper 10.1234/abcd
+oscr trace propose 10.1234/abcd analysis/filter.py:10-24=3 --section "Methods"`}</pre>
+  <p>
+    <code>trace propose</code> builds a map from lines you select (<code>PATH:START-END</code>,{" "}
+    <code>PATH#LSTART-LEND</code> or a GitHub permalink, with <code>=N</code> for the paper's paragraph),
+    each link with its GitHub and registry permalinks. The registry does not yet receive proposed maps from
+    the command line (see <a href="#coming">What is coming</a>): keep the file with your code, or cite its
+    links in a research issue.
+  </p>
+
+  <h2 id="paper">Linking a repository to its paper</h2>
+  <pre>{`oscr paper link 10.1234/abcd     # attach this repository to its paper
+oscr paper list                  # the papers the registry links to it`}</pre>
+  <p>
+    <code>paper link</code> goes through the site's own write path: it opens the registry's page pre-filled,
+    where you confirm and GitHub authorizes that one action as you. <code>--no-browser</code> prints the
+    address instead.
+  </p>
+
+  <h2 id="repo">Making a repository and sending it to GitHub</h2>
+  <p>
+    A common path for a researcher: make a public repository, link it to its paper, and work on it. Create
+    it on GitHub (private ones are refused by design), then clone and push with ordinary git:
+  </p>
+  <pre>{`oscr repo create eeg-analysis --license mit --gitignore Python --add-readme --paper 10.1234/abcd --clone
+cd eeg-analysis
+# ... add your code ...
+git add -A && git commit -m "First analysis"
+git push                         # git pushes straight to GitHub with your own token`}</pre>
+  <p>
+    Pushing is plain git over HTTPS to GitHub; <code>oscr auth setup-git</code> lets git use the GitHub
+    token the tool already holds, so you are not asked for a password. The other repository commands:
+  </p>
+  <div class="table-wrap">
+    <table class="facts">
+      <thead><tr><th>Command</th><th>What it does</th></tr></thead>
+      <tbody>
+        <tr><td><code>oscr repo view [OWNER/NAME] [--web]</code></td><td>The registry's view (linked or not, papers, maps), then GitHub's facts.</td></tr>
+        <tr><td><code>oscr repo clone OWNER/NAME [DIR]</code></td><td>git clone, straight from GitHub, hooks off (a fork gets its <code>upstream</code> remote).</td></tr>
+        <tr><td><code>oscr repo list [OWNER]</code></td><td>Your public repositories, and whether the registry links each.</td></tr>
+        <tr><td><code>oscr repo sync [OWNER/NAME]</code></td><td>Fast-forward this clone's branch, or a fork on GitHub from its parent.</td></tr>
+        <tr><td><code>oscr repo set-default OWNER/NAME</code></td><td>The repository this clone's commands go to.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 id="collab">Pull requests, issues and releases</h2>
+  <pre>{`oscr pr create --title "Fix the band-pass filter" --body "As in Methods 2.3" --push
+oscr pr list
+oscr pr view 12 --web            # its page on the registry
+oscr pr checkout 12              # check its head out here (hooks off)`}</pre>
+  <p>
+    <code>pr create</code> runs the registry's checks on the change here, first. Issues are GitHub's, or the
+    registry's own <strong>research issues</strong> (a mismatch, a code error, a reproduction), which need
+    the <code>research:write</code> scope:
+  </p>
+  <pre>{`oscr issue create --title "The filter differs from Methods" \\
+  --research mismatch --paper 10.1234/abcd --path a.py --lines 10-24 --paragraph 3
+oscr issue list --assignee @me
+oscr issue close 4 --reason not_planned`}</pre>
+  <pre>{`oscr release create v1.0.0 --generate-notes
+oscr release list
+oscr release view v1.0.0 --web`}</pre>
+  <p>Tie a release to the paper's version on its registry page. <code>@me</code> stands for your GitHub login.</p>
+
+  <h2 id="find">Search, browse and the API</h2>
+  <pre>{`oscr search "band power"                       # the registry's search
+oscr search eeg --type repositories
+oscr search filter --github code               # GitHub's own search, for what only it indexes
+oscr browse analysis/filter.py:10              # open the registry's page of those lines
+oscr browse 12                                 # an issue or pull request
+oscr browse --checks                           # a commit's checks (the registry's, your CI, the statuses)
+oscr browse src/a.py --blame                   # GitHub's blame page (the registry has none)
+oscr api /user                                 # a raw request to the registry's API
+oscr api --github /repos/lab/eeg/releases --jq ".[].tag_name"`}</pre>
+  <p>
+    <code>oscr api</code> calls the registry's API at <code>/api/forge/v1</code> (or GitHub's with{" "}
+    <code>--github</code>) and prints the JSON answer; <code>-f k=v</code> adds a field, <code>-X POST</code>
+    changes the method, <code>--jq</code> filters the result. The free, keyless read API is documented on its
+    own: see <a href="/help/api/">the public API guide</a>.
+  </p>
+
+  <h2 id="ci">Your CI runs</h2>
+  <pre>{`oscr run list                    # the latest GitHub Actions runs, summarized
+oscr run view 123456             # one run: its jobs, the steps that failed, its checks on the registry
+oscr workflow list               # the repository's workflows and their state`}</pre>
+
+  <h2 id="output">Output, scripting and exit codes</h2>
+  <p>
+    In a terminal the tool prints aligned columns cut to the width, with colour; <strong>in a pipe</strong>
+    it prints one tab-separated line per item, nothing cut, no colour, so it is easy to read from a script.
+    Three flags reshape the output:
+  </p>
+  <dl class="terms">
+    <dt><code>--json FIELDS</code></dt>
+    <dd>Print the named comma-separated fields as JSON (alone, it lists the fields a command offers).</dd>
+    <dt><code>--jq EXPR</code> (or <code>-q</code>)</dt>
+    <dd>Filter with a subset of jq (paths, <code>|</code>, <code>,</code>, <code>//</code>, comparisons, <code>select</code>, <code>map</code>, <code>length</code>, <code>keys</code>, <code>sort_by</code>, <code>test</code>).</dd>
+    <dt><code>--template TMPL</code> (or <code>-t</code>)</dt>
+    <dd>Render with a subset of Go's templates (<code>range</code>, <code>if</code>, <code>json</code>, <code>join</code>, <code>truncate</code>, <code>timeago</code>, <code>tablerow</code>). <code>oscr help formatting</code> lists them all.</dd>
+  </dl>
+  <p>
+    Colour obeys <code>NO_COLOR</code>, <code>--color never</code> and <code>CLICOLOR_FORCE=1</code>;{" "}
+    <code>oscr config set accessible_colors true</code> uses bold and underline and a word, never red against
+    green. Every text from the network is cleaned before it is shown (control and bidirectional escape
+    sequences made inert), and email addresses become <code>[email hidden]</code>, as on the site. The exit
+    codes:
+  </p>
+  <div class="table-wrap">
+    <table class="facts">
+      <thead><tr><th>Code</th><th>Meaning</th></tr></thead>
+      <tbody>
+        <tr><td><code>0</code></td><td>Done.</td></tr>
+        <tr><td><code>1</code></td><td>An error.</td></tr>
+        <tr><td><code>2</code></td><td>A usage error (a wrong flag or argument).</td></tr>
+        <tr><td><code>3</code></td><td>A check failed (<code>oscr check</code>).</td></tr>
+        <tr><td><code>4</code></td><td>Sign-in needed.</td></tr>
+        <tr><td><code>130</code></td><td>Interrupted.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 id="mcp">The MCP server, for an assistant</h2>
+  <p>
+    <code>oscr mcp serve</code> speaks JSON-RPC 2.0 over standard input and output (the Model Context
+    Protocol) and offers the <strong>read</strong> commands as tools for an assistant:{" "}
+    <code>repo_view</code>, <code>paper_list</code>, <code>check</code>, <code>cite</code>,{" "}
+    <code>trace_list</code>, <code>trace_check</code>, <code>issue_list</code>, <code>issue_view</code>,{" "}
+    <code>pr_list</code>, <code>pr_view</code>, <code>release_list</code>, <code>run_list</code> and{" "}
+    <code>search</code>. Each runs with your settings and credentials and answers its JSON. None writes,
+    opens a browser or asks a question. <code>oscr mcp tools</code> lists them.
+  </p>
+  <pre>{`{"mcpServers": {"oscr": {"command": "oscr", "args": ["mcp", "serve"]}}}`}</pre>
+
+  <h2 id="settings">Settings, aliases and completion</h2>
+  <pre>{`oscr config list                 # every setting, its value and what it does
+oscr config set git_protocol ssh
+oscr config set host example.org # another deployment of the registry
+oscr alias set co "pr checkout"  # then: oscr co 12 (aliases never run a shell)
+eval "$(oscr completion bash)"   # also zsh and fish`}</pre>
+
+  <h2 id="safety">What it never does</h2>
+  <ul>
+    <li><strong>It never runs your code.</strong> <code>oscr check</code> and <code>oscr trace</code> read files as text from git's object store; git always runs with its hooks off. The only programs the tool starts are git, the keychain's own, and your browser and editor.</li>
+    <li><strong>It never keeps your token anywhere but the keychain</strong> (a plain file only when you ask, with a warning). A token is never printed, not even with <code>--debug</code>.</li>
+    <li><strong>It never asks for, shows or keeps an email address.</strong> Your commits' address is your own git configuration, never read or changed.</li>
+    <li><strong>It never sends your GitHub token to the registry.</strong> GitHub's side talks to GitHub; the registry's side talks to the registry.</li>
+  </ul>
+
+  <h2 id="coming">What is coming</h2>
+  <p>These are planned and are <strong>not</strong> available yet; the tool does not pretend they are:</p>
+  <ul>
+    <li>Sending a proposed tracing map to the registry for an author's review (today <code>oscr trace propose</code> writes a file you keep).</li>
+    <li>More repository and collaboration verbs: <code>repo fork</code>, <code>archive</code>, <code>rename</code>, <code>delete</code>; reviewing or merging a pull request; editing, commenting on or reopening an issue; uploading or downloading a release's assets; discussions and projects.</li>
+    <li>The full jq and Go template languages (variables, <code>reduce</code>, assignment), Markdown rendered in the terminal, and a pager.</li>
+  </ul>
+
+  <h2 id="more">More</h2>
+  <p>
+    The public read API the tool builds on is documented at <a href="/help/api/">the API guide</a>; its
+    overview is at <a href="/api/">the API page</a>. The source, the issue tracker and the full command
+    reference are in the project on GitHub: <a href={SOURCE_URL}>{SOURCE_URL}</a>.
+  </p>
+</Info>

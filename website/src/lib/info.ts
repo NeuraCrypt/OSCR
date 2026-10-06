@@ -43,6 +43,7 @@ export const HELP: InfoLink[] = [
   { href: "/help/removal/", text: "Requesting a removal", summary: "What can be removed, who may ask, how the rules decide a request, and when a decision takes effect." },
   { href: "/help/data/", text: "Accessing the data", summary: "The datasets on Hugging Face, their licences, and what stays private." },
   { href: "/help/api/", text: "The public API", summary: "The free, keyless read API: every endpoint with an example in curl, Python and R, bulk downloads, rates and citation." },
+  { href: "/help/cli/", text: "The command line (oscr)", summary: "The free oscr tool for researchers: install, sign in, check, cite and trace your code, and work with its GitHub repository from the terminal." },
   { href: "/help/faq/", text: "Frequently asked questions", summary: "Short answers to the questions readers and authors ask most." },
 ];
 
