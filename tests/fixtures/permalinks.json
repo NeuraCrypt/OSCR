@@ -1,0 +1,238 @@
+{
+ "comment": "Permalinks and the trace points read from them, the same for the website (src/lib/traced.ts parsePermalink) and the Mac (oscr/forge.py parse_permalink). Night phase 02, E4.",
+ "web": "https://github.com",
+ "sites": [
+  "https://registry.example"
+ ],
+ "cases": [
+  {
+   "url": "https://github.com/lab/tool/blob/0123456789abcdef0123456789abcdef01234567/src/a.py#L3-L7",
+   "point": {
+    "forge": "github",
+    "owner": "lab",
+    "name": "tool",
+    "commit": "0123456789abcdef0123456789abcdef01234567",
+    "path": "src/a.py",
+    "lines": {
+     "start": 3,
+     "end": 7
+    }
+   }
+  },
+  {
+   "url": "https://github.com/lab/tool/blob/0123456789abcdef0123456789abcdef01234567/src/a.py#L7-L3",
+   "point": {
+    "forge": "github",
+    "owner": "lab",
+    "name": "tool",
+    "commit": "0123456789abcdef0123456789abcdef01234567",
+    "path": "src/a.py",
+    "lines": {
+     "start": 3,
+     "end": 7
+    }
+   }
+  },
+  {
+   "url": "https://github.com/lab/tool/blob/0123456789abcdef0123456789abcdef01234567/src/a.py#L12",
+   "point": {
+    "forge": "github",
+    "owner": "lab",
+    "name": "tool",
+    "commit": "0123456789abcdef0123456789abcdef01234567",
+    "path": "src/a.py",
+    "lines": {
+     "start": 12,
+     "end": 12
+    }
+   }
+  },
+  {
+   "url": "https://github.com/lab/tool/blob/0123456789abcdef0123456789abcdef01234567/src/a.py#L3C5-L9C2",
+   "point": {
+    "forge": "github",
+    "owner": "lab",
+    "name": "tool",
+    "commit": "0123456789abcdef0123456789abcdef01234567",
+    "path": "src/a.py",
+    "lines": {
+     "start": 3,
+     "end": 9
+    }
+   }
+  },
+  {
+   "url": "https://github.com/lab/tool/blob/0123456789abcdef0123456789abcdef01234567/src/a.py",
+   "point": {
+    "forge": "github",
+    "owner": "lab",
+    "name": "tool",
+    "commit": "0123456789abcdef0123456789abcdef01234567",
+    "path": "src/a.py",
+    "lines": null
+   }
+  },
+  {
+   "url": "https://github.com/Lab-X/My.Tool/blob/0123456789abcdef0123456789abcdef01234567/docs/My%20File.md?plain=1#L4",
+   "point": {
+    "forge": "github",
+    "owner": "Lab-X",
+    "name": "My.Tool",
+    "commit": "0123456789abcdef0123456789abcdef01234567",
+    "path": "docs/My File.md",
+    "lines": {
+     "start": 4,
+     "end": 4
+    }
+   }
+  },
+  {
+   "url": "https://github.com/lab/tool/blob/0123456789abcdef0123456789abcdef01234567/%C3%A9t%C3%A9.R#L1",
+   "point": {
+    "forge": "github",
+    "owner": "lab",
+    "name": "tool",
+    "commit": "0123456789abcdef0123456789abcdef01234567",
+    "path": "été.R",
+    "lines": {
+     "start": 1,
+     "end": 1
+    }
+   }
+  },
+  {
+   "url": "https://github.com/lab/tool/blob/abababababababababababababababababababababababababababababababab/a.jl#L2-L3",
+   "point": {
+    "forge": "github",
+    "owner": "lab",
+    "name": "tool",
+    "commit": "abababababababababababababababababababababababababababababababab",
+    "path": "a.jl",
+    "lines": {
+     "start": 2,
+     "end": 3
+    }
+   }
+  },
+  {
+   "url": "/r/lab/tool/blob/0123456789abcdef0123456789abcdef01234567/analysis.py#L6-L10",
+   "point": {
+    "forge": "github",
+    "owner": "lab",
+    "name": "tool",
+    "commit": "0123456789abcdef0123456789abcdef01234567",
+    "path": "analysis.py",
+    "lines": {
+     "start": 6,
+     "end": 10
+    }
+   }
+  },
+  {
+   "url": "https://registry.example/r/lab/tool/blob/0123456789abcdef0123456789abcdef01234567/analysis.py#L6",
+   "point": {
+    "forge": "github",
+    "owner": "lab",
+    "name": "tool",
+    "commit": "0123456789abcdef0123456789abcdef01234567",
+    "path": "analysis.py",
+    "lines": {
+     "start": 6,
+     "end": 6
+    }
+   }
+  },
+  {
+   "url": "https://github.com/lab/tool/blob/main/src/a.py#L3",
+   "point": null
+  },
+  {
+   "url": "https://github.com/lab/tool/blob/0123456789ABCDEF0123456789ABCDEF01234567/src/a.py#L3",
+   "point": null
+  },
+  {
+   "url": "https://github.com/lab/tool/tree/0123456789abcdef0123456789abcdef01234567/src",
+   "point": null
+  },
+  {
+   "url": "https://github.com/lab/tool/blame/0123456789abcdef0123456789abcdef01234567/src/a.py#L3",
+   "point": null
+  },
+  {
+   "url": "https://github.com/lab/tool/blob/0123456789abcdef0123456789abcdef01234567/",
+   "point": null
+  },
+  {
+   "url": "https://github.com/lab/tool/blob/0123456789abcdef0123456789abcdef01234567/src/a.py#L0",
+   "point": null
+  },
+  {
+   "url": "https://github.com/lab/tool/blob/0123456789abcdef0123456789abcdef01234567/src/a.py#readme",
+   "point": null
+  },
+  {
+   "url": "http://github.com/lab/tool/blob/0123456789abcdef0123456789abcdef01234567/src/a.py#L3",
+   "point": null
+  },
+  {
+   "url": "https://gitlab.com/lab/tool/blob/0123456789abcdef0123456789abcdef01234567/src/a.py#L3",
+   "point": null
+  },
+  {
+   "url": "https://evil.example/r/lab/tool/blob/0123456789abcdef0123456789abcdef01234567/a.py#L3",
+   "point": null
+  },
+  {
+   "url": "https://github.com/lab/tool/blob/0123456789abcdef0123456789abcdef01234567/../../etc/passwd",
+   "point": null
+  },
+  {
+   "url": "https://github.com/lab/tool/blob/0123456789abcdef0123456789abcdef01234567/src/./a.py",
+   "point": null
+  },
+  {
+   "url": "https://github.com/lab/tool/blob/0123456789abcdef0123456789abcdef01234567/src/%2e%2e/a.py",
+   "point": null
+  },
+  {
+   "url": "https://github.com/lab/tool/blob/0123456789abcdef0123456789abcdef01234567/src%2Fa.py",
+   "point": null
+  },
+  {
+   "url": "https://github.com/lab/tool/blob/0123456789abcdef0123456789abcdef01234567/src\\a.py",
+   "point": null
+  },
+  {
+   "url": "https://github.com/lab/tool/blob/0123456789abcdef0123456789abcdef01234567/src/a b.py",
+   "point": null
+  },
+  {
+   "url": "https://github.com/lab/tool/blob/0123456789abcdef0123456789abcdef01234567/src/%zz.py",
+   "point": null
+  },
+  {
+   "url": "//github.com/lab/tool/blob/0123456789abcdef0123456789abcdef01234567/src/a.py",
+   "point": null
+  },
+  {
+   "url": "r/lab/tool/blob/0123456789abcdef0123456789abcdef01234567/a.py",
+   "point": null
+  },
+  {
+   "url": "javascript:alert(1)//github.com/lab/tool/blob/0123456789abcdef0123456789abcdef01234567/a.py",
+   "point": null
+  },
+  {
+   "url": "https://github.com/../tool/blob/0123456789abcdef0123456789abcdef01234567/a.py",
+   "point": null
+  },
+  {
+   "url": "https://github.com/lab/tool/blob/0123456789abcdef0123456789abcdef01234567",
+   "point": null
+  },
+  {
+   "url": "",
+   "point": null
+  }
+ ]
+}

@@ -1,0 +1,31 @@
+---
+// /account/moderation/: what of the reader's is hidden, and their data-rights requests (night phase 16;
+// docs/MODERATION.md, docs/POLICIES.md). The answers come here, never by email. Its script
+// (src/scripts/account-moderation.ts) reads GET /api/forge/moderation/mine, sends an appeal or a
+// counter-notice (POST /api/forge/appeal) behind the human check. science.css only.
+import Base from "../../layouts/Base.astro";
+---
+<Base
+  title="What of mine is hidden"
+  description="What of your content is hidden by moderation, why, and your appeals; your data-rights requests and their answers."
+  breadcrumb={[{ text: "Account", href: "/account/" }, { text: "What of mine is hidden" }]}
+>
+  <h1>What of mine is hidden</h1>
+  <p class="summary" id="mine-status" aria-live="polite">Reading your page…</p>
+  <noscript><p class="warning">This page is read in your browser, which needs JavaScript.</p></noscript>
+  <p>
+    When the owner hides something of yours, this page says what, why, and their words to you. You may appeal
+    each decision once; a copyright takedown may be answered with a counter-notice. Nothing is sent by
+    email: the answer comes here. The decisions are listed, without their words, in{" "}
+    <a href="/notices/">the notices</a>; the rules are the <a href="/acceptable-use/">acceptable-use policy</a>{" "}
+    and the <a href="/terms/">terms</a>.
+  </p>
+  <h2>Hidden or restored</h2>
+  <div id="mine-hidden" aria-live="polite"></div>
+  <h2>Your data-rights requests</h2>
+  <div id="mine-rights" aria-live="polite"></div>
+  <p><a href="/data-rights/">Exercise a data right</a> (access, portability, rectification, erasure, objection, restriction).</p>
+  <script>
+    import "../../scripts/account-moderation";
+  </script>
+</Base>

@@ -48,9 +48,13 @@ const KEYS_TTL = 3600;
 const keySets = new Map<string, { at: number; keys: Jwk[] }>();
 const imported = new Map<string, Promise<CryptoKey>>();
 
-async function fetchKeys(uri: string, now: number, fresh: boolean): Promise<Jwk[]> {
+/** `refetchAfter`: seconds since the last fetch before an unknown `kid` makes the keys fetched again
+ *  (0, the sign-in's: at once; night phase 10's GitHub Actions tokens: a minute, so that forged tokens
+ *  naming random keys cannot make every request fetch them). */
+async function fetchKeys(uri: string, now: number, fresh: boolean, refetchAfter = 0): Promise<Jwk[]> {
   const hit = keySets.get(uri);
   if (hit && !fresh && now - hit.at < KEYS_TTL) return hit.keys;
+  if (hit && fresh && refetchAfter > 0 && now - hit.at < refetchAfter && hit.keys.length) return hit.keys;
   const res = await fetch(uri, { headers: { Accept: "application/json" } });
   if (!res.ok) throw new IdTokenError(`the provider's keys answered ${res.status}`);
   const body = (await res.json().catch(() => ({}))) as { keys?: unknown };
@@ -124,20 +128,28 @@ export function checkClaims(claims: IdClaims, expect: Expected): void {
   if (typeof claims.sub !== "string" || !claims.sub || claims.sub.length > 255) throw new IdTokenError("the token names nobody");
 }
 
-/** The claims of `token` once its signature and claims are checked; throws IdTokenError. */
-export async function verifyIdToken(token: string, expect: Expected): Promise<IdClaims> {
+/** The claims of a JWT once its RS256 signature is checked against the issuer's published keys
+ *  (the claims themselves are the caller's to check); throws IdTokenError. Night phase 10: GitHub
+ *  Actions' OIDC tokens (forge/service/statuses.ts) use it, with their own claims. */
+export async function verifySignature(token: string, o: { jwksUri: string; now: number; refetchAfter?: number }): Promise<IdClaims> {
   const { header, claims, signed, signature } = decode(token);
   if (header.alg !== "RS256") throw new IdTokenError(`unexpected algorithm ${String(header.alg)}`);
-  let jwk = pick(await fetchKeys(expect.jwksUri, expect.now, false), header.kid);
-  if (!jwk) jwk = pick(await fetchKeys(expect.jwksUri, expect.now, true), header.kid);
+  let jwk = pick(await fetchKeys(o.jwksUri, o.now, false), header.kid);
+  if (!jwk) jwk = pick(await fetchKeys(o.jwksUri, o.now, true, o.refetchAfter ?? 0), header.kid);
   if (!jwk) throw new IdTokenError("no published key of the provider signed this token");
   const valid = await crypto.subtle.verify(
     "RSASSA-PKCS1-v1_5",
-    await importKey(expect.jwksUri, jwk),
+    await importKey(o.jwksUri, jwk),
     signature,
     new TextEncoder().encode(signed),
   );
   if (!valid) throw new IdTokenError("the signature is not the provider's");
+  return claims;
+}
+
+/** The claims of `token` once its signature and claims are checked; throws IdTokenError. */
+export async function verifyIdToken(token: string, expect: Expected): Promise<IdClaims> {
+  const claims = await verifySignature(token, expect);
   checkClaims(claims, expect);
   return claims;
 }

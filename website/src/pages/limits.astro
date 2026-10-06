@@ -1,0 +1,90 @@
+---
+// /limits/: the registry's own limits and what it says when one is reached (night phase 16, E4;
+// docs/POLICIES.md). The numbers are the Worker's own constants, read at build time, so that this page
+// never disagrees with the code; the Git hosting's limits (file sizes, pushes) are GitHub's, on
+// /hosting/limits/. Static; science.css only.
+import Base from "../layouts/Base.astro";
+import PolicyDraft from "../components/PolicyDraft.astro";
+import { SITE_NAME } from "../config";
+import { CAP_WORDS, FORGE_ROWS_PER_DAY, PER_ACCOUNT_DAY, ACTION_PAYLOAD_BYTES, ASSET_UPLOAD_BYTES, COMMIT_FILES, type Cap } from "../../worker/forge/service/caps.ts";
+import { API_RATE, BAD_TOKENS_PER_MINUTE } from "../../worker/forge/service/bearer.ts";
+import { BODY_CHARS } from "../../worker/forge/limits.ts";
+import { FOLLOWS_MAX, LISTS_MAX, STARS_MAX } from "../../worker/forge/service/social-core.ts";
+import { ANONYMOUS_REPORTS_DAY, BLOCKS_MAX, RIGHTS_OPEN_MAX } from "../../worker/forge/service/moderation-core.ts";
+import { TOKENS_PER_ACCOUNT } from "../../worker/forge/service/tokens-core.ts";
+import { HOOKS_PER_ACCOUNT } from "../../worker/forge/service/hooks-core.ts";
+import { MESSAGES } from "../../worker/api.ts";
+import { CLOSED_MESSAGE } from "../../worker/forge/service/gate.ts";
+
+const n = (x: number) => x.toLocaleString("en-GB");
+const mib = (b: number) => `${n(b / 2 ** 20)} MiB`;
+const caps = Object.entries(PER_ACCOUNT_DAY) as [Cap, number][];
+---
+<Base
+  title="Limits"
+  description="The registry's daily limits, for each account and for the whole service, and what it says when one is reached."
+  breadcrumb={[{ text: "Limits" }]}
+>
+  <div class="policy">
+    <h1>Limits</h1>
+    <PolicyDraft drafted="2026-09-29" />
+    <p class="summary">
+      {SITE_NAME} runs for free, within the free plans of the services that host it. So every account has daily
+      limits, and so has the whole service; when one is reached, {SITE_NAME} says so in words, and the static
+      pages stay up. The limits of Git hosting (file sizes, pushes) are GitHub's: <a href="/hosting/limits/">the
+      hosting limits</a>.
+    </p>
+
+    <h2 id="account">What one account may do in 24 hours</h2>
+    <table>
+      <thead><tr><th>What</th><th>At most</th></tr></thead>
+      <tbody>
+        {caps.map(([cap, limit]) => <tr><td>{CAP_WORDS[cap](limit).replace(/^\d[\d,]* /, "").replace(/^./, (c) => c.toUpperCase())}</td><td>{n(limit)}</td></tr>)}
+      </tbody>
+    </table>
+    <p>Reports made without an account: {n(ANONYMOUS_REPORTS_DAY)} a day for all of them together.</p>
+
+    <h2 id="kept">What one account keeps</h2>
+    <table>
+      <tbody>
+        <tr><td>Stars</td><td>{n(STARS_MAX)}</td></tr>
+        <tr><td>Follows and watches</td><td>{n(FOLLOWS_MAX)}</td></tr>
+        <tr><td>Star lists</td><td>{n(LISTS_MAX)}</td></tr>
+        <tr><td>Personal tokens</td><td>{n(TOKENS_PER_ACCOUNT)}</td></tr>
+        <tr><td>Webhooks</td><td>{n(HOOKS_PER_ACCOUNT)}</td></tr>
+        <tr><td>Blocked people</td><td>{n(BLOCKS_MAX)}</td></tr>
+        <tr><td>Data-rights requests waiting</td><td>{n(RIGHTS_OPEN_MAX)}</td></tr>
+      </tbody>
+    </table>
+
+    <h2 id="sizes">Sizes</h2>
+    <table>
+      <tbody>
+        <tr><td>A comment, an issue's text</td><td>{n(BODY_CHARS)} characters</td></tr>
+        <tr><td>A change made in the browser</td><td>{mib(ACTION_PAYLOAD_BYTES)}, {n(COMMIT_FILES)} files</td></tr>
+        <tr><td>A release's file sent through {SITE_NAME}</td><td>{mib(ASSET_UPLOAD_BYTES)} (larger on GitHub's own page)</td></tr>
+      </tbody>
+    </table>
+
+    <h2 id="api">The public API</h2>
+    <p>
+      Each token: {n(API_RATE.perMinute)} requests a minute and {n(API_RATE.perDay)} a day. An address sending
+      {" "}{n(BAD_TOKENS_PER_MINUTE)} wrong tokens in a minute waits for the next minute.
+    </p>
+
+    <h2 id="service">What the whole service may do in a day</h2>
+    <p>
+      The GitHub side writes at most {n(FORGE_ROWS_PER_DAY)} rows to its database a day, every account together.
+      The server answers about 100,000 requests a day in all; past it, its routes answer an error until
+      midnight UTC, and every static page stays up.
+    </p>
+
+    <h2 id="words">What it says</h2>
+    <dl>
+      <dt>An account's limit</dt><dd>"You have reached … in the last 24 hours, the most one account may: please come back tomorrow."</dd>
+      <dt>The GitHub side's day</dt><dd>"The GitHub side has used its share of today's database writes. Please try again tomorrow."</dd>
+      <dt>The search's day</dt><dd>"{MESSAGES.quota}"</dd>
+      <dt>Before the GitHub side opens to everyone</dt><dd>"{CLOSED_MESSAGE}"</dd>
+    </dl>
+  </div>
+</Base>

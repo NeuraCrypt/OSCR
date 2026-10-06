@@ -1,0 +1,65 @@
+---
+// /settings/blocked/: the people the reader blocked, and the interaction limits of their repositories
+// (night phase 16, E2; docs/MODERATION.md "Blocking", "Interaction limits"). Its script
+// (src/scripts/blocked.ts) reads GET /api/forge/blocks (1 request) and a repository's limit on demand;
+// a block, an unblock or a limit is one request, with the session's CSRF token. science.css only.
+import Base from "../../layouts/Base.astro";
+import { SITE_NAME } from "../../config";
+import { LIMIT_DURATIONS, LIMIT_WORDS } from "../../lib/moderation";
+---
+<Base
+  title="Blocked people and interaction limits"
+  description="The people you blocked, what a block does and does not do, and the limits on who may interact with your repositories."
+  breadcrumb={[{ text: "Account", href: "/account/" }, { text: "Blocked people" }]}
+>
+  <h1>Blocked people and interaction limits</h1>
+  <p class="summary" id="blocked-status" aria-live="polite">Reading your blocks…</p>
+  <noscript><p class="warning">This page is read in your browser, which needs JavaScript.</p></noscript>
+
+  <h2>What a block does</h2>
+  <ul>
+    <li>The person cannot comment on, react to, or open issues or pull requests in the repositories you manage in {SITE_NAME}, nor comment on your research issues, nor follow you.</li>
+    <li>Their events and their mentions of you no longer reach your notifications or your feed.</li>
+    <li>It is silent: they are not told, and what they meet says only that they cannot take part.</li>
+  </ul>
+  <h2>What a block does not do</h2>
+  <ul>
+    <li>It does not hide what they already wrote from others: to have content removed, report it from the “Report” link beside it (<a href="/acceptable-use/">what breaks the rules</a>).</li>
+    <li>It does not stop them from reading public pages.</li>
+    <li>It does nothing on GitHub: blocking someone there is yours to do on GitHub.</li>
+  </ul>
+  <p>You block someone from their profile, or from one of their comments (“Block its author”).</p>
+
+  <h2>Blocked</h2>
+  <div id="blocked-list" aria-live="polite"></div>
+
+  <h2>Interaction limits</h2>
+  <p>
+    For a while, limit who may comment, react, open issues and pull requests in your repositories, during a
+    flood of spam, a heated thread, a release. The stricter of a repository's own limit and your account's
+    applies; a limit ends by itself.
+  </p>
+  <form id="limit-form" class="lookup">
+    <p>
+      <label for="limit-scope">Where</label><br />
+      <input type="text" id="limit-scope" placeholder="owner/name, or leave empty for every repository you manage" autocomplete="off" />
+    </p>
+    <fieldset>
+      <legend>Who may still interact</legend>
+      <ul class="choices">
+        {Object.entries(LIMIT_WORDS).map(([k, v]) => <li><label><input type="radio" name="level" value={k} /> {v.charAt(0).toUpperCase() + v.slice(1)}</label></li>)}
+        <li><label><input type="radio" name="level" value="" /> Everyone: lift the limit</label></li>
+      </ul>
+    </fieldset>
+    <p>
+      <label for="limit-duration">For</label>{" "}
+      <select id="limit-duration">
+        {Object.keys(LIMIT_DURATIONS).map((d) => <option value={d}>{{ "24h": "24 hours", "3d": "3 days", "1w": "1 week", "1m": "1 month", "6m": "6 months" }[d] ?? d}</option>)}
+      </select>
+    </p>
+    <p><button type="submit">Apply</button> <span id="limit-said" role="status"></span></p>
+  </form>
+  <script>
+    import "../../scripts/blocked";
+  </script>
+</Base>

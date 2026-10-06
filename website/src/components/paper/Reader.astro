@@ -54,6 +54,18 @@ const facts = f && r
 const parts = f ? f.path.split("/") : [];
 const at = f && r ? sourceOf(r, f) : "";
 
+// Night phase 05: "Report a mismatch" on a match: the registry's research form, prefilled with the
+// paragraph and the lines at the commit the map read (a GitHub repository's form is on its page).
+const reportOf = (p: (typeof pairs)[number]): string => {
+  const repo = repos.find((x) => x.repo === p.repo);
+  const q = new URLSearchParams({ type: "mismatch", doi: a.doi, "field.paragraph": String(p.paragraph), "field.path": p.path, "field.lines": `${p.start}-${p.end}` });
+  if (p.section) q.set("section", p.section);
+  if (repo && /^[0-9a-f]{40}$/.test(repo.commit)) q.set("field.commit", repo.commit);
+  if (p.repo.startsWith("github.com/")) q.set("repo", p.repo.slice("github.com/".length));
+  else if (repo?.url) q.set("code", repo.url);
+  return `/research/new?${q}`;
+};
+
 // What the reader's browser needs: never any text of the paper, only numbers and short terms.
 const data: ReaderData = {
   fulltextId: textId,
@@ -110,6 +122,7 @@ const json = JSON.stringify(data).replace(/</g, "\\u003c");
             {typeof p.score === "number" && <span class="muted"> · score {p.score.toFixed(2)}</span>}
             {p.evidence.length > 0 && <span class="muted"> · {p.evidence.join(", ")}</span>}
             {p.file < 0 && <> · <span class="warning">this file is not among the harvested files</span></>}
+            {" · "}<a class="report-link" href={reportOf(p)}>Report a mismatch</a>
           </li>
         ))}
       </ol>

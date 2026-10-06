@@ -1,0 +1,37 @@
+---
+// /organizations/: the reader's organizations and pending invitations, and a form to create one
+// (night phase 09, E1 and E2; docs/ORGANIZATIONS.md). Its script (src/scripts/organizations.ts) reads
+// GET /api/forge/orgs when signed in. An organization is OSCR's own layer over a lab or a group: a
+// lab's GitHub organization is linked, not replaced. science.css only.
+import Base from "../layouts/Base.astro";
+import { SITE_NAME } from "../config";
+---
+<Base
+  title="Organizations"
+  description="Your organizations and invitations: a lab, a group or a project on the registry, with members, roles, teams and an audit log."
+  breadcrumb={[{ text: "Account", href: "/account/" }, { text: "Organizations" }]}
+>
+  <div id="orgs-shell">
+    <h1>Organizations</h1>
+    <p class="summary" aria-live="polite">Reading your organizations…</p>
+    <noscript><p class="warning">This page reads your organizations in your browser, which needs JavaScript.</p></noscript>
+    <p>
+      An organization on {SITE_NAME} is a lab, a group, a department or a project: its members and their
+      roles, research permissions, teams, a public and a members-only description, pinned repositories and
+      an audit log. A lab's GitHub organization is linked, not replaced: git rights on its repositories stay
+      GitHub's, and {SITE_NAME} never asks GitHub for a write.
+    </p>
+
+    <h2>Your invitations</h2>
+    <div id="invitations" aria-live="polite"></div>
+
+    <h2>Your organizations</h2>
+    <div id="orgs-list" aria-live="polite"></div>
+
+    <h2>Create an organization</h2>
+    <div id="orgs-make"></div>
+  </div>
+  <script>
+    import "../scripts/organizations";
+  </script>
+</Base>

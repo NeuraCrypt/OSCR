@@ -1,0 +1,94 @@
+---
+// /terms/: the terms of use, the GitHub side's included (night phase 16, E4; docs/POLICIES.md): what the
+// registry is, what people own and license, the GitHub side under GitHub's own terms, moderation,
+// suspension and appeal. A draft for the owner's review. Static; science.css only.
+import Base from "../layouts/Base.astro";
+import PolicyDraft from "../components/PolicyDraft.astro";
+import { SITE_NAME, SITE_FULL_NAME } from "../config";
+---
+<Base
+  title="Terms"
+  description="The terms of use of the registry and of its GitHub side: what it is, what you own and license, the rules, suspension and appeal."
+  breadcrumb={[{ text: "Terms" }]}
+>
+  <div class="policy">
+    <h1>Terms of use</h1>
+    <PolicyDraft drafted="2026-09-29" />
+    <p class="summary">
+      {SITE_FULL_NAME} is a free registry of the code published with scientific papers, run by one person, its
+      owner. Using it means accepting these terms, the <a href="/acceptable-use/">acceptable-use policy</a> and the{" "}
+      <a href="/guidelines/">community guidelines</a>; how data is handled is in <a href="/privacy/">the privacy
+      statement</a>.
+    </p>
+
+    <h2 id="service">1. The service</h2>
+    <p>
+      {SITE_NAME} reads published papers, links them to their authors' code, keeps copies of scripts whose licence
+      allows it, and shows which lines of code implement which passage of a paper (the tracing maps). Its GitHub
+      side lets researchers link, create and work on repositories, open research issues about a paper's code,
+      and follow papers and people. It is free, without advertising, and may change, pause or stop; it is given
+      as it is, without warranty of availability or accuracy, as far as the law allows.
+    </p>
+
+    <h2 id="accounts">2. Accounts</h2>
+    <p>
+      You sign in with ORCID, GitHub or Google; one account per person. You are responsible for what is done with
+      your account, your personal tokens and your webhooks. An account made to get around a suspension, or by
+      software on its own, may be closed.
+    </p>
+
+    <h2 id="github">3. The GitHub side</h2>
+    <p>
+      Repositories live in their owners' own GitHub accounts: they stay under <a href="https://docs.github.com/en/site-policy/github-terms/github-terms-of-service">GitHub's terms of
+      service</a> and GitHub's own rules, which {SITE_NAME} does not change. Every write {SITE_NAME} makes on
+      GitHub is yours, authorized by you on GitHub one action at a time; {SITE_NAME} keeps no GitHub token. Its
+      GitHub App acts only for itself (a check on pull requests, reading after a webhook). What {SITE_NAME} adds
+     , research issues, stars, lists, follows, profiles, tracing maps, notifications, is its own, under these
+      terms.
+    </p>
+
+    <h2 id="ownership">4. What you own, and the licence you give</h2>
+    <ul>
+      <li>You keep every right to what you write and publish: your code stays under the licence you chose, in your repository.</li>
+      <li>By writing in {SITE_NAME} (a research issue, a comment, a profile, a list, a correction), you allow it to store, show and copy that text on its pages, in its public files and through its API, for as long as it is published, and others to quote it as science allows. You may delete your own words.</li>
+      <li>Script copies are made only when the code's licence allows redistribution, and say where they come from. The papers themselves are never copied: the registry links to them.</li>
+      <li>The catalogue's own data (the records, the tracing maps) is published for reuse; a tracing map an author validated may get a DOI on Zenodo, with that author as creator.</li>
+    </ul>
+
+    <h2 id="rules">5. The rules, and what happens when they are broken</h2>
+    <p>
+      The <a href="/acceptable-use/">acceptable-use policy</a> says what is not allowed. Anyone may report
+      something from the “Report” link beside it. The owner reads every report and may hide a comment, an
+      issue, a repository from the registry's pages, a profile's words, or suspend an account (its writes stop,
+      its tokens are revoked, its webhooks paused, and its activity is hidden). Each decision has a public
+      notice without the hidden words (<a href="/notices/">the notices</a>), and the person concerned reads the
+      owner's words on their page.
+    </p>
+    <h3 id="appeal">Suspension and appeal</h3>
+    <p>
+      A person whose content or account was hidden may appeal once, from their page, within a reasonable time,
+      saying why the decision is wrong; a copyright takedown may be answered with a counter-notice
+      (<a href="/copyright/">takedowns</a>). The owner answers there. An appeal accepted restores what was hidden.
+    </p>
+
+    <h2 id="limits">6. Limits</h2>
+    <p>
+      {SITE_NAME} runs within free plans: daily limits apply to each account and to the whole service
+      (<a href="/limits/">the limits</a>). Going around them, several accounts, automated requests beyond the API's
+      limits, is not allowed.
+    </p>
+
+    <h2 id="liability">7. Liability</h2>
+    <p>
+      [To be completed by the owner: the limitation of liability that the owner's law allows, and the law and
+      courts that apply.]
+    </p>
+
+    <h2 id="changes">8. Changes and contact</h2>
+    <p>
+      These terms carry their date; a change that matters is announced on the site before it applies. There is no
+      email contact: ask in the site (<a href="/report/">a report</a>, <a href="/data-rights/">your data
+      rights</a>).
+    </p>
+  </div>
+</Base>

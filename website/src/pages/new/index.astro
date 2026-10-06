@@ -1,0 +1,171 @@
+---
+// /new/: creating a repository in the person's own GitHub account (D00-2), empty or with its first
+// files (a README, a .gitignore template, a licence, the first branch's name), or from a template,
+// attached to papers by their DOIs; pre-filled from the address (?name=…&description=…&paper=…&
+// gitignore=…&license=…&template=owner/name…). One authorized action (create or generate: the
+// sentence confirmed, GitHub, then /forge/authorized/, which links the new repository's page).
+//
+// The form is shown by its script (src/scripts/new-repo.ts, a file: the page's Content-Security-Policy
+// forbids inline scripts). The lists of templates and licences are static (src/lib/forge-templates.ts:
+// no request to GitHub). The limits shown come from GITHUB_LIMITS (src/lib/limits-text.ts). The
+// research-compendium template is offered only when the build names one (COMPENDIUM_TEMPLATE,
+// "owner/name", D01-9). science.css only; the platform's name from src/config.ts.
+import Base from "../../layouts/Base.astro";
+import { SITE_NAME } from "../../config";
+import { DEFAULT_BRANCH, DEFAULT_LICENCE, GITIGNORE_TEMPLATES, LICENCES, whyLicence } from "../../lib/forge-templates";
+import { hostingFacts, DATA_HOMES } from "../../lib/limits-text";
+
+const t = hostingFacts();
+const compendiumEnv = String(import.meta.env.COMPENDIUM_TEMPLATE ?? "").trim();
+const compendium = /^[A-Za-z0-9._-]{1,100}\/[A-Za-z0-9._-]{1,100}$/.test(compendiumEnv) ? compendiumEnv : "";
+const why = whyLicence(SITE_NAME);
+const DOCS = "https://docs.github.com/en";
+const LINKS = {
+  templates: `${DOCS}/repositories/creating-and-managing-repositories/creating-a-template-repository`,
+  fromTemplate: `${DOCS}/repositories/creating-and-managing-repositories/creating-a-repository-from-a-template`,
+  defaultBranch: `${DOCS}/repositories/configuring-branches-and-merges-in-your-repository/managing-branches-in-your-repository/changing-the-default-branch`,
+  accountBranch: "https://github.com/settings/repositories",
+  codespaces: `${DOCS}/codespaces/setting-up-your-project-for-codespaces/adding-a-dev-container-configuration/introduction-to-dev-containers`,
+  classroom: "https://classroom.github.com/",
+  choose: "https://choosealicense.com/",
+};
+---
+<Base
+  title="Create a repository"
+  description="Create a repository in your own GitHub account, attached to your paper."
+  breadcrumb={[{ text: "Repositories", href: "/repositories/" }, { text: "Create a repository" }]}
+>
+  <h1>Create a repository</h1>
+  <p class="summary">
+    A new public repository in your own GitHub account: empty or with its first files, or from a template, attached to
+    your paper's DOI. It is yours, on GitHub; {SITE_NAME} keeps only the link to the paper.
+  </p>
+  <noscript>
+    <p class="warning">
+      This form needs JavaScript. Without it, <a href="https://github.com/new">GitHub's own page</a> creates a
+      repository, and <a href="/new/link/">the link page</a> attaches it to the paper afterwards.
+    </p>
+  </noscript>
+  <p id="new-message" role="status"></p>
+
+  <form id="new-form" data-compendium={compendium || undefined} hidden>
+    <fieldset class="choices">
+      <legend>Start from</legend>
+      <label><input type="radio" name="from" value="empty" checked /> Nothing, or its first files</label>
+      <span class="explain">A README, a .gitignore and a licence, made by GitHub in the first commit; or nothing at all, for an import.</span>
+      <label><input type="radio" name="from" value="template" /> A template repository</label>
+      <span class="explain">
+        Its files, as one first commit of your own (GitHub does not copy a template's history).
+        {compendium && <>The research compendium: <a href={`/new/?template=compendium`}>{compendium}</a>.</>}
+      </span>
+    </fieldset>
+
+    <p>
+      <label for="new-name">Name</label><br />
+      <input type="text" id="new-name" name="name" autocomplete="off" spellcheck="false" maxlength="100" required />
+    </p>
+    <p id="new-name-rules" role="status"></p>
+    <p>
+      <label for="new-description">Description</label> (optional; shown on GitHub and here)<br />
+      <input type="text" id="new-description" name="description" maxlength="350" />
+    </p>
+
+    <div data-from="empty">
+      <p>
+        <label for="new-homepage">Website</label> (optional, https: the paper's DOI address, a lab page)<br />
+        <input type="url" id="new-homepage" name="homepage" maxlength="255" placeholder="https://doi.org/10.…" />
+      </p>
+      <p><label><input type="checkbox" name="readme" checked /> Add a README</label></p>
+      <p>
+        <label for="new-gitignore">A .gitignore template</label>: the files git should leave out (caches, build outputs)<br />
+        <select id="new-gitignore" name="gitignore">
+          <option value="">None</option>
+          {GITIGNORE_TEMPLATES.map((name) => <option value={name}>{name}</option>)}
+        </select>
+      </p>
+      <fieldset class="choices">
+        <legend>A licence</legend>
+        <label><input type="radio" name="license" value="" /> None</label>
+        <span class="explain">Nobody may legally reuse the code, and {SITE_NAME} keeps no copy of it.</span>
+        {LICENCES.map((l) => (
+          <>
+            <label><input type="radio" name="license" value={l.key} checked={l.key === DEFAULT_LICENCE} /> {l.name} ({l.spdx})</label>
+            <span class="explain">{l.explain}</span>
+          </>
+        ))}
+      </fieldset>
+      {why.map((line) => <p>{line}</p>)}
+      <p>Choosing one: <a href={LINKS.choose}>choosealicense.com</a>.</p>
+      <p>
+        <label for="new-branch">The first branch's name</label> (optional; GitHub's default is {DEFAULT_BRANCH})<br />
+        <input type="text" id="new-branch" name="default_branch" autocomplete="off" spellcheck="false" maxlength="100" placeholder={DEFAULT_BRANCH} />
+      </p>
+      <p>
+        It needs a first file (a README, a .gitignore or a licence): an empty repository's first push names its branch.
+        The default name of every new repository of your account is <a href={LINKS.accountBranch}>a setting of your
+        GitHub account</a> (an organization's owners set theirs); a branch is renamed later from the repository's
+        Branches page (<a href={LINKS.defaultBranch}>changing the default branch</a>).
+      </p>
+      <p><label><input type="checkbox" name="mark_template" /> Mark it as a template</label>: others then start their own repositories from it (<a href={LINKS.templates}>template repositories</a>).</p>
+      <p>
+        <label><input type="checkbox" name="issues" checked /> Issues</label>
+        <label><input type="checkbox" name="wiki" checked /> Wiki</label>
+      </p>
+    </div>
+
+    <div data-from="template" hidden>
+      <p>
+        <label for="new-template">The template</label> (owner/name, a template repository on GitHub)<br />
+        <input type="text" id="new-template" name="template" autocomplete="off" spellcheck="false" maxlength="201" placeholder={compendium || "owner/name"} />
+      </p>
+      <p>
+        <label for="new-owner">The account that receives it</label>: yours, or an organization where you may create repositories<br />
+        <input type="text" id="new-owner" name="owner" autocomplete="off" spellcheck="false" maxlength="39" />
+      </p>
+      <p><label><input type="checkbox" name="include_all_branches" /> All its branches</label> (otherwise its default branch only)</p>
+      <p>
+        On GitHub, a template's page also offers <a href={LINKS.fromTemplate}>“Use this template”</a> and “Open in a
+        codespace”: a ready environment from the template's own dev container file, on your GitHub quota (a compendium's
+        machine-learning environment, for instance). Classes use templates as starter code through
+        <a href={LINKS.classroom}>GitHub Classroom</a>.
+      </p>
+    </div>
+
+    <p>
+      <label for="new-papers">Papers</label> (DOIs, separated by spaces; optional)<br />
+      <input type="text" id="new-papers" name="papers" autocomplete="off" spellcheck="false" maxlength="2000" placeholder="10.5555/…" />
+    </p>
+    <p>
+      A paper you are a verified author of is linked at once; another is proposed to its authors. Tracing maps between
+      the paper and the code come later, from the repository's page.
+    </p>
+    <p><button type="submit">Create</button></p>
+    <div id="new-confirm" aria-live="polite"></div>
+  </form>
+
+  <section class="setup">
+    <h2>Limits, before you push</h2>
+    <p>
+      GitHub warns above {t.fileWarn} and refuses a file over {t.file}; a push may carry {t.push} at most; a repository
+      stays fast under {t.repoIdeal}. Small binary files (figures, fonts) go into Git LFS; large data goes to a release
+      asset, <a href={DATA_HOMES.zenodo}>Zenodo</a> or a <a href={DATA_HOMES.huggingFaceDatasets}>Hugging Face
+      dataset</a>, with a DOI of its own. <a href="/hosting/limits/">All the limits</a> ·
+      <a href="/hosting/large-files/">large files</a>.
+    </p>
+  </section>
+
+  <h2>After it is created</h2>
+  <p>
+    Its page on {SITE_NAME} shows how to clone it, or, when it is empty, the quick setup: push an existing repository,
+    start one on the command line, or <a href="/new/import/">import code from elsewhere</a>. Git goes straight to
+    GitHub with your GitHub credentials (<a href="/hosting/git/">git with GitHub</a>).
+  </p>
+  <ul>
+    <li><a href="/new/link/">Link a repository you already have</a> instead.</li>
+    <li><a href="/repositories/">Your repositories</a>.</li>
+  </ul>
+
+  <script>
+    import "../../scripts/new-repo";
+  </script>
+</Base>

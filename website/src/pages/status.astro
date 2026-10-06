@@ -1,0 +1,76 @@
+---
+// /status/: the service status (night phase 15). It reads the availability the Mac wrote
+// (src/data/site-status.json, from oscr/sitestatus.py, which checks the site from the outside every
+// five minutes) and states the daily free-tier quotas in words. One page and one data file (the file
+// budget). It is static: it changes only when the site is next built, and it says when that was.
+// science.css only; the platform's name comes from src/config.ts.
+import Base from "../layouts/Base.astro";
+import { SITE_NAME } from "../config";
+import data from "../data/site-status.json";
+import { QUOTAS, dayLabel, summarize } from "../lib/status-page";
+const view = summarize(data as any);
+---
+<Base
+  title="Service status"
+  description="The availability of the registry over the last 90 days, the incidents, and the daily free-tier quotas in words."
+  breadcrumb={[{ text: "Service status" }]}
+>
+  <h1>Service status</h1>
+  <p class="summary">{view.summary}</p>
+  <p class="muted">
+    This page is static: it changes only when the site is next built. Built {view.builtAt}. The
+    availability is measured by {SITE_NAME} from the outside (one check every five minutes); nothing
+    on the site checks itself.
+  </p>
+
+  {view.enabled ? (
+    <section>
+      <h2>Availability, last {view.windowDays} days</h2>
+      <p>Overall: {view.overall} of the checks succeeded.</p>
+      <ul class="status-grid" aria-label={`Daily availability over the last ${view.windowDays} days`}>
+        {view.days.map((d) => (
+          <li class={`status-day state-${d.state}`} title={dayLabel(d)} aria-label={dayLabel(d)}></li>
+        ))}
+      </ul>
+      <p class="muted status-key">
+        <span class="status-day state-up"></span> available
+        <span class="status-day state-partial"></span> partly
+        <span class="status-day state-down"></span> down
+        <span class="status-day state-none"></span> no check
+      </p>
+
+      <h2>Incidents</h2>
+      {view.incidents.length === 0 ? (
+        <p class="ok">No incident recorded in this window.</p>
+      ) : (
+        <ul>
+          {view.incidents.map((inc) => (
+            <li><strong>{inc.title}.</strong> {inc.label}</li>
+          ))}
+        </ul>
+      )}
+    </section>
+  ) : (
+    <section>
+      <h2>Availability</h2>
+      <p class="warning">
+        The availability checks are not running yet. When they are, this page shows the last
+        {" "}{view.windowDays} days and any incident.
+      </p>
+    </section>
+  )}
+
+  <h2>Daily quotas</h2>
+  <p>
+    {SITE_NAME} runs on free service tiers. These are the daily limits that shape it, and what happens
+    when one is spent.
+  </p>
+  <dl class="prefs">
+    {QUOTAS.map((q) => (
+      <>
+        <dt>{q.what}</dt>
+        <dd>{q.limit}.<span class="help">{q.whenSpent}</span></dd>
+      </>
+    ))}
+  </dl>
+</Base>

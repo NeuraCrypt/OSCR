@@ -185,7 +185,7 @@ Figures [verified] unless stated.
 | DataCite `relatedIdentifiers` | precise when declared, often silent | yes |
 | OpenAIRE ScholeXplorer v3 (`/v3/Links?sourcePid=DOI&targetType=Software`) | relations often "cites": a cited tool, not the authors' own code | no, to try |
 | Europe PMC Annotations | Zenodo and JOSS DOIs annotated by section; **no GitHub URL** | no |
-| **ModelDB** (`modeldb.science/api/v1/models/<id>` → the paper's PMID or DOI → `github.com/ModelDBRepository/<id>`) | 1,931 computational neuroscience models | no, **to code: a reverse index** |
+| **ModelDB** (`modeldb.science/api/forge/v1/models/<id>` → the paper's PMID or DOI → `github.com/ModelDBRepository/<id>`) | 1,931 computational neuroscience models | no, **to code: a reverse index** |
 | G-Node GIN (`datacite.yml`: `IsSupplementTo` DOI) | neuroscience repositories with a DOI | no, to code |
 | NeuroLibre (21 papers), ReScience C (223, of which 33 in computational neuroscience), CODECHECK (132, little neuroscience) | code linked by construction | no, **recall benchmarks** |
 | DANDI, OpenNeuro | data; linked papers, no code | no |

@@ -1,0 +1,19 @@
+$ oscr issue create --research code_error --paper 10.5555/oscr.fixture.1 --title x --body y -R oscr-fixture/eeg-analysis
+error: localhost:8791 answered 403: This token may not do this: it needs the scope research:write. Make a token with it in your settings.
+Sign in again with the scope it names: `oscr auth refresh --oscr --scopes …`.
+[exit 1]
+
+$ oscr auth login --oscr
+OSCR: open http://localhost:8791/device/?r=…
+  sign in, then type the code HRJC-JGNN and approve (it may: repos:read, research:read; for 90 days)
+Waiting for your approval on OSCR…
+error: The sign-in was refused on the registry's page.
+[exit 4]
+
+$ oscr auth login --oscr
+OSCR: open http://localhost:8791/device/?r=…
+  sign in, then type the code FXPK-GTXT and approve (it may: repos:read, research:read; for 90 days)
+Waiting for your approval on OSCR…
+error: The code expired or was used already: This code expired (a code lives 15 minutes): start the sign-in again.
+Run `oscr auth login --oscr` again.
+[exit 4]

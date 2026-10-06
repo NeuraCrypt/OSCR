@@ -1,0 +1,270 @@
+---
+// /developers/: the public API's reference (night phase 10, E5; docs/API.md, docs/AUTOMATION.md). Built
+// from the Worker's own routes (worker/forge/service/api.ts API_ROUTES: methods, scopes, words,
+// parameters, bodies), so the page and the Worker never disagree; the machine's description is
+// /developers/openapi.json, built from the same routes. Static: no script, no request. science.css only.
+import Base from "../../layouts/Base.astro";
+import { SITE_NAME } from "../../config";
+import { API_PREFIX, API_ROUTES, API_VERSION, API_VERSIONS, EXPOSED } from "../../../worker/forge/service/api.ts";
+import { API_RATE } from "../../../worker/forge/service/bearer.ts";
+import { SCOPE_WORDS, SCOPES, EXPIRY, TOKENS_PER_ACCOUNT } from "../../../worker/forge/service/tokens-core.ts";
+import { PAPER_EVENTS, REPO_EVENTS, HOOKS_PER_ACCOUNT, HOOK_TIMEOUT_MS, RETRY_WAITS_MS, PAUSE_AFTER_FAILURES, DELIVERY_DAYS } from "../../../worker/forge/service/hooks-core.ts";
+import { CONTEXTS_PER_COMMIT } from "../../../worker/forge/service/statuses.ts";
+import { CHECK_IDS, CHECK_WORDS } from "../../../worker/forge/checks-core.ts";
+
+const origin = (Astro.site ?? new URL("https://registry.example")).origin;
+const routes = Object.entries(API_ROUTES);
+const anchor = (path: string, method: string) => `route-${method.toLowerCase()}${path.slice(API_PREFIX.length).replace(/[^a-z0-9]+/gi, "-") || "-index"}`;
+
+const curlUser = `curl -H "Authorization: Bearer $TOKEN" ${origin}/api/forge/v1/user`;
+const curlStar = `curl -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \\
+  -d '{"subject": "paper:doi:10.1234/eeg.2026", "label": "EEG filters", "on": true}' \\
+  ${origin}/api/forge/v1/social/star`;
+const curlStatus = `curl -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \\
+  -d '{"repo": "owner/name", "sha": "<the commit's 40 characters>", "state": "success",
+       "context": "lab-ci/tests", "description": "212 tests passed",
+       "target_url": "https://ci.lab.example/runs/1"}' \\
+  ${origin}/api/forge/v1/statuses/post`;
+const workflow = `name: Tests
+on: [push, pull_request]
+permissions:
+  contents: read
+  id-token: write        # GitHub's OIDC token: no secret stored in the repository
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python -m pytest
+      - name: Tell the registry
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const token = await core.getIDToken("${origin}");
+            await fetch("${origin}/api/forge/v1/statuses/actions", {
+              method: "POST",
+              headers: { Authorization: \`Bearer \${token}\`, "Content-Type": "application/json" },
+              body: JSON.stringify({ sha: context.sha, state: "${"${{ job.status == 'success' && 'success' || 'failure' }}"}",
+                target_url: \`\${context.serverUrl}/\${context.repo.owner}/\${context.repo.repo}/actions/runs/\${context.runId}\` }),
+            });`;
+const payload = `{
+  "event": "research_opened",
+  "delivery": "5f0c6f3e-8a1b-4c7d-9e2f-0a1b2c3d4e5f",
+  "hook": { "id": "Qk3xY7pLm2Nw9Zt4", "subject": "paper:doi:10.1234/eeg.2026" },
+  "sent_at": "2026-09-29T12:00:03.000Z",
+  "subject": "paper:doi:10.1234/eeg.2026",
+  "at": "2026-09-29T12:00:00.000Z",
+  "thread": "research:7",
+  "title": "The filter's order is 4, the paper says 2",
+  "url": "${origin}/research/7",
+  "repository": { "path": "owner/name", "url": "${origin}/r/owner/name/" },
+  "paper": { "doi": "10.1234/eeg.2026", "url": "https://doi.org/10.1234/eeg.2026" },
+  "actor": { "github_id": "4242001", "login": "ada-fixture" }
+}`;
+const python = `import hashlib, hmac
+
+def signed(secret: str, body: bytes, header: str) -> bool:
+    expected = "sha256=" + hmac.new(secret.encode(), body, hashlib.sha256).hexdigest()
+    return hmac.compare_digest(expected, header or "")
+
+# In your receiver: signed(SECRET, request.body, request.headers["X-Hub-Signature-256"])`;
+const node = `import { createHmac, timingSafeEqual } from "node:crypto";
+
+export function signed(secret, body, header) {
+  const expected = Buffer.from("sha256=" + createHmac("sha256", secret).update(body).digest("hex"));
+  const given = Buffer.from(header ?? "");
+  return expected.length === given.length && timingSafeEqual(expected, given);
+}`;
+const errorExample = `{
+  "error": {
+    "code": "insufficient_scope",
+    "message": "This token may not do this: it needs the scope social:read. Make a token with it in your settings.",
+    "request_id": "u2Hn0cZ3VwQy8pKe",
+    "documentation_url": "${origin}/developers/#errors"
+  }
+}`;
+const ERRORS: [string, number, string][] = [
+  ["requires_authentication", 401, "No token: send Authorization: Bearer <token>."],
+  ["bad_credentials", 401, "Not a token of the registry, revoked, or its account is gone."],
+  ["token_expired", 401, "The token expired: make a new one."],
+  ["insufficient_scope", 403, "The token may not do this: X-Accepted-Scopes says which scope the route needs."],
+  ["forge_closed", 403, "Writing opens to everyone with the registry's content rules; until then, only its owner writes."],
+  ["bad_payload", 400, "The body is not what the route takes: the message says what is wrong."],
+  ["unsupported_version", 400, "X-Api-Version names a version the API does not have."],
+  ["not_found", 404, "No such route, or the registry does not know this object."],
+  ["too_large", 413, "The body is larger than the route reads."],
+  ["too_many", 429, "Your account's daily cap for this kind of write."],
+  ["rate_limited", 429, "The token's rate limit: wait Retry-After seconds."],
+  ["quota", 503, "The registry's share of today's database writes is spent: tomorrow, 00:00 UTC."],
+];
+---
+<Base
+  title="Public API"
+  description="The registry's public API: personal tokens, scopes, rate limits, pagination, errors, versions; outgoing webhooks and their signatures; commit statuses; the checks that run no code."
+  breadcrumb={[{ text: "Public API" }]}
+>
+  <h1>The public API</h1>
+  <p class="summary">
+    Read and write {SITE_NAME}'s own layer, repositories and their papers, research issues, stars and follows,
+    notifications, outgoing webhooks, commit statuses, from a script, a notebook, a lab's CI or another service.
+    Version {API_VERSION}. The machine's description: <a href="/developers/openapi.json">openapi.json</a> (OpenAPI 3.1).
+  </p>
+  <p>
+    GitHub's own objects (commits, files, issues, pull requests, releases) stay GitHub's: its own API serves them,
+    with GitHub's tokens. {SITE_NAME}'s API serves what {SITE_NAME} adds to them. It never runs code.
+  </p>
+  <nav aria-label="On this page">
+    <ul>
+      <li><a href="#authentication">Authentication and scopes</a></li>
+      <li><a href="#rate-limits">Rate limits</a></li>
+      <li><a href="#pagination">Pagination and conditional requests</a></li>
+      <li><a href="#errors">Errors</a></li>
+      <li><a href="#versions">Versions and breaking changes</a></li>
+      <li><a href="#routes">The routes</a></li>
+      <li><a href="#webhooks">Outgoing webhooks</a></li>
+      <li><a href="#statuses">Commit statuses</a></li>
+      <li><a href="#checks">The registry's checks</a></li>
+    </ul>
+  </nav>
+
+  <h2 id="authentication">Authentication and scopes</h2>
+  <p>
+    Every route but the index takes a personal token, made on <a href="/settings/tokens/">your settings page</a>:{" "}
+    <code>Authorization: Bearer oscr_pat_…</code>. A token is scoped, expires after {EXPIRY.min} to {EXPIRY.max} days
+    ({EXPIRY.default} by default; none lives for ever), can be revoked at once, and is listed with its last use. An
+    account holds {TOKENS_PER_ACCOUNT} at most. {SITE_NAME} keeps only its SHA-256: it is shown once. A token never
+    makes or lists tokens: that is the settings page only. Cookies are never read by the API, so a browser's session
+    never acts through it, and CORS answers every origin, without credentials.
+  </p>
+  <pre class="commands">{curlUser}</pre>
+  <table class="branches scopes">
+    <thead><tr><th>Scope</th><th>What it allows</th></tr></thead>
+    <tbody>
+      {SCOPES.map((s) => <tr><td class="name">{s}</td><td>{SCOPE_WORDS[s]}{s.endsWith(":write") ? "; it also reads what its area reads" : ""}.</td></tr>)}
+    </tbody>
+  </table>
+  <p>
+    Every answer says the token's scopes (<code>X-Token-Scopes</code>), the scope the route needs
+    (<code>X-Accepted-Scopes</code>) and the token's expiry (<code>X-Token-Expires</code>). A write through the API is
+    the same write as on the site, as you: the same checks, the same daily caps, the same rows. Until {SITE_NAME}'s
+    content rules open writing to everyone, only its owner can make a token.
+  </p>
+
+  <h2 id="rate-limits">Rate limits</h2>
+  <p>
+    A token may make {API_RATE.perMinute} requests a minute and {API_RATE.perDay.toLocaleString("en-GB")} a day. Every
+    answer carries <code>X-RateLimit-Limit</code>, <code>X-RateLimit-Remaining</code>, <code>X-RateLimit-Used</code>{" "}
+    and <code>X-RateLimit-Reset</code> (Unix seconds, the next 00:00 UTC); past a limit, 429 with{" "}
+    <code>Retry-After</code>. <code>GET /api/forge/v1/rate_limit</code> says where the token stands and is never counted.
+    Writes also count toward your account's daily caps, as on the site. {SITE_NAME} runs on a free plan: when its day's
+    requests are spent, every route answers 429 until 00:00 UTC, and the pages stay up.
+  </p>
+
+  <h2 id="pagination">Pagination and conditional requests</h2>
+  <p>
+    A list with more pages answers <code>Link: &lt;…&gt;; rel="next"</code> and a <code>next</code> field: the address
+    of the next page, with its cursor (<code>?after=</code>). Every GET answer carries an <code>ETag</code>; send it
+    back in <code>If-None-Match</code> and an unchanged answer is <code>304 Not Modified</code>, which does not count
+    against the rate limit.
+  </p>
+
+  <h2 id="errors">Errors</h2>
+  <p>An error is JSON, in words, with the request's id (also in <code>X-Request-Id</code>) and this page's address:</p>
+  <pre class="commands">{errorExample}</pre>
+  <table class="branches errors">
+    <thead><tr><th>Code</th><th>Status</th><th>What it means</th></tr></thead>
+    <tbody>
+      {ERRORS.map(([code, status, words]) => <tr><td class="name">{code}</td><td>{status}</td><td>{words}</td></tr>)}
+    </tbody>
+  </table>
+  <p>The headers a browser's script may read (CORS): {EXPOSED.join(", ")}.</p>
+
+  <h2 id="versions">Versions and breaking changes</h2>
+  <p>
+    The API is versioned by date. Send <code>X-Api-Version: {API_VERSION}</code> to pin a version; without it, you get
+    the current one. A breaking change comes with a new date; the previous version keeps answering as it did until
+    its end, announced here. Versions: {API_VERSIONS.join(", ")}.
+  </p>
+  <h3 id="changes">Breaking changes</h3>
+  <p>None yet: {API_VERSION} is the first version.</p>
+
+  <h2 id="routes">The routes</h2>
+  <p>Under <code>{origin}{API_PREFIX}</code>. A POST takes JSON (<code>Content-Type: application/json</code>).</p>
+  <ul>
+    {routes.map(([path, r]) => <li><a href={`#${anchor(path, r.method)}`}><code>{r.method} {path}</code></a></li>)}
+  </ul>
+  {routes.map(([path, r]) => (
+    <section class="api-route" id={anchor(path, r.method)}>
+      <h3><code>{r.method} {path}</code></h3>
+      <p>{r.words}</p>
+      <p class="line"><span class="label">Scope:</span> {r.tokenless ? (path === API_PREFIX ? "none: no token needed" : "none: it takes GitHub Actions' own token") : r.scope ?? "any valid token"}.</p>
+      {r.params?.length ? (
+        <dl class="settings">
+          {r.params.map((p) => <><dt><code>{p.name}</code>{p.required ? " (required)" : ""}</dt><dd>{p.words}</dd></>)}
+        </dl>
+      ) : null}
+      {r.body ? (
+        <dl class="settings">
+          {Object.entries(r.body).map(([k, words]) => <><dt><code>{k}</code></dt><dd>{words}</dd></>)}
+        </dl>
+      ) : null}
+    </section>
+  ))}
+  <p>For example, star a paper:</p>
+  <pre class="commands">{curlStar}</pre>
+
+  <h2 id="webhooks">Outgoing webhooks</h2>
+  <p>
+    A webhook, made on <a href="/settings/hooks/">your settings page</a> or with <code>POST /api/forge/v1/hooks/write</code>,
+    posts what happens to a paper or a repository to your service. An account holds {HOOKS_PER_ACCOUNT}.
+  </p>
+  <ul>
+    <li>A paper's events: {PAPER_EVENTS.join(", ")}.</li>
+    <li>A repository's events: {REPO_EVENTS.join(", ")}.</li>
+  </ul>
+  <p>
+    When it is made, {SITE_NAME} sends a <code>ping</code>: the webhook is active once the ping is answered 2xx. Each
+    delivery waits {HOOK_TIMEOUT_MS / 1000} seconds for an answer and is tried again after {RETRY_WAITS_MS.map((ms) => `${ms / 1000} s`).join(" and ")}{" "}
+    when there is none, or on a 5xx, 408 or 429; never on another 4xx, and a redirection is not followed. After{" "}
+    {PAUSE_AFTER_FAILURES} failures in a row the webhook pauses; a ping makes it active again. The last {DELIVERY_DAYS}{" "}
+    days of deliveries are listed, and each event's delivery can be sent again. The address is https; it is never a
+    private network, this machine, a local name or {SITE_NAME} itself.
+  </p>
+  <p>The headers: <code>X-Hook-Event</code>, <code>X-Hook-Delivery</code> (its id), <code>X-Hook-ID</code>, and the signature, <code>X-Hub-Signature-256: sha256=&lt;hex&gt;</code>: the HMAC-SHA-256 of the raw body with the webhook's secret, as GitHub signs. The body:</p>
+  <pre class="commands">{payload}</pre>
+  <p>It holds what {SITE_NAME}'s pages show, a title, a page's address, the time, a GitHub login, never a text, never an email address. Check the signature before anything else, in constant time:</p>
+  <pre class="commands">{python}</pre>
+  <pre class="commands">{node}</pre>
+  <p>The secret is shown once, when the webhook is made or given a new one; {SITE_NAME} does not store it (it is derived from a key of the server's).</p>
+
+  <h2 id="statuses">Commit statuses</h2>
+  <p>
+    A lab's CI, another forge or a reproduction service says how a commit of a repository {SITE_NAME} knows fared:{" "}
+    <code>error</code>, <code>failure</code>, <code>pending</code> or <code>success</code>, under a context of its own.
+    The latest of each context is kept, {CONTEXTS_PER_COMMIT} contexts a commit at most; the repository's{" "}
+    <a href="/r/">Checks</a> page shows them beside its tests. With a token that may <code>statuses:write</code>:
+  </p>
+  <pre class="commands">{curlStatus}</pre>
+  <p>
+    From GitHub Actions, no secret is needed: the workflow asks GitHub for its OIDC token with {SITE_NAME}'s address as
+    the audience, and {SITE_NAME} checks it (GitHub's signature, the issuer, the audience, the times, a public repository
+    it knows). The status is then the repository's own, named after the workflow:
+  </p>
+  <pre class="commands">{workflow}</pre>
+
+  <h2 id="checks">The registry's checks</h2>
+  <p>
+    On every push to a pull request of a repository where its GitHub App is installed, {SITE_NAME} posts one check run:
+    it reads the files as text and never runs the code. The same checks are shown at any commit on the repository's
+    Checks page, the commits the papers cite included.
+  </p>
+  <ul>
+    {CHECK_IDS.map((id) => <li>{CHECK_WORDS[id]}</li>)}
+  </ul>
+  <p>
+    A check fails only when the change itself breaks what a paper relies on: a file a tracing map points to deleted
+    or renamed, the licence file deleted, CITATION.cff made unreadable. What is missing is to look at; each finding
+    says how to resolve it. A commit whose message ends with the trailer <code>skip-checks: true</code> is not checked.
+  </p>
+</Base>

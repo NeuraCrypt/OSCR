@@ -147,6 +147,11 @@ def deploy_cloudflare(catalog: Path, project: str, website: Path = WEBSITE) -> s
     changed are uploaded. `npx wrangler login` must have been done once; wrangler keeps and
     renews its login itself."""
     env = {**os.environ, "CATALOG_DIR": str(catalog.resolve())}
+    # Night phase 16: Turnstile's public site key, for the forms' human check (tools/setup_cloudflare.sh).
+    from .cli import settings
+    site_key = settings().get("OSCR_TURNSTILE_SITE_KEY", "")
+    if site_key and "TURNSTILE_SITE_KEY" not in env:
+        env["TURNSTILE_SITE_KEY"] = site_key
     lock = _lock_digest(website)
     steps = [] if _installed_lock(website) == lock else [["npm", "ci", "--no-audit", "--no-fund"]]
     steps += [["npm", "run", "build"],

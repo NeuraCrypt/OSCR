@@ -1,0 +1,21 @@
+---
+// /explore/: discovery (night phase 08, E5; docs/SOCIAL.md): trending repositories, papers and people,
+// topics (?topic=<name>), collections. Its script (src/scripts/explore.ts) reads last night's static
+// /social/explore.json: 0 Worker requests.
+import Base from "../layouts/Base.astro";
+import { SITE_NAME } from "../config";
+---
+<Base
+  title="Explore"
+  description="What the registry's readers star and follow this week: repositories, papers, people, topics and curated collections."
+  breadcrumb={[{ text: "Explore" }]}
+>
+  <div id="explore-shell" data-site={SITE_NAME}>
+    <h1>Explore</h1>
+    <p class="summary" aria-live="polite">Reading what {SITE_NAME}'s readers star and follow…</p>
+    <noscript><p class="warning">This page reads last night's file in your browser, which needs JavaScript.</p></noscript>
+  </div>
+  <script>
+    import "../scripts/explore";
+  </script>
+</Base>

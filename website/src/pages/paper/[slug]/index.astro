@@ -29,6 +29,7 @@ import { datasetOf } from "../../../lib/entities";
 import { licenseLabel, pageOf, PROMINENT } from "../../../lib/paper";
 import { paperFacts } from "../../../lib/records";
 import { FACTS_ID, removalUrl } from "../../../lib/removal";
+import { hiddenReposOf } from "../../../lib/moderated";
 
 // The STATIC_PAPERS most recent papers (lib/shards.ts); the others' pages are rendered on demand
 // by the Worker (worker/pages.ts), from src/pages/records/.
@@ -66,14 +67,18 @@ const SECTIONS = [
   { id: "reproductions", label: "Reproductions" },
   { id: "activity", label: "Activity" },
 ];
-/** The sections that open with sign-in (Phase 7): muted in the bar. */
-const LATER = new Set(["discussion", "reproductions", "activity"]);
+/** The sections that open with sign-in (Phase 7): muted in the bar. Night phase 05: Discussion and
+ *  Reproductions hold the paper's research issues. */
+const LATER = new Set(["activity"]);
 const sections = SECTIONS.map((x) => ({ ...x, later: LATER.has(x.id) }));
 /** A repository in the reader: this page, its first file shown. */
 const inReader = (repo: string) => (multi ? `/paper/${a.slug}/?${new URLSearchParams({ repo })}#code` : "#code");
 // What a removal request may name (src/lib/removal.ts: the paper, its repositories, their files),
 // at the very top of <main>: the page /removal/ and the Worker read it there, and stop reading.
 const facts = JSON.stringify(paperFacts(a)).replace(/</g, "\\u003c");
+// Night phase 16: a repository linked to this paper that moderation hid, said in one line each, so that
+// the tracing map and the Code section stay explained.
+const moderated = hiddenReposOf(a.doi);
 ---
 <Base
   title={a.title}
@@ -82,6 +87,13 @@ const facts = JSON.stringify(paperFacts(a)).replace(/</g, "\\u003c");
 >
   <script is:inline type="application/json" id={FACTS_ID} set:html={facts}></script>
   {reader && <Head title={a.title} notices={notices} sections={sections} />}
+  {moderated.map((m) => (
+    <p class="moderated">
+      A repository linked to this paper in the registry, {m.path}, is hidden from its pages
+      ({m.words}, since {new Date(m.since * 1000).toISOString().slice(0, 10)}): the tracing map keeps its
+      links as text. <a href="/notices/">The notices</a> say more.
+    </p>
+  ))}
   {reader && <Reader a={a} />}
   <div class="record">
     <div class="body">
@@ -94,10 +106,12 @@ const facts = JSON.stringify(paperFacts(a)).replace(/</g, "\\u003c");
       <Cite a={a} p={p} />
       <Similar p={p} />
       <Contribute a={a} p={p} />
-      <Later />
+      <Later a={a} />
     </div>
 
     <aside class="sidebar">
+      {/* Night phase 08: Star and Watch the paper by its DOI, the registry's own (social-buttons.ts). */}
+      <div data-social data-subject={`paper:doi:${a.doi.toLowerCase()}`} data-target={`paper:doi:${a.doi.toLowerCase()}`} data-label={a.title.slice(0, 300)} data-watch="paper"></div>
       {reader && (
         <>
           <h3>The authors' code</h3>
@@ -152,4 +166,7 @@ const facts = JSON.stringify(paperFacts(a)).replace(/</g, "\\u003c");
       </ul>
     </aside>
   </div>
+  <script>
+    import "../../../scripts/social-buttons";
+  </script>
 </Base>

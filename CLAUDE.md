@@ -199,7 +199,8 @@ the catalogue's size (`website/src/lib/shards.ts`, held by `npm run check`; docs
   Worker request), and rendered in the browser from `/records/<type>/NN.json` (a fixed number of
   shards per type, `SHARDS`: 2,304 files for the five types and the papers). The lists
   (`/authors/`, …) link to every entity.
-- **Papers**: a static page (and reader) for the `STATIC_PAPERS` (6,000) most recent; the others
+- **Papers**: a static page (and reader) for the `STATIC_PAPERS` (5,700 since the GitHub side's
+  fixed files, D16-3; 6,000 before) most recent; the others
   are rendered by the Worker from `/records/paper/NN.json` (one Worker request a view, no D1 row),
   with a reduced page that says what it leaves out and keeps the Contribute section (claim,
   correction, removal request). Every request no file answers runs the Worker
@@ -264,10 +265,234 @@ free, no rate limit), the Worker a thin layer.
 - **No full catalogue dump is served** (over the 25 MiB asset limit). `oscr public-export` writes
   the small public dump folder locally; **a public catalogue Hugging Face dataset (catalogue without
   the `contact` table) is the owner's decision to create and publish**, flagged, never published here.
-- **`/api/v1/` namespace (decision)**: the night "forge" plans an authenticated token read/write
-  layer, also `/api/v1/`. The keyless read API owns `/api/v1/` on `main`. At reconciliation the
-  forge's routes must **require a token (401 without one)** and **rename any overlap** (such as a
-  token search); a token is never required to read.
+- **`/api/v1/` namespace (resolved at reconciliation)**: the night "forge" has an authenticated
+  token read/write layer that once lived under `/api/v1/` too. The keyless read API **owns
+  `/api/v1/`**; the forge's token API was **moved to `/api/forge/v1/`** (its one source `API_PREFIX`
+  in `website/worker/forge/service/api.ts`, plus its OpenAPI, `/developers/`, the CLI and every forge
+  test), **requires a token** (`401` without one), and stays behind `FORGE_OPEN`. A token is never
+  required to read. See `docs/API_PUBLIC.md` and `docs/RECONCILE_NOTES.md`.
+
+## Git hosting (night phase 01)
+
+The GitHub side (`website/worker/forge/`, D1 `oscr_forge`, `oscr/forgejobs.py`,
+`oscr/forgelayer.py`; the contract: `docs/FORGE.md`; decisions D00-*, D01-* in `docs/DECISIONS.md`):
+
+- **OSCR hosts no Git repository**: repositories live in the researcher's own GitHub account. Git
+  goes straight to github.com with GitHub's own credentials: no git proxy, no git token issued by
+  OSCR.
+- **Every write is the person's own**, one authorized action at a time (`/api/forge/start`, GitHub,
+  `/api/forge/act`): the user token is used for that action, revoked, and never stored, logged or
+  answered. The App's installation token only posts OSCR's check runs and reads after a webhook.
+- **`FORGE_OPEN` stays unset until phase 16's content rules are merged**: the write routes then
+  answer only to `FORGE_OWNER_GITHUB_ID`. Never set it without the owner.
+- **`oscr_forge` holds public repositories only**, and no email address, token or Git object; a
+  repository made private leaves OSCR (hidden, its name blanked). Its writes are capped in code
+  (5,000 rows a day; 100 actions, 10 creations, 20 links per account a day), counted from the rows,
+  with no counter row; every read goes by key or index, never a scan.
+- **Deletion**: 30 days of grace in OSCR; the deletion on GitHub is only the researcher's own fresh
+  authorization, never a timer or OSCR's token. **Software Heritage** only on a person's request.
+- The App's secrets are **Cloudflare secrets** set by `tools/setup_cloudflare.sh` (the private key
+  read from GitHub's `.pem` file). The Mac never writes to a forge and never runs users' code.
+- Repository pages are static (`/r/*`, one shell): signed out, they ask the Worker nothing.
+  Webhooks: ≤ 1 MiB, the signature checked in constant time, allowlisted events, ≤ 2 rows each.
+- Their styles are in `science.css`: `.repo-head`, `p.status-line`, `.setup`, `pre.commands`,
+  `fieldset.choices`, `.limits`, `section.danger`, `table.branches`, `dl.settings`, `.panel`,
+  `.confirm`.
+
+## Content rules (night phase 16)
+
+The lock before the GitHub side opens (`docs/MODERATION.md`, `docs/POLICIES.md`, D16-*):
+
+- **Reconciliation note (the forge's moderation is self-contained, additive, dormant behind
+  `FORGE_OPEN`).** The GitHub side moderates its OWN objects (repositories, issues, pull requests,
+  discussions, snippets, …) in its own modules: the Worker's `website/worker/forge/service/`
+  (`moderation.ts`, `moderation-core.ts`, `hidden.ts`, `hidden-search.ts`) and the Mac's
+  `oscr/forgehidden.py` (what moderation hid, applied to the static export; read by `oscr/forgelayer.py`
+  and `oscr/social.py`). The **public-site** automatic moderator for the catalogue's records, scripts,
+  removal requests, submissions and claims stays **main's** `oscr/moderation.py` and
+  `website/src/lib/moderation.ts` (unchanged, authoritative): the forge never edits or weakens it. The
+  shared `src/lib/moderation.ts` re-exports the forge report-kind words from `moderation-core.ts` for
+  the forge pages, additively.
+
+- **Anyone reports** what the GitHub side shows (`/report/`), with or without an account, always
+  behind **Turnstile verified server-side**; a copyright notice needs an account. **The owner alone
+  decides** (`/moderation/`, the account whose linked GitHub id is `FORGE_OWNER_GITHUB_ID`): hide,
+  suspend, restore, answer an appeal; a public notice without the hidden words (`/notices/`).
+- **Hidden means absent** from every Worker answer at once (`hidden.ts`) and from every static file
+  at the next nightly (`oscr/forgehidden.py`). A suspended account's writes stop, its tokens are
+  revoked, its webhooks paused.
+- **Blocks are silent**; interaction limits end by themselves; both are checked at `start` and in the
+  registry's own writes.
+- **`FORGE_OPEN` opens nothing without Turnstile's secret** (`gate.ts` `forgeOpen`). Never set it,
+  nor `TURNSTILE_SECRET_KEY`, in wrangler.toml or a committed file; tests use Cloudflare's documented
+  test keys only, against a local stand-in (`TURNSTILE_VERIFY_URL`, this machine only).
+- **Known malware**: a file whose SHA-256 is on the owner's local list is never copied; the Mac
+  hashes and compares, never runs, never fetches (`oscr/malware.py`).
+- **The rules and privacy pages are drafts** until the owner reviews them; the privacy statement must
+  stay true to what the code holds (the private contact details included). Data-rights requests are
+  answered in the site, never by email.
+- Each phase that adds an object brings its report target, its hiding in `hidden.ts` and the Mac,
+  and its line in the privacy statement.
+- Their styles are in `science.css`: `.human-check`, `p.moderated`, `table.queue`, `form.lookup`,
+  `.draft-notice`, `.policy`.
+- **Night phase 06 changes "no free text of a reader is public".** Discussions, projects and the wiki
+  are OSCR's first public, user-written free text. Turnstile, the caps, blocks and interaction limits,
+  email masking, the 65,536-character limit and triager hide/redact/delete are in force now; when
+  phase 06 merges, `REPORT_KINDS`/`HIDDEN_KINDS`, the `moderation` and `content_reports` CHECKs,
+  `hidden.ts`, `oscr/forgehidden.py`, the forge's `moderation-core.ts` (re-exported by
+  `src/lib/moderation.ts`) and the shared fixture must cover `discussion` and `discussion_comment`,
+  and this statement must be updated (D06-6). No language-model moderator: rules, Turnstile, hiding
+  and caps carry the load. (The public-site `oscr/moderation.py` is unchanged: see the reconciliation
+  note above.)
+
+## Discussions, wiki and projects (night phase 06)
+
+OSCR's own conversation, knowledge and planning surfaces (`docs/DISCUSSIONS.md`, D06-*), on the
+research-issue model (D00-6). All behind `FORGE_OPEN`; OSCR never writes to GitHub on its own.
+
+- **Discussions** (`discussions-core.ts`, `discussions.ts`, `0014_discussions.sql`): a space per paper
+  (keyed by its DOI, its verified authors maintain it), per repository and per organization; up to 25
+  categories with formats (open, announcement, qa, poll); comments (65,536 chars), upvotes, polls, the
+  answered state, labels, close with a reason, lock, pin, transfer, the timeline. Votes counted once
+  (`discussion_votes`). Turnstile on open and comment; blocks and limits via `mayInteract`; email
+  masking on every text.
+- **The wiki** (`act-wiki.ts`, `0016_wiki.sql`): Markdown pages on a `wiki` branch, edited through the
+  phase-03 one-authorized-commit model (`wiki_edit`); the first page makes the branch (`createFrom`),
+  later pages commit with `expectedHead`; history, a revision, compare and revert are reads of GitHub
+  in the browser. Content committed verbatim; masked only when displayed.
+- **Projects** (`projects-core.ts`, `projects.ts`, `0015_projects.sql`): owned by a person or an
+  organization; items are issues, pull requests, drafts, papers, tracing maps and reproduction
+  reports; built-in, custom and research fields (paper, map state, reproduction outcome); table, board
+  and roadmap views; a field value in the item row (one row a change); caps 5,000 items, 50 fields.
+- **Caps** (`caps.ts`): `discussions` (20, with actions), `votes` (200, own), `projects` (10, with
+  actions), `project_edits` (300, own). Comments and edits count toward the 100 authorized actions.
+- **Public free text**: see the phase-16 note above and D06-6.
+
+## The command line (night phase 14)
+
+The researchers' `oscr` (`cli/`, `docs/CLI.md`, D14-*):
+
+- **Two commands are named `oscr`.** The harvester's (the root's `oscr` package, `.venv/bin/python -m
+  oscr` in launchd) never changes for the researchers' one. The researchers' is `cli/` with the import
+  package `oscr_cli`, the standard library only, installed in an environment of its own; never
+  `pip install` it into the repository's `.venv`. Here it runs as `PYTHONPATH=cli/src .venv/bin/python -m
+  oscr_cli`. Its settings are `~/.config/oscr-cli/`, its keychain service `oscr-cli`: never
+  `~/.config/oscr/settings` nor `org.oscr.*`.
+- **Its credentials live in the system's keychain only** (macOS `security -i`, the secret on standard
+  input; Linux `secret-tool`); a 0600 file only when the person asks. No token in argv, logs or
+  `--debug`. GitHub's token comes from GitHub's device flow with the App's public client id and never
+  reaches the registry; the git credential helper answers GitHub's host only.
+- **The registry's sign-in writes no row until a person decides**: codes sealed with `SESSION_KEY`,
+  approved on `/device/` by typing the terminal's code (Origin, CSRF, FORGE_OPEN, Turnstile), the token
+  made when collected. `DEVICE_CODE_SECONDS` is development only, never in wrangler.toml.
+- **It never runs what it reads**: `oscr check` and `oscr trace` read files as text from git's object
+  store; git always runs with `core.hooksPath` at the null device and `core.fsmonitor=false`. Its checks
+  are the Worker's, held to `tests/fixtures/checks-cases.json` (regenerate with
+  `website/scripts/checks-cases.ts` after a change of `checks-core.ts`, then make the port follow).
+- **The registry's view first**: every command gives the registry's page; GitHub's only when the
+  registry cannot show the thing, said why. Every text from the network is cleaned before it is shown.
+- **Its tests never reach the outside nor the owner's files**: fakes on 127.0.0.1, a fake or throwaway
+  keychain (an autouse guard refuses the system's), a throwaway HOME and `GIT_CONFIG_GLOBAL`:
+  `cd cli && ../.venv/bin/python -m pytest -q && ../.venv/bin/ruff check src tests`.
+- Its page's styles are in `science.css`: `input.device-code`.
+
+## Security and quality (night phase 11)
+
+Full detail in [docs/SECURITY_QUALITY.md](docs/SECURITY_QUALITY.md); decisions D11-1 to D11-9.
+
+- **Nothing of a user's code ever runs** (D00-11): the Mac reads files as text, never executes a
+  manifest, resolves, installs or runs an analyser; the Worker shows what the researcher's CI reported.
+  The analysis runs on the Mac (0 Worker requests) and pushes facts to `oscr_forge`.
+- **The dependency graph** (`oscr/depgraph.py`): Python, R, Julia, JavaScript, conda and GitHub Actions,
+  at the default branch and at each commit a paper's map pins (`repo_deps`).
+- **Vulnerability and malware alerts** from OSV without a key (`oscr/osv.py`, batch, CVSS severity,
+  `MAL-` malware, auto-triage); the night build uses a fake, never the real OSV (`security_alerts` kind
+  `osv`, the decision in `alert_triage`). OSCR shows Dependabot and never opens a pull request (AUP).
+- **The secrets scan** reports and never blocks (`oscr/secretscan.py`): over the files already stored,
+  the value never kept (`security_alerts` kind `secret`).
+- **Code scanning**: the CI uploads SARIF 2.1.0 through the token API (`security:write`); OSCR runs no
+  analyser (`security_alerts` kind `sarif`).
+- **Private vulnerability reporting** (`advisories`, `advisory_posts`): private by construction, never
+  in a public output, the static layer, the search, a feed or a webhook; a read is refused to anyone
+  but the reporter, a named collaborator and a manager, until published.
+- **SBOM** (SPDX 2.3, `oscr/sbom.py`, built in the browser from the graph) and **licence compatibility**
+  (a table for the common open licences and a policy; dependency licences not fetched: unknown, never
+  guessed; `repo_licences`).
+- Every write is behind `FORGE_OPEN`; the migration is `migrations/d1-forge/0012_security.sql` (six
+  tables, the `actions` kinds rebuilt with `SECURITY_KINDS`; caps `triage`, `scanning`, `advisory`).
+  The command line: `oscr security scan|status|sbom`. Styles in `science.css` (`.security-*`,
+  `ul.alerts`, `dl.deps`, `form.dep-filter`, `.advisory-*`).
+
+## Organizations and accounts (night phase 09)
+
+Full detail in [docs/ORGANIZATIONS.md](docs/ORGANIZATIONS.md); decisions D09-1 to D09-8. All in
+`oscr_forge`, migration `migrations/d1-forge/0013_organizations.sql`.
+
+- **Organizations** are OSCR's own layer over a lab, a group or a project (create, profile with a
+  public and a members-only README, settings, pinned repositories, a verified-domain claim, an
+  announcement banner, rename, archive, soft delete). A lab's GitHub organization is **linked, not
+  replaced**: git rights stay GitHub's, and nothing here asks GitHub for a write.
+- **Membership, roles, research permissions, teams**: invite (with an expiry), accept, decline,
+  remove (with a leaving checklist), reinstate, roles (owner, moderator, member), research permissions
+  (`propose_map`, `flag_map`, `validate_map`, `tie_release`) on a membership, own-visibility, teams
+  (visibility, nesting). The last owner is protected.
+- **Private membership and the members-only README are private by construction**: refused to a
+  non-member; no static shard carries them (the static org page is deferred).
+- **Account security**: sessions (list, revoke one or all the others; a true delete), identities
+  (link list, unlink but never the last), **passkeys (WebAuthn)** for sudo mode verified in the Worker
+  with WebCrypto only (no dependency, nothing paid; only a public key kept; origin, challenge, rpId
+  and the sign counter checked), the personal security log (with a CSV export).
+- The owner's and managers' writes are behind `FORGE_OPEN`; a person's own writes (answer an
+  invitation, set visibility, leave, revoke a session, unlink an identity, add or use a passkey) are
+  not. New `actions` kinds `org`, `member`, `team`, `passkey`, `session`, `identity`; caps `orgs`,
+  `security`. No email anywhere. Pages `/organizations/` and `/account/security/` (science.css only).
+
+## Repository statistics (night phase 12)
+
+Full detail in [docs/STATISTICS.md](docs/STATISTICS.md); decisions D12-1 to D12-5. The Insights tab of
+a `/r/` page, migration `migrations/d1-forge/0017_statistics.sql`.
+
+- **GitHub is the competitor**: every statistic is drawn in the registry's own inline-SVG charts
+  (`src/lib/stats-view.ts`), never a chart library and never a GitHub image; each chart is also a table
+  with a CSV and a PNG. What GitHub can compute (Pulse, contributors, commit activity, code frequency)
+  the reader's browser reads straight from GitHub, on the reader's quota, 0 Worker and 0 Mac requests
+  (D12-1); a 202 is retried, a spent rate limit degrades to a sentence.
+- **"Used by" counts a paper, not only a repository** (D12-2): a repository P is used by a repository D
+  when D's dependency graph names a package P publishes, and every paper linked to D counts. Computed on
+  the Mac (`oscr usedby`, `oscr/usedby.py`), served by `GET /api/forge/stats` by a key range, signed in.
+- **Traffic is aggregate-only and maintainer-only** (D12-3): page views and visits, referrers and
+  pages, refused to anyone but the repository's maintainers (so it never reaches the static layer, the
+  search, a feed, a webhook or the API), **never a unique-visitor count and nothing per person**. Read
+  from Cloudflare with a **read-only** token the owner keeps in the keychain
+  (`org.oscr.cloudflare-analytics`), a Cloudflare secret the code never reads, prints or creates; unset,
+  the view says traffic is not enabled; a local fake in the night build.
+- **The research marks** a chart overlays (a commit a paper or a map cites), the star history and the
+  community research checklist (a reusable licence, a `CITATION.cff`, a linked paper with a tracing map)
+  are the registry's own facts. SVG joined the view tree; colour comes from `science.css` (D12-4). All
+  reads signed in; no email; nothing of a user's code run.
+
+## Snippets (night phase 13)
+
+Full detail in [docs/SNIPPETS.md](docs/SNIPPETS.md); decisions D13-1 to D13-5. Migration
+`migrations/d1-forge/0018_snippets.sql`; `snippets-core.ts`, `snippets.ts`, `act-snippet.ts`; the
+pages at `/snippets/` and `/snippet/<owner>/<folder>/`.
+
+- **A snippet is OSCR's gist**: a few lines of code shared on their own, tied to a paper's passage.
+  Its **files** live in a `snippets` repository in the researcher's **own GitHub account**, one folder
+  per snippet, created and revised by **authorized commits** (D13-1): OSCR never asks for the Gists
+  permission (D00-14) and never writes to GitHub itself. Its **record** lives in `oscr_forge`; **no
+  file content and no git text ever enter D1** (the row budget). The files are shown in the registry's
+  own reader (`/r/…/blob/…` at the pinned revision), GitHub a last resort.
+- **Public or unlisted** (D13-2): unlisted is out of discover, search, feeds, the public API and the
+  sitemap, `noindex`, reachable only by its link (and by anyone who can read the repository, said on
+  the form); unlisted to public, never back. One explicit index per table; the native writes (edit,
+  comment, star) share one cap (`snippets`), out of the 100 authorized actions.
+- **Tied to a paper passage** (D13-3): a DOI and a Methods paragraph, shown **beside** the maps,
+  **never a map, never given a DOI**.
+- **Public free text**: descriptions and comments are masked for addresses, behind Turnstile, under
+  the caps, blocks and interaction limits, with triagers' hide/delete on the rows' own columns. Phase
+  16's central moderation and data-rights erasure must still be extended to `snippet` and
+  `snippet_comment` (D13-4, extends D06-6).
 
 ## The website's style (website/)
 
@@ -305,6 +530,38 @@ free, no rate limit), the Worker a thin layer.
     a `header` and its content; the code's lines are an `ol.lines`, one `li` per line; a
     paragraph and the lines that match it share one class of `.pair-1` to `.pair-6`; the
     selected pair is marked `.is-active` on both sides.
+
+## Ease of use (night phase 15)
+
+The comfort layer over every page (`docs/EASE_OF_USE.md`, `DECISIONS.md` D15-*). It adds to every
+earlier phase and removes nothing; `science.css` stays the only style, and the client features ask
+the Worker for nothing.
+
+- **Preferences** (theme, contrast, colour-vision palette, link underlines, motion, line spacing, tab
+  size, Markdown font, hovercards, animated-image autoplay, character shortcuts, emoji skin tone) live
+  in the browser (`localStorage`, guarded; zero rows). One schema, `src/lib/preferences.ts`; one
+  site-wide script, `src/scripts/site.ts` (imported once by `Base.astro`), applies them to `<html>`
+  and exposes `window.oscr`. The page is `/settings/preferences/`.
+- **Themes are options in `science.css`, light by default.** The dark theme and the colour-vision
+  palettes redefine the `:root` tokens under `html[data-theme=…]`/`html[data-vision=…]`; **never a
+  dark theme by default** (D15-2). A reader with nothing stored carries no theme attribute at all.
+- **Keyboard shortcuts** (`src/lib/shortcuts.ts`, `src/scripts/shortcuts.ts`): `?` opens the help, the
+  global ones navigate, the context ones (code, lists, issues, pull requests, notifications) are
+  dispatched as a cancelable `oscr:shortcut` event for the owning view; the keys match GitHub's. The
+  single-key shortcuts obey a preference; `?` and the palette always work.
+- **The command palette** (`Ctrl/Cmd+K`, `src/lib/palette.ts`) is a STATIC index of destinations and
+  commands; a prefix (`#`, `@`, `>`/`/`) turns the query into a search. 0 requests, no file per
+  entity.
+- **Accessibility:** a skip link, the `<main id="main">` landmark, one `h1`, banner and footer
+  landmarks on every page (audited in `tests/forge-pages/accessibility.test.ts`); the statement is
+  `/accessibility/`; the phase-12 charts carry `role="img"`, `aria-label`, `<title>`/`<desc>` and a
+  table and CSV alternative.
+- **Localization:** the new features' interface strings live in `src/lib/strings.ts`, with
+  `stringsFor(lang)` (English only for now). The rest is deferred (D15-7).
+- **Service status:** `/status/` shows 90 days of availability and incidents (from the Mac's own
+  outbound checks, `oscr/sitestatus.py`, `oscr status`) and the daily quotas in words. Static: it says
+  when it was built. The five-minute checks are the owner's launchd step; nothing on the site checks
+  itself.
 
 ## Already in force
 

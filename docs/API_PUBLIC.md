@@ -80,19 +80,21 @@ the owner. **Owner decision**: whether to publish a public *catalogue* dataset o
 catalogue without the private `contact` table) is the operator's to make and publish nightly; nothing
 here publishes it.
 
-## The `/api/v1/` namespace, and the night forge (decision)
+## The `/api/v1/` namespace, and the night forge (resolved at reconciliation)
 
-The night "forge" branch (`docs/NIGHT_PROGRESS.md`, Labs "in development") plans an authenticated,
-token-based read/write layer also under `/api/v1/`. This keyless read API owns `/api/v1/` on `main`.
-At reconciliation:
+The night "forge" branch planned an authenticated, token-based read/write layer that also lived
+under `/api/v1/`. This keyless read API owns `/api/v1/`. The reconciliation (the `reconcile` branch)
+resolved the overlap so the two never collide:
 
-- the forge's routes must **require a token** and answer `401` without one, so they never shadow a
-  keyless read route by accident;
-- any **overlapping path** (for example a token-scoped search) must be **renamed**, not collide with
-  the keyless one here;
-- a token is **never required to read** the catalogue.
+- the keyless read API **keeps `/api/v1/`**; a token is **never required to read** the catalogue;
+- the forge's token API was **moved to `/api/forge/v1/`** (its one source, `API_PREFIX` in
+  `website/worker/forge/service/api.ts`, plus its OpenAPI, the `/developers/` reference, the CLI and
+  every forge test), and it **requires a token** (`401` without one);
+- the forge's own OpenAPI document and the `/developers/` page describe `/api/forge/v1/`; this public
+  API's OpenAPI (`/data/openapi.json`, `/api/v1/openapi.json`) still describes `/api/v1/`.
 
-This file and `CLAUDE.md` record the decision; the forge is not solved on this branch.
+The forge routes stay behind `FORGE_OPEN` (unset), so the token API is dormant until the owner opens
+the GitHub side. `CLAUDE.md` and `docs/RECONCILE_NOTES.md` record the decision.
 
 ## Rules honoured
 

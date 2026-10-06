@@ -82,7 +82,11 @@ const SCRIPT = /<script type="module" src="\/(?!\/)[^"<>]*"><\/script>/g;
  *  section's. The platform's name is the shell's own (<meta name="application-name">). null when
  *  the shell lacks what is replaced. */
 export function fillShell(shell: string, view: View): string | null {
-  const start = shell.indexOf("<main>");
+  // The <main> tag may carry attributes (night phase 15 gave it id="main" for the skip link), so
+  // match the opening tag rather than a literal "<main>".
+  const open = shell.match(/<main[^>]*>/);
+  const start = open?.index ?? -1;
+  const mainTag = open?.[0] ?? "<main>";
   const end = shell.lastIndexOf("</main>");
   if (start < 0 || end < start || !/<title>[^<]*<\/title>/.test(shell)) return null;
   const site = shell.match(/<meta name="application-name" content="([^"]*)"/)?.[1] ?? "";
@@ -90,7 +94,7 @@ export function fillShell(shell: string, view: View): string | null {
   const attr = (name: string, value: string) => (s: string) =>
     s.replace(new RegExp(`(<meta (?:name|property)="${name}" content=")[^"]*(")`), (_, a: string, b: string) => `${a}${esc(value)}${b}`);
   const scripts = (shell.slice(start, end).match(SCRIPT) ?? []).join("");
-  let out = shell.slice(0, start + "<main>".length) + view.html + scripts + shell.slice(end);
+  let out = shell.slice(0, start + mainTag.length) + view.html + scripts + shell.slice(end);
   out = out.replace(/<title>[^<]*<\/title>/, () => `<title>${title}</title>`);
   out = out.replace(/(<span id="crumb">)[^<]*(<\/span>)/, (_, a: string, b: string) => `${a}${esc(view.crumb)}${b}`);
   if (view.description) out = attr("og:description", view.description)(attr("description", view.description)(out));

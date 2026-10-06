@@ -11,6 +11,11 @@ Date: 2026-09-26. Scope: turn the catalogue into a full platform (arXiv + SSRN +
 a Kaggle dataset page), at zero cost, following `CLAUDE.md`. The platform's name lives in
 one configuration variable, `SITE_NAME` (current value: `OSCR`).
 
+**Night run (2026-09-28/29):** the "GitHub" side (hosting, versioning, editing and evolving
+research code, linked to papers) is planned in [§15](#15-the-github-side-night-run), as the
+night phases 01 to 16, on the storage decision of [DECISIONS.md](DECISIONS.md) (D00-1 to
+D00-16). Nothing above changes.
+
 Legend used below: **[M]** the Mac (harvester, SQLite, source of truth) · **[C]** Cloudflare
 D1 "catalog" database · **[U]** Cloudflare D1 "community" database · **[S]** static files
 on Cloudflare Workers (static assets) · **[B]** fetched by the reader's browser.
@@ -443,6 +448,9 @@ for the rest (2,304 record shards, 256 lookup shards, 128 lots of scripts, 200 c
 the fixed pages and bundles): 15,000, the check's margin. `npm run check` fails past either, and
 prints the files folder by folder; `npm run check:growth` (CI) shows that only the shards change
 when the catalogue grows.
+**Since the GitHub side was merged (night phase 16, DECISIONS.md D16-3)**: `STATIC_PAPERS` 5,700 and
+`FIXED_FILES_MAX` 3,600, the same 15,000; the GitHub side's 321 nightly shards, its pages and
+bundles count in the second.
 
 **The launch (2026-09-29).** The home page held every paper with code (3.5 MB of HTML, 535 KB
 gzipped, for 2,664 papers under 152 days, on the real catalogue): it now shows whole days of
@@ -613,6 +621,10 @@ Each phase: one commit on a dedicated branch (`platform/phase-N`), tests added (
 suite keeps passing), screenshots desktop and phone, `docs/ARCHITECTURE.md` and `CLAUDE.md`
 updated, nothing deployed without the owner's go-ahead.
 
+The night run's phases (the GitHub side) are numbered with two digits, 01 to 16, and are
+planned in [§15](#15-the-github-side-night-run). They add to the phases above and replace none
+of them.
+
 ---
 
 ### Phase 1, as built (2026-09-27)
@@ -733,6 +745,1134 @@ the paper. For the owner to confirm at review.
 
 ---
 
+## 15. The GitHub side (night run)
+
+Planned on the night of 2026-09-28/29, as phase 00 of `docs/NIGHT_RUN.md`. The platform phases
+1–8 of §12 (the "arXiv" side: catalogue, maps, reader, accounts, contributions) stay as they
+are. The night phases, numbered 01 to 16, add the "GitHub" side: hosting, versioning, editing
+and evolving research code, with the features a researcher uses on GitHub, adapted to science
+and linked to papers. A repository is attached to one or more paper DOIs, and tracing maps
+point to precise lines at a precise commit. Nothing that exists is removed.
+
+Sources:
+- the phases: `docs/NIGHT_RUN.md` §3, completed below with the inventory;
+- the inventory of GitHub's features, one decision each (Reproduce, Adapt or Exclude):
+  [GITHUB_PARITY.md](GITHUB_PARITY.md), built from the working files in `data/night/parity/`
+  (not committed). **3,989 features are marked Reproduce (2,413) or Adapt (1,576).** The
+  excluded ones, with their reasons, stay in the inventory;
+- the storage decision: [DECISIONS.md](DECISIONS.md), entries D00-1 to D00-16, and
+  [ARCHITECTURE.md](ARCHITECTURE.md), "Git hosting (night run, phase 00)";
+- the implementer's design of `GitBackend`, with the budgets per operation and the security
+  checklist: `data/night/gitbackend-design.md` (not committed; its substance goes into the
+  code's file headers).
+
+### 15.1 The storage decision
+
+No option lets OSCR host Git repositories itself with certain compliance with the services'
+terms and at zero cost (D00-1): the terms of Hugging Face, of an OSCR-owned GitHub organization
+and of the other hosted forges are unclear or forbid one customer serving other people's
+repositories; every permanent free VM that could run Forgejo asks for a payment card; and a Git
+server on Cloudflare's free plan can neither index a push within 10 ms of CPU (3–14 ms measured
+for a 0.3 MB pack, 24–91 ms for 1.7–3.5 MB) nor hold ~100 GB without R2, which needs a card. So
+OSCR hosts none: **repositories live in each researcher's own GitHub account**, created and
+acted on by a new OSCR GitHub App with the researcher's consent, one authorization per action,
+as that person, with the token used once and never stored (D00-2, D00-4), and the **mirror
+mode** uses the same App on an existing repository: installed (webhooks, write-back with
+consent) or, for a public repository without the App, read only. Git over HTTPS goes straight
+to github.com with GitHub's own scoped tokens, and OSCR runs no proxy (D00-3); readers'
+browsers read public repositories on their own GitHub quota, so a signed-out page costs no
+Worker request (D00-5); commits and merges are made by GitHub (D00-7); imports run on the
+researcher's machine (D00-8); large data goes to release assets, Zenodo or Hugging Face before
+LFS (D00-9); a deletion has a 30-day grace period in OSCR and the final deletion on GitHub is
+the researcher's own act (D00-10); continuous integration runs only the repository's own tests
+(D00-11). OSCR keeps only its own layer, links to papers and DOIs, tracing maps pinned to
+commits, reviews, the scientific issue types, in a new D1 database, `oscr_forge`, and on the
+Mac, behind a forge-neutral `GitBackend` interface (a GitHub adapter, an in-memory test double
+with a contract suite, a read-only Python counterpart; D00-12, D00-13), for public
+repositories only at first and with no email address, ever (D00-14). The options compared,
+the reasons and what would change each choice: [DECISIONS.md](DECISIONS.md), D00-1 to D00-16.
+
+### 15.2 How to read the inventory under this decision
+
+- **"Reproduce" for a behaviour of the Git server means GitHub does it.** Pushes and their
+  limits, LFS, restoring a deleted repository, signatures, SSH and deploy keys, push protection
+  and branch rules run on GitHub, in the researcher's account. OSCR shows them, explains them
+  in its pages and links to them; it never re-implements them.
+- **Every write is the person's**, through one authorization per action: 2 Worker requests and
+  1 D1 row (the action log). The App's installation token only posts OSCR's check runs and
+  reads an installed repository after its webhook.
+- **GitHub's objects stay on GitHub** (code, pull requests, ordinary issues, releases, tags);
+  **OSCR's objects live in OSCR** (papers, maps, reviews, scientific issues, discussions,
+  projects, stars, follows, the snippets' records) (D00-6). Where the inventory's "In OSCR"
+  column assumed repositories hosted by OSCR (a wiki as "a second repository in the
+  `GitBackend`", each snippet as a repository of its own, a peer-review link to a private
+  repository), the storage decision applies, as each phase below says.
+- **What the decision changes in the mission's text** (`NIGHT_RUN.md` §3), said again in each
+  phase:
+  - 01: the scoped personal tokens for `git` are GitHub's; OSCR issues no git token;
+  - 09: SSH keys and deploy keys are GitHub's; OSCR lists and links them;
+  - 10: code runs only on the researcher's own CI (GitHub Actions, standard runners);
+  - 11: OSCR cannot refuse a push that contains a secret; GitHub's push protection refuses it,
+    and OSCR's scan reports;
+  - 14: the Git credential helper serves github.com with a GitHub App user token from the device
+    flow, never an OSCR token;
+  - 16: OSCR cannot refuse a known malicious file at push; it hides it and never copies it.
+- **Counting.** A feature the inventory lists under several phases counts under the first one.
+  The inventory's "NEW" groups go to the phases of §15.3.
+
+### 15.3 Where the new features go
+
+The inventory found features that no phase of the mission named. Each group goes to the phase
+that fits:
+
+| inventory group | features | phase | why there |
+|---|---|---|---|
+| Account lifecycle | 24 (7 Reproduce, 17 Adapt) | 09 | who owns what: a username change and its redirects, a successor, the hand-over of a sole-owned organization, merging, exporting and deleting an account, sessions. It needs 01's handles and 09's organizations |
+| Account security | 22 (8 R, 14 A) | 09 | beside the tokens, keys and audit log already there: sessions, passkeys, security keys, sudo mode, the personal security log |
+| Automated-decision transparency | 3 (3 A) | 05 | beside "Rationale, confidence and automation levels" and "Suggestions to approve or dismiss": what OSCR's rules and local model set (labels, issue types, similar issues, proposed links) says how it was set, and can be declined or reported |
+| Environments and packages | 30 (3 R, 27 A) | 07 | a release is where a paper's code gets its version, its environment and its packages. The Mac reads manifests, container labels and `devcontainer.json` as text |
+| Search | 84 (58 R, 26 A) | 08 | discovery: one search across papers, repositories, code, commits, issues and people, with GitHub's syntax. It needs the objects of 01–07 |
+| Privacy and data rights | 18 (12 R, 6 A) | 16 | the rules to state before any public opening: privacy statement, rights of access, rectification, erasure and objection, cookies, subprocessors, retention |
+| Localization | 1 (1 A) | 15 | ease of use |
+| Service status; service status and help | 4 (4 A) | 15 | a status page, help and documentation |
+
+### 15.4 The free-tier budget every phase draws from
+
+Figures from the storage decision (D00-12; `gitbackend-design.md` §16; Appendix B):
+
+| resource | the GitHub side's share | rule |
+|---|---|---|
+| Worker requests | **40,000 a day** of the 100,000 (planning split C2; the arXiv side keeps 60,000) | a signed-out page 0; a signed-in page 1; an authorized action 2; a webhook 1. When the quota is spent, `/api/*` answers 429 and every page stays up |
+| D1 rows written | **5,000 a day**, capped in code inside the Worker's 10,000, until the owner confirms C3; then **20,000**, taken from the search push's 80,000 after its first full load | counted from the rows, with no counter row; per account and day: 100 authorized actions, 10 repositories created, 20 links |
+| D1 rows read | **1,000,000 a day** of the 5,000,000 | every list reads by key or index, never a scan |
+| the Mac's rows | from the facts push's 10,000 a day (`OSCR_COMMUNITY_BUDGET`), after the facts' own first load | a mirror's changed head, traced paths, alerts, package records, traffic counts |
+| D1 databases | `oscr_forge` (metadata only, public repositories only); `oscr_code` if phase 08 builds code search as the inventory adapts it | 5 of 10 at most; no Git object, token or email address in any |
+| static files | no file per repository, commit or file: a handful of shells (`/r/*` through one `_redirects` rule), the renderers' chunks, and nightly shards of OSCR's own objects (≤ 64 files per family) | the catalogue already uses ~80% of the 20,000 |
+| GitHub | the reader's anonymous 60 REST requests an hour per IP (10 searches a minute); the person's own 5,000 an hour, of which 500 content-creating; each installation's 5,000–12,500 an hour; **the App's 2,000 token exchanges an hour, shared by every authorized action** | OSCR never pools a token for third parties |
+| not used | R2 (needs a card), KV, Durable Objects, Queues, Cron Triggers | the Mac schedules; jobs are D1 rows |
+
+**Planning shares per phase**, for a day at ~3,000 repositories. They are estimates, to measure.
+The design's own day for the core (5,000 signed-in views, 500 authorized actions, 1,000
+webhooks, 20 creations) comes to ~7,000 requests, ~2,300 rows written and ~60,000 rows read;
+phases 01–05 and 07 below add up to the same.
+
+| phase (in execution order) | Worker requests | D1 rows written by the Worker | D1 rows read | the Mac's rows (facts push) |
+|---|---|---|---|---|
+| 01 hosting and mirror mode | 900 | 1,300 | 5,000 | 1,000 |
+| 02 code navigation | 5,000 | 0 | 50,000 | – |
+| 03 editing in the browser | 300 | 150 | 1,000 | – |
+| 04 forks and pull requests | 600 | 300 | 30,000 | 200 |
+| 05 issues | 350 | 550 | 20,000 | – |
+| 07 releases, packages, environments | 150 | 100 | 2,000 | 100 |
+| 16 content, abuse and rules | 200 | 200 | 5,000 | – |
+| 08 social, discovery, notifications, search | 5,500 | 1,200 | 200,000 | – |
+| 10 automation and integrations | 9,000 | 800 | 200,000 | – |
+| 14 the `oscr` command line | in 10's share | 0 | 0 | – |
+| 11 security and quality | 500 | 20 | 5,000 | 500 |
+| 09 organizations, rights, accounts | 1,500 | 600 | 50,000 | – |
+| 06 discussions, wiki, projects | 2,500 | 1,500 | 100,000 | – |
+| 12 repository statistics | 300 | 0 | 5,000 | 1,000 |
+| 13 snippets | 300 | 250 | 5,000 | – |
+| 15 ease of use | 200 | 100 | 2,000 | – |
+| **total** | **~27,300 of 40,000** | **~7,070** | **~680,000 of 1,000,000** | **~2,800** |
+
+- **Requests**: ~12,700 a day stay in reserve.
+- **Rows written**: the first eleven phases of the execution order fit the 5,000-row cap
+  (~4,620). **Phases 09, 06, 13 and 15 need C3** (the owner's decision); until then they start
+  with tighter per-account caps.
+- **The Mac's rows** compete with the facts' own first load (150–270k rows over 2–4 weeks);
+  the push's budget orders them.
+
+### 15.5 The phases ordered by value, and the execution order
+
+Value is judged by the link to research first (what a paper, its code and its map gain), then
+by what researchers use daily, then by cost.
+
+| rank | phase | why it ranks there |
+|---|---|---|
+| 1 | 01 Git hosting and the mirror mode | everything else stands on it. It attaches repositories to paper DOIs, and brings in the code the catalogue already links (318 of its 463 repositories are on GitHub, §1) |
+| 2 | 02 Code navigation | reading a paper's code at the cited commit; its line permalinks are what tracing maps point to; 0 Worker requests when signed out |
+| 3 | 04 Forks and pull requests | code evolves without silently breaking a paper's links: the tracing-map guard, the paper's authors as reviewers |
+| 4 | 05 Issues | the scientific issue types (code error, code–paper mismatch, reproduction failure) are why a researcher would report here rather than on GitHub |
+| 5 | 07 Releases, packages and environments | a release tied to the paper's version, its map versioned with it, its environment; Software Heritage and Zenodo at the author's request |
+| 6 | 03 Editing in the browser | a README, a `CITATION.cff` or a line fixed without git; small, and 04 builds on it |
+| 7 | 16 Content, abuse and rules | the gate: without it, nothing written in OSCR opens to the public |
+| 8 | 08 Social, discovery, notifications, search | the in-site inbox (D5) that 04 and 05 feed; following authors by ORCID iD and papers by DOI; one search across the GitHub side |
+| 9 | 10 Automation and integrations | OSCR's checks, which run no code (licence, environment, DOI, `CITATION.cff`, map coherence), on every pull request; CI results; the public API and webhooks |
+| 10 | 14 The `oscr` command line | `oscr trace`, `oscr check`, `oscr cite`, `oscr paper link`; imports that keep commit ids |
+| 11 | 11 Security and quality | a paper's environment checked for vulnerabilities (OSV) and licences; code errors that change published results as advisories |
+| 12 | 09 Organizations, teams, rights, accounts | labs with a ROR id; research permissions; account security and lifecycle |
+| 13 | 06 Discussions, wiki and projects | a discussion space per paper; protocols in a wiki; projects for a code release or a reproduction campaign |
+| 14 | 12 Repository statistics | "used by" papers; privacy-respecting counts |
+| 15 | 13 Snippets | a few lines tied to a paper passage: useful, narrow |
+| 16 | 15 Ease of use | shortcuts, palette, themes, phones. The accessibility baseline is in every phase already (`NIGHT_RUN.md` §4) |
+
+**Execution order:** 01 → 02 → 03 → 04 → 05 → 07 → 16 → 08 → 10 → 14 → 11 → 09 → 06 → 12 → 13 → 15.
+**Changed by the owner on 2026-09-29:** after 07 come 08 and then 10; phase 16 runs later. What 08 and
+10 add stays behind `FORGE_OPEN` (the owner only) until 16, which will cover their objects
+(DECISIONS.md D08-17).
+- **01 comes first**: every other phase reads or writes repositories through its forge service
+  and `GitBackend` (built in phase 00).
+- **The rest follows the value order, with one change**: 03 runs before 04, because 04's
+  suggestions, conflict resolution and "new branch with a pull request" commit through 03's
+  machinery (`createCommitOnBranch`, the Git data API).
+- Each branch `night/phase-XX-name` is built on the previous one **in this order**
+  (`NIGHT_RUN.md` §1); `docs/NIGHT_PROGRESS.md` records it.
+- **Cross-cutting phases cover what exists when they run.** 16 (moderation, limits), 10 (API,
+  webhooks), 14 (commands) and 15 (shortcuts, palette) serve the objects built before them. A
+  phase that runs after them (06, 09, 12, 13) brings its own moderation, endpoints, events,
+  commands and shortcuts, on their frameworks.
+- **The first public opening** of the GitHub side can be 01–05, 07 and 16 together. A
+  deployment is never tonight's (`NIGHT_RUN.md` §1).
+- **Decision taken for this plan**: until phase 16 is merged, the forge service's write routes
+  answer only to the owner's account (one Worker variable, proposed name `FORGE_OPEN`, false by
+  default). Merging an earlier branch then opens nothing to the public. Reason: security; the
+  mission makes phase 16 indispensable before any public opening, and the switch costs one
+  comparison per request. To be recorded in `DECISIONS.md` with phase 01.
+
+### 15.6 The phases, in execution order
+
+Each phase lists what it delivers (the mission's text, completed with the inventory's
+Reproduce and Adapt features), its dependencies, its budget (§15.4) and its links to research.
+
+#### Phase 01, Git hosting and the mirror mode
+
+**Inventory:** 223 features (98 Reproduce, 125 Adapt).
+
+**Delivers:**
+- **Creating a repository** in the researcher's own GitHub account, in one authorized action
+  (D00-2, D00-4):
+  - empty, with the name rules, a README, a `.gitignore` template, the default branch name, and
+    a licence chooser that says why an open licence matters;
+  - from a template ("Use this template", with all branches or the default one), including the
+    research-compendium template if the owner makes it;
+  - from a pre-filled form (URL parameters), on a computer or a phone;
+  - then the quick-setup page of an empty repository, and "push an existing repository".
+- **The mirror mode** (D00-2): a researcher links a repository they already have. Installed,
+  OSCR receives its webhooks and can write back with their authorization; public and without
+  the App, it is read only and the Mac polls it. A status line says which, and when it was last
+  seen. The GitHub Pages site of a linked repository is linked, never rebuilt.
+- **Imports on the researcher's machine** (D00-8):
+  - `git clone --mirror` then `git push --mirror`, which keep every commit id, so maps pinned to
+    the source stay valid; with LFS when the source has it;
+  - GitHub's own importer page (it does not move LFS objects);
+  - Subversion, Mercurial, TFVC and Perforce through their converters; a subfolder split into a
+    new repository; subtree merges;
+  - a Zenodo, figshare or OSF record becomes one commit that cites its DOI;
+  - "import from the paper" starts from the code links the catalogue already holds, and carries
+    the paper links and tracing maps over;
+  - planning, dry runs, sizes (`git-sizer`), logs, mannequins and the exit path ("leave OSCR")
+    are guides and pages. No import runs in the Worker or on the Mac.
+- **Clone, fetch, pull and push straight to github.com** (D00-3), partial and shallow clones
+  included. The mission's "scoped personal tokens" are GitHub's: OSCR links to GitHub's
+  pre-filled fine-grained token page (the token template URLs: one repository, Contents write,
+  an expiry), and the token never passes through OSCR. The token features the inventory lists
+  here (name and description, expiry and reminder, repository access, permissions per
+  resource, prefixes, list and last use, regenerate, delete, count limit, revocation after a
+  year unused) also shape **OSCR's own tokens**, for OSCR's API only and never for git; they are
+  issued once phase 10 opens that API.
+- **Branches and tags**: create (from the branch selector or the Branches page), rename (also
+  under organization rulesets), delete, the default branch and the default name for new
+  repositories; tags pushed with git, signed by default in the guides.
+- **Settings**: rename (GitHub's redirects; retired names), visibility (public only at first,
+  D00-14), transfer and its side effects, archive and unarchive, autolinks to external
+  resources, the push policy and GitHub's rejection messages explained.
+- **Deletion** (D00-10): the name typed and the maps that point to the repository shown, then
+  archive-and-hide in one action; 30 days to restore; the final deletion on GitHub is the
+  researcher's own act; GitHub's own 90-day restore is shown.
+- **Limits and large files** (D00-9), shown at creation, in the editor and when a push fails:
+  100 MiB per file (a warning at 50), 2 GB per push, a repository ideally under 1 GB; LFS for
+  small binaries only (10 GiB stored and 10 GiB downloaded a month per owner, blocked past that
+  without a payment method); large data to release assets, Zenodo or Hugging Face; guides to
+  move files in or out of LFS and to remove large files or sensitive data from history.
+- **The forge service** itself: `POST /api/forge/start`, `POST /api/forge/act`,
+  `POST /api/forge/webhook`, `GET /api/forge/repo`; the static callback page
+  `/forge/authorized/`; the static shell `/r/*`; the `oscr_forge` migration; the Mac's new job
+  kinds (link, push, archive, delete_due, reconcile); the new questions of
+  `tools/setup_cloudflare.sh`.
+
+**Depends on:** phase 00 (`GitBackend`, the GitHub adapter, the test double and its contract
+suite, `oscr/forge.py`); the platform's Phase 5 (a GitHub identity linked to the OSCR account).
+A live run needs the owner's steps (the App, its secrets, `oscr_forge`: ARCHITECTURE.md, "The
+owner's steps"); until then, everything runs against the test double.
+
+**Budget:** ~900 Worker requests and ~1,300 D1 rows written a day:
+- 20 creations (2 requests, ~5 rows each);
+- ~60 renames, archives, links and deletions (2 requests, 1–2 rows each);
+- ~700 webhooks for pushes, repositories and installations (1 request, 1–2 rows each).
+
+The Mac polls public mirrors with `git ls-remote` or a conditional request (a `304` is free):
+1 row per changed head, from the facts push. GitHub: the person's own quota for every write;
+the App's 2,000 token exchanges an hour for all. Static files: the `/r/` shell, the callback
+page, and OSCR's layer as ≤ 64 nightly shards.
+
+**Research:**
+- a repository is attached to one or more paper DOIs (`repo_papers`) when it is created, linked
+  or imported; the paper's verified authors and maintainers (Phase 5) get their roles on OSCR's
+  layer;
+- the mirror mode brings in the code the catalogue already links;
+- a commit a tracing map points to stays visible when history is rewritten or the repository
+  deleted: "no longer at the source", with the licensed script copies and, when the author asked
+  for it, Software Heritage (D00-15);
+- the licence chooser says that an open licence lets OSCR keep and publish copies of the
+  scripts (CLAUDE.md, "Only verified licenses leave the Mac").
+
+#### Phase 02, Code navigation
+
+**Inventory:** 278 features (179 Reproduce, 99 Adapt).
+
+**Delivers:**
+- **The repository page** (`/r/…`, one static shell):
+  - the Code tab, the file tree and breadcrumb, submodules and symbolic links, the branch and
+    tag switcher (`w`), the Branches page;
+  - the About panel: description, website, topics and suggested topics, the detected licence,
+    "Cite this repository";
+  - the overview tabs (README with its location rules and truncation, code of conduct,
+    contributing, licence, security), community health files and their defaults from a
+    `.github` repository;
+  - language statistics with Linguist's attributes and modelines, the social preview (a default
+    one or the researcher's image), "Open with" links (GitHub Desktop, Codespaces);
+  - a Docs view that renders a repository's Markdown with `science.css`: the adaptation of
+    GitHub Pages, where no author HTML or JavaScript runs.
+- **The file view**: highlighting (Shiki, Linguist's language names, EditorConfig), line and
+  range selection, the line menu (copy permalink, copy lines, blame, reference in a new issue),
+  permalinks (`y`) and the canonical URL, jump to line (`l`), find in file, sticky lines,
+  folding, the symbols pane, jump to definition and find references within the repository
+  (computed in the browser), the raw view and download, the source view of a rendered file
+  (`?plain=1`), the warning on hidden and bidirectional Unicode, display limits, LFS pointers
+  shown as such, and "identical copies" (the same file in other repositories, and the papers
+  that cite them, from the script store's digests).
+- **One renderer**, for files now and for conversations later:
+  - GitHub Flavored Markdown with a sanitizer and GitHub's tag filter; users' `style` and `class`
+    are dropped, so `science.css` stays the only style;
+  - headings, anchors, the outline, alerts, footnotes, tables, task lists, collapsed sections;
+  - math (inline, block, `math` code blocks, macros), Mermaid (also inside collapsed blocks),
+    GeoJSON and TopoJSON maps, STL models, Jupyter notebooks, CSV and TSV tables, PDFs and
+    images; reStructuredText rendered on the Mac, other markups shown as source;
+  - external images load on the reader's click (no image proxy); dark-only images are dropped
+    (no dark theme by default); email addresses are masked everywhere (`maskEmails`, the rule of
+    `catalog.mask_emails`).
+- **History**: the commit list and its filters; a commit's page (files, tree, path filter, the
+  branches and tags that contain it, verification details, check state, comments that can be
+  switched off); a file's history; any file at an earlier commit. **Blame** is a link to
+  GitHub's own page, which needs a GitHub sign-in (D00-5); the command line gives local blame
+  (phase 14), with `.git-blame-ignore-revs`.
+- **Diffs and comparisons**: unified and split, hide whitespace, expand context, rich diffs of
+  prose, images (2-up, swipe, onion skin) and notebooks; compare branches, tags, commits and
+  forks (three-dot and two-dot, relative refs); compare releases; `.diff` and `.patch` links to
+  GitHub.
+- **Search in a repository**: the file finder (`t`) with its exclusions and their override;
+  file names matched from the tree; the text of small repositories searched in the reader's
+  browser; beyond that, a link to GitHub's code search, which needs a GitHub sign-in.
+- **Citation**: "Cite this repository" from `CITATION.cff`, the other citation files,
+  `codemeta.json`, SWHIDs, and a release cited with its DOI.
+- **Links**: scholarly identifiers become links (DOI, PMID, PMCID, arXiv, ORCID iD, RRID,
+  SWHID), and so do commit SHAs; a URL cited in a paper is resolved after a move or an import.
+- The inventory's adapted AI features run no model: "explain these lines" shows the Methods
+  paragraphs a tracing map links to them; "ask about a commit" lists the map links whose lines
+  the commit changed.
+
+**Depends on:** 01 (the repositories OSCR knows, the shell, `GitBackend`'s read side in the
+browser); the existing Code ↔ Paper reader and tracing maps.
+
+**Budget:**
+- signed out: 0 Worker requests and 0 D1 rows. The browser reads GitHub on the reader's
+  anonymous quota (60 REST requests an hour per IP; raw files are outside those 60 but under
+  GitHub's unpublished anonymous limits), and OSCR's layer comes from the nightly shards. When
+  the quota is spent, the page says so and links to the same view on GitHub;
+- signed in: 1 request and ~10 rows read per repository page for OSCR's live layer: ~5,000
+  requests and ~50,000 rows read a day;
+- archives (zip, tar.gz) are links only: GitHub's `codeload` does not allow cross-origin reads
+  (measured);
+- static files: the renderer's chunks (KaTeX, Mermaid, grammars grouped by family), at most
+  ~150 files.
+
+**Research:**
+- a line or range permalink at a commit is the unit of a tracing map, stored as
+  `(forge, repository id, commit, path, lines)`, so a rename never breaks a map;
+- the file view and the Code ↔ Paper reader show, for selected lines, the Methods paragraphs a
+  map links to them, with the paper's DOI;
+- citation files, SWHIDs, a release's DOI and scholarly autolinks make a repository citable in
+  the paper's own terms;
+- notebooks, math, tables and maps render as in a paper's supplementary material.
+
+#### Phase 03, Editing in the browser
+
+**Inventory:** 61 features (35 Reproduce, 26 Adapt).
+
+**Delivers:**
+- **The editor**: create, edit (`e`), rename, move and delete a file or a folder, upload files;
+  preview and "show diff" before saving; indentation, wrapping, search and undo; the draft
+  saved in the browser; Write and Preview tabs, the formatting toolbar, slash commands, emoji
+  autocomplete, a URL pasted over a selection, image alt text; an image uploaded while editing
+  Markdown is committed into the repository.
+- **The commit dialog**: message and description; the current branch, or a new branch with a
+  pull request (the pull request itself is phase 04's); co-authors (`Co-authored-by`); sign-off
+  when the repository or organization requires it; GitHub's no-reply address as the author's
+  (never another email address, D00-14).
+- **How a commit is made** (D00-7): one `createCommitOnBranch` call per authorization. It is
+  atomic whatever the number of files, fails if the branch moved (the page then offers a new
+  branch and a pull request), and is signed by GitHub with the person as author. Moves,
+  executable bits and commits with two parents or none use the Git data API. Payloads through
+  the Worker are capped at 1 MiB to start (10 ms of CPU; to measure in V8 before raising it);
+  above that, GitHub's own upload page (25 MiB) or `git push`.
+- **Templates**: licence and code-of-conduct pickers; `CITATION.cff` and README from the
+  community checklist ("Add", "Propose"); editor help for workflow and `devcontainer.json` files.
+- **Where one cannot push**: "propose changes" (GitHub forks the repository for the person, and
+  phase 04 opens the pull request).
+- GitHub's push protection covers web commits (D00-11); OSCR's editor warns before, with the
+  patterns of phase 11's report.
+
+**Depends on:** 01 (authorized actions, the forge service), 02 (the file view, the renderer's
+preview).
+
+**Budget:** 2 Worker requests and 1 D1 row per commit; ~150 commits a day, so ~300 requests and
+~150 rows written. GitHub: 1 content-creating request of the person's own (80 a minute, 500 an
+hour). CPU: ≤ ~5 ms at 1 MiB, to measure. Per account and day: within the 100 authorized
+actions.
+
+**Research:**
+- a researcher fixes a README, a `CITATION.cff`, a licence or a line of code without git;
+- a change to the code a paper cites is made on a branch, never on the commit a map points to;
+- the commit dialog says when a changed file has tracing-map links, before the change is made.
+
+#### Phase 04, Forks and pull requests
+
+**Inventory:** 302 features (244 Reproduce, 58 Adapt).
+
+**Delivers:**
+- **Forks** (GitHub's, made as the person): into one's account or an organization; sync a fork;
+  copy an upstream branch later; leave the fork network; the network's rules on deletion and
+  visibility explained.
+- **Opening a pull request**: from the "Compare & pull request" banner, a comparison, a branch
+  or a fork; drafts, "Ready for review" and back; templates (one or several, the defaults of an
+  account or organization) and the **research pull request template**; prefilling by URL;
+  metadata at creation; stacked pull requests (a pull request on another one's branch, a stack
+  merged at once); "Allow edits from maintainers".
+- **Review**:
+  - reviewers requested, re-requested and removed; suggested reviewers; CODEOWNERS (its limits
+    and errors, code owners on the file view, workflow files);
+  - "Files changed": file tree, filters, unified and split views, hide whitespace, the commit
+    selector, "Viewed" and review progress, large diffs, notebooks and rich previews,
+    single-file mode, docked panels, draft comments kept locally;
+  - line, multi-line, deleted-line and file comments; a single comment or a review; suggestions
+    (one or a batch, with co-author credit); Comment, Approve, Request changes (a summary
+    optional); dismissals; outdated comments; resolving conversations; replies, quotes,
+    reactions and mentions; commit comments.
+- **Merging**:
+  - the merge box, and the merge status at the top of every page;
+  - merge commit, squash and rebase, with the allowed methods, default messages and authors;
+    auto-merge and what cancels it; "Update branch" (merge or rebase);
+  - conflict detection and **resolution in the browser**: the three versions come from GitHub,
+    the hunks are computed on the reader's CPU, and the result is committed with two parents;
+  - revert a merged pull request; close, reopen, change the base; delete and restore the head
+    branch, or delete it automatically; archive a pull request.
+- **Lists**: the repository's list with GitHub's qualifiers (states, reviews, branches, commits,
+  statuses, metadata, dates, fields, AND and OR), bulk actions, contributor role labels, the
+  pull-requests dashboard with its inbox and saved views; the repository's settings for pull
+  requests (on or off, collaborators only, limits and their bypass list).
+- **Linking issues**: closing keywords in descriptions and commit messages (toward the default
+  branch only, across repositories), manual links, the Development section.
+- **OSCR's research layer on a pull request**:
+  - the **tracing-map guard**: the App posts a check run, "tracing-map links touched", listing
+    each link whose lines change (paper, DOI, Methods paragraph);
+  - the paper's authors are suggested as reviewers: requested on GitHub when they are
+    collaborators, shown in OSCR otherwise;
+  - the **"Alters reported results"** label, set by the author or proposed by a reviewer, and
+    shown on the paper's page;
+  - a review comment can cite a paragraph of the paper;
+  - a **change summary** computed without a model: files and lines per language, map links
+    touched, notebooks and data files changed, licence and dependency changes. It never replaces
+    the author's text;
+  - after a merge, the Mac proposes the map **re-anchored** at the new commit; a validated map
+    keeps its commit and its DOI until its author validates the new version;
+  - tracing-map alerts to the paper's authors and watchers (their inbox is phase 08's).
+
+**Depends on:** 01; 02 (compare, diffs, the renderer); 03 (commits for suggestions and conflict
+resolution, "new branch with a pull request"); phase 00's check runs (the App's installation
+token). Team review requests and reviews required by rules are phase 09's.
+
+**Budget:** ~600 requests, ~300 rows written and ~30,000 rows read a day:
+- 2 requests and 1 row per authorized action (open, review, merge, close): ~150 a day;
+- 1 request per `pull_request` webhook (~300 a day). On a repository with traced files (~100 a
+  day), the App mints an installation token in memory, reads up to 300 changed files (3 pages)
+  and posts the check run: 2–5 subrequests, ≤ ~300 rows read, 0–1 written;
+- the Mac's re-anchoring: ~200 rows a day from the facts push;
+- GitHub: the person's own quota; the installation's own 5,000 an hour for the check runs; diff
+  limits are GitHub's (≤ 20,000 lines or 1 MB, ≤ 300 files).
+
+**Research:** the guard, the authors as reviewers, "Alters reported results", comments citing a
+paragraph and re-anchoring, listed above: a code change never silently breaks what a paper
+says about its code.
+
+#### Phase 05, Issues
+
+**Inventory:** 337 features (268 Reproduce, 69 Adapt), with the new group "Automated-decision
+transparency" (3).
+
+**Delivers:**
+- **Two kinds of issues** (D00-6):
+  - ordinary issues live on GitHub, written as the person, and keep GitHub's semantics (numbers
+    shared with pull requests, "fixes #12");
+  - **scientific issues** live in OSCR, per paper and per repository: "error in the code",
+    "code–paper mismatch" (on one tracing-map link), "reproduction failure" (tied to a
+    reproduction report), and issues about code hosted elsewhere (Zenodo, OSF…) for the
+    catalogue's papers whose code is not on GitHub. An OSCR issue can be copied to GitHub as an
+    ordinary issue with a label, one at a time, when its author asks.
+- **Writing an issue**: blank, from a template or a form (the research forms by default), from a
+  comment, selected code, a task, a milestone, from any page, "create more"; similar-issue and
+  duplicate suggestions while writing; attached files (their limits are phase 16's); the
+  contributing, support and security-policy links on the new-issue page.
+- **The issue page**: timeline events; editing with history (capped at 100 entries) and
+  redaction; comments, hide, a pinned comment, the "+1" nudge; reactions, mentions, `#`
+  autocomplete, references and cross-references; task lists and their progress, "Tracked by";
+  subscriptions (custom: closed, reopened, merged).
+- **Organizing**: labels (defaults, create, edit, archive, suggested and recent; colours from a
+  fixed palette in `science.css`, never a `style` attribute), milestones, assignees, issue types,
+  issue fields (text, number, date, single and multi-select), sub-issues (hierarchy, progress,
+  limits, order), dependencies (blocked by, blocking, "relates to"), pin, lock (reasons,
+  anonymous), transfer, close with a reason, duplicates, delete when allowed, "create a branch
+  for an issue".
+- **Finding**: the filter bar with GitHub's qualifiers (state, author, assignee, mentions,
+  commenter, involves, linked, label, milestone, type, fields, sub-issues, dependencies, dates,
+  counts, reactions, `no:`, `has:`, AND, OR, parentheses, negation); sorts; shareable URLs; the
+  issues dashboard; saved views (shared and private) and pinned views; bulk actions; saved
+  replies; **research qualifiers** (a DOI, a map link, a reproduction outcome). Semantic search
+  runs no model per query: the Mac computes "similar issues" each night with a local model in
+  the 01:00–07:00 window, and the search box stays lexical, with "best match".
+- **Automated-decision transparency** (new): every value set by a rule or by the Mac's local
+  model (a label, an issue type, a similar issue, a proposed link to a paper passage) is a
+  suggestion marked "set by rule" or "set by the model", with its confidence and a reason in
+  words; accept or decline, one or all; "report a wrong value" feeds the existing corrections
+  flow; an "About automated decisions" page says what is decided, when and how accurately.
+
+**Depends on:** 01; 02 (permalinks, "reference in a new issue", the renderer); 04 (closing
+keywords, linked pull requests, the Development section); the reproduction reports of the
+platform plan (§4, `reproduction_reports`).
+
+**Budget:** ~350 requests, ~550 rows written and ~20,000 rows read a day:
+- an ordinary issue or comment on GitHub: 2 requests and 1 row;
+- a scientific issue or comment: 1 request and 3 rows (the row, its index, a job);
+- signed-out readers see OSCR's issues from nightly static shards (0 requests, marked "as of last
+  night"); signed-in readers get them live (1 request);
+- GitHub's issues are read from the browser: the list endpoint on the reader's 60 an hour, the
+  full search syntax on GitHub's search API (10 a minute per IP).
+
+**Research:** the scientific issue types; the paper's page lists its issues (the Discussion and
+Reproductions sections reserved since Phase 4); a code–paper mismatch points to one map link; a
+reproduction failure points to a report and its environment; a merged pull request can close a
+research issue.
+
+#### Phase 07, Releases, packages and environments
+
+**Inventory:** 154 features (58 Reproduce, 96 Adapt), with the new group "Environments and
+packages" (30).
+
+**Delivers:**
+- **Releases** (GitHub's, written as the person):
+  - the Releases and Tags views; a release's page (its own URL, a table of contents, author and
+    dates);
+  - the form: an existing or new tag, the target, the previous tag, title, Markdown notes,
+    pre-release, "set as latest", drafts first, query parameters;
+  - generated notes and `.github/release.yml` (exclusions, categories), crediting the person
+    behind an agent's pull request;
+  - edit, unpublish, delete a release or a tag; immutable releases (locked tag and assets,
+    editable text, no reuse of a tag name), attestations and their verification;
+  - "latest" URLs, Atom feeds, search and qualifiers.
+- **Assets**: attached through the Worker up to 25 MiB, streamed without parsing; larger ones on
+  GitHub's release page or with `oscr release upload`; labels, names, states, dates, SHA-256
+  digests, per-asset download counts. Source archives are GitHub's links; their stability and
+  `export-ignore` are explained.
+- **OSCR's research extension of the release form**:
+  - the release is tied to a version of the paper (preprint, accepted, published), with its
+    DOI;
+  - the tracing map is versioned with it;
+  - on publication, the author can ask Software Heritage to archive (Save Code Now, D00-15) and
+    deposit on Zenodo themselves (Zenodo's own GitHub integration, or a record they make).
+    OSCR's own DOIs remain for validated maps only (CLAUDE.md);
+  - the takedown of a map that has a Zenodo DOI is Zenodo's withdrawal: a tombstone with the
+    reason, the DOI kept, asked by the owner with the validating author's agreement.
+- **Environments and packages** (new):
+  - the Mac reads, as text and never executed, the manifests (`pyproject.toml`, `setup.cfg`,
+    `DESCRIPTION`, `environment.yml`, `meta.yaml`, `Project.toml`, `package.json` and the
+    others), container labels and `devcontainer.json`, at each synced commit;
+  - each detected package becomes a proposed record that a writer confirms, with its registry
+    link, versions, publication dates and installation instructions, in a "Packages" section of
+    the repository page;
+  - an "Open elsewhere" menu gives plain links to services run under the visitor's own account
+    and quota: GitHub Codespaces for a GitHub repository, Binder for a public repository with an
+    environment file. Each link says in words who runs the service;
+  - deployments are shown as GitHub records them.
+
+**Depends on:** 01 (tags); 02 (compare, the renderer); 04 (notes from merged pull requests); 05
+(a release in an issue's Development section); the existing `oscr/zenodo.py` for the map's
+versions.
+
+**Budget:** ~150 requests and ~100 rows written a day:
+- a release: 2 requests and 2 rows (the action, the release ↔ paper version link);
+- an asset: 2 requests and 1 row, a streamed copy (~3 ms of CPU per 128 MB, measured);
+- the Mac's package records: ~100 rows a day from the facts push;
+- Software Heritage requests are the author's, queued as jobs for the Mac (its anonymous
+  allowance is 120 an hour);
+- GitHub: release assets under 2 GiB each, with no limit on total size or bandwidth, on the
+  researcher's own quota.
+
+**Research:** a release is the version of the code that goes with a version of the paper; its
+map is versioned with it; its environment and packages say how the results can be run again;
+Software Heritage and Zenodo keep it when GitHub does not.
+
+#### Phase 16, Content, abuse and rules
+
+**Inventory:** 240 features (132 Reproduce, 108 Adapt), with the new group "Privacy and data
+rights" (18).
+
+**Delivers:**
+- **The rules**: terms for the GitHub side (the repositories also stay under GitHub's terms, in
+  the researchers' own accounts); the acceptable-use and content policy (unlawful content,
+  harassment, doxxing, malware, spam, impersonation, misinformation); community guidelines;
+  what users own and license; suspension and appeal; the policies kept in a public repository
+  under CC0; a limits page with the quota message.
+- **Privacy and data rights** (new):
+  - the privacy statement: every personal data OSCR holds, including the private collection of
+    authors' contact details that CLAUDE.md describes; the cookie list (the `__Host-` session
+    and flow cookies); subprocessors (Cloudflare, GitHub, Hugging Face, Zenodo, ORCID, Google);
+    retention; international transfers; Do Not Track and Global Privacy Control; children's
+    data;
+  - the rights of access and portability, rectification, erasure and objection, handled on
+    request with identity verification, within the legal delay. Self-service export and
+    deletion come with phase 09.
+- **Reports and moderation**: report a user, an organization, a repository, a comment, an OSCR
+  issue or a snippet (with or without an account, behind Turnstile); the reported-content list
+  for maintainers; a moderation queue for the owner and moderators, extending Phase 6's
+  `reports` and the planned `moderation_actions`; enforcement actions, hidden accounts, appeal
+  and reinstatement.
+- **Maintainers' tools**: hide (with reasons, "low quality" included), unhide, edit, redact and
+  delete comments and revisions; lock and unlock conversations; interaction limits per
+  repository, account and organization, with durations and precedence; pull-request limits for
+  users without write access; commit comments off.
+- **Blocking**: from the settings, a profile, a comment, a discussion or an advisory; silent;
+  what a block does and does not do; the blocked list with date, author and note; unblock;
+  closing a blocked user's open contributions in OSCR.
+- **Copyright and private information**: the takedown procedure for what OSCR holds (its script
+  copies, OSCR-native content, a snippet's record); for code on GitHub, the notice goes to
+  GitHub, and OSCR hides the repository from its pages meanwhile; counter notices and
+  restoration; public redacted notices; private-information removal.
+- **Abuse limits**: Turnstile on every public form (up to ~15 widgets for the GitHub side);
+  creation limits per account and day; caps on stars and follows; the activity and
+  notifications of spam accounts hidden, retroactively; attachment limits (size, types, URLs);
+  the comment length limit (65,536 characters).
+- **Known malware** cannot be refused at push, since pushes go to GitHub (D00-11). OSCR hides a
+  repository flagged by moderation and never copies a file whose digest is on a known-malware
+  list (the Mac reads it as text, never runs it).
+- **The switch of §15.5** opens the forge service's write routes to everyone once this phase is
+  merged.
+
+**Depends on:** 01–05 and 07 (the objects it moderates); the platform's Phase 6 (`reports`,
+`oscr reports`). The moderation of objects built later (06, 08, 13) comes with them, on this
+phase's tools.
+
+**Budget:** ~200 requests and ~200 rows written a day (a report 3 rows, as in Phase 6; a block
+or a limit 1–2). Turnstile's `siteverify` is 1 subrequest per protected POST. The rules and
+privacy pages are static.
+
+**Research:** a context notice on the pages of retracted papers (the Retraction Watch data the
+harvester already reads); a hidden repository leaves a line saying so on its paper's page, so a
+map stays explained; the privacy statement covers the researchers' own data in the catalogue.
+
+#### Phase 08, Social, discovery, notifications and search
+
+**Inventory:** 352 features (191 Reproduce, 161 Adapt), with the new group "Search" (84).
+
+**Delivers:**
+- **Stars and lists**, OSCR's own (OSCR never stars or follows on GitHub, AUP §4): star
+  repositories, papers, topics and snippets; counts without removed stars; stargazers (listed
+  as GitHub now restricts them); the Stars page with search, sorts and filters; star lists
+  (public or private, a capped number), **exported as references** (BibTeX, RIS).
+- **Watching and following**: watch a repository (all activity, participating and mentions,
+  ignore, custom events) or **a paper by its DOI**; follow people, organizations, and, before
+  they have an account, **a catalogue author by ORCID iD**, a journal, a tool, a dataset or a
+  category.
+- **Notifications, in the site only** (D5): the inbox (Inbox, Unread, Saved, Done, Read),
+  reasons, default and custom filters (`repo:`, `org:`, `author:`, `is:`, `reason:`), mark as
+  done, read or unread, save, unsubscribe, bulk triage, mark all as read, a thread's preview, a
+  3-month retention with saved items kept; the subscriptions and watching pages; the settings
+  page. The inventory's email features become in-site equivalents; no email is sent.
+- **Profiles**: name, bio, pronouns, location, time zone, links, website, **ORCID iD**, company,
+  a picture or an identicon; the profile README (from the `<login>/<login>` repository); pinned
+  items; status and busy flag; **milestones** in words instead of achievements (first paper with
+  code registered, first map validated, code archived at Software Heritage, first reproduction
+  by someone else confirmed); the contribution calendar **with publications**; the activity
+  timeline and overview; private contributions; a private profile.
+- **Dashboards and discovery**: the personal and organization dashboards and feeds (followed
+  people, organizations and papers; "see less like this"); the repository dashboard; Explore
+  (recommendations from stars and follows, good first issues); trending repositories and
+  developers; topics (index, pages, curated and featured, aliases); collections (curated lists;
+  a star list can be proposed as one); the contribute page; funding (`FUNDING.yml`, and **grants
+  and funders** from the catalogue).
+- **Search** (new): the masthead's search box, already on every page for papers, gains a type
+  (papers, repositories, code, commits, issues, pull requests, discussions, people, topics,
+  wikis, snippets, packages) and a scope (this repository, this organization, all of OSCR).
+  "Papers" stays the first type, and a DOI typed in the box goes to the paper's page. Results
+  per type with counts, a filter sidebar, an advanced search form, GitHub's syntax (qualifiers,
+  comparisons, ranges, ISO and relative dates, exclusion, quotes, `@me`, boolean operators, case
+  rules, sorts written in the query), saved and recent searches. Sources:
+  - OSCR's own objects through FTS5 in `oscr_search`, pushed by the Mac, as fresh as the last
+    push (the page says when);
+  - GitHub's commits, issues and repositories through GitHub's search API in the reader's
+    browser, restricted to the repositories OSCR knows, on the reader's own quota;
+  - code, as the inventory adapts it: `oscr_code`, a D1 database of FTS5 with the `trigram`
+    tokenizer, one row per unique file keyed by its SHA-256, for verified licences only
+    (CLAUDE.md); the browser then reads the matching files from GitHub. At the full stock the
+    published scripts (1.6–3.0 GB, §2) exceed one 500 MB database, so the index covers the
+    repositories linked to papers first, newest first, and says what it covers. GitHub's own
+    code search needs a GitHub sign-in: a link carries the query over;
+  - a search runs only when submitted, and the quota message says when OSCR's share is spent
+    (D3).
+
+**Depends on:** 01–05 and 07 (what is starred, watched, searched and notified about); 16 (spam
+rules and caps on stars, follows and the feed). Discussions (06) and snippets (13) join the
+search and the inbox when they land.
+
+**Budget:** ~5,500 requests, ~1,200 rows written and ~200,000 rows read a day:
+- signed-in inbox, dashboard and profile views: 1 request each;
+- ~500 stars, follows, watches and list edits a day: 1 request and 2 rows each (the row and its
+  index);
+- ~2,000 submitted searches a day for OSCR's objects: 1 request each;
+- **notifications are fanned out on read** (decision taken for this plan): one event row per
+  event; the inbox is computed at read time from the reader's subscriptions and `last_read_at`;
+  only the saved, done and read states are written. One row per recipient would multiply the
+  writes by the number of watchers;
+- `oscr_code` is fed by the Mac from the search push's budget, after the papers' first full
+  load.
+
+**Research:** follow an author by ORCID iD before they sign in; watch a paper by its DOI (new
+code, a map validated, a reproduction report, a retraction); publications on the contribution
+calendar; star lists exported as references; funders and grants from the catalogue; research
+qualifiers in a search across papers and code.
+
+#### Phase 10, Automation and integrations
+
+**Inventory:** 430 features (202 Reproduce, 228 Adapt).
+
+**Delivers:**
+- **The catalogue of OSCR's checks**, which run no code: a licence present and recognised, an
+  environment file, the DOI link, `CITATION.cff`, the tracing map's coherence, file sizes,
+  missing README metadata.
+  - They run on every push to every pull request (drafts and bots' ones included) and post one
+    check run: an overview, titles and severities, annotations (50 per request), resolution
+    with a reason.
+  - "Checks at the paper's commit": the same checks, and the researcher's CI state, read at the
+    commit a paper cites.
+  - The inventory's AI review items become these rule checks: automatic, never a model.
+- **The researcher's CI** (D00-11): only the repository's own tests and builds, on GitHub
+  Actions' standard runners in the researcher's repository (free and unlimited on public
+  repositories).
+  - OSCR reads the results through the Checks API with the installation token and shows check
+    suites, runs, logs (links), attempts, re-runs (links to GitHub), `[skip ci]` and
+    `skip-checks` trailers, required checks, statuses on each commit and the status badge.
+  - "Tested environments" are read from the workflow files (matrix, `runs-on`, container images)
+    as text.
+  - A "reproduction check" is the repository's own test workflow, never a paper's analyses.
+- **OSCR's statuses and checks API**: an outside service (a lab's CI, another forge, a
+  reproduction service) posts a status or a check on a commit OSCR knows, with an OSCR token. A
+  GitHub Actions workflow can post with GitHub's OIDC token, which the Worker verifies, so no
+  secret is stored in the researcher's repository.
+- **The public API** over OSCR's layer: REST with dated versions and a breaking-changes page, the
+  error model, request ids, page and cursor pagination, conditional requests, rate-limit
+  headers and `GET /rate_limit`, CORS, an OpenAPI description published as a static file,
+  reference pages with examples. Endpoints for the objects of 01–08 (repositories and their
+  papers, pull requests' research layer, issues, releases' paper versions, notifications,
+  stars, search). OSCR's own tokens (phase 01's model), with scope headers and per-token daily
+  caps. GitHub's own API stays GitHub's; OSCR links to it.
+- **Webhooks**: repository and organization webhooks, and **paper webhooks** for OSCR's research
+  events (a paper linked, a map proposed, validated or flagged, a release tied to a paper, a
+  reproduction report, a retraction). A secret and an HMAC signature, ping, test, delivery
+  headers, recent deliveries, manual redelivery, failure messages, 20 per event. Deliveries
+  leave from the Worker during the request that caused the event (`waitUntil`); there is no
+  automatic redelivery engine (no Queues, no Cron Triggers).
+- **Integrations**: the App's own registration (callback URLs, the installation's return through
+  the callback page, device flow on, expiring user tokens, permissions and events); a page of
+  registered integrations (the adapted Marketplace); third-party apps authorized against OSCR's
+  API; Slack and Teams through their own webhook subscriptions.
+
+**Depends on:** 04 (check runs, the merge box); 05, 07 and 08 (the objects the API and webhooks
+serve); 01's token model. Later phases add their own endpoints and events on this framework
+(11, 09, 06, 12, 13).
+
+**Budget:** the largest share: ~9,000 requests, ~800 rows written and ~200,000 rows read a day.
+- The public API gets ~8,000 requests a day in all, with per-token daily caps; past them, 429
+  and the quota message.
+- Check runs and CI results: ~1,000 a day, on the installation's own GitHub quota.
+- Webhook deliveries are subrequests (≤ 50 per request), not requests. The delivery log keeps
+  only the last deliveries of each hook.
+
+**Research:** the checks turn traceability into a signal on every change (licence, environment,
+DOI, citation, map); paper webhooks let journals, labs and indexes follow what happens to a
+paper's code; "checks at the paper's commit" say whether the cited version still builds and
+passes its own tests.
+
+#### Phase 14, The `oscr` command line
+
+**Inventory:** 198 features (103 Reproduce, 95 Adapt).
+
+**Delivers:**
+- **A tool on the model of `gh`**: a command tree with `--help` everywhere and a manual with
+  examples; short forms; repository selection (`set-default`, an environment variable);
+  interactive prompts and editor mode; bodies from files or standard input; `--web`; `@me`;
+  output for terminals and for pipes; `--json` with fields, `--jq`, `--template`; Markdown
+  rendered in the terminal; a pager; colours on or off, accessible colours, an accessible
+  prompter, no spinner when asked; terminal escape sequences neutralised; exit codes; debug
+  output; `oscr config`; shell completion; aliases; extensions.
+- **Sign-in**: `oscr auth login` gets two credentials, both kept in the system's keychain:
+  - a GitHub App user token through GitHub's device flow, for git and GitHub. It needs only the
+    App's public client id, so the token never reaches OSCR (D00-3);
+  - an OSCR token for OSCR's API, approved on the site, where the person is signed in with
+    ORCID, GitHub or Google (OSCR's own device-code flow).
+
+  Then `status`, `token`, `logout`, `refresh`, `switch`, several accounts on one computer.
+  **The git credential helper serves github.com only**, never OSCR's host.
+- **Commands**: `oscr repo create/clone/fork/view/list/archive/rename/delete/sync`,
+  `oscr pr create/list/view/checkout/review/merge/…`, `oscr issue create/list/view/close/…`
+  (types, sub-issues, dependencies), `oscr release create/list/view/upload/download/verify`,
+  `oscr search`, `oscr api`, `oscr browse` (branches, commits, blame), `oscr run` and
+  `oscr workflow` (summaries and links of the researcher's CI); `oscr discussion` and
+  `oscr project` with phase 06, `oscr snippet` with phase 13; local blame, and imports
+  (`git clone --mirror`, `git push --mirror`, with LFS).
+- **OSCR's own commands**: `oscr paper link <DOI>` (attach the repository to a paper),
+  `oscr trace` (propose or check a tracing map from the terminal, at a commit), `oscr cite` (a
+  citation from `CITATION.cff`, a release's DOI or a SWHID), `oscr check` (phase 10's checks on
+  a local clone: they read files and never run them).
+- **Adapted items**: an MCP server exposing the same read commands; GitHub Desktop's features
+  pointed to (Desktop stays GitHub's application).
+- **Packaging** (decision taken for this plan): a distribution of its own, with its own
+  `pyproject.toml`, apart from the Mac's `oscr` package and its admin commands, so a researcher
+  never installs the harvester. Full tests. The publication on PyPI is prepared, not done: it is
+  an outside contact, the owner's step (`NIGHT_RUN.md` §3).
+
+**Depends on:** 10 (OSCR's API and tokens), and the objects of its commands (01–05, 07, 08). The
+GitHub side of every command talks to GitHub directly.
+
+**Budget:** no share of its own: its calls to OSCR are part of phase 10's API share. A sign-in's
+polling costs a few requests (GitHub's and OSCR's device flows poll every 5 s, for at most
+15 minutes, usually under one). Its GitHub calls use the researcher's own quota.
+
+**Research:** the research layer in the researcher's own workflow, before a push: a map proposed
+from the lines selected at a commit, a repository checked for traceability as the site checks
+it, a citation in one command.
+
+#### Phase 11, Security and quality
+
+**Inventory:** 212 features (90 Reproduce, 122 Adapt).
+
+**Delivers:**
+- **The dependency graph from environment files**: the Mac parses manifests and lock files as
+  text (Python, R, conda, Julia, JavaScript, GitHub Actions and the others the inventory lists),
+  at the default branch and at the commit a paper cites; the dependencies view with search,
+  filters and "show paths"; the precedence of sources; submissions through phase 10's API.
+- **Vulnerability and malware alerts** from a free public database, **OSV**, queried by the Mac
+  without a key: details and timeline, filters, sorts, dismissal and reopening, assignment, the
+  development-scope label, auto-triage rules; malware advisories (OpenSSF's malicious packages,
+  through OSV). Security and version update pull requests are GitHub's Dependabot, switched on
+  by the researcher; OSCR shows them and never opens pull requests itself (AUP §4).
+- **Secrets** (D00-11): GitHub's push protection refuses a push with a secret on public
+  repositories. OSCR adds a scan after the push, over the files it already reads, that
+  **reports and never blocks**: secret alerts, generic and paired patterns, custom patterns with
+  a test string and a dry run, path exclusions, remediation guidance. Leaked tokens reach their
+  providers through GitHub's own partner programme, not through OSCR.
+- **Code scanning**: SARIF uploaded by the researcher's CI (through phase 10's API) and shown
+  (alerts, data-flow paths, affected branches, resolution). OSCR runs no analyser on users'
+  code.
+- **Policies and reports**: `SECURITY.md` and "start setup"; **private vulnerability reporting**
+  (a form, a private thread with the maintainers, a draft advisory, collaborators, credits,
+  publication, withdrawal); coordinated disclosure guidance; CVE identifiers through a numbering
+  authority (the researcher's step); the advisory databases (GitHub's, OSV) browsed.
+- **Research advisories**: an advisory for a code error that affects published results, tied to
+  the papers and releases that cite the affected versions.
+- **SBOM export** (SPDX) of a repository or of a paper's environment, computed on the Mac;
+  **licence compatibility** of the dependencies with the repository's licence, and licence
+  policies.
+- The Security (and quality) tab; the security settings shown as GitHub holds them.
+
+**Depends on:** 01, 02, 04 (dependency review on a pull request), 07 (manifests and packages), 10
+(check runs, SARIF, the API).
+
+**Budget:** the analysis runs on the Mac (0 Worker requests), on OSV's free batch API, and pushes
+~500 alert rows a day from the facts push. Signed-in Security tabs: ~500 requests a day. A
+private report: 1–3 rows. GitHub: the Mac's read-only token for manifests (conditional
+requests).
+
+**Research:** a paper's environment, with its vulnerabilities and licences, at the commit it
+cites; advisories for errors that change results, which reach the papers that used the affected
+versions; licence compatibility, which decides whether code can be reused and its scripts
+copied.
+
+#### Phase 09, Organizations, teams, rights and accounts
+
+**Inventory:** 379 features (209 Reproduce, 170 Adapt), with the new groups "Account security"
+(22) and "Account lifecycle" (24).
+
+**Delivers:**
+- **Organizations in OSCR**, for example a lab with its kind and ROR id: create; profile (public
+  and members-only README, pinned repositories, picture, a verified domain); settings;
+  membership (invitations and their expiry, failed invitations, removal with a leaving
+  checklist, reinstatement, the member list exported, public or private membership);
+  moderators; an announcement banner; rename, archive, delete. A lab's GitHub organization is
+  linked, not replaced: git rights on its repositories stay GitHub's.
+- **Roles on OSCR's layer**: owner, member, moderator; repository roles (read, triage, write,
+  maintain, admin) and custom roles with **research permissions** (who may propose, flag or
+  validate a map, or tie a release to a paper version); base permissions; outside and pending
+  collaborators; teams (visibility, maintainers, nesting, mentions, notifications, review
+  requests and auto-assignment; synchronisation with an identity provider adapted).
+- **Rules**: rulesets and classic branch protection as GitHub enforces them (made by the person
+  through an authorized action, shown with their enforcement), push and tag rules, bypass lists,
+  custom properties and their targeting, organization rulesets; rule warnings in OSCR's editor
+  before a commit or a merge.
+- **Credentials**: OSCR's own tokens (phase 01's model) under the organization's policies
+  (access, approval, maximum lifetime, review and revocation, the token named in the audit log).
+  SSH, deploy and signing keys (SSH and GPG) are GitHub's: OSCR lists public signing keys and
+  shows the verification GitHub reports ("Verified", "Partially verified", vigilant mode);
+  "require signed commits" is GitHub's rule.
+- **The audit log** of OSCR's actions (phase 01's action log, per organization), with search,
+  filters, events and export; an organization's security overview over phase 11's alerts.
+- **Account security** (new): sessions (list, lifetime, revoke one or all); sign-in identities
+  (link and unlink ORCID, GitHub, Google); passkeys and security keys (WebAuthn in the Worker);
+  sudo mode for sensitive actions; the personal security log and its export; security
+  notifications in the site; the account recovery policy.
+- **Account lifecycle** (new): the settings page; a username change (at most once in 30 days,
+  the old handle redirecting, what it breaks said first); a successor; the hand-over of a
+  sole-owned lab; moving work to an organization; merging two OSCR accounts (signed in to both);
+  **exporting the account's data**; **deleting the account** (the handle typed, 30 days to
+  cancel; what stays: the catalogue's author page, the DOIs of validated maps, the Software
+  Heritage copies, a retired handle); a deceased user's account.
+- Organization blocks and moderators. The inventory's peer-review link to a private repository
+  waits for the owner's decision on private repositories (D00-14: it needs a server-side token).
+
+**Depends on:** 01 (repositories, handles, retired names); 04 (team review requests, required
+reviews); 10 (the API the tokens reach); 16 (the rights stated there, now self-service); Phase
+5's accounts (identities, sessions).
+
+**Budget:** ~1,500 requests, ~600 rows written and ~50,000 rows read a day (settings and
+management pages, membership and role changes, audit rows). Needs C3: the phases before it fill
+~4,620 of the 5,000-row cap.
+
+**Research:** a lab is an organization with a ROR id, its papers and repositories together;
+research permissions decide who may validate a map; a verified author's rights follow the paper,
+not the repository.
+
+#### Phase 06, Discussions, wiki and projects
+
+**Inventory:** 366 features (310 Reproduce, 56 Adapt).
+
+**Delivers:**
+- **Discussions**, OSCR-native (D00-6):
+  - **a discussion space per paper**, keyed by its DOI, even when the code is hosted elsewhere
+    (the Discussion section reserved since Phase 4), where the paper's verified authors hold
+    the maintain role; and spaces per repository and per organization;
+  - categories (formats, announcements, sections, forms, 25 per space), polls, answers and the
+    answered state, upvotes, sorts, filters, pins, labels, transfer, close with a reason, lock,
+    the timeline;
+  - an issue converted to a discussion and back; a discussion for a release; moderation (hide,
+    edit, history, redact, delete; triagers moderate); search qualifiers.
+- **The wiki, versioned by git** (D00-6): Markdown pages on a `wiki` branch of the repository,
+  edited through phase 03's commits; page names, sidebar, footer, links, images, math, Mermaid,
+  maps and 3D; history, a page at a revision, compare and revert; "restrict editing to
+  collaborators" as the branch's rules; the wiki cloned with the repository. The inventory's
+  "second repository in the `GitBackend`" becomes this branch: GitHub offers no API for its own
+  wikis.
+- **Projects**, OSCR-native:
+  - table, board and roadmap views; items that are issues, pull requests, drafts, and also
+    **papers, tracing maps and reproduction reports**;
+  - built-in, custom and **research fields** (paper, map state, reproduction outcome);
+    iterations, hierarchy views, sort, group, slice, sums; filters with GitHub's syntax and
+    research filters;
+  - workflows, built-in and research ones ("a reproduction report is filed", "a pull request
+    flags a map link", "an author validates the map", "a release is published");
+  - insights and historical charts, templates, status updates, collaborators, links to
+    repositories, teams and **papers**, export of a view;
+  - 5,000 items per project, archive included; 50 fields.
+- Classroom features, as the inventory adapts them (teaching with a paper's code).
+
+**Depends on:** 03 (wiki commits); 04 and 05 (the items); 07 (a discussion per release); 08
+(notifications, search); 09 (team links, base roles); 16 (moderation tools). Its API, events and
+commands come with it, on phases 10 and 14's frameworks.
+
+**Budget:** ~2,500 requests, ~1,500 rows written and ~100,000 rows read a day. Projects are the
+heaviest writer (each cell change is a row): 5,000 items per project, per-account daily caps on
+edits. Needs C3. Signed-out readers see discussions from the nightly shards; wiki pages are read
+from GitHub like any file (0 requests).
+
+**Research:** a paper's discussion space; lab protocols, parameter tables and derivations in the
+wiki; a "code release for a paper" or a "reproduction campaign" project whose items are papers,
+maps and reproduction reports.
+
+#### Phase 12, Repository statistics
+
+**Inventory:** 84 features (41 Reproduce, 43 Adapt).
+
+**Delivers:**
+- **Insights**: Pulse; contributors (top 100, merge and empty commits excluded, the default
+  branch only); commits; code frequency; forks (period, type, sort, tree); the network graph (up
+  to 100 branches, drawn for the reader, with research marks: commits cited by a paper or a map,
+  tags tied to a paper version or a DOI); the activity view. Every chart is also a table, with a
+  CSV or PNG download.
+- **"Used by"**: the papers and repositories that depend on a repository (dependents, the counter
+  in the sidebar, the package to count).
+- **Privacy-respecting traffic**: page views and Cloudflare's visits per day, referring sites
+  and popular content, as aggregates without an identifier per person (no unique visitors);
+  shown to maintainers; 14 days by day and 104 weeks by week.
+- **The community profile** and its checklist (with `CITATION.cff` and a licence); star history;
+  discussion insights; CI metrics; rule insights; lab research insights for an organization;
+  transparency reporting of moderation.
+
+**Depends on:** 01, 02, 04, 06, 08, 10 and 11 (what is counted).
+
+**Budget:** the graphs are read from GitHub's statistics API in the reader's browser (0 requests;
+GitHub answers 202 while it computes). OSCR's parts (used by, traffic, research marks) are
+computed on the Mac: ~1,000 rows a night from the facts push, only for the repositories whose
+counts changed. ~300 requests a day for maintainers' traffic pages. Reading Cloudflare's
+analytics needs a read-only token the owner creates, kept in the keychain.
+
+**Research:** "used by" counts papers, not only repositories; the network graph marks the
+commits papers cite; lab insights show a lab's papers with code, maps and reproductions.
+
+#### Phase 13, Snippets
+
+**Inventory:** 80 features (54 Reproduce, 26 Adapt).
+
+**Delivers:**
+- **Snippets, OSCR's gists**: a form (description, files, visibility); several files, drag and
+  drop, highlighting by extension, Markdown, notebooks and maps rendered; public or
+  **unlisted** (out of lists, search and feeds, `noindex`; the form says in words that anyone
+  with the link, or browsing the repository, can read it); unlisted to public, never back;
+  revisions with diffs and permalinks, raw files, a ZIP download; forks, stars, stargazers;
+  comments (edit with history, delete, hide, disable), notifications, subscriptions; embedding
+  with a script tag, one file or all; discover, sort, filter, search with qualifiers; a user's
+  snippets page and pins.
+- **Where a snippet lives** (decision taken for this plan): in a `snippets` repository in the
+  researcher's own GitHub account, created with the first snippet through an authorized action,
+  one folder per snippet. Revisions are its commits, cloning and pushing are git's, raw files
+  are GitHub's. Its record (title, visibility, paper passage, stars, comments, forks) lives in
+  `oscr_forge`; a fork copies the folder into the forker's own `snippets` repository in one
+  commit. What the inventory lists for gists under phase 01 (every gist a Git repository, clone,
+  push) is met by that repository.
+  - Not GitHub's gists: the App would need the "Gists" account permission, which D00-14 does not
+    request, and the terms reading of D00-2 covered repositories, not gists.
+  - Not text in D1: no git, and the row budget.
+- **Research additions**: a snippet attached to a paper passage (a DOI and a Methods paragraph,
+  with lines at a revision; shown beside the maps, never a map, never a DOI); a snippet from
+  selected lines; citing a snippet; email addresses masked.
+
+**Depends on:** 01 (a repository per researcher); 02 (the renderer); 03 (commits); 08 (stars,
+notifications, search); 16 (reports and moderation).
+
+**Budget:** a snippet created or changed: 2 requests and 1–3 rows; stars and comments are
+OSCR-native (1 request, 1–2 rows); ~300 requests and ~250 rows written a day. Reading a snippet
+is reading GitHub (0 requests); the embed script is a static file that reads raw files in the
+visitor's browser. Needs C3.
+
+**Research:** a few lines tied to a precise passage of a paper, and cited on their own.
+
+#### Phase 15, Ease of use
+
+**Inventory:** 293 features (199 Reproduce, 94 Adapt), with the new groups "Localization" (1),
+"Service status" and "Service status and help" (4).
+
+**Delivers:**
+- **Keyboard shortcuts** on every page (a help dialog; character keys can be turned off): for
+  code (`t`, `l`, `w`, `y`, `b`, `e`), lists, issues, pull requests, reviews, projects and
+  notifications (`j`, `k`, `e`, `Shift`+`U`, `I`, `M`).
+- **The command palette** (`Cmd`/`Ctrl`+`K`): navigation, scopes, prefixes (`#`, `!`, `@`, `/`),
+  command mode, commands for repositories, files, issues, pull requests, discussions and the
+  theme; from a static index, 0 requests.
+- **Preferences**: tab size, a fixed-width font for Markdown, link underlines, hovercards off,
+  autoplay of animated images, reduced motion, emoji skin tone, increased contrast (for
+  signed-out visitors too), line spacing. Themes are options in `science.css`: light by
+  default; a dark theme and colour-vision themes only when chosen (`html[data-theme]`;
+  CLAUDE.md: no dark theme by default). Kept in the browser (0 rows), synced to the account only
+  when asked.
+- **Accessibility**: a skip link, landmarks, headings, announcements, focus kept after a reload,
+  reflow at 320 px, text at 200%, target sizes, visible focus, accessible math, Mermaid and
+  charts, screen-reader guides, a conformance report. Each page's baseline is its own phase's
+  (`NIGHT_RUN.md` §4); this phase audits and completes it.
+- **Phones and tablets**: every page responsive; triage, review, issues and code search on a
+  phone. The inventory's mobile-app items become the responsive site.
+- **Navigation**: global navigation with recent items, hovercards, the repository switcher in
+  the breadcrumb, dashboards' density, feature previews, supported browsers and
+  troubleshooting.
+- **Localization** (new): English only for now, with the interface's texts kept in one place so
+  translations can come later.
+- **Status and help** (new): a static `/status` page with 90 days of availability and incidents,
+  and the daily quotas in words, built by the Mac from outbound checks of the site every five
+  minutes (nothing on the Mac listens). A static page changes only when the site is deployed, so
+  it says when it was built. Help pages, guides and open documentation.
+
+**Depends on:** every phase before it: it covers what exists.
+
+**Budget:** ~200 requests and ~100 rows written a day (preferences synced on request). The
+palette's index and the status page are static, built by the Mac.
+
+**Research:** reading a paper's code and its map on a phone; accessible math and diagrams for
+the Methods; shortcuts shared with GitHub, so researchers keep their habits.
+
+### 15.7 Decisions taken in this plan
+
+Taken without the owner, by the criteria of `NIGHT_RUN.md` §1 (zero cost, the services' terms,
+security, simplicity, consistency with `CLAUDE.md`). Each goes into `DECISIONS.md` with the
+phase that builds it.
+
+1. **The new features' phases** (§15.3): account lifecycle and account security to 09,
+   automated-decision transparency to 05, environments and packages to 07, search to 08,
+   privacy and data rights to 16, localization and status and help to 15.
+2. **The order** (§15.5): the value order, with 03 moved before 04; cross-cutting phases cover
+   what exists when they run.
+3. **The forge service's write routes stay closed to the public until phase 16 is merged**
+   (§15.5).
+4. **OSCR-native objects** (scientific issues, discussions, snippets' records, OSCR's layer):
+   nightly static shards for signed-out readers (0 requests, ≤ 64 files per family), live for
+   signed-in readers (1 request).
+5. **Notifications are fanned out on read** (phase 08).
+6. **A snippet is a folder of a `snippets` repository** in the researcher's own account
+   (phase 13).
+7. **The researchers' command-line tool is a distribution of its own** (phase 14).
+8. **OSCR's own tokens follow the inventory's token features from phase 01**, for OSCR's API
+   only and never for git (D00-3); they are issued with phase 10.
+9. **The row budget**: phases 09, 06, 13 and 15 start after C3, or with tighter per-account caps
+   until then (§15.4).
+
+### 15.8 What stays for the owner
+
+The owner's steps of the storage decision are in [ARCHITECTURE.md](ARCHITECTURE.md), "The
+owner's steps": register the GitHub App; give its values to `tools/setup_cloudflare.sh`, which
+also creates `oscr_forge`; decide C3, a session-held user token, the clone alias, and Software
+Heritage archiving by default; optionally, a research-compendium template repository; then the
+tests to run once the App exists. This plan adds:
+- **phase 08**: the D1 database `oscr_code`, if code search is built as the inventory adapts it
+  (through the same setup script);
+- **phase 12**: a read-only Cloudflare analytics token, in the keychain, for the traffic counts;
+- **phase 14**: the command-line tool's publication on PyPI (an outside contact);
+- **phase 09**: the decision on private repositories (D00-14), which the peer-review link waits
+  for.
+
+### 15.9 Risks of the GitHub side
+
+From the storage decision (D00-1 to D00-16), in short:
+- GitHub can change its APIs or terms, and its secondary rate limits are partly undisclosed.
+  GitHub Free has no availability commitment: during an outage the code views stop, and the
+  catalogue stays up.
+- Anonymous reading is 60 REST requests an hour per IP, shared behind campus networks; raw files
+  fall under GitHub's unpublished anonymous limits. Pages degrade to a link to GitHub.
+- One authorization per action may prompt the person every time (to test once the App exists).
+  That would weigh toward the owner's decision on session-held tokens.
+- OSCR cannot refuse a pushed secret or a known malicious file: pushes go to GitHub.
+- A researcher can delete a repository or rewrite history, breaking the commits maps point to;
+  Software Heritage archiving stays on request unless the owner decides otherwise.
+- The Worker's 10 ms of CPU caps web commits (1 MiB to start) and assets (25 MiB); the D1 write
+  cap holds phases 09, 06, 13 and 15 until C3.
+- Researchers without a GitHub account, or barred from it, cannot host; private repositories are
+  out of scope at first.
+
+---
+
 ## Appendix A. Free-tier facts and sources
 
 Checked on 2026-09-26; "live" means seen in real API responses.
@@ -764,3 +1904,26 @@ Checked on 2026-09-26; "live" means seen in real API responses.
 | Software Heritage | 120 requests an hour without a token (live) | archive.softwareheritage.org/api/ |
 | Zenodo | 60 requests a minute and 2,000 an hour without login; 100 and 5,000 with | developers.zenodo.org (rate limiting) |
 | OpenNeuro, DANDI, RRID | OpenNeuro GraphQL and DANDI REST answer without a key; RRID resolver needs no key | docs.openneuro.org, docs.dandiarchive.org, scicrunch.org/resolver |
+
+## Appendix B. The GitHub side's facts and sources
+
+Read on 2026-09-28/29 for the storage decision (`data/night/storage/user-owned.md` and
+`cloudflare-capacity.md`, [DECISIONS.md](DECISIONS.md)); "measured" means measured that night.
+They set the budgets of §15.4.
+
+| subject | fact | source |
+|---|---|---|
+| GitHub Apps | registering an App is free; up to 100 Apps per account, no limit on installations; a user access token is limited to the App's permissions, the user's rights and the installed repositories, and expires after 8 hours | docs.github.com/en/apps/creating-github-apps/registering-a-github-app/registering-a-github-app; …/authenticating-with-a-github-app/generating-a-user-access-token-for-a-github-app |
+| GitHub REST rate limits | a user token 5,000 requests an hour; an installation 5,000 an hour, plus 50 per repository beyond 20, at most 12,500; unauthenticated 60 an hour per IP; an authorized conditional request answered `304` is not counted | docs.github.com/en/rest/using-the-rest-api/rate-limits-for-the-rest-api |
+| GitHub secondary limits | ≤ 100 concurrent requests; 80 content-generating requests a minute and 500 an hour; 2,000 OAuth token requests an hour per App; other limits "for undisclosed reasons" | same page |
+| GitHub search API | up to 1,000 results per search; 30 requests a minute authenticated, 10 unauthenticated; code search requires authentication (10 a minute) | docs.github.com/en/rest/search/search |
+| Reading from the browser | `api.github.com` and `raw.githubusercontent.com` answer `access-control-allow-origin: *`; `codeload.github.com` archives do not (measured). Raw downloads fall under GitHub's unpublished anonymous limits since May 2025 | measured (`curl -I`); github.blog changelog, 2025-05-08 |
+| Files and repositories | a warning above 50 MiB, blocked above 100 MiB, 25 MiB through the browser; a push at most 2 GB; a repository ideally under 1 GB, under 5 GB strongly recommended; ≤ 6 pushes a minute per repository | docs.github.com/en/repositories/working-with-files/managing-large-files/about-large-files-on-github; …/creating-and-managing-repositories/repository-limits |
+| Diffs | a pull request diff ≤ 20,000 lines or 1 MB, ≤ 300 files; a comparison ≤ 250 commits | repository limits |
+| Git LFS (GitHub Free) | 10 GiB stored and 10 GiB downloaded a month per owner; past it without a payment method, pushes or LFS are blocked until the next month, not billed | docs.github.com/en/billing/concepts/product-billing/git-lfs |
+| Release assets | each file under 2 GiB; no limit on a release's total size or bandwidth; up to 1,000 assets per release | docs.github.com/en/repositories/releasing-projects-on-github/about-releases |
+| Actions | free and unlimited on public repositories (standard runners); 2,000 minutes a month for private repositories on Free, blocked past it without a payment method; allowed for developing and testing the repository's software | docs.github.com/en/billing/concepts/product-billing/github-actions; GitHub Terms for Additional Products and Features |
+| Webhooks | payloads capped at 25 MB; no automatic redelivery of failed deliveries | docs.github.com/en/webhooks/webhook-events-and-payloads; …/handling-failed-webhook-deliveries |
+| Deleted repositories | restorable for 90 days, unless part of a fork network that is not empty | docs.github.com/en/repositories/creating-and-managing-repositories/restoring-a-deleted-repository |
+| Terms | the confirmed core: repositories in the researcher's own account, the App acting with their authorization, one repository per explicit request, no bulk activity, no git proxy, read-only mirroring of public repositories; AUP §4 (no automated starring or following), AUP §6 and ToS §H (no exploiting access to the Service, no shared tokens to exceed limits) | docs.github.com/en/site-policy/github-terms/github-terms-of-service; …/acceptable-use-policies/github-acceptable-use-policies |
+| Cloudflare for the GitHub side | planning split of the 100,000 Worker requests: 60,000 arXiv side, 40,000 GitHub side (C2); D1 writes for the GitHub side: 5,000 a day in code until C3 (20,000 proposed); R2 excluded, its checkout asks for a card (C1); no Git object in any Cloudflare store, no static file per repository (C5); indexing a push measured at 3–14 ms of CPU for 0.3 MB and 24–91 ms for 1.7–3.5 MB, against 10 ms | `cloudflare-capacity.md` §5; DECISIONS.md D00-1, D00-12 |

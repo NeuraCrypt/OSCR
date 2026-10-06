@@ -1,0 +1,53 @@
+{
+ "about": "Keys of the social layer's shards (night phase 08) and their shard: the first byte of SHA-256 of the key, mod 64. Read by tests/test_social.py and website/tests/forge-pages/social.test.ts.",
+ "pairs": [
+  [
+   "repo:github:101",
+   "09"
+  ],
+  [
+   "paper:doi:10.1234/eeg.2026",
+   "54"
+  ],
+  [
+   "topic:eeg",
+   "53"
+  ],
+  [
+   "person:ada-fixture",
+   "41"
+  ],
+  [
+   "person:0000-0002-1825-0097",
+   "41"
+  ],
+  [
+   "owner:github:lab",
+   "24"
+  ],
+  [
+   "repo:memory:5",
+   "41"
+  ],
+  [
+   "person:bob-fixture",
+   "40"
+  ],
+  [
+   "topic:fmri",
+   "52"
+  ],
+  [
+   "paper:doi:10.7554/elife.12345",
+   "08"
+  ],
+  [
+   "owner:github:neuro-lab",
+   "12"
+  ],
+  [
+   "repo:github:987654321",
+   "44"
+  ]
+ ]
+}

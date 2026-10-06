@@ -1,0 +1,107 @@
+---
+// /repositories/: "Your repositories" (night phase 01, E6). The page is static: signed out (no hint
+// cookie), it shows its sentence and the sign-in link, and asks the Worker nothing. Signed in, its
+// script (src/scripts/repositories.ts) reads GET /api/forge/mine: the repositories the registry
+// knows in the reader's GitHub account, the ones waiting for deletion first, the filters (GitHub's
+// mirror: and template: qualifiers, adapted), and the caps of one account. The contract:
+// docs/FORGE.md. science.css only; the platform's name from src/config.ts; no inline script (the
+// page's Content-Security-Policy in public/_headers forbids it).
+import Base from "../layouts/Base.astro";
+import { SITE_NAME } from "../config";
+import { GRACE_SECONDS } from "../../worker/forge/service/caps.ts";
+
+const graceDays = Math.round(GRACE_SECONDS / 86_400);
+---
+<Base
+  title="Your repositories"
+  description="Your repositories: the ones you created or linked, their papers and their state."
+  breadcrumb={[{ text: "Your repositories" }]}
+>
+  <h1>Your repositories</h1>
+  <p class="summary">
+    The repositories of your GitHub account that {SITE_NAME} knows: the ones you created or linked through it, the
+    papers they are attached to, and the ones waiting for deletion.
+  </p>
+  <p id="repos-message" role="status" aria-live="polite"></p>
+  <noscript><p class="warning">This page runs in your browser: it needs JavaScript.</p></noscript>
+
+  <div id="repos-signed-out">
+    <p>
+      Sign in to see your repositories:
+      <a href="/api/auth/github/start?return=/repositories/">sign in with GitHub</a>, or with ORCID or Google from
+      <a href="/account/">your account page</a> and link your GitHub account there. Your repositories are the ones in
+      your own GitHub account; {SITE_NAME} keeps only its layer over them (their papers, the maps that point to them).
+    </p>
+    <p>
+      Without an account you can still read every public repository's page, and
+      <a href="/hosting/">the hosting guides</a> say where repositories live and what {SITE_NAME} keeps of them.
+    </p>
+  </div>
+
+  <div id="repos-signed-in" hidden>
+    <p>Your GitHub account: <span id="repos-login"></span>.</p>
+    <ul>
+      <li><a href="/new/">Create a repository</a> in your GitHub account, attached to your paper.</li>
+      <li><a href="/new/link/">Link a repository you already have</a>: the mirror mode.</li>
+      <li><a href="/new/import/">Import one</a> from another place, on your own computer.</li>
+    </ul>
+
+    <p id="repos-no-github" hidden>
+      Your account has no GitHub account linked yet: link one from <a href="/account/">your account page</a>, and your
+      repositories will be listed here.
+    </p>
+
+    <p id="repos-closed" class="warning" hidden>
+      The GitHub side opens to the public with its content rules; until then, only the owner of the registry can create,
+      link or change repositories here. You can already read your list.
+    </p>
+
+    <section id="repos-pending" class="danger" hidden>
+      <h2>Waiting for deletion</h2>
+      <p>
+        These repositories were asked for deletion: archived and hidden from the registry, they leave it at the end of
+        their {graceDays} days of grace. Until then, each one can be restored. Deleting one on GitHub stays your own act, from
+        GitHub's settings.
+      </p>
+      <ul id="repos-pending-list"></ul>
+    </section>
+
+    <form id="repos-filter">
+      <p>
+        <label for="repos-mode">Show</label>{" "}
+        <select id="repos-mode" name="mode">
+          <option value="">every repository</option>
+          <option value="created">the ones created through the registry</option>
+          <option value="mirror">the linked ones (mirrors)</option>
+          <option value="installed">the linked ones with the App installed</option>
+          <option value="public">the linked ones without the App</option>
+        </select>{" "}
+        <label for="repos-template">and</label>{" "}
+        <select id="repos-template" name="template">
+          <option value="">templates or not</option>
+          <option value="true">templates only</option>
+          <option value="false">no templates</option>
+        </select>{" "}
+        <button type="submit">Show</button>
+      </p>
+    </form>
+
+    <dl id="repos-list" class="listing"></dl>
+    <p id="repos-empty" hidden>
+      No repository here yet: <a href="/new/">create one</a> or <a href="/new/link/">link one you have</a>.
+    </p>
+    <p><button id="repos-more" type="button" hidden>More repositories</button></p>
+
+    <table id="repos-caps" class="limits" hidden>
+      <caption>What one account may do in 24 hours</caption>
+      <thead>
+        <tr><th scope="col">What</th><th scope="col">Done</th><th scope="col">At most</th></tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <script>
+    import "../scripts/repositories";
+  </script>
+</Base>

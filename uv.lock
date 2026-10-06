@@ -220,15 +220,15 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "httpx", specifier = ">=0.27" },
-    { name = "huggingface-hub", specifier = ">=0.25" },
-    { name = "pyarrow", specifier = ">=17" },
+    { name = "httpx", specifier = ">=0.28.1" },
+    { name = "huggingface-hub", specifier = ">=2.0.0" },
+    { name = "pyarrow", specifier = ">=25.0.1" },
 ]
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "pytest", specifier = ">=8" },
-    { name = "ruff", specifier = ">=0.6" },
+    { name = "pytest", specifier = ">=9.1.1" },
+    { name = "ruff", specifier = ">=0.16.9" },
 ]
 
 [[package]]

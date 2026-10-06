@@ -1,0 +1,275 @@
+---
+// /hosting/import/: the import guide (D00-8: no import runs in the Worker or on the Mac). Planning a
+// move to GitHub, trial imports, sizes, logs and locks, commit attribution, the converters of other
+// version control systems, large files before a converted history is pushed, a folder split into a
+// repository, subtree merges, duplicates and ongoing mirrors kept by the person, several
+// repositories at once (a POSIX sh script made in the browser by src/scripts/import-repo.ts), what to
+// set after an import, and the messages that go wrong. GitHub's own tools (its importer, Enterprise
+// Importer, rulesets) are explained and linked, never re-implemented (§15.2).
+//
+// A static page: the bulk form is shown by its script, which asks the Worker nothing (0 requests).
+// Every command comes from src/lib/import-commands.ts, with placeholders in capitals. No SSH address
+// is printed (it has an at sign; the site shows nothing shaped like an email address). science.css
+// only; the platform's name from src/config.ts.
+import Base from "../../layouts/Base.astro";
+import { SITE_NAME } from "../../config";
+import {
+  BULK_MAX,
+  commandText,
+  convertCommands,
+  IMPORTER_URL,
+  mirrorCommands,
+  ongoingMirrorCommands,
+  parseGitUrl,
+  splitCommands,
+  subtreeCommands,
+} from "../../lib/import-commands";
+import { SOURCES } from "../../lib/limits-text";
+
+const DOCS = "https://docs.github.com/en";
+const MIGRATIONS = {
+  planning: `${DOCS}/migrations/overview/planning-your-migration-to-github`,
+  paths: `${DOCS}/migrations/overview/migration-paths-to-github`,
+  importer: `${DOCS}/migrations/importing-source-code/using-github-importer/about-github-importer`,
+  commandLine: `${DOCS}/migrations/importing-source-code/using-the-command-line-to-import-source-code/adding-locally-hosted-code-to-github`,
+  enterprise: `${DOCS}/migrations/using-github-enterprise-importer`,
+  mannequins: `${DOCS}/migrations/using-github-enterprise-importer/completing-your-migration-with-github-enterprise-importer/reclaiming-mannequins-for-github-enterprise-importer`,
+  duplicating: `${DOCS}/repositories/creating-and-managing-repositories/duplicating-a-repository`,
+  splitting: `${DOCS}/get-started/using-git/splitting-a-subfolder-out-into-a-new-repository`,
+  subtree: `${DOCS}/get-started/using-git/about-git-subtree-merges`,
+  wrongUser: `${DOCS}/pull-requests/committing-changes-to-your-project/troubleshooting-commits/why-are-my-commits-linked-to-the-wrong-user`,
+  rulesets: `${DOCS}/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/about-rulesets`,
+  topics: `${DOCS}/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/classifying-your-repository-with-topics`,
+  licence: `${DOCS}/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/licensing-a-repository`,
+};
+const TOOLS = {
+  gitSizer: "https://github.com/github/git-sizer",
+  filterRepo: "https://github.com/newren/git-filter-repo",
+  gitSvn: "https://git-scm.com/docs/git-svn",
+  gitP4: "https://git-scm.com/docs/git-p4",
+  hgFastExport: "https://github.com/frej/fast-export",
+  gitTfs: "https://github.com/git-tfs/git-tfs",
+  lfsMigrate: "https://github.com/git-lfs/git-lfs/blob/main/docs/man/git-lfs-migrate.adoc",
+};
+
+// Placeholders, in capitals: your account, the new repository, the source.
+const DEST = { owner: "OWNER", name: "NAME" };
+const gitlab = parseGitUrl("https://gitlab.com/LAB/NAME")!;
+const trial = commandText(mirrorCommands(gitlab, { owner: "OWNER", name: "NAME-trial" }));
+const sizes = ["git clone --mirror https://gitlab.com/LAB/NAME NAME.git", "cd NAME.git", "git-sizer --verbose", "git count-objects -vH"];
+const svn = commandText(convertCommands({ kind: "svn", source: "https://svn.example.org/repos/NAME", dest: DEST, authors: true }));
+const gitSvn = commandText(convertCommands({ kind: "git-svn", source: "https://svn.example.org/repos/NAME", dest: DEST, authors: true }));
+const hg = commandText(convertCommands({ kind: "hg", source: "https://hg.example.org/NAME", dest: DEST, authors: true }));
+const tfvc = commandText(
+  convertCommands({ kind: "tfvc", source: "https://tfs.example.org/tfs/DefaultCollection", tfvcPath: "$/Project/Main", dest: DEST }),
+);
+const perforce = commandText(
+  convertCommands({ kind: "perforce", source: "//depot/project", p4port: "ssl:perforce.example.org:1666", dest: DEST }),
+);
+const withLfs = commandText(
+  convertCommands({ kind: "svn", source: "https://svn.example.org/repos/NAME", dest: DEST, lfs: true }).slice(2),
+);
+const authorsFile = ["jdoe = Jane Doe <JANE'S ADDRESS FOR GIT>", "(one line per user of the old system)"];
+const split = commandText(splitCommands(parseGitUrl("https://github.com/OWNER/BIG-PROJECT")!, "analysis/eeg", DEST));
+const subtree = commandText(subtreeCommands(parseGitUrl("https://gitlab.com/LAB/TOOLBOX")!, "vendor/toolbox"));
+const ongoing = commandText(ongoingMirrorCommands(DEST));
+const after = [
+  'gh repo edit OWNER/NAME --description "What the code does" --homepage "https://doi.org/10.XXXX/YYYY"',
+  "gh repo edit OWNER/NAME --add-topic neuroscience --add-topic eeg",
+];
+---
+<Base
+  title="Importing a repository"
+  description="Planning an import, from GitLab, Subversion, Mercurial and others, keeping commit ids."
+  breadcrumb={[{ text: "Hosting code", href: "/hosting/" }, { text: "Importing a repository" }]}
+>
+  <h1>Importing a repository</h1>
+  <p class="summary">
+    How to move a repository from another host or version control system to your GitHub account, keeping its commit
+    ids whenever it is already Git. Every import runs on your own computer: {SITE_NAME} runs none and sees none of your
+    credentials.
+  </p>
+  <p>
+    For one Git repository, <a href="/new/import/">the import page</a> writes the commands for you. This guide is for
+    the larger moves: several repositories, another version control system, a folder that becomes a repository.
+  </p>
+
+  <h2 id="planning">Planning an import</h2>
+  <p>
+    Before moving anything, list what you have: the repositories, their sizes, which use Git LFS, which have submodules,
+    and who pushes to them. GitHub's <a href={MIGRATIONS.planning}>planning guide</a> and its
+    <a href={MIGRATIONS.paths}>migration paths</a> say which tool fits which source, and at which level: the code and
+    its history only (what this guide does), or also issues, pull requests and wikis (GitHub Enterprise Importer, for
+    organizations).
+  </p>
+  <h3 id="trial">Trial imports</h3>
+  <p>
+    Import once into a throwaway repository (NAME-trial), check it, delete it, then import for real. A trial costs
+    nothing and shows the size, the time it takes, and any file GitHub refuses:
+  </p>
+  <pre class="commands" data-copy="the trial import">{trial}</pre>
+  <h3 id="sizes">Sizes, before you push</h3>
+  <p>
+    GitHub refuses a file over its size limit and a push over its push limit (<a href="/hosting/limits/">the limits</a>).
+    <a href={TOOLS.gitSizer}>git-sizer</a> lists the largest blobs, trees and histories of a repository:
+  </p>
+  <pre class="commands" data-copy="the size commands">{commandText(sizes)}</pre>
+  <p>
+    A push over the limit: push in steps, one range of commits at a time, as GitHub's
+    <a href={SOURCES.pushLimit}>troubleshooting the 2 GiB push limit</a> shows.
+  </p>
+  <h3 id="logs">Migration logs, locks and aborting</h3>
+  <p>
+    A command-line import keeps its own log: the terminal's output. Keep it (<code>script import.log</code> before
+    starting records everything). <a href={IMPORTER_URL}>GitHub's importer</a> works on its own servers: it copies one
+    repository over https, does not move Git LFS objects, tells you by a notification when it has finished, and can be
+    cancelled from its page while it runs (<a href={MIGRATIONS.importer}>about GitHub's importer</a>). GitHub
+    Enterprise Importer can lock the source repositories during a move; a command-line import locks nothing: tell the
+    people who push to stop until the new repository is in place.
+  </p>
+
+  <h2 id="attribution">Commit attribution</h2>
+  <p>
+    GitHub links a commit to an account by the address written in the commit, if that account has it among its own
+    addresses (<a href={MIGRATIONS.wrongUser}>why commits are linked to the wrong user</a>). An import keeps the commits
+    exactly as they were, addresses included: {SITE_NAME} never reads them and never shows them. Commits whose address
+    no account claims show the name only. Organizations that move with GitHub Enterprise Importer get placeholder
+    accounts, called mannequins, for the people it could not match, which they
+    <a href={MIGRATIONS.mannequins}>reclaim afterwards</a>.
+  </p>
+
+  <h2 id="gitlab">From GitLab, Bitbucket, Codeberg or a lab's server</h2>
+  <p>
+    Any Git host is imported the same way: git clone --mirror, then git push --mirror into an empty repository, every
+    branch, tag and commit id kept. <a href="/new/import/">The import page</a> writes these commands for your addresses;
+    GitHub's <a href={MIGRATIONS.commandLine}>command-line import</a> explains them. The source's merge and pull request
+    refs stay behind: GitHub refuses them on a push.
+  </p>
+
+  <h2 id="other-systems">From another version control system</h2>
+  <p>
+    Converting from another system writes a new Git history: the commits get new ids. Tracing maps made on the old
+    system cannot carry over; maps made after the import can. Each converter runs on your computer. In the commands,
+    authors.txt maps the old system's user names to the names Git writes; you write that file yourself, one line per
+    user:
+  </p>
+  <pre class="commands">{commandText(authorsFile)}</pre>
+  <h3 id="subversion">Subversion</h3>
+  <p>With svn2git, for a repository with the usual trunk, branches and tags:</p>
+  <pre class="commands" data-copy="the Subversion commands (svn2git)">{svn}</pre>
+  <p>Or with Git's own <a href={TOOLS.gitSvn}>git svn</a>:</p>
+  <pre class="commands" data-copy="the Subversion commands (git svn)">{gitSvn}</pre>
+  <h3 id="mercurial">Mercurial</h3>
+  <p>With <a href={TOOLS.hgFastExport}>hg-fast-export</a>:</p>
+  <pre class="commands" data-copy="the Mercurial commands">{hg}</pre>
+  <h3 id="tfvc">TFVC</h3>
+  <p>With <a href={TOOLS.gitTfs}>git-tfs</a> (Team Foundation Version Control):</p>
+  <pre class="commands" data-copy="the TFVC commands">{tfvc}</pre>
+  <h3 id="perforce">Perforce</h3>
+  <p>With Git's own <a href={TOOLS.gitP4}>git p4</a>:</p>
+  <pre class="commands" data-copy="the Perforce commands">{perforce}</pre>
+  <h3 id="large-files">Large files before the first push</h3>
+  <p>
+    A converted history is new, so rewriting it costs nothing: move the large files into Git LFS before the first push
+    (<a href={TOOLS.lfsMigrate}>git lfs migrate</a>), or GitHub refuses the push. After the conversion, in its folder:
+  </p>
+  <pre class="commands" data-copy="the LFS commands">{withLfs}</pre>
+  <p><a href="/hosting/large-files/">Large files</a> says where data belongs before it goes into LFS.</p>
+
+  <h2 id="split">A folder of a repository into a new repository</h2>
+  <p>
+    With <a href={TOOLS.filterRepo}>git filter-repo</a>, the folder becomes the new repository's root, with the history
+    of its files only (<a href={MIGRATIONS.splitting}>splitting a subfolder</a>). These commits get new ids.
+  </p>
+  <pre class="commands" data-copy="the split commands">{split}</pre>
+
+  <h2 id="subtree">Another repository into a folder of yours: a subtree merge</h2>
+  <p>
+    Inside the receiving repository, the other one's history is merged under a folder, and its new commits can be
+    brought in later (<a href={MIGRATIONS.subtree}>about Git subtree merges</a>):
+  </p>
+  <pre class="commands" data-copy="the subtree commands">{subtree}</pre>
+
+  <h2 id="duplicate">A copy without a fork, and an ongoing mirror</h2>
+  <p>
+    A fork stays attached to its source on GitHub; a duplicate is a repository of its own, every commit id kept
+    (<a href={MIGRATIONS.duplicating}>duplicating a repository</a>): it is the import above, from a GitHub address. When
+    the source goes on living elsewhere, you can keep your copy up to date yourself, from the folder of the first
+    import, by hand or from your own scheduler. {SITE_NAME} runs no mirror for you.
+  </p>
+  <pre class="commands" data-copy="the update commands">{ongoing}</pre>
+
+  <h2 id="bulk">Several repositories at once</h2>
+  <p>
+    List the repositories, one a line: the source's git address, then, if you like, the new name (or account/name) and
+    the word lfs when the source uses Git LFS. The page writes a shell script (POSIX sh) that imports them one after
+    the other, each in its own block, stopping at the first error. It is made in your browser and sent nowhere; it holds
+    no credential: git asks GitHub for yours. Create each repository first, empty. At most {BULK_MAX} repositories in one
+    script.
+  </p>
+  <form id="bulk-form" hidden>
+    <p>
+      <label for="bulk-owner">Your GitHub account</label><br />
+      <input type="text" id="bulk-owner" autocomplete="off" spellcheck="false" maxlength="39" />
+    </p>
+    <p>
+      <label for="bulk-list">The repositories, one a line</label><br />
+      <textarea id="bulk-list" rows="6" cols="60" spellcheck="false" placeholder="https://gitlab.com/lab/eeg-analysis.git eeg-analysis lfs"></textarea>
+    </p>
+    <p><button type="submit">Write the script</button></p>
+    <p id="bulk-message" role="status"></p>
+    <ul id="bulk-errors" hidden></ul>
+  </form>
+  <section id="bulk-result" class="setup" hidden>
+    <h3>The script</h3>
+    <p>Run it in an empty folder: sh import.sh</p>
+    <pre class="commands" id="bulk-script" data-copy="the script"></pre>
+    <p id="bulk-download"></p>
+  </section>
+  <noscript><p>Without JavaScript, run the commands of <a href="/new/import/">the import page</a> once per repository.</p></noscript>
+
+  <h2 id="after">After the import</h2>
+  <p>
+    An import brings the history, not the repository's settings: set its description, website and
+    <a href={MIGRATIONS.topics}>topics</a> on GitHub (or with GitHub's command-line tool, gh), and check that it has a
+    <a href={MIGRATIONS.licence}>licence</a>: without one, {SITE_NAME} keeps no copy of its scripts. Then
+    <a href="/new/link/">link it</a> to its papers.
+  </p>
+  <pre class="commands" data-copy="the settings commands">{commandText(after)}</pre>
+
+  <h2 id="troubleshooting">When it goes wrong</h2>
+  <dl>
+    <dt>remote: error: File … is … MB; this exceeds GitHub's file size limit</dt>
+    <dd>A file over the limit is in the history: move it into Git LFS before pushing (above), or leave it out.</dd>
+    <dt>fatal: the remote end hung up unexpectedly, or a push that stops</dt>
+    <dd>Often a push over the push limit: push in steps (<a href={SOURCES.pushLimit}>the 2 GiB push limit</a>).</dd>
+    <dt>! [remote rejected] refs/pull/… (deny updating a hidden ref)</dt>
+    <dd>The source's pull request refs: the mirror commands leave them behind; delete them as the commands do.</dd>
+    <dt>! [remote rejected] … (push declined due to repository rule violations)</dt>
+    <dd>
+      A ruleset of the destination refuses the push. Import into a repository without rulesets, then add them; bypass
+      lists are set by the repository's admins (<a href={MIGRATIONS.rulesets}>about rulesets</a>).
+    </dd>
+    <dt>Authentication failed, or a password prompt that refuses your password</dt>
+    <dd>GitHub takes a token as the password over https: <a href="/hosting/tokens/">tokens for git</a>.</dd>
+  </dl>
+
+  <h2 id="enterprise">Organizations and GitHub Enterprise</h2>
+  <p>
+    Moving an organization's repositories with their issues and pull requests is
+    <a href={MIGRATIONS.enterprise}>GitHub Enterprise Importer</a>'s work, and live migrations between Enterprise
+    servers are GitHub's own service: {SITE_NAME} does not re-implement them. Once the repositories are on GitHub,
+    link them here like any other.
+  </p>
+
+  <h2 id="more">More</h2>
+  <ul>
+    <li><a href="/new/import/">Import a repository</a>: the commands for one.</li>
+    <li><a href="/hosting/leave/">Leaving the registry</a>: your repository stays yours.</li>
+    <li><a href="/hosting/">The hosting guides</a>.</li>
+  </ul>
+
+  <script>
+    import "../../scripts/import-repo";
+  </script>
+</Base>

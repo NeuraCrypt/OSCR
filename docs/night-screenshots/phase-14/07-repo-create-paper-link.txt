@@ -1,0 +1,18 @@
+$ oscr repo create e2e-cli-tool --description 'Made from the command line' --license mit --paper 10.5555/oscr.fixture.1 --no-browser
+http://localhost:8791/r/ada-fixture/e2e-cli-tool/
+http://localhost:8791/new/link/?repo=ada-fixture/e2e-cli-tool&paper=10.5555/oscr.fixture.1
+Made ada-fixture/e2e-cli-tool on GitHub, public, with your own GitHub account.
+Next, attach it to 10.5555/oscr.fixture.1 in OSCR:
+ada-fixture/e2e-cli-tool is not linked in OSCR yet: the page that links it opens, with 10.5555/oscr.fixture.1.
+Confirm there, then GitHub asks you to authorize this one action: the registry never writes as you without it, and GitHub checks that you administer or maintain the repository.
+[exit 0]
+
+$ oscr paper list -R ada-fixture/e2e-cli-tool --json doi
+[{"doi": "10.5555/oscr.fixture.1"}]
+[exit 0]
+
+$ oscr paper link 10.5555/oscr.fixture.2 -R oscr-fixture/eeg-analysis --no-browser
+http://localhost:8791/r/oscr-fixture/eeg-analysis/settings/?paper=10.5555/oscr.fixture.2
+OSCR knows oscr-fixture/eeg-analysis: its settings page opens with 10.5555/oscr.fixture.2 in “Add”.
+Confirm there, then GitHub asks you to authorize this one action: the registry never writes as you without it, and GitHub checks that you administer or maintain the repository.
+[exit 0]

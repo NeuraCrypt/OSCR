@@ -9,7 +9,7 @@ import {
   type AuthorRecord, type PaperRecord, type Row, type ToolRecord,
 } from "../src/lib/render.ts";
 import {
-  ENTITY_ROWS_MAX, ENTITY_TYPES, FILE_LIMIT, FILE_MARGIN, FIXED_FILES_MAX, LIST_PAGES_MAX, SITEMAP_SHARDS, groupShards, keyOf, lookupShard, MAX_CATEGORIES, packEntities,
+  ENTITY_ROWS_MAX, ENTITY_TYPES, FILE_LIMIT, FILE_MARGIN, FIXED_FILES_MAX, GITHUB_SIDE_SHARDS, groupShards, keyOf, LIST_PAGES_MAX, lookupShard, MAX_CATEGORIES, packEntities, SITEMAP_SHARDS,
   SHARDS, shardOf, STATIC_PAPERS, staticSelection,
 } from "../src/lib/shards.ts";
 import worker from "../worker/index.ts";
@@ -88,6 +88,9 @@ describe("the number of files", () => {
     // With the 256 lots of scripts, the list's pages and the sitemap's shards (the launch pages,
     // 2026-09-29), still room for the fixed pages and bundles.
     assert.ok(shardFiles + 256 + MAX_CATEGORIES + 28 + LIST_PAGES_MAX + SITEMAP_SHARDS + 1 + 150 <= FIXED_FILES_MAX);
+    // And the GitHub side's (D16-3, kept additive at the reconciliation): its shards, and ~200 fixed
+    // pages and bundles. FIXED_FILES_MAX (4,000) holds the launch pages AND the GitHub side together.
+    assert.ok(shardFiles + 128 + MAX_CATEGORIES + 100 + GITHUB_SIDE_SHARDS + 200 <= FIXED_FILES_MAX, `${shardFiles + GITHUB_SIDE_SHARDS} shard files`);
   });
 
   it("chooses the same static papers at every build, ties broken by name", () => {

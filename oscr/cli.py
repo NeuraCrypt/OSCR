@@ -23,6 +23,14 @@
     oscr claims|reports|submissions list|accept|refuse|reverse   what the moderator's rules leave to the owner,
                                          and what they did (--auto-log) (oscr/moderation.py)
     oscr rights list|done|refuse|erase   the data-rights requests the Mac could not answer (oscr/rights.py)
+    oscr forge poll|mirrors|layer|status --local|--remote   the GitHub side (night phase 01, docs/FORGE.md):
+                                         the forge jobs, the public mirrors' heads, OSCR's static layer.
+                                         With OSCR_FORGE_PUSH=<target> in the settings, `oscr jobs poll`
+                                         also polls the forge jobs there, and with OSCR_FORGE_PUSH=remote
+                                         `oscr nightly` also reads the mirrors and writes the layer.
+    oscr security|usedby|social|status|malware …   the GitHub side's facts (night phases 08-16): the
+                                         dependency/security scans, the "used by" counts, the social layer
+                                         and Explore, the service status, and the local malware-digest scan.
 """
 from __future__ import annotations
 
@@ -124,7 +132,19 @@ def _jobs(con, a: argparse.Namespace, cfg: dict[str, str], client: Client, opts:
                              evidence=moderation.MacEvidence(client))
         try:
             if a.command == "jobs":
-                return jobs.poll(runner).describe(target)
+                out = jobs.poll(runner).describe(target)
+                if cfg.get("OSCR_FORGE_PUSH") == target:
+                    # The GitHub side's jobs (night phase 01), in the same state and budget; a failure is
+                    # said, and the community's answers stand.
+                    from . import forgejobs
+                    try:
+                        out += "\n" + forgejobs.command(
+                            con, "poll", target=target, folder=Path(a.folder), budget=a.budget, settings=cfg,
+                            persist_to=Path(a.persist_to) if a.persist_to else None, client=client,
+                            report=lambda m: print(m, flush=True))
+                    except (Exception, SystemExit) as e:
+                        out += f"\nforge jobs: {e}"
+                return out
             if a.id is None:
                 raise SystemExit(f"{a.command} {a.action}: which one? (its number, from `oscr {a.command} list`)")
             if a.command == "rights":
@@ -160,6 +180,32 @@ def _public_export(con, out: Path) -> str:
     return (f"public catalogue dump written to {path.parent}\n"
             "Nothing was published. A PUBLIC catalogue dataset on Hugging Face (the catalogue without "
             "the private contact table) is the owner's decision to create and publish.")
+
+
+def _forge(con, a: argparse.Namespace, cfg: dict[str, str], client: Client) -> str:
+    """The GitHub side (night phase 01): `oscr forge poll|mirrors|layer|status|retention` (oscr/forgejobs.py,
+    oscr/forgelayer.py, night phase 16's oscr/retention.py; docs/FORGE.md)."""
+    from . import forgejobs, forgelayer
+    target = "remote" if a.remote else "local" if a.local else None
+    if target is None and a.action != "status":
+        raise SystemExit(f"forge {a.action}: add --local (the local D1 of `wrangler dev`) or --remote "
+                         f"(the Cloudflare database oscr_forge)")
+    common = {"target": target, "folder": Path(a.folder), "budget": a.budget, "settings": cfg,
+              "persist_to": Path(a.persist_to) if a.persist_to else None,
+              "report": lambda m: print(m, flush=True)}
+    if a.action == "layer":
+        return forgelayer.command(con, "layer", out=Path(a.export), **common)
+    if a.action == "retention":
+        # Night phase 16: what the privacy statement keeps for a time only (oscr/retention.py).
+        from . import community, retention
+        d1 = community.open_d1(target, settings=cfg, persist_to=common["persist_to"], database="oscr_forge")
+        return retention.run(d1, budget=min(a.budget, 2_000))
+    if a.action == "status":
+        return "\n".join([forgejobs.command(con, "status", client=client, **common),
+                          forgelayer.command(con, "status", out=Path(a.export), **common)])
+    if a.action == "poll":
+        return forgejobs.command(con, a.action, client=client, instance=a.instance, **common)
+    return forgejobs.command(con, a.action, client=client, **common)
 
 
 def _zenodo(con, a: argparse.Namespace) -> None:
@@ -199,6 +245,26 @@ def _zenodo(con, a: argparse.Namespace) -> None:
         raise SystemExit(str(e)) from None
     finally:
         inv.close()
+
+
+#: The researchers' command line's own commands (cli/, the `oscr_cli` package: DECISIONS.md D14-1). The
+#: harvester has none of them; given one, argparse refuses it as always (exit 2), and a line says where
+#: that command lives. `run` is the harvester's here (the researchers' `oscr run` lists CI runs).
+RESEARCHER_COMMANDS = frozenset({
+    "auth", "repo", "pr", "issue", "release", "paper", "trace", "cite", "check", "search", "api", "browse",
+    "workflow", "config", "alias", "completion", "mcp", "help",
+})
+
+
+def researchers_hint(argv: list[str], harvester: set[str]) -> None:
+    """After argparse's own refusal: the researchers' tool, when the command word (the first word that is
+    a command of either tool) is one of its commands."""
+    word = next((w for w in argv if w in RESEARCHER_COMMANDS or w in harvester), None)
+    if word in RESEARCHER_COMMANDS and word not in harvester:
+        print(f"note: `{word}` is a command of the researchers' `oscr` (cli/, docs/CLI.md), not of the "
+              f"harvester's. In this repository it runs as `PYTHONPATH=cli/src .venv/bin/python -m oscr_cli {word}`; "
+              "elsewhere, as the `oscr` installed with `uv tool install ./cli` or `pipx install ./cli`.",
+              file=sys.stderr)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -391,13 +457,96 @@ def main(argv: list[str] | None = None) -> int:
 
     sp.add_parser("watchdog", help="restart a hung harvester, and run a missed nightly publication (launchd, every 10 min)")
 
+    fg = sp.add_parser("forge", help="the GitHub side (night phase 01): the forge jobs, the public mirrors' heads, "
+                                     "OSCR's static layer (docs/FORGE.md)")
+    fg.add_argument("action", choices=["poll", "mirrors", "layer", "status", "retention"])
+    fg_where = fg.add_mutually_exclusive_group()
+    fg_where.add_argument("--local", action="store_true", help="the local D1 of `wrangler dev --env local`")
+    fg_where.add_argument("--remote", action="store_true",
+                          help="the Cloudflare database oscr_forge: the REST API with OSCR_D1_ACCOUNT_ID, "
+                               "OSCR_D1_FORGE_ID and the keychain's token, else wrangler's own login")
+    fg.add_argument("--folder", default="data/community", help="the state (shared with `oscr community` and `oscr jobs`)")
+    fg.add_argument("--persist-to", default="", help="the local D1's state folder, when not website/.wrangler/state")
+    fg.add_argument("--budget", type=int, default=int(cfg.get("OSCR_COMMUNITY_BUDGET", "10000")),
+                    help="rows written a day, the facts push's included (default 10,000)")
+    fg.add_argument("--export", default="data/public",
+                    help="layer: the public export, whose forge/layer/ the shards go to")
+    fg.add_argument("--instance", choices=["sandbox", "zenodo"], default=cfg.get("OSCR_ZENODO_INSTANCE", "sandbox"),
+                    help="poll: the Zenodo of a release map's deposit (night phase 07; the sandbox by default)")
+
+    mw = sp.add_parser("malware", help="night phase 16: files whose SHA-256 is on the local known-malware list "
+                                       "(data/malware/sha256.txt or OSCR_MALWARE_LIST) lose their text; the GitHub side's "
+                                       "repositories holding one are hidden. Nothing is run, nothing fetched.")
+    mw.add_argument("action", choices=["scan", "status"])
+    mw_where = mw.add_mutually_exclusive_group()
+    mw_where.add_argument("--local", action="store_true", help="also hide in the local D1 of `wrangler dev --env local`")
+    mw_where.add_argument("--remote", action="store_true", help="also hide in the Cloudflare database oscr_forge")
+    mw.add_argument("--persist-to", default="", help="the local D1's state folder, when not website/.wrangler/state")
+
+    se = sp.add_parser("security", help="night phase 11: security and quality facts computed on the Mac and pushed to "
+                                        "oscr_forge, the dependency graph from environment files (docs/SECURITY_QUALITY.md). "
+                                        "Nothing is run, nothing resolved, nothing installed.")
+    se.add_argument("action", choices=["scan", "status", "sbom"])
+    se_where = se.add_mutually_exclusive_group()
+    se_where.add_argument("--local", action="store_true", help="the local D1 of `wrangler dev --env local`")
+    se_where.add_argument("--remote", action="store_true", help="the Cloudflare database oscr_forge")
+    se.add_argument("--folder", default="data/community", help="the state (the budget ledger, shared with the other pushers)")
+    se.add_argument("--persist-to", default="", help="the local D1's state folder, when not website/.wrangler/state")
+    se.add_argument("--budget", type=int, default=int(cfg.get("OSCR_COMMUNITY_BUDGET", "10000")),
+                    help="rows written a day, the facts push's included (default 10,000)")
+    se.add_argument("--repo", default="", help="sbom: only this repository (owner/name); default: every known one")
+    se.add_argument("--sbom-out", default="data/security/sbom", help="sbom: the folder for the SPDX files")
+    se.add_argument("--sbom-format", choices=["json", "tag-value"], default="json", help="sbom: the SPDX shape")
+
+    ub = sp.add_parser("usedby", help="night phase 12: repository statistics the registry alone has (docs/STATISTICS.md): "
+                                      "\"Used by\" (the papers and repositories that depend on a repository, counting papers), "
+                                      "the star history and the paper research marks, pushed to oscr_forge. GitHub's own "
+                                      "statistics are read in the reader's browser (0 requests).")
+    ub.add_argument("action", choices=["scan", "status"])
+    ub_where = ub.add_mutually_exclusive_group()
+    ub_where.add_argument("--local", action="store_true", help="the local D1 of `wrangler dev --env local`")
+    ub_where.add_argument("--remote", action="store_true", help="the Cloudflare database oscr_forge")
+    ub.add_argument("--folder", default="data/community", help="the state (the budget ledger, shared with the other pushers)")
+    ub.add_argument("--persist-to", default="", help="the local D1's state folder, when not website/.wrangler/state")
+    ub.add_argument("--budget", type=int, default=int(cfg.get("OSCR_COMMUNITY_BUDGET", "10000")),
+                    help="rows written a day, the facts push's included (default 10,000)")
+
+    so = sp.add_parser("social", help="the social layer (night phase 08): the static shards of stars, follows and "
+                                      "profiles, the Explore page, the collections (docs/SOCIAL.md)")
+    so.add_argument("action", choices=["layer", "search", "collections", "accept", "decline"])
+    so_where = so.add_mutually_exclusive_group()
+    so_where.add_argument("--local", action="store_true", help="the local D1s of `wrangler dev --env local`")
+    so_where.add_argument("--remote", action="store_true", help="the Cloudflare databases oscr_forge and oscr_community")
+    so.add_argument("--persist-to", default="", help="the local D1's state folder, when not website/.wrangler/state")
+    so.add_argument("--folder", default="data/community", help="search: the state of what was pushed (shared with `oscr forge`)")
+    so.add_argument("--export", default="data/public",
+                    help="layer: the public export, whose social/ the files go to; search: the export the index is made from")
+    so.add_argument("--handle", default="", help="accept, decline: the person who proposed the list (GitHub login or ORCID iD)")
+    so.add_argument("--list", type=int, default=0, help="accept, decline: the list's number")
+
+    st = sp.add_parser("status", help="night phase 15: the static /status page's data (90 days of availability and "
+                                      "incidents), from the Mac's OWN outbound checks of the site every five minutes. The "
+                                      "real checks are a launchd step the owner enables; nothing contacts the outside on "
+                                      "its own. `init` writes a placeholder, `check` records one check, `build` writes the page's data.")
+    st.add_argument("action", choices=["init", "check", "build"])
+    st.add_argument("--export", default="data/public", help="the public export whose site-status.json the page reads")
+    st.add_argument("--store", default="data/status/checks.jsonl", help="the raw checks the aggregation reads")
+    st.add_argument("--url", default=cfg.get("OSCR_SITE_URL", "https://openscicode.org/"),
+                    help="check: the site address to reach (the owner's step)")
+    st.add_argument("--window", type=int, default=90, help="days of history to keep (default 90)")
+
     n = sp.add_parser("nightly", help="the publication: public catalogue, then Hugging Face and the website")
     n.add_argument("--out", default="data/public", help="a separate folder, only ever generated in public mode")
     n.add_argument("--dataset", default=cfg.get("OSCR_HF_DATASET", ""), help="Hugging Face user/dataset (empty: send nothing)")
     n.add_argument("--cloudflare", default=cfg.get("OSCR_CLOUDFLARE_PROJECT", ""),
                    help="Cloudflare Pages project to rebuild and put online (empty: none)")
 
-    a = p.parse_args(argv)
+    try:
+        a = p.parse_args(argv)
+    except SystemExit as e:
+        if e.code == 2:
+            researchers_hint(sys.argv[1:] if argv is None else argv, set(sp.choices))
+        raise
     if a.command == "watchdog":
         from . import watchdog
         print(f"{time.strftime('%Y-%m-%d %H:%M')} {watchdog.run()}", flush=True)
@@ -473,11 +622,63 @@ def main(argv: list[str] | None = None) -> int:
                 return 0
             watchdog.mark("attempt")
             out = Path(a.out)
+            # Night phase 16: a file known as malware loses its text before anything is exported, and the
+            # GitHub side's repository holding it is hidden (oscr/malware.py). Nothing is run.
+            from . import malware
+            if malware.load():
+                try:
+                    from . import community
+                    forge_d1 = community.open_d1("remote", settings=cfg, database="oscr_forge") if cfg.get("OSCR_FORGE_PUSH") == "remote" else None
+                    print(f"{now()} " + malware.scan(con, forge_d1), flush=True)
+                except Exception as e:  # noqa: BLE001, the nightly goes on; the harvester already refuses listed files
+                    print(f"{now()} malware scan failed: {e}", flush=True)
             print(f"{now()} public catalogue → {catalog.generate(con, out, public=True)}", flush=True)
             from . import publish
             # Each upload is attempted on its own: Hugging Face being down does not keep
             # the website from updating, and vice versa.
             errors = []
+            if cfg.get("OSCR_FORGE_PUSH") == "remote":
+                # The GitHub side (night phase 01, docs/FORGE.md), between the public export and the
+                # deployment: the public mirrors' heads, then OSCR's static layer into the export.
+                from . import community, forgejobs, forgelayer
+                try:
+                    print(f"{now()} forge mirrors: " + forgejobs.mirrors(
+                        con, target="remote", folder=Path("data/community"),
+                        budget=int(cfg.get("OSCR_COMMUNITY_BUDGET", "10000")), settings=cfg, client=client,
+                        report=lambda m: print(m, flush=True)), flush=True)
+                except (Exception, SystemExit) as e:
+                    errors.append(f"Forge mirrors: {e}")
+                try:
+                    forge_d1 = community.open_d1("remote", settings=cfg, database="oscr_forge")
+                    print(f"{now()} forge layer: " + forgelayer.write(con, forge_d1, out), flush=True)
+                except (Exception, SystemExit) as e:
+                    errors.append(f"Forge layer: {e}")
+                # Night phase 16: what is kept for a time only, deleted (oscr/retention.py).
+                from . import retention
+                try:
+                    print(f"{now()} forge " + retention.run(community.open_d1("remote", settings=cfg, database="oscr_forge"),
+                                                              budget=int(cfg.get("OSCR_RETENTION_BUDGET", "2000"))), flush=True)
+                except (Exception, SystemExit) as e:
+                    errors.append(f"Forge retention: {e}")
+                # Night phase 08: the social layer's shards and the Explore page (docs/SOCIAL.md).
+                from . import social
+                try:
+                    print(f"{now()} social layer: " + social.write(
+                        community.open_d1("remote", settings=cfg, database="oscr_forge"),
+                        community.open_d1("remote", settings=cfg), out, con=con), flush=True)
+                except (Exception, SystemExit) as e:
+                    errors.append(f"Social layer: {e}")
+                # The GitHub side's search index (forge_fts), with the papers' own push switch.
+                if cfg.get("OSCR_D1_PUSH") == "remote":
+                    try:
+                        state = forgelayer.open_state(forgelayer.STATE_FOLDER)
+                        try:
+                            print(f"{now()} " + social.push_search(community.open_d1("remote", settings=cfg, database="oscr_search"),
+                                                                   social.search_docs(out), state), flush=True)
+                        finally:
+                            state.close()
+                    except (Exception, SystemExit) as e:
+                        errors.append(f"Forge search: {e}")
             if a.dataset:
                 try:
                     print(f"{now()} {publish.publish_hf(out, a.dataset)}", flush=True)
@@ -560,10 +761,45 @@ def main(argv: list[str] | None = None) -> int:
             from . import community
             print(community.command(con, a.action, target="remote" if a.remote else "local" if a.local else None,
                                     folder=Path(a.folder), budget=a.budget, settings=cfg))
+        elif a.command == "malware":
+            from . import community, malware
+            digests = malware.load()
+            if a.action == "status":
+                print(f"{len(digests):,} digests on the list at {malware.list_path()}" if digests else
+                      f"no list at {malware.list_path()}: fetch one (docs/MODERATION.md, “Known malware”)")
+            else:
+                target = "remote" if a.remote else "local" if a.local else None
+                forge_d1 = community.open_d1(target, settings=cfg, persist_to=Path(a.persist_to) if a.persist_to else None,
+                                             database="oscr_forge") if target and digests else None
+                print(malware.scan(con, forge_d1, digests=digests))
         elif a.command in ("jobs", "claims", "reports", "submissions", "rights"):
             print(_jobs(con, a, cfg, client, opts))
         elif a.command == "public-export":
             print(_public_export(con, Path(a.out)))
+        elif a.command == "forge":
+            print(_forge(con, a, cfg, client))
+        elif a.command == "security":
+            from . import security
+            print(security.command(con, a.action, target="remote" if a.remote else "local" if a.local else None,
+                                   folder=Path(a.folder), budget=a.budget, settings=cfg,
+                                   persist_to=Path(a.persist_to) if a.persist_to else None, client=client,
+                                   repo_filter=a.repo, out_dir=Path(a.sbom_out), sbom_format=a.sbom_format,
+                                   report=lambda m: print(m, flush=True)))
+        elif a.command == "usedby":
+            from . import usedby
+            print(usedby.command(con, a.action, target="remote" if a.remote else "local" if a.local else None,
+                                 folder=Path(a.folder), budget=a.budget, settings=cfg,
+                                 persist_to=Path(a.persist_to) if a.persist_to else None,
+                                 report=lambda m: print(m, flush=True)))
+        elif a.command == "social":
+            from . import social
+            print(social.command(con, a.action, target="remote" if a.remote else "local" if a.local else None,
+                                 out=Path(a.export), settings=cfg, persist_to=Path(a.persist_to) if a.persist_to else None,
+                                 handle=a.handle, list_id=a.list, folder=Path(a.folder)))
+        elif a.command == "status":
+            from . import sitestatus
+            print(sitestatus.command(a.action, export=Path(a.export), store=Path(a.store), url=a.url,
+                                     window_days=a.window))
         elif a.command == "zenodo":
             _zenodo(con, a)
         elif a.command == "d1":

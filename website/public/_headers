@@ -78,3 +78,128 @@
 /search/
   ! Content-Security-Policy
   Content-Security-Policy: default-src 'self'; script-src 'self' 'sha256-QzWFZi+FLIx23tnm9SBU4aEgx4x8DsuASP07mfqol/c=' 'sha256-Ya0pUYrC7nM5Cn/056TyVuEiz6dFGrzmkWzgON0pF0U='; style-src 'self' 'sha256-vv9IoKo7BSLbWcUHr3tNmfNVmm5L/9Cfn2H6LMk7/ow='; img-src 'self' data:; connect-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'; object-src 'none'
+
+# The GitHub side (night phase 01), all dormant behind FORGE_OPEN: the pages that start an authorized
+# action (/new/, /new/link/, /new/import/, /repositories/), the callback page of GitHub's authorization
+# (/forge/authorized/: no Referer at all, so the code in its address never leaves), and the repository
+# pages (/r/*), which also read GitHub's anonymous API and raw files in the reader's browser, on the
+# reader's own quota (D00-5). Phase 02: the repository's own images are read as bytes and shown from
+# object URLs (img-src blob:); no image loads from another host (D02-6), and nothing a repository holds
+# runs (script-src 'self' only). Phase 05: the research issues' shell (/research/*) asks this site only
+# (the Worker, the nightly shards).
+/new/
+  X-Frame-Options: DENY
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'; object-src 'none'
+  Referrer-Policy: same-origin
+
+/new/link/
+  X-Frame-Options: DENY
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'; object-src 'none'
+  Referrer-Policy: same-origin
+
+/new/import/
+  X-Frame-Options: DENY
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'; object-src 'none'
+  Referrer-Policy: same-origin
+
+/repositories/
+  X-Frame-Options: DENY
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'; object-src 'none'
+  Referrer-Policy: same-origin
+
+/forge/authorized/
+  X-Frame-Options: DENY
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'; object-src 'none'
+  Referrer-Policy: no-referrer
+
+/research/*
+  X-Frame-Options: DENY
+  Content-Security-Policy: default-src 'self'; script-src 'self' https://challenges.cloudflare.com; style-src 'self'; img-src 'self' data:; connect-src 'self'; frame-src https://challenges.cloudflare.com; form-action 'self'; frame-ancestors 'none'; base-uri 'none'; object-src 'none'
+  Referrer-Policy: same-origin
+
+/r/*
+  X-Frame-Options: DENY
+  Content-Security-Policy: default-src 'self'; script-src 'self' https://challenges.cloudflare.com; style-src 'self'; img-src 'self' data: blob:; connect-src 'self' https://api.github.com https://raw.githubusercontent.com; frame-src https://challenges.cloudflare.com; form-action 'self'; frame-ancestors 'none'; base-uri 'none'; object-src 'none'
+  Referrer-Policy: same-origin
+
+# Night phase 08: the social pages hold a CSRF token or ask the Worker for the reader's own data: this
+# site only; /u/* also reads GitHub (a login's id, the profile README's raw file).
+/notifications/
+  X-Frame-Options: DENY
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'; object-src 'none'
+  Referrer-Policy: same-origin
+
+/stars/
+  X-Frame-Options: DENY
+  Content-Security-Policy: default-src 'self'; script-src 'self' https://challenges.cloudflare.com; style-src 'self'; img-src 'self' data:; connect-src 'self'; frame-src https://challenges.cloudflare.com; form-action 'self'; frame-ancestors 'none'; base-uri 'none'; object-src 'none'
+  Referrer-Policy: same-origin
+
+/feed/
+  X-Frame-Options: DENY
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'; object-src 'none'
+  Referrer-Policy: same-origin
+
+/explore/
+  X-Frame-Options: DENY
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'; object-src 'none'
+  Referrer-Policy: same-origin
+
+/u/*
+  X-Frame-Options: DENY
+  Content-Security-Policy: default-src 'self'; script-src 'self' https://challenges.cloudflare.com; style-src 'self'; img-src 'self' data: blob:; connect-src 'self' https://api.github.com https://raw.githubusercontent.com; frame-src https://challenges.cloudflare.com; form-action 'self'; frame-ancestors 'none'; base-uri 'none'; object-src 'none'
+  Referrer-Policy: same-origin
+
+# Night phase 10: the settings of personal tokens and webhooks hold a CSRF token, and a token or a
+# secret is shown there once: this site only, never framed, no Referer beyond it. The API's reference
+# is static (no script).
+/settings/tokens/
+  X-Frame-Options: DENY
+  Content-Security-Policy: default-src 'self'; script-src 'self' https://challenges.cloudflare.com; style-src 'self'; img-src 'self' data:; connect-src 'self'; frame-src https://challenges.cloudflare.com; form-action 'self'; frame-ancestors 'none'; base-uri 'none'; object-src 'none'
+  Referrer-Policy: same-origin
+
+# Night phase 14: the approval of a command line's sign-in holds a CSRF token and carries the human check
+# (Turnstile's script and frame, from challenges.cloudflare.com, nothing else outside the site); its
+# address carries a sealed request: no Referer beyond this site.
+/device/
+  X-Frame-Options: DENY
+  Content-Security-Policy: default-src 'self'; script-src 'self' https://challenges.cloudflare.com; style-src 'self'; img-src 'self' data:; connect-src 'self'; frame-src https://challenges.cloudflare.com; form-action 'self'; frame-ancestors 'none'; base-uri 'none'; object-src 'none'
+  Referrer-Policy: same-origin
+
+/settings/hooks/
+  X-Frame-Options: DENY
+  Content-Security-Policy: default-src 'self'; script-src 'self' https://challenges.cloudflare.com; style-src 'self'; img-src 'self' data:; connect-src 'self'; frame-src https://challenges.cloudflare.com; form-action 'self'; frame-ancestors 'none'; base-uri 'none'; object-src 'none'
+  Referrer-Policy: same-origin
+
+/developers/
+  X-Frame-Options: DENY
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'; object-src 'none'
+  Referrer-Policy: same-origin
+
+# Night phase 16: the report form and a person's page of hidden things carry the human check,
+# Cloudflare Turnstile: its script and its frame come from challenges.cloudflare.com, and nothing else
+# outside the site. The owner's moderation queue holds a CSRF token: this site only.
+/report/
+  X-Frame-Options: DENY
+  Content-Security-Policy: default-src 'self'; script-src 'self' https://challenges.cloudflare.com; style-src 'self'; img-src 'self' data:; connect-src 'self'; frame-src https://challenges.cloudflare.com; form-action 'self'; frame-ancestors 'none'; base-uri 'none'; object-src 'none'
+  Referrer-Policy: same-origin
+
+/account/moderation/
+  X-Frame-Options: DENY
+  Content-Security-Policy: default-src 'self'; script-src 'self' https://challenges.cloudflare.com; style-src 'self'; img-src 'self' data:; connect-src 'self'; frame-src https://challenges.cloudflare.com; form-action 'self'; frame-ancestors 'none'; base-uri 'none'; object-src 'none'
+  Referrer-Policy: same-origin
+
+/moderation/
+  X-Frame-Options: DENY
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'; object-src 'none'
+  Referrer-Policy: same-origin
+
+/settings/blocked/
+  X-Frame-Options: DENY
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'; object-src 'none'
+  Referrer-Policy: same-origin
+
+# Night phase 16: the pages above whose forms carry the human check (/research/*, /r/* and its research
+# issue form, /u/* and its profile form, /stars/ and its lists, /settings/tokens/, /settings/hooks/) also
+# allow Turnstile's script and frame, from challenges.cloudflare.com, and nothing else outside the site.
+# /data-rights/ keeps the strict, self-only policy defined above (the live GDPR page is signed-in and
+# carries no Turnstile): it is NOT relaxed for the GitHub side.

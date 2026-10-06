@@ -275,6 +275,10 @@ function author(e: AuthorRecord, rows: Record<string, StoredRow>): View {
     `<h1>${esc(e.name)}</h1>`,
     `<p class="summary">${esc(plural(e.counts.papers, "paper"))} with a page, ${esc(number(e.counts.with_code))} of them with the authors' code.</p>`,
     line("ORCID iD", a(orcidUrl(e.orcid), orcidUrl(e.orcid))),
+    // Night phase 08: follow this author by their ORCID iD, before they have an account (the browser
+    // mounts the button, src/scripts/social-buttons.ts); their profile in the registry, once they have one.
+    `<div data-social data-target="${esc(`orcid:${e.orcid}`)}" data-label="${esc(e.name)}" data-watch="person"></div>`,
+    `<div class="line">${a("Their profile and activity in the registry", `/u/${e.orcid}/`)}</div>`,
     e.affiliations.length ? line("Latest affiliations", esc(e.affiliations.join("; "))) : "",
     e.institutions.length ? line("Institutions", links(e.institutions)) : "",
     e.tools.length ? line("Tools in the code of their papers", links(e.tools, e.tools_total)) : "",

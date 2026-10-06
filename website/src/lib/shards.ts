@@ -23,24 +23,33 @@ export const FILE_MARGIN = 15_000;
 
 /** How many papers have a static page (and, with code, a static Code ↔ Paper reader): the most
  *  recent papers with a page, by publication date. One file each since the reader is on the
- *  paper's page (two before: 12,000 files at worst). Past it, a paper's page is rendered on
- *  demand by the Worker. */
+ *  paper's page ("code first", 2026-09-29; two before: 12,000 files at worst). Past it, a paper's
+ *  page is rendered on demand by the Worker. The GitHub side's fixed files (night phases 01-16) are
+ *  counted in FIXED_FILES_MAX below, not taken from the papers': with one file each, 6,000 papers
+ *  plus FIXED_FILES_MAX stays well under FILE_MARGIN (the night's reduction to 5,700 assumed two
+ *  files each, which "code first" ended, so 6,000 is kept). */
 export const STATIC_PAPERS = 6_000;
 
 /** What every other kind of file may take at most, whatever the catalogue's size: the shards
  *  below and the lookup's (2,560 in all), 256 lots of scripts (oscr/catalog.py N_LOTS), the
  *  category pages (the classification's vocabulary, about 60 values: MAX_CATEGORIES at most),
- *  27 pages of the authors' list, and the fixed pages and bundles. The check holds the build
- *  to both.
+ *  27 pages of the authors' list, and the fixed pages and bundles. Since the launch pages
+ *  (2026-09-29), also the list of every paper by date (LIST_PAGES_MAX pages at most), the sitemap's
+ *  shards (SITEMAP_SHARDS at most), the information pages and the brand's files. Since the GitHub
+ *  side was merged (night phases 01-16): its nightly shards, 64 a family (the forge layer, the
+ *  research issues, the social layer and Explore, the social authors, the tracing maps:
+ *  GITHUB_SIDE_SHARDS), its fixed pages and their bundles, all dormant behind FORGE_OPEN.
  *
- *  Since the launch pages (2026-09-29), also the list of every paper by date (LIST_PAGES_MAX pages
- *  at most), the sitemap's shards (SITEMAP_SHARDS at most), the information pages and the brand's
- *  files: 3,500 in all. A paper's page is one file since the Code ↔ Paper reader moved onto it
- *  (2026-09-29, "code first"): the papers take STATIC_PAPERS files at most, not twice as many, so
- *  STATIC_PAPERS + FIXED_FILES_MAX = 9,500 stays well under FILE_MARGIN, and 2 × STATIC_PAPERS +
- *  FIXED_FILES_MAX under the Worker's FILE_LIMIT. */
+ *  A paper's page is one file since the Code ↔ Paper reader moved onto it (2026-09-29, "code
+ *  first"): the papers take STATIC_PAPERS files at most, not twice as many. Raised to 4,000 at the
+ *  reconciliation to hold the launch pages AND the GitHub side's fixed files together, so that
+ *  STATIC_PAPERS + FIXED_FILES_MAX = 10,000 stays well under FILE_MARGIN (15,000), and 2 ×
+ *  STATIC_PAPERS + FIXED_FILES_MAX = 16,000 under the Worker's FILE_LIMIT (20,000). The check holds
+ *  the build to both. */
 export const MAX_CATEGORIES = 200;
-export const FIXED_FILES_MAX = 3_500;
+export const FIXED_FILES_MAX = 4_000;
+/** The GitHub side's nightly shards at most: five families of 64, and Explore's one file. */
+export const GITHUB_SIDE_SHARDS = 5 * 64 + 1;
 
 /** The home page lists the most recent papers with their authors' code: whole days of
  *  publication, the most recent first, as long as they hold at most HOME_PAPERS papers (a first

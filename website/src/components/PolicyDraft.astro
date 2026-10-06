@@ -1,0 +1,14 @@
+---
+// The notice at the top of every rules and privacy page (night phase 16, E4; docs/POLICIES.md): the
+// texts are drafts the owner reviews before they are in force, and none is legal advice. The owner
+// removes this notice from a page once they have reviewed it (and records the date in POLICIES.md).
+interface Props {
+  /** The date of the draft. */
+  drafted: string;
+}
+const { drafted } = Astro.props;
+---
+<div class="draft-notice" role="note">
+  <p><strong>Draft, awaiting the owner's review.</strong> This text is not yet in force, and it is not legal
+  advice. Drafted {drafted}; the version in force will carry its own date.</p>
+</div>

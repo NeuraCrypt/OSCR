@@ -7,7 +7,13 @@ workers_dev = true
 # The public address (bought 2026-09-29 at Cloudflare Registrar): a custom domain, kept by every deploy.
 # www.openscicode.org is redirected to it by a Redirect Rule of the zone (dashboard).
 routes = [{ pattern = "openscicode.org", custom_domain = true }]
-# The Worker's own code: /api/search (Phase 3, docs/SEARCH.md).
+# The Worker's own code: /api/search (Phase 3, docs/SEARCH.md), the accounts and the contributions
+# (docs/ACCOUNTS.md, docs/CONTRIBUTIONS.md), the public keyless read API /api/v1/* (docs/API_PUBLIC.md),
+# the data rights /api/rights, and the GitHub side's /api/forge/* with its token API /api/forge/v1/*
+# (night phases 01 and 10, docs/FORGE.md, docs/API.md; moved off /api/v1 so it never collides with the
+# keyless read API). The forge's database, oscr_forge (FORGE), is bound by tools/setup_cloudflare.sh once
+# the owner has created it; until then /api/forge/* answers 503 not_configured. Its switch FORGE_OPEN is
+# never set here (closed until the owner opens the GitHub side).
 main = "worker/index.ts"
 
 [assets]
@@ -74,3 +80,9 @@ binding = "COMMUNITY"
 database_name = "oscr_community"
 database_id = "00000000-0000-4000-8000-00000000c0de"
 migrations_dir = "../migrations/d1-community"
+
+[[env.local.d1_databases]]
+binding = "FORGE"
+database_name = "oscr_forge"
+database_id = "00000000-0000-4000-8000-00000000f09e"
+migrations_dir = "../migrations/d1-forge"

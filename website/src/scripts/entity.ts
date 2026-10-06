@@ -56,6 +56,9 @@ async function render(t: EntityType) {
   }
   const e = shard.entities?.[key];
   show(e ? entityView(t, e, shard.rows ?? {}) : missingEntity(t, key), e !== undefined);
+  // Night phase 08: an author's Follow button (their ORCID iD), loaded only on an author's page.
+  const main = root?.closest("main") ?? document.querySelector("main");
+  if (e && t === "author" && main?.querySelector("[data-social]")) void import("./social-buttons").then((m) => m.mountAll(main));
 }
 
 if (type && (ENTITY_TYPES as readonly string[]).includes(type)) void render(type);

@@ -1,0 +1,35 @@
+---
+// /forge/authorized/: the static callback page of one authorized action (D00-4; the design's §10.2
+// step 3): the GitHub App's callback URL. Its script (src/scripts/forge-authorized.ts, a file of the
+// site: the page's Content-Security-Policy forbids inline code) removes the code and the state from
+// the address bar at once, posts them with the payload this tab kept to POST /api/forge/act, and
+// says the outcome in words with a link back. It also receives the return from an installation of
+// the App (installation_id, setup_action) and offers the link page with that installation.
+// No Referer leaves it (public/_headers). science.css only; the platform's name from src/config.ts.
+import Base from "../../layouts/Base.astro";
+import { SITE_NAME } from "../../config";
+---
+<Base
+  title="GitHub's authorization"
+  description="The page GitHub sends you back to after you authorized one action on your repository."
+  breadcrumb={[{ text: "Repositories", href: "/repositories/" }, { text: "Authorization" }]}
+>
+  <h1>GitHub's authorization</h1>
+  <p class="summary">After you confirm an action and GitHub authorizes it, GitHub sends you back here, and {SITE_NAME} carries out that action as you, once. The authorization is then revoked: {SITE_NAME} keeps no GitHub token.</p>
+
+  <div id="forge-outcome" aria-live="polite">
+    <noscript><p class="warning">This page needs JavaScript to carry out the action you confirmed: without it, nothing is done.</p></noscript>
+  </div>
+
+  <h2>What happens here</h2>
+  <ul>
+    <li>The code GitHub gave for this one action is removed from the address bar at once, then exchanged by {SITE_NAME}'s server, which acts with it and revokes it.</li>
+    <li>The action is the one you confirmed on the page you came from, and nothing else: if what arrives here differs from it, nothing is done.</li>
+    <li>If you installed the App on GitHub, you can then link one of its repositories to your paper.</li>
+  </ul>
+  <p>Where repositories live and what {SITE_NAME} keeps of them: <a href="/hosting/">the hosting guides</a>.</p>
+
+  <script>
+    import "../../scripts/forge-authorized";
+  </script>
+</Base>

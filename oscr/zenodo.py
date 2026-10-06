@@ -316,10 +316,30 @@ def _creator(name: str, orcid: str) -> dict[str, Any]:
                               "identifiers": [{"scheme": "orcid", "identifier": orcid}]}}
 
 
+RELEASE_VERSIONS = {"preprint": "the preprint", "submitted": "the submitted manuscript",
+                    "accepted": "the accepted manuscript", "published": "the version of record",
+                    "correction": "a correction"}
+
+
+def _release_reference(release: dict[str, Any]) -> dict[str, Any] | None:
+    """`References` → the release's code at its commit (night phase 07), on GitHub or another forge."""
+    repo, commit = str(release.get("repo") or ""), str(release.get("commit") or "")
+    if not re.match(r"https://(github\.com|gitlab\.com|codeberg\.org)/[^/]+/[^/]+$", repo):
+        return None
+    tail = f"/tree/{commit}" if re.fullmatch(r"[0-9a-f]{40}|[0-9a-f]{64}", commit) else \
+        f"/releases/tag/{release.get('tag')}" if release.get("tag") else ""
+    return {"identifier": repo + tail, "scheme": "url", "relation_type": {"id": "references"},
+            "resource_type": {"id": "software"}}
+
+
 def deposit_payload(card: dict[str, Any], validations: list[sqlite3.Row], *, platform: str) -> dict[str, Any]:
-    """The Zenodo record of the map (InvenioRDM format)."""
+    """The Zenodo record of the map (InvenioRDM format). A map versioned with a release (night phase
+    07, `card["release"]`: the repository, its tag and commit, the paper's version) takes the tag as
+    its version, names the release, and references the release's code at its commit: the code itself
+    is never deposited (CLAUDE.md)."""
     paper = card["paper"]
     today = time.strftime("%Y-%m-%d")
+    release = card.get("release") if isinstance(card.get("release"), dict) else None
     repos = "".join(f"<li><a href=\"{html.escape(c['url'])}\">{html.escape(c['repo'])}</a>"
                     f"{' @ ' + html.escape(c['commit'][:12]) if c['commit'] else ''}"
                     f"{', ' + html.escape(c['license']) if c['license'] else ''}</li>" for c in card["code"])
@@ -330,16 +350,29 @@ def deposit_payload(card: dict[str, Any], validations: list[sqlite3.Row], *, pla
         f"<p>The map links the paper to the code its authors published:</p><ul>{repos}</ul>"
         + (f"<p>It also lists {n_pairs} matches between paragraphs of the paper and lines of the code.</p>"
            if n_pairs else "")
+        + (f"<p>It goes with the release <code>{html.escape(str(release.get('tag') or ''))}</code> of "
+           f"{html.escape(str(release.get('repo') or ''))}"
+           + (f" (commit {html.escape(str(release.get('commit'))[:12])})" if release.get("commit") else "")
+           + (f", the code of {RELEASE_VERSIONS[release['version']]} of the paper"
+              if release.get("version") in RELEASE_VERSIONS else "")
+           + (f" ({html.escape(str(release.get('label')))})" if release.get("label") else "") + ".</p>"
+           if release else "")
         + f"<p>This record holds the map only (<code>{MAP_FILE}</code>: links and metadata). "
         "The code itself is not redeposited: it stays in the repositories referenced above.</p>")
+    references = [_reference(c) for c in card["code"]]
+    extra = _release_reference(release) if release else None
+    if extra and extra["identifier"] not in {r["identifier"] for r in references}:
+        references.append(extra)
     return {
         "access": {"record": "public", "files": "public"},
         "files": {"enabled": True},
         "metadata": {
             "resource_type": {"id": "dataset"},
-            "title": f"Code tracing map: {paper['title']}"[:250],
+            "title": (f"Code tracing map: {paper['title']}"[:230]
+                      + (f" (release {release.get('tag')})" if release and release.get("tag") else ""))[:250],
             "publication_date": today,
-            "version": f"{MAP_FORMAT.split('/')[1]}-{today}",
+            "version": (str(release["tag"])[:100] if release and release.get("tag")
+                        else f"{MAP_FORMAT.split('/')[1]}-{today}"),
             "creators": [_creator(v["name"], v["orcid"]) for v in validations]
                         + [{"person_or_org": {"type": "organizational", "name": platform}}],
             "description": description,
@@ -350,7 +383,7 @@ def deposit_payload(card: dict[str, Any], validations: list[sqlite3.Row], *, pla
             "related_identifiers": (
                 [{"identifier": paper["doi"], "scheme": "doi", "relation_type": {"id": "issupplementto"},
                   "resource_type": {"id": "publication-article"}}]
-                + [_reference(c) for c in card["code"]]),
+                + references),
         },
     }
 

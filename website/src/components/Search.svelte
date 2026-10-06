@@ -124,7 +124,8 @@
   }
 
   /** Whether the address asks for a search: /search/ alone shows the form only. */
-  const asksSearch = () => location.search.length > 1;
+  // Night phase 08: the search page's other types (src/scripts/search-types.ts) are not papers.
+  const asksSearch = () => location.search.length > 1 && ["", "papers"].includes(new URLSearchParams(location.search).get("type") ?? "");
 
   async function run(s: State) {
     const n = ++asked;

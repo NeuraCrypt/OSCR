@@ -16,6 +16,15 @@
 //   lookup/NN.json    → public/lookup/NN.json        (fetched by the DOI lookup page)
 //   papers/NN.json    → src/data/papers/NN.json      (read at build time: the sections of
 //                                                     each paper's page)
+//   forge/layer/NN.json → public/forge/layer/NN.json (fetched by the repository pages, /r/*:
+//                                                     OSCR's layer for signed-out readers,
+//                                                     oscr/forgelayer.py; absent: none)
+//   forge/moderation.json → src/data/moderation.json (night phase 16: the public notices and the
+//                                                     hidden repositories; read at build time)
+//   social/NN.json, social/explore.json → public/social/… (night phase 08: stars, follows and
+//                                                     public profiles as of last night, the Explore
+//                                                     page; oscr/social.py; absent: none)
+import { createHash } from "node:crypto";
 import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 
 const source = process.env.CATALOG_DIR ?? "../data/public";
@@ -197,6 +206,165 @@ if (existsSync(`${source}/papers`)) {
 }
 if (withheld) console.warn(`${withheld} abstracts under a license that does not allow them were dropped (D1).`);
 
+// OSCR's layer over the repositories (the GitHub side, night phase 01): at most 64 shards, fetched
+// by the repository pages for signed-out readers. An entry is keyed by "owner/name" in lower case
+// and sits in the shard the first byte of its key's SHA-256 names, mod 64 (src/lib/forge.ts
+// layerShard). On top of the export's own rules: only well-formed keys in their own shard, never a
+// repository that is hidden, waiting for deletion or deleted, and no email address.
+const LAYER_MODES = new Set(["catalogue", "created", "installed", "public"]);
+const LAYER_HIDDEN = new Set(["hidden", "pending_deletion", "deleted"]);
+const SEGMENT = /^(?!\.+$)[a-z0-9._-]{1,100}$/;
+rmSync("public/forge/layer", { recursive: true, force: true });
+let layerShards = 0;
+let layered = 0;
+let misplaced = 0;
+if (existsSync(`${source}/forge/layer`)) {
+  mkdirSync("public/forge/layer", { recursive: true });
+  for (const name of readdirSync(`${source}/forge/layer`).filter((n) => /^\d{2}\.json$/.test(n) && Number(n.slice(0, 2)) < 64)) {
+    const clean = {};
+    for (const [key, e] of Object.entries(JSON.parse(readFileSync(`${source}/forge/layer/${name}`, "utf8")))) {
+      const [owner, repo, ...rest] = key.split("/");
+      const shard = String(createHash("sha256").update(key).digest()[0] % 64).padStart(2, "0");
+      if (rest.length || !SEGMENT.test(owner ?? "") || !SEGMENT.test(repo ?? "") || `${shard}.json` !== name) {
+        misplaced += 1;
+        continue;
+      }
+      // Night phase 16: a repository moderation hid keeps only that it is hidden, and why (the /r/ page
+      // says so and shows nothing of it).
+      if (e && typeof e === "object" && e.moderated && typeof e.moderated === "object") {
+        clean[key] = { moderated: { words: scrub(String(e.moderated.words ?? "")).slice(0, 200), since: Number(e.moderated.since) || 0 } };
+        layered += 1;
+        continue;
+      }
+      if (!e || typeof e !== "object" || !LAYER_MODES.has(e.mode) || LAYER_HIDDEN.has(e.state)) continue;
+      clean[key] = scrub(e);
+      layered += 1;
+    }
+    writeFileSync(`public/forge/layer/${name}`, JSON.stringify(clean));
+    layerShards += 1;
+  }
+}
+if (misplaced) console.warn(`${misplaced} entries of OSCR's forge layer were not in their shard, or not a repository: dropped.`);
+
+// The registry's research issues for signed-out readers (night phase 05): at most 64 shards,
+// forge/research/NN.json, NN = the issue's number mod 64, each an object keyed by the number
+// ("12") → {issue, comments}, as of last night (oscr/forgelayer.py). Only well-formed numbers in
+// their own shard, and no email address.
+rmSync("public/forge/research", { recursive: true, force: true });
+let researchShards = 0;
+let researched = 0;
+if (existsSync(`${source}/forge/research`)) {
+  mkdirSync("public/forge/research", { recursive: true });
+  for (const name of readdirSync(`${source}/forge/research`).filter((n) => /^\d{2}\.json$/.test(n) && Number(n.slice(0, 2)) < 64)) {
+    const clean = {};
+    for (const [key, e] of Object.entries(JSON.parse(readFileSync(`${source}/forge/research/${name}`, "utf8")))) {
+      if (!/^[1-9]\d{0,9}$/.test(key) || `${String(Number(key) % 64).padStart(2, "0")}.json` !== name) continue;
+      if (!e || typeof e !== "object" || !e.issue || typeof e.issue !== "object" || Number(e.issue.id) !== Number(key)) continue;
+      clean[key] = scrub({ issue: e.issue, comments: Array.isArray(e.comments) ? e.comments : [] });
+      researched += 1;
+    }
+    writeFileSync(`public/forge/research/${name}`, JSON.stringify(clean));
+    researchShards += 1;
+  }
+}
+
+// The social layer for signed-out readers (night phase 08): at most 64 shards, social/NN.json, NN =
+// the first byte of the key's SHA-256 mod 64 (src/lib/social.ts socialShard), each an object keyed by
+// "repo:…", "paper:doi:10.…", "topic:…", "person:<handle>" or "owner:<forge>:<login>"; and the Explore
+// page's social/explore.json (oscr/social.py). Only well-formed keys in their own shard, and no email
+// address.
+const SOCIAL_KEY = /^(?:repo:(?:github|memory):\d{1,20}|paper:doi:10\.\S{1,200}|topic:[a-z0-9][a-z0-9-]{0,49}|person:(?:[a-z0-9][a-z0-9-]{0,38}|\d{4}-\d{4}-\d{4}-\d{3}[\dX])|owner:(?:github|memory):[a-z0-9][a-z0-9-]{0,38})$/;
+rmSync("public/social", { recursive: true, force: true });
+let socialShards = 0;
+let socialKeys = 0;
+if (existsSync(`${source}/social`)) {
+  mkdirSync("public/social", { recursive: true });
+  for (const name of readdirSync(`${source}/social`).filter((n) => /^\d{2}\.json$/.test(n) && Number(n.slice(0, 2)) < 64)) {
+    const clean = {};
+    for (const [key, e] of Object.entries(JSON.parse(readFileSync(`${source}/social/${name}`, "utf8")))) {
+      const shard = String(createHash("sha256").update(key).digest()[0] % 64).padStart(2, "0");
+      if (!SOCIAL_KEY.test(key) || `${shard}.json` !== name || !e || typeof e !== "object" || Array.isArray(e)) continue;
+      clean[key] = scrub(e);
+      socialKeys += 1;
+    }
+    writeFileSync(`public/social/${name}`, JSON.stringify(clean));
+    socialShards += 1;
+  }
+  if (existsSync(`${source}/social/explore.json`)) {
+    const explore = JSON.parse(readFileSync(`${source}/social/explore.json`, "utf8"));
+    if (explore && typeof explore === "object" && !Array.isArray(explore)) writeFileSync("public/social/explore.json", JSON.stringify(scrub(explore)));
+  }
+}
+
+// Night phase 16: what moderation hid, as of last night (oscr/moderation.py): the public notices (the
+// /notices/ page) and the hidden repositories with their papers (a line on each paper's page). Read at
+// build time only: src/data/moderation.json. Absent: none. Never the hidden words, never who reported.
+let moderation = { notices: [], repos: {} };
+if (existsSync(`${source}/forge/moderation.json`)) {
+  const m = JSON.parse(readFileSync(`${source}/forge/moderation.json`, "utf8"));
+  const notices = (Array.isArray(m?.notices) ? m.notices : []).slice(0, 2000).filter((n) => n && typeof n === "object").map((n) => ({
+    date: /^\d{4}-\d{2}-\d{2}$/.test(n.date) ? n.date : "",
+    updated: /^\d{4}-\d{2}-\d{2}$/.test(n.updated) ? n.updated : "",
+    what: String(n.what ?? "").slice(0, 60),
+    reason: String(n.reason ?? "").slice(0, 120),
+    notice: String(n.notice ?? "").slice(0, 1000),
+    state: n.state === "restored" ? "restored" : "hidden",
+    by: String(n.by ?? "").slice(0, 60),
+    counter_notice: n.counter_notice === true,
+    appeal: ["", "open", "accepted", "rejected"].includes(n.appeal) ? n.appeal : "",
+  }));
+  const repos = {};
+  for (const [path, r] of Object.entries(m?.repos && typeof m.repos === "object" ? m.repos : {})) {
+    if (!/^[a-z0-9-]{1,39}\/[a-z0-9._-]{1,100}$/.test(path) || !r || typeof r !== "object") continue;
+    repos[path] = {
+      words: String(r.words ?? "").slice(0, 200),
+      since: Number(r.since) || 0,
+      papers: (Array.isArray(r.papers) ? r.papers : []).filter((d) => typeof d === "string" && /^10\.\S{1,200}$/.test(d)).slice(0, 50),
+    };
+  }
+  moderation = scrub({ notices, repos });
+}
+writeFileSync("src/data/moderation.json", JSON.stringify(moderation));
+
+// Night phase 15: the /status page's availability, from the Mac's own outbound checks
+// (oscr/sitestatus.py writes site-status.json into the export). Read at build time only:
+// src/data/site-status.json. Absent (the owner has not enabled the checks): a placeholder that
+// says so, so the page shows the quotas alone. The site never checks itself; the Mac reaches out.
+const STATUS_STATES = new Set(["up", "partial", "down", "none"]);
+let siteStatus = {
+  enabled: false, generated_at: "", window_days: 90, checks_per_day: 288, interval_seconds: 300,
+  days: [], incidents: [], total_checks: 0, ok_checks: 0, overall_uptime: null,
+};
+if (existsSync(`${source}/site-status.json`)) {
+  const s = JSON.parse(readFileSync(`${source}/site-status.json`, "utf8"));
+  const days = (Array.isArray(s?.days) ? s.days : []).slice(0, 400).filter((d) => d && typeof d === "object").map((d) => ({
+    date: /^\d{4}-\d{2}-\d{2}$/.test(d.date) ? d.date : "",
+    checks: Number(d.checks) || 0,
+    ok: Number(d.ok) || 0,
+    state: STATUS_STATES.has(d.state) ? d.state : "none",
+    uptime: typeof d.uptime === "number" ? d.uptime : null,
+  }));
+  const incidents = (Array.isArray(s?.incidents) ? s.incidents : []).slice(0, 500).filter((i) => i && typeof i === "object").map((i) => ({
+    start: String(i.start ?? "").slice(0, 32),
+    end: String(i.end ?? "").slice(0, 32),
+    checks: Number(i.checks) || 0,
+    title: String(i.title ?? "").slice(0, 120),
+  }));
+  siteStatus = {
+    enabled: s?.enabled === true,
+    generated_at: String(s?.generated_at ?? "").slice(0, 32),
+    window_days: Number(s?.window_days) || 90,
+    checks_per_day: Number(s?.checks_per_day) || 288,
+    interval_seconds: Number(s?.interval_seconds) || 300,
+    days,
+    incidents,
+    total_checks: Number(s?.total_checks) || 0,
+    ok_checks: Number(s?.ok_checks) || 0,
+    overall_uptime: typeof s?.overall_uptime === "number" ? s.overall_uptime : null,
+  };
+}
+writeFileSync("src/data/site-status.json", JSON.stringify(siteStatus));
+
 const withCode = catalog.articles.filter((a) => a.code.length > 0).length;
 const withPage = catalog.articles.filter((a) => a.page === true || a.code.length > 0).length;
 const aligned = catalog.articles.filter((a) => a.alignment?.pairs > 0).length;
@@ -206,5 +374,7 @@ console.log(
 );
 console.log(
   `entities: ${Object.entries(entities).map(([k, n]) => `${n} ${k}`).join(", ")}; ` +
-    `DOI lookup: ${looked} papers in ${shards} shards (the largest ${Math.ceil(largest / 1024)} KB); ${detailed} full paper pages`,
+    `DOI lookup: ${looked} papers in ${shards} shards (the largest ${Math.ceil(largest / 1024)} KB); ${detailed} full paper pages; ` +
+    `forge layer: ${layered} repositories in ${layerShards} shards; research issues: ${researched} in ${researchShards} shards; ` +
+    `social layer: ${socialKeys} entries in ${socialShards} shards`,
 );

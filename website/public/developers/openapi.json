@@ -1,0 +1,2360 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "The registry's public API",
+    "version": "2026-09-29",
+    "description": "Read and write the registry's own layer (repositories and their papers, research issues, stars, follows, notifications, outgoing webhooks, commit statuses) with a personal token. GitHub's own objects stay GitHub's: its API serves them. The reference, with examples: /developers/."
+  },
+  "servers": [
+    {
+      "url": "/"
+    }
+  ],
+  "x-versions": [
+    "2026-09-29"
+  ],
+  "x-scopes": {
+    "repos:read": "read the registry's layer over repositories: their papers, their state, the commit statuses posted to it",
+    "research:read": "read research issues and their comments",
+    "research:write": "open, comment on, edit, close and reopen research issues, as you",
+    "social:read": "read your stars, lists and follows, people's public profiles and your feed",
+    "social:write": "star, list, follow and watch, and change your profile, as you",
+    "notifications:read": "read your notifications (the registry's own inbox)",
+    "notifications:write": "mark your notifications read, done or saved, and unsubscribe",
+    "hooks:read": "read your outgoing webhooks and their deliveries",
+    "hooks:write": "make, change, test, redeliver and delete your outgoing webhooks",
+    "statuses:write": "post commit statuses on the repositories the registry knows (a CI or a reproduction service)",
+    "security:write": "upload code-scanning results (SARIF) from your CI, for the repositories the registry knows"
+  },
+  "security": [
+    {
+      "token": []
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "token": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "A personal token of the registry (oscr_pat_…), made on /settings/tokens/: scoped, expiring, revocable."
+      }
+    },
+    "parameters": {
+      "ApiVersion": {
+        "name": "X-Api-Version",
+        "in": "header",
+        "required": false,
+        "description": "The version asked, a date (2026-09-29); none: the current one.",
+        "schema": {
+          "type": "string"
+        }
+      }
+    },
+    "responses": {
+      "Error": {
+        "description": "A refusal in words.",
+        "headers": {
+          "Retry-After": {
+            "schema": {
+              "type": "string"
+            }
+          },
+          "X-Request-Id": {
+            "schema": {
+              "type": "string"
+            }
+          },
+          "X-Api-Version": {
+            "schema": {
+              "type": "string"
+            }
+          },
+          "X-RateLimit-Limit": {
+            "schema": {
+              "type": "string"
+            }
+          },
+          "X-RateLimit-Remaining": {
+            "schema": {
+              "type": "string"
+            }
+          },
+          "X-RateLimit-Used": {
+            "schema": {
+              "type": "string"
+            }
+          },
+          "X-RateLimit-Reset": {
+            "schema": {
+              "type": "string"
+            }
+          },
+          "X-RateLimit-Resource": {
+            "schema": {
+              "type": "string"
+            }
+          },
+          "X-Token-Scopes": {
+            "schema": {
+              "type": "string"
+            }
+          },
+          "X-Accepted-Scopes": {
+            "schema": {
+              "type": "string"
+            }
+          },
+          "X-Token-Expires": {
+            "schema": {
+              "type": "string"
+            }
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "error": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "type": "string"
+                    },
+                    "documentation_url": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "message",
+                    "request_id"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "paths": {
+    "/api/forge/v1": {
+      "get": {
+        "summary": "This index: the version, the routes, how to authenticate.",
+        "operationId": "getIndex",
+        "x-scope": null,
+        "security": [],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ApiVersion"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The answer, JSON.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/forge/v1/user": {
+      "get": {
+        "summary": "Whose token this is (public handles), its scopes, its expiry.",
+        "operationId": "getUser",
+        "x-scope": null,
+        "security": [
+          {
+            "token": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ApiVersion"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The answer, JSON.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "Not modified: the ETag sent in If-None-Match still holds (not counted against the rate limit)."
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/forge/v1/rate_limit": {
+      "get": {
+        "summary": "The token's use of its rate limits (never counted).",
+        "operationId": "getRatelimit",
+        "x-scope": null,
+        "security": [
+          {
+            "token": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ApiVersion"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The answer, JSON.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "Not modified: the ETag sent in If-None-Match still holds (not counted against the rate limit)."
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/forge/v1/cli": {
+      "get": {
+        "summary": "What a command line needs to sign in: the GitHub App's public client id (for GitHub's own device flow, asked of GitHub directly), the device flow's routes, the scopes.",
+        "operationId": "getCli",
+        "x-scope": null,
+        "security": [],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ApiVersion"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The answer, JSON.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/forge/v1/device/code": {
+      "post": {
+        "summary": "Start a command line's sign-in: a device code (kept by the command line), a user code of 8 letters, and the approval page's address; it lives 15 minutes and writes nothing.",
+        "operationId": "postDeviceCode",
+        "x-scope": null,
+        "security": [],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ApiVersion"
+          }
+        ],
+        "responses": {
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error"
+          },
+          "2XX": {
+            "description": "The answer, JSON.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "scopes": {
+                    "description": "What the token may do, as scopes (required)."
+                  },
+                  "days": {
+                    "description": "Its life, 1 to 366 days (30 by default)."
+                  },
+                  "name": {
+                    "description": "Its name in your settings (40 characters)."
+                  }
+                },
+                "required": [
+                  "scopes"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/forge/v1/device/token": {
+      "post": {
+        "summary": "Poll a sign-in (at most every 5 seconds): 400 authorization_pending, slow_down, access_denied or expired_token; once approved on the page, the token, answered once.",
+        "operationId": "postDeviceToken",
+        "x-scope": null,
+        "security": [],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ApiVersion"
+          }
+        ],
+        "responses": {
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error"
+          },
+          "2XX": {
+            "description": "The answer, JSON.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "device_code": {
+                    "description": "The device code (required)."
+                  }
+                },
+                "required": [
+                  "device_code"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/forge/v1/token/revoke": {
+      "post": {
+        "summary": "The token that makes this call revokes itself at once (a command line's sign-out). It never revokes another.",
+        "operationId": "postTokenRevoke",
+        "x-scope": null,
+        "security": [
+          {
+            "token": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ApiVersion"
+          }
+        ],
+        "responses": {
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error"
+          },
+          "2XX": {
+            "description": "The answer, JSON.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "(none)": {
+                    "description": "An empty object: the token in the Authorization header is the one revoked."
+                  }
+                },
+                "required": []
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/forge/v1/search": {
+      "get": {
+        "summary": "The registry's search, as its search page asks it.",
+        "operationId": "getSearch",
+        "x-scope": null,
+        "security": [
+          {
+            "token": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ApiVersion"
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": true,
+            "description": "The words searched (the search page's syntax).",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "required": false,
+            "description": "papers (the default), repositories, issues, people or topics.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "description": "The page of results, from 1.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The answer, JSON.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "Not modified: the ETag sent in If-None-Match still holds (not counted against the rate limit)."
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/forge/v1/repos": {
+      "get": {
+        "summary": "The registry's layer over one repository: its papers, its state, how it is followed, its releases tied to papers.",
+        "operationId": "getRepos",
+        "x-scope": "repos:read",
+        "security": [
+          {
+            "token": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ApiVersion"
+          },
+          {
+            "name": "path",
+            "in": "query",
+            "required": false,
+            "description": "owner/name, as on GitHub.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "in": "query",
+            "required": false,
+            "description": "<forge>:<id>, the forge's durable id (github:123456): one of path or id.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The answer, JSON.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "Not modified: the ETag sent in If-None-Match still holds (not counted against the rate limit)."
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/forge/v1/repos/mine": {
+      "get": {
+        "summary": "Your repositories the registry knows, by name, a page at a time (Link: rel=next).",
+        "operationId": "getReposMine",
+        "x-scope": "repos:read",
+        "security": [
+          {
+            "token": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ApiVersion"
+          },
+          {
+            "name": "after",
+            "in": "query",
+            "required": false,
+            "description": "The cursor: the `next` of the previous page.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "At most 100 a page.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "mode",
+            "in": "query",
+            "required": false,
+            "description": "created, installed or public.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "template",
+            "in": "query",
+            "required": false,
+            "description": "1: templates only.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The answer, JSON.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "Not modified: the ETag sent in If-None-Match still holds (not counted against the rate limit)."
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/forge/v1/research": {
+      "get": {
+        "summary": "One research issue with its comments, or the research issues of 1 to 10 papers.",
+        "operationId": "getResearch",
+        "x-scope": "research:read",
+        "security": [
+          {
+            "token": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ApiVersion"
+          },
+          {
+            "name": "id",
+            "in": "query",
+            "required": false,
+            "description": "A research issue's number.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "paper",
+            "in": "query",
+            "required": false,
+            "description": "A paper's DOI (repeat it for up to 10 papers).",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "repo",
+            "in": "query",
+            "required": false,
+            "description": "<forge>:<id>: only the issues on this repository's code.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The answer, JSON.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "Not modified: the ETag sent in If-None-Match still holds (not counted against the rate limit)."
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/forge/v1/research/open": {
+      "post": {
+        "summary": "Open a research issue on a paper and its code (answer 201: its id and its page).",
+        "operationId": "postResearchOpen",
+        "x-scope": "research:write",
+        "security": [
+          {
+            "token": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ApiVersion"
+          }
+        ],
+        "responses": {
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error"
+          },
+          "2XX": {
+            "description": "The answer, JSON.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "paper": {
+                    "description": "The paper's DOI (required)."
+                  },
+                  "repo": {
+                    "description": "{forge, id, path}: the repository of the code (or `code`, an address the paper cites)."
+                  },
+                  "type": {
+                    "description": "code_error, mismatch or reproduction (required)."
+                  },
+                  "title": {
+                    "description": "Its title (required)."
+                  },
+                  "body": {
+                    "description": "Its text (Markdown; addresses masked)."
+                  },
+                  "commit": {
+                    "description": "The commit it is about."
+                  },
+                  "path": {
+                    "description": "The file it is about."
+                  },
+                  "lines": {
+                    "description": "{start, end}: the lines."
+                  },
+                  "paragraph": {
+                    "description": "The paper's paragraph it is about."
+                  },
+                  "report": {
+                    "description": "A reproduction report (for type reproduction)."
+                  },
+                  "labels": {
+                    "description": "Labels, words."
+                  }
+                },
+                "required": [
+                  "paper",
+                  "type",
+                  "title"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/forge/v1/research/comment": {
+      "post": {
+        "summary": "Comment on a research issue; edit, delete or hide a comment.",
+        "operationId": "postResearchComment",
+        "x-scope": "research:write",
+        "security": [
+          {
+            "token": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ApiVersion"
+          }
+        ],
+        "responses": {
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error"
+          },
+          "2XX": {
+            "description": "The answer, JSON.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "description": "The research issue's number (required)."
+                  },
+                  "n": {
+                    "description": "The comment's number (to edit, delete or hide one)."
+                  },
+                  "body": {
+                    "description": "The text."
+                  },
+                  "delete": {
+                    "description": "true: delete the comment n."
+                  },
+                  "hide": {
+                    "description": "A reason: hide the comment n."
+                  }
+                },
+                "required": [
+                  "id"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/forge/v1/research/edit": {
+      "post": {
+        "summary": "Edit a research issue: title, text, close with a resolution, reopen, labels, lock, pin.",
+        "operationId": "postResearchEdit",
+        "x-scope": "research:write",
+        "security": [
+          {
+            "token": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ApiVersion"
+          }
+        ],
+        "responses": {
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error"
+          },
+          "2XX": {
+            "description": "The answer, JSON.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "description": "The research issue's number (required)."
+                  },
+                  "title": {
+                    "description": "A new title."
+                  },
+                  "body": {
+                    "description": "A new text."
+                  },
+                  "state": {
+                    "description": "open or closed."
+                  },
+                  "reason": {
+                    "description": "Why it is closed: completed, not_planned, duplicate."
+                  },
+                  "resolution": {
+                    "description": "The resolution, in words."
+                  },
+                  "duplicateOf": {
+                    "description": "The research issue it duplicates."
+                  },
+                  "labels": {
+                    "description": "{add, remove}: labels."
+                  },
+                  "locked": {
+                    "description": "true or false."
+                  },
+                  "pinned": {
+                    "description": "true or false."
+                  }
+                },
+                "required": [
+                  "id"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/forge/v1/social": {
+      "get": {
+        "summary": "Your star, lists and follow of up to 20 subjects or targets.",
+        "operationId": "getSocial",
+        "x-scope": "social:read",
+        "security": [
+          {
+            "token": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ApiVersion"
+          },
+          {
+            "name": "s",
+            "in": "query",
+            "required": true,
+            "description": "A subject (repo:<forge>:<id>, paper:doi:10.…, topic:<name>) or a target (github:<id>, orcid:<iD>, owner:<forge>:<login>…); repeat it.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The answer, JSON.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "Not modified: the ETag sent in If-None-Match still holds (not counted against the rate limit)."
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/forge/v1/social/mine": {
+      "get": {
+        "summary": "Your stars, lists (private ones included), follows and profile.",
+        "operationId": "getSocialMine",
+        "x-scope": "social:read",
+        "security": [
+          {
+            "token": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ApiVersion"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The answer, JSON.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "Not modified: the ETag sent in If-None-Match still holds (not counted against the rate limit)."
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/forge/v1/social/person": {
+      "get": {
+        "summary": "A person's public profile, lists, stars and follows (none from a private profile).",
+        "operationId": "getSocialPerson",
+        "x-scope": "social:read",
+        "security": [
+          {
+            "token": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ApiVersion"
+          },
+          {
+            "name": "github",
+            "in": "query",
+            "required": false,
+            "description": "Their GitHub numeric id.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "orcid",
+            "in": "query",
+            "required": false,
+            "description": "Their ORCID iD: one of github or orcid.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The answer, JSON.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "Not modified: the ETag sent in If-None-Match still holds (not counted against the rate limit)."
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/forge/v1/social/star": {
+      "post": {
+        "summary": "Star or unstar a repository, a paper or a topic.",
+        "operationId": "postSocialStar",
+        "x-scope": "social:write",
+        "security": [
+          {
+            "token": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ApiVersion"
+          }
+        ],
+        "responses": {
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error"
+          },
+          "2XX": {
+            "description": "The answer, JSON.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "subject": {
+                    "description": "repo:<forge>:<id>, paper:doi:10.… or topic:<name> (required)."
+                  },
+                  "label": {
+                    "description": "What you call it (your Stars page only)."
+                  },
+                  "on": {
+                    "description": "true to star, false to unstar (required)."
+                  }
+                },
+                "required": [
+                  "subject",
+                  "on"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/forge/v1/social/follow": {
+      "post": {
+        "summary": "Follow a person, an author by ORCID iD, an organization, a paper; watch a repository at a level; or stop.",
+        "operationId": "postSocialFollow",
+        "x-scope": "social:write",
+        "security": [
+          {
+            "token": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ApiVersion"
+          }
+        ],
+        "responses": {
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error"
+          },
+          "2XX": {
+            "description": "The answer, JSON.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "target": {
+                    "description": "What to follow (required)."
+                  },
+                  "label": {
+                    "description": "What you call it."
+                  },
+                  "level": {
+                    "description": "all, participating, ignore or custom (a repository)."
+                  },
+                  "events": {
+                    "description": "custom: issues, pulls, releases, research."
+                  },
+                  "on": {
+                    "description": "true or false (required)."
+                  }
+                },
+                "required": [
+                  "target",
+                  "on"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/forge/v1/social/list": {
+      "post": {
+        "summary": "Your star lists: create, edit, delete, add, remove, propose as a collection.",
+        "operationId": "postSocialList",
+        "x-scope": "social:write",
+        "security": [
+          {
+            "token": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ApiVersion"
+          }
+        ],
+        "responses": {
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error"
+          },
+          "2XX": {
+            "description": "The answer, JSON.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "op": {
+                    "description": "create, edit, delete, add, remove or propose (required)."
+                  },
+                  "id": {
+                    "description": "The list's number (1 to 32)."
+                  },
+                  "name": {
+                    "description": "Its name."
+                  },
+                  "description": {
+                    "description": "Its description."
+                  },
+                  "public": {
+                    "description": "true or false."
+                  },
+                  "subject": {
+                    "description": "The subject to add or remove."
+                  },
+                  "propose": {
+                    "description": "true or false."
+                  }
+                },
+                "required": [
+                  "op"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/forge/v1/social/profile": {
+      "post": {
+        "summary": "Change your profile (no address is ever asked for or kept).",
+        "operationId": "postSocialProfile",
+        "x-scope": "social:write",
+        "security": [
+          {
+            "token": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ApiVersion"
+          }
+        ],
+        "responses": {
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error"
+          },
+          "2XX": {
+            "description": "The answer, JSON.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "description": "Your name."
+                  },
+                  "bio": {
+                    "description": "A few words."
+                  },
+                  "pronouns": {
+                    "description": "Your pronouns."
+                  },
+                  "company": {
+                    "description": "Your lab or company."
+                  },
+                  "location": {
+                    "description": "Where."
+                  },
+                  "timezone": {
+                    "description": "An IANA time zone."
+                  },
+                  "website": {
+                    "description": "An https address."
+                  },
+                  "links": {
+                    "description": "Up to 4 https addresses."
+                  },
+                  "pinned": {
+                    "description": "Up to 6 subjects or lists."
+                  },
+                  "status": {
+                    "description": "A status."
+                  },
+                  "statusUntil": {
+                    "description": "When it ends (Unix seconds)."
+                  },
+                  "busy": {
+                    "description": "true or false."
+                  },
+                  "private": {
+                    "description": "true: your activity, stars, lists and follows are yours only."
+                  },
+                  "readme": {
+                    "description": "true: show your profile README."
+                  }
+                },
+                "required": []
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/forge/v1/social/feed": {
+      "get": {
+        "summary": "The last 14 days of what you follow.",
+        "operationId": "getSocialFeed",
+        "x-scope": "social:read",
+        "security": [
+          {
+            "token": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ApiVersion"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The answer, JSON.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "Not modified: the ETag sent in If-None-Match still holds (not counted against the rate limit)."
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/forge/v1/social/activity": {
+      "get": {
+        "summary": "A person's contribution calendar (a year), timeline (3 months) and milestones.",
+        "operationId": "getSocialActivity",
+        "x-scope": "social:read",
+        "security": [
+          {
+            "token": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ApiVersion"
+          },
+          {
+            "name": "github",
+            "in": "query",
+            "required": false,
+            "description": "Their GitHub numeric id.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "orcid",
+            "in": "query",
+            "required": false,
+            "description": "Their ORCID iD.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "me",
+            "in": "query",
+            "required": false,
+            "description": "1: your own.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The answer, JSON.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "Not modified: the ETag sent in If-None-Match still holds (not counted against the rate limit)."
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/forge/v1/notifications": {
+      "get": {
+        "summary": "Your notifications: the registry's own inbox, computed now (no email is ever sent).",
+        "operationId": "getNotifications",
+        "x-scope": "notifications:read",
+        "security": [
+          {
+            "token": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ApiVersion"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The answer, JSON.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "Not modified: the ETag sent in If-None-Match still holds (not counted against the rate limit)."
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/forge/v1/notifications/mark": {
+      "post": {
+        "summary": "Mark threads read, unread, done, undone, saved or unsaved; unsubscribe or subscribe; all read; your settings.",
+        "operationId": "postNotificationsMark",
+        "x-scope": "notifications:write",
+        "security": [
+          {
+            "token": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ApiVersion"
+          }
+        ],
+        "responses": {
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error"
+          },
+          "2XX": {
+            "description": "The answer, JSON.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "op": {
+                    "description": "read, unread, done, undone, save, unsave, unsubscribe, subscribe, all_read or settings (required)."
+                  },
+                  "threads": {
+                    "description": "Up to 25 {key, title, url}."
+                  },
+                  "settings": {
+                    "description": "Your notification settings (op settings)."
+                  }
+                },
+                "required": [
+                  "op"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/forge/v1/hooks": {
+      "get": {
+        "summary": "Your outgoing webhooks, and the events a repository's or a paper's offer.",
+        "operationId": "getHooks",
+        "x-scope": "hooks:read",
+        "security": [
+          {
+            "token": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ApiVersion"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The answer, JSON.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "Not modified: the ETag sent in If-None-Match still holds (not counted against the rate limit)."
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/forge/v1/hooks/deliveries": {
+      "get": {
+        "summary": "One webhook's deliveries of the last 7 days: event, status, time, attempts.",
+        "operationId": "getHooksDeliveries",
+        "x-scope": "hooks:read",
+        "security": [
+          {
+            "token": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ApiVersion"
+          },
+          {
+            "name": "id",
+            "in": "query",
+            "required": true,
+            "description": "The hook's id.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The answer, JSON.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "Not modified: the ETag sent in If-None-Match still holds (not counted against the rate limit)."
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/forge/v1/hooks/write": {
+      "post": {
+        "summary": "Make a webhook (pinged first; its secret answered once), change its events, pause it, ping it, redeliver a delivery, rotate its secret, delete it.",
+        "operationId": "postHooksWrite",
+        "x-scope": "hooks:write",
+        "security": [
+          {
+            "token": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ApiVersion"
+          }
+        ],
+        "responses": {
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error"
+          },
+          "2XX": {
+            "description": "The answer, JSON.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "op": {
+                    "description": "create, update, ping, redeliver, rotate or delete (required)."
+                  },
+                  "subject": {
+                    "description": "create: repo:<forge>:<id> or paper:doi:10.…."
+                  },
+                  "url": {
+                    "description": "create: the https address it posts to."
+                  },
+                  "events": {
+                    "description": "create, update: the events, or \"*\" for all."
+                  },
+                  "id": {
+                    "description": "The hook's id (every op but create)."
+                  },
+                  "active": {
+                    "description": "update: false pauses it (a ping makes it active again)."
+                  },
+                  "guid": {
+                    "description": "redeliver: the delivery's id."
+                  }
+                },
+                "required": [
+                  "op"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/forge/v1/statuses": {
+      "get": {
+        "summary": "The statuses posted on a commit of a repository the registry knows, and their combined state.",
+        "operationId": "getStatuses",
+        "x-scope": "repos:read",
+        "security": [
+          {
+            "token": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ApiVersion"
+          },
+          {
+            "name": "path",
+            "in": "query",
+            "required": false,
+            "description": "owner/name.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "in": "query",
+            "required": false,
+            "description": "<forge>:<id>: one of path or id.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sha",
+            "in": "query",
+            "required": true,
+            "description": "The commit's full id.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The answer, JSON.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "Not modified: the ETag sent in If-None-Match still holds (not counted against the rate limit)."
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/forge/v1/statuses/post": {
+      "post": {
+        "summary": "Post a commit status (a lab's CI, a reproduction service): the latest of each context is kept.",
+        "operationId": "postStatusesPost",
+        "x-scope": "statuses:write",
+        "security": [
+          {
+            "token": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ApiVersion"
+          }
+        ],
+        "responses": {
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error"
+          },
+          "2XX": {
+            "description": "The answer, JSON.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "repo": {
+                    "description": "owner/name or <forge>:<id> (required)."
+                  },
+                  "sha": {
+                    "description": "The commit's full id (required)."
+                  },
+                  "state": {
+                    "description": "error, failure, pending or success (required)."
+                  },
+                  "context": {
+                    "description": "The service and its check, as “lab-ci/tests” (default: default)."
+                  },
+                  "description": {
+                    "description": "A short sentence (140 characters)."
+                  },
+                  "target_url": {
+                    "description": "An https page with the details."
+                  }
+                },
+                "required": [
+                  "repo",
+                  "sha",
+                  "state"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/forge/v1/security/sarif": {
+      "post": {
+        "summary": "Upload code-scanning results as SARIF 2.1.0 (your CI's own analyser): the registry shows them. It runs no analyser itself. The upload replaces the repository's code-scanning alerts.",
+        "operationId": "postSecuritySarif",
+        "x-scope": "security:write",
+        "security": [
+          {
+            "token": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ApiVersion"
+          }
+        ],
+        "responses": {
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error"
+          },
+          "2XX": {
+            "description": "The answer, JSON.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "repo": {
+                    "description": "owner/name or <forge>:<id> (required)."
+                  },
+                  "commit": {
+                    "description": "The commit's full hex id the analysis ran on."
+                  },
+                  "ref": {
+                    "description": "The branch the analysis is about."
+                  },
+                  "sarif": {
+                    "description": "The SARIF 2.1.0 document (required)."
+                  }
+                },
+                "required": [
+                  "repo",
+                  "sarif"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/forge/v1/statuses/actions": {
+      "post": {
+        "summary": "Post a commit status from a GitHub Actions workflow, with GitHub's OIDC token (audience: this site's origin) instead of a registry token: no secret in the repository.",
+        "operationId": "postStatusesActions",
+        "x-scope": null,
+        "security": [],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ApiVersion"
+          }
+        ],
+        "responses": {
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error"
+          },
+          "2XX": {
+            "description": "The answer, JSON.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "sha": {
+                    "description": "The commit's full id (required)."
+                  },
+                  "state": {
+                    "description": "error, failure, pending or success (required)."
+                  },
+                  "context": {
+                    "description": "Default: “GitHub Actions: <the workflow's name>”."
+                  },
+                  "description": {
+                    "description": "A short sentence (140 characters)."
+                  },
+                  "target_url": {
+                    "description": "An https page with the details (the run's page)."
+                  }
+                },
+                "required": [
+                  "sha",
+                  "state"
+                ]
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

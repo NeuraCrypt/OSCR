@@ -17,7 +17,35 @@
   --highlighter: #fff1a8;
   --font: "Lucida Grande", "Helvetica Neue", Helvetica, Arial, sans-serif;
   --font-code: Menlo, Consolas, "DejaVu Sans Mono", monospace;
+  /* Ease of use (night phase 15): the chrome colours the themes redefine, named once here so a
+     theme (dark, or a colour-vision palette) overrides them in one place under html[data-theme=…].
+     Light stays the default: no theme attribute, these values. */
+  --panel: #fff;              /* raised surfaces: reader buttons, the legend, the palette */
+  --border-strong: var(--border-strong);      /* the darker rules of inputs, buttons, panels */
+  --pane-border: #a9b3bc;     /* the reader's panes and buttons */
+  --focus: #e8a200;           /* the focus ring, visible on every theme */
+  --shadow: rgba(0, 0, 0, .14);
+  /* How wide the text reflows and how it spaces: the preferences (line spacing, tab size) change
+     these, nothing else. */
+  --line-height: 1.45;
+  --tab-size: 4;
+  --md-font: var(--font);     /* the Markdown body font; a preference can make it fixed-width */
   --width: 1100px;
+  /* The registry's own charts (statistics, night phase 12): one muted palette, defined here only, so
+     a future theme redefines it in one place. Additions green, deletions brown, like a diff. */
+  --chart-ink: #333;
+  --chart-grid: #ddd;
+  --series-1: #1f3b4d;
+  --series-2: #0645ad;
+  --series-3: #1a6b1a;
+  --series-4: #8a5a00;
+  --series-5: #7a2048;
+  --series-6: #4a4a4a;
+  --chart-add: #1a6b1a;
+  --chart-del: #a33;
+  --mark-paper: #0645ad;
+  --mark-map: #7a2048;
+  --mark-tag: #8a5a00;
 }
 
 html { font-size: 100%; }
@@ -26,13 +54,15 @@ body {
   background: var(--bg);
   color: var(--text);
   font: 15px/1.45 var(--font);
+  line-height: var(--line-height);
 }
+pre, code, .code, textarea { tab-size: var(--tab-size); -moz-tab-size: var(--tab-size); }
 
 a { color: var(--link); text-decoration: none; }
 a:hover { text-decoration: underline; }
 a:visited { color: var(--link-visited); }
 a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible {
-  outline: 2px solid #e8a200; outline-offset: 1px;
+  outline: 2px solid var(--focus); outline-offset: 1px;
 }
 
 /* Top masthead: site name on the left, search on the right */
@@ -47,7 +77,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
 .masthead form { display: flex; gap: .3em; align-items: center; font-size: .9em; }
 .masthead input[type="search"] {
   font: inherit; width: 16em; padding: .15em .35em;
-  border: 1px solid #777; border-radius: 0;
+  border: 1px solid var(--border-strong); border-radius: 0;
 }
 .masthead select, .masthead button { font: inherit; border-radius: 0; }
 /* The ways in (Browse, DOI lookup) in the masthead (approved by the owner, 2026-09-27) */
@@ -56,13 +86,13 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
 /* A form in a page (the DOI lookup), like the masthead's search (approved 2026-09-27) */
 /* A button anywhere in a page (the forms, the citations' "Copy") and a form's menus, like the
    masthead's (proposed in Phases 3 and 4; the owner said not to wait, 2026-09-28) */
-main form input[type="text"], main button, main form select { font: inherit; border-radius: 0; }
-main form input[type="text"] { width: min(28em, 100%); padding: .15em .35em; border: 1px solid #777; box-sizing: border-box; }
+main form input[type="text"], main form input[type="url"], main form input[type="search"], main button, main form select { font: inherit; border-radius: 0; }
+main form input[type="text"], main form input[type="url"], main form input[type="search"] { width: min(28em, 100%); padding: .15em .35em; border: 1px solid var(--border-strong); box-sizing: border-box; }
 /* The contribution forms (Phase 6: submit a paper, claim it, correct it, ask for its removal): a
    text of several lines like a field, a group of fields ruled like the sidebar, its legend in bold */
 main form textarea {
   font: inherit; width: min(40em, 100%); padding: .2em .35em;
-  border: 1px solid #777; border-radius: 0; box-sizing: border-box;
+  border: 1px solid var(--border-strong); border-radius: 0; box-sizing: border-box;
 }
 main fieldset { margin: .8em 0; padding: .3em .8em .6em; border: 1px solid var(--rule); min-width: 0; }
 main legend { padding: 0 .3em; font-weight: bold; }
@@ -163,12 +193,12 @@ a.reader-link {
 .reader-tools { display: flex; flex-wrap: wrap; gap: .35em; }
 .reader button, .reader .menu > summary {
   font: inherit; font-size: .84em; line-height: 1.4; padding: .12em .6em;
-  border: 1px solid #a9b3bc; border-radius: 0; background: #fff; color: var(--text);
+  border: 1px solid var(--pane-border); border-radius: 0; background: var(--panel); color: var(--text);
   cursor: pointer; white-space: nowrap;
 }
-.reader button:hover, .reader .menu > summary:hover { background: #eef1f4; }
-.reader button[aria-pressed="true"] { background: #dde5ec; border-color: #7d8b98; }
-.reader button:disabled { color: #9aa1a8; background: #fff; cursor: default; }
+.reader button:hover, .reader .menu > summary:hover { background: var(--bg-sidebar); }
+.reader button[aria-pressed="true"] { background: var(--bg-sidebar); border-color: var(--border-strong); }
+.reader button:disabled { color: var(--muted); background: var(--panel); cursor: default; }
 #toggle-paper { font-weight: bold; }
 
 /* The legend: every match, folded; each entry opens it on both sides */
@@ -176,7 +206,7 @@ a.reader-link {
 .legend > summary { cursor: pointer; color: var(--link); width: max-content; max-width: 100%; }
 .legend ol {
   margin: .3em 0 0; padding: .35em .8em .35em 2.6em; max-height: 13em; overflow: auto;
-  border: 1px solid var(--rule); background: #fff;
+  border: 1px solid var(--rule); background: var(--panel);
 }
 .legend li { margin: .1em 0; }
 .legend a { color: var(--text); }
@@ -278,7 +308,7 @@ a.reader-link {
 .menu > ul {
   position: absolute; right: 0; top: calc(100% + 2px); z-index: 5;
   min-width: 17em; margin: 0; padding: .3em 0; list-style: none;
-  background: #fff; border: 1px solid #a9b3bc; box-shadow: 0 2px 8px rgba(0, 0, 0, .14);
+  background: var(--panel); border: 1px solid var(--pane-border); box-shadow: 0 2px 8px var(--shadow);
   font-size: .86em;
 }
 .menu > ul li { padding: .25em .9em; white-space: nowrap; color: var(--muted); }
@@ -427,6 +457,852 @@ ol.lines li.whole.is-active.lead::before { box-shadow: inset -6px 0 0 var(--pair
   .reader-summary { flex-basis: 100%; }
 }
 
+/* The GitHub side (night phase 01): repository pages, their settings, the creation and link forms,
+   the hosting guides. Added in the archive's spirit: ruled blocks and plain words, no pills, no
+   decorative uppercase; a mode or a state is a sentence, colored at most with .ok or .warning. */
+
+/* A repository's heading line: "owner / name", then what it is in words (public, template,
+   archived, linked to the registry…) */
+.repo-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: .15em .9em; margin: .8em 0 .2em; }
+.repo-head h1 { margin: 0; font-size: 1.5em; overflow-wrap: anywhere; }
+.repo-head h1 .owner { font-weight: normal; }
+.repo-head .facts { color: var(--muted); font-size: .92em; }
+.repo-head .facts > * + *::before { content: " · "; }
+
+/* The mirror status sentence under it: how the registry follows the repository, and when it last
+   saw it */
+p.status-line {
+  margin: .3em 0 1em; padding: .3em .7em;
+  background: var(--bg-sidebar); border-left: 3px solid var(--rule);
+}
+
+/* Quick setup of an empty repository, and every block of commands to copy: the commands as they are
+   typed, a plain "Copy" button under each */
+.setup { margin: 1em 0; padding: .4em .9em .8em; border: 1px solid var(--rule); }
+.setup h2, .setup h3 { font-size: 1em; margin: .6em 0 .3em; }
+.setup p { margin: .3em 0; }
+pre.commands { margin: .3em 0 .2em; white-space: pre-wrap; overflow-wrap: anywhere; }
+pre.commands + button.copy, button.copy { font-size: .85em; padding: .05em .6em; margin: 0 0 .8em; }
+
+/* A choice among options, each explained in a sentence (the licence, the .gitignore template, the
+   template to start from) */
+fieldset.choices label, div.choices label { display: block; margin: .45em 0 0; }
+fieldset.choices .explain, div.choices .explain { display: block; margin: .05em 0 0 1.7em; color: var(--muted); font-size: .92em; }
+/* Phase 10: a group of choices drawn by a page's script (its heading a paragraph, not a legend) */
+div.choices { margin: .6em 0; }
+div.choices p.legend { font-weight: bold; margin: .2em 0 0; }
+
+/* A compact table of limits (file, push and repository sizes, the registry's own caps) */
+.limits { border-collapse: collapse; margin: .5em 0 1.2em; font-size: .93em; }
+.limits caption { text-align: left; font-weight: bold; padding: 0 0 .3em; }
+.limits th, .limits td { text-align: left; vertical-align: top; padding: .25em 1em .25em 0; border-bottom: 1px solid var(--rule); }
+.limits th { font-weight: bold; }
+.limits td.num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+
+/* Archive, transfer, delete: a bordered block that says the consequences in words before anything
+   is done */
+section.danger { margin: 1.6em 0; padding: .3em .9em .8em; border: 1px solid var(--warning); }
+section.danger h2 { font-size: 1.1em; margin: .4em 0 .3em; color: var(--warning); }
+section.danger h3 { font-size: 1em; margin: .9em 0 .2em; }
+section.danger ul { margin: .3em 0; padding-left: 1.3em; }
+
+/* The branches of a repository: one row each, the default one said in words */
+table.branches { width: 100%; border-collapse: collapse; margin: .5em 0 1em; font-size: .95em; }
+table.branches th, table.branches td { text-align: left; vertical-align: baseline; padding: .3em .8em .3em 0; border-bottom: 1px solid var(--rule); }
+table.branches th { font-weight: bold; border-bottom-color: var(--text); }
+table.branches td.name { font-family: var(--font-code); font-size: .9em; overflow-wrap: anywhere; }
+table.branches td.actions { white-space: nowrap; text-align: right; }
+
+/* A repository's settings: the name of each setting, then its value and what changing it does */
+dl.settings { margin: .5em 0 1em; }
+dl.settings dt { font-weight: bold; margin: 1em 0 .2em; }
+dl.settings dd { margin: 0; }
+dl.settings dd p { margin: .2em 0; }
+@media (min-width: 641px) {
+  dl.settings { display: grid; grid-template-columns: 13em 1fr; gap: .8em 1.4em; }
+  dl.settings dt { margin: 0; }
+}
+
+/* The Code button's panel: clone addresses, downloads, GitHub Desktop, Codespaces, the token page.
+   A <details class="panel"> opens without a script. */
+.panel { margin: .4em 0 1em; padding: .4em .9em .6em; border: 1px solid var(--rule); max-width: 40em; }
+details.panel > summary { cursor: pointer; font-weight: bold; }
+.panel h3 { font-size: 1em; margin: .7em 0 .2em; }
+.panel ul { margin: .2em 0; padding-left: 1.2em; }
+
+/* The sentence a person confirms before an authorized action goes to GitHub, and its buttons */
+.confirm { margin: .8em 0; padding: .5em .9em; background: var(--bg-sidebar); border: 1px solid var(--masthead); }
+.confirm p { margin: .25em 0; }
+.confirm .sentence { font-weight: bold; }
+
+/* The code views of the GitHub side (night phase 02): a repository's files, a file's lines, its
+   history. Plain rules in the archive's spirit: words for what a file is, ruled tables, no pills,
+   no icons; the code's colours are muted and never the only way something is said. */
+
+/* The line above a code view: the branch or tag switcher, the path, the actions in words */
+.code-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: .3em 1.2em; margin: .6em 0 .4em; }
+.code-head .path-crumbs { margin: 0; font-family: var(--font-code); font-size: .92em; overflow-wrap: anywhere; }
+.code-head .file-actions { margin: 0; font-size: .92em; }
+p.file-info, p.latest, p.view-switch { margin: .3em 0; color: var(--muted); font-size: .92em; }
+p.latest a { color: var(--link); }
+
+/* A button that reads as a link (Copy, Download, the line menu's actions): the same words, no box */
+button.link {
+  font: inherit; color: var(--link); background: none; border: 0; padding: 0; cursor: pointer;
+}
+button.link:hover { text-decoration: underline; }
+
+/* The branch and tag switcher (key w): a <details>, its panel a ruled box under it */
+details.refs { position: relative; }
+details.refs > summary { cursor: pointer; padding: .1em .5em; border: 1px solid var(--rule); background: var(--bg-sidebar); }
+details.refs .refs-panel {
+  position: absolute; z-index: 3; top: 1.9em; left: 0; width: min(24em, 90vw); max-height: 26em; overflow: auto;
+  background: var(--bg); border: 1px solid var(--rule); padding: .5em .7em; box-shadow: 0 2px 6px rgba(0, 0, 0, .12);
+}
+details.refs .refs-panel h3 { font-size: .95em; margin: .6em 0 .2em; }
+details.refs .refs-panel label { display: block; font-size: .9em; color: var(--muted); }
+details.refs .refs-panel input { width: 100%; box-sizing: border-box; font: inherit; padding: .15em .35em; border: 1px solid var(--border-strong); border-radius: 0; }
+ul.ref-list { margin: 0; padding: 0; list-style: none; font-family: var(--font-code); font-size: .88em; }
+ul.ref-list li { padding: .1em 0; overflow-wrap: anywhere; }
+
+/* A directory's files: one row each, its kind in words */
+table.files { width: 100%; border-collapse: collapse; margin: .4em 0 1em; font-size: .95em; }
+table.files caption { text-align: left; font-weight: bold; padding: 0 0 .3em; }
+table.files th, table.files td { text-align: left; vertical-align: baseline; padding: .25em .8em .25em 0; border-bottom: 1px solid var(--rule); }
+table.files th { border-bottom-color: var(--text); }
+table.files td.name { font-family: var(--font-code); font-size: .92em; overflow-wrap: anywhere; }
+table.files td.what { color: var(--muted); font-size: .9em; }
+table.files .num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+
+/* A file's lines: the numbers in a gutter of their own (not copied, not found by the browser's
+   search), a click on a number selects the line, shift-click a range. Each line keeps its exact
+   indentation (no wrapping: the block scrolls sideways). */
+ol.lines.code {
+  list-style: none; padding: 0; margin: .4em 0 1em; border: 1px solid var(--rule);
+  overflow-x: auto; tab-size: 4; background: var(--bg);
+}
+ol.lines.code li {
+  position: relative; box-sizing: border-box; width: max-content; min-width: 100%;
+  padding-left: 4.6em; padding-right: .8em; white-space: pre; overflow-wrap: normal;
+}
+ol.lines.code li::before {
+  content: counter(list-item); position: absolute; left: 0; top: 0; bottom: 0; width: 3.6em; padding-right: .5em;
+  text-align: right; color: var(--muted); background: var(--bg-sidebar); border-right: 1px solid var(--rule);
+  cursor: pointer; user-select: none;
+}
+ol.lines.code li:hover::before { color: var(--link); text-decoration: underline; }
+ol.lines.code li.highlight { background: var(--highlighter); }
+/* The selected lines' numbers stand out too (a traced line's colour is close to the highlighter) */
+ol.lines.code li.highlight::before { color: var(--text); font-weight: bold; background: var(--highlighter); }
+ol.lines.tab-2, ol.lines.tab-2 li { tab-size: 2; }
+ol.lines.tab-4, ol.lines.tab-4 li { tab-size: 4; }
+ol.lines.tab-8, ol.lines.tab-8 li { tab-size: 8; }
+/* A hidden or bidirectional character, shown as its code point, never applied */
+span.hidden-char { color: var(--warning); border: 1px dotted var(--warning); font-size: .85em; padding: 0 .1em; }
+/* A file as its plain text (?raw=1) */
+pre.raw { white-space: pre; tab-size: 4; font-size: .85em; line-height: 1.5; }
+
+/* The code's tokens: highlight.js's own classes (class-based output, no style attribute), a muted
+   palette in the archive's spirit; the paper reader's viewer uses the same classes */
+.hljs-comment, .hljs-quote { color: #6b6b6b; font-style: italic; }
+.hljs-doctag, .hljs-meta .hljs-keyword { color: #6f4b00; font-style: normal; }
+.hljs-keyword, .hljs-selector-tag, .hljs-template-tag { color: #7a1f5c; }
+.hljs-built_in, .hljs-type, .hljs-class .hljs-title, .hljs-title.class_ { color: #0b4f8a; }
+.hljs-literal, .hljs-number, .hljs-symbol, .hljs-bullet { color: #7a3e00; }
+.hljs-string, .hljs-regexp, .hljs-char.escape_, .hljs-template-variable { color: #0a5c2b; }
+.hljs-title, .hljs-title.function_, .hljs-section { color: #174ea6; }
+.hljs-meta, .hljs-meta .hljs-string { color: #6f4b00; }
+.hljs-attr, .hljs-attribute, .hljs-property, .hljs-variable, .hljs-params, .hljs-selector-attr, .hljs-selector-class,
+.hljs-selector-id, .hljs-name, .hljs-tag { color: #3d4f5c; }
+.hljs-section, .hljs-strong { font-weight: bold; }
+.hljs-emphasis { font-style: italic; }
+.hljs-link { text-decoration: underline; }
+.hljs-addition { color: #1a5c1a; background: #e8f5e8; }
+.hljs-deletion { color: #8a1b1b; background: #fbeaea; }
+.hljs-subst { color: inherit; }
+
+/* A code view beside the repository's file tree (a pane on the left; above the code on a phone) */
+.code-layout { display: flex; gap: 1.2em; align-items: flex-start; }
+.code-main { flex: 1; min-width: 0; }
+nav.file-tree {
+  flex: 0 0 15em; max-height: calc(100vh - 2em); overflow: auto; position: sticky; top: .5em;
+  font-size: .88em; border: 1px solid var(--rule); background: var(--bg-sidebar); padding: .3em .5em;
+}
+nav.file-tree summary { cursor: pointer; }
+nav.file-tree > details > summary { font-weight: bold; }
+nav.file-tree ul { list-style: none; margin: 0; padding-left: .9em; }
+nav.file-tree > details > ul { padding-left: 0; }
+nav.file-tree li { margin: .08em 0; overflow-wrap: anywhere; }
+nav.file-tree [aria-current="page"] { font-weight: bold; color: var(--text); }
+
+/* The discreet way to the source (GitHub), only for what the registry cannot show, after the
+   sentence that says why */
+p.at-source { font-size: .88em; color: var(--muted); margin: .6em 0; }
+p.at-source a, p.at-source a:visited { color: var(--muted); text-decoration: underline; }
+
+/* The line menu of a selection: sticky above the lines, its actions in words */
+.line-menu {
+  position: sticky; top: 0; z-index: 2; margin: .4em 0 0; padding: .3em .7em;
+  background: var(--bg-sidebar); border: 1px solid var(--masthead); font-size: .92em;
+}
+.line-menu p { margin: .15em 0; }
+form.jump { margin: .4em 0; font-size: .92em; }
+form.jump input { width: 8em; }
+
+/* An image of the repository, read as bytes and shown from an object URL */
+figure.file-image { margin: .6em 0 1em; padding: .6em; border: 1px solid var(--rule); text-align: center; }
+figure.file-image img { max-width: 100%; height: auto; }
+
+/* History, commits and diffs (night phase 02): a commit's header, the list of commits by day, the
+   diffs as tables with the numbers in their own cells; added and deleted lines tinted, their sign
+   in its own column, and the counts said in words for a screen reader */
+.commit-head h2 { font-size: 1.25em; margin: .6em 0 .3em; overflow-wrap: anywhere; }
+.commit-head p { margin: .25em 0; }
+pre.message { white-space: pre-wrap; overflow-wrap: anywhere; background: none; border: 0; padding: 0; margin: .3em 0 .6em; font-size: .9em; }
+p.commit-stats, .commit-facts p { margin: .3em 0; }
+ul.checks { margin: .2em 0 .6em; padding-left: 1.3em; font-size: .92em; }
+ol.commit-list { list-style: none; margin: 0 0 1em; padding: 0; }
+ol.commit-list li { padding: .45em 0; border-bottom: 1px solid var(--rule); }
+ol.commit-list .title { font-size: 1em; margin: 0; overflow-wrap: anywhere; }
+ol.commit-list .line { color: var(--muted); font-size: .9em; }
+form.commit-filters, form.compare-form { margin: .5em 0 1em; font-size: .93em; }
+form.commit-filters input[type="text"], form.compare-form input[type="text"] { width: 12em; }
+form.commit-filters input[type="date"] { font: inherit; border: 1px solid var(--border-strong); border-radius: 0; padding: .1em .3em; }
+p.pager { margin: 1em 0; }
+p.diff-options { font-size: .92em; margin: .4em 0 .8em; }
+p.diff-options input { width: 12em; }
+p.expand { font-size: .88em; margin: .2em 0 .8em; }
+
+section.file-diff { margin: 0 0 1.2em; border: 1px solid var(--rule); }
+section.file-diff > header { background: var(--bg-sidebar); border-bottom: 1px solid var(--rule); padding: .3em .7em; }
+section.file-diff > header h3 { font-family: var(--font-code); font-size: .92em; margin: 0; overflow-wrap: anywhere; }
+section.file-diff > header p { margin: .1em 0 0; font-size: .88em; color: var(--muted); }
+section.file-diff > .file-body { overflow-x: auto; }
+section.file-diff > .file-body > p { margin: .5em .7em; }
+.counts .added { color: var(--ok); }
+.counts .deleted { color: #8a1b1b; }
+
+table.diff { border-collapse: collapse; width: 100%; font-family: var(--font-code); font-size: .82em; line-height: 1.45; }
+table.diff td { vertical-align: top; padding: 0 .5em; }
+table.diff td.num {
+  width: 1%; min-width: 3em; text-align: right; color: var(--muted); background: var(--bg-sidebar);
+  border-right: 1px solid var(--rule); user-select: none; white-space: nowrap;
+}
+table.diff td.code { white-space: pre; tab-size: 4; }
+table.diff.split td.code { width: 49%; white-space: pre-wrap; overflow-wrap: anywhere; }
+table.diff td.code .sign { display: inline-block; width: 1em; color: var(--muted); user-select: none; }
+table.diff tr.hunk td { background: #eef2f6; color: var(--muted); padding: .15em .7em; white-space: pre-wrap; }
+table.diff td.add, table.diff td.num.add { background: #e8f5e8; }
+table.diff td.del, table.diff td.num.del { background: #fbeaea; }
+table.diff td.code.add .sign { color: var(--ok); }
+table.diff td.code.del .sign { color: #8a1b1b; }
+table.diff td.empty { background: #f7f7f7; }
+table.diff td.note { color: var(--muted); }
+
+/* An image changed: side by side, or one over the other (swipe, onion skin), in eleven steps */
+.image-diff { padding: .5em .7em; }
+.image-diff .two-up { display: flex; flex-wrap: wrap; gap: 1em; }
+.image-diff figure { margin: 0; text-align: center; }
+.image-diff img { max-width: 100%; border: 1px solid var(--rule); }
+.image-diff figcaption { font-size: .88em; color: var(--muted); }
+.image-diff .overlay { position: relative; display: inline-block; }
+.image-diff .overlay img.top { position: absolute; left: 0; top: 0; }
+.overlay.onion-0 img.top { opacity: 0; } .overlay.onion-1 img.top { opacity: .1; } .overlay.onion-2 img.top { opacity: .2; }
+.overlay.onion-3 img.top { opacity: .3; } .overlay.onion-4 img.top { opacity: .4; } .overlay.onion-5 img.top { opacity: .5; }
+.overlay.onion-6 img.top { opacity: .6; } .overlay.onion-7 img.top { opacity: .7; } .overlay.onion-8 img.top { opacity: .8; }
+.overlay.onion-9 img.top { opacity: .9; } .overlay.onion-10 img.top { opacity: 1; }
+.overlay.swipe-0 img.top { clip-path: inset(0 100% 0 0); } .overlay.swipe-1 img.top { clip-path: inset(0 90% 0 0); }
+.overlay.swipe-2 img.top { clip-path: inset(0 80% 0 0); } .overlay.swipe-3 img.top { clip-path: inset(0 70% 0 0); }
+.overlay.swipe-4 img.top { clip-path: inset(0 60% 0 0); } .overlay.swipe-5 img.top { clip-path: inset(0 50% 0 0); }
+.overlay.swipe-6 img.top { clip-path: inset(0 40% 0 0); } .overlay.swipe-7 img.top { clip-path: inset(0 30% 0 0); }
+.overlay.swipe-8 img.top { clip-path: inset(0 20% 0 0); } .overlay.swipe-9 img.top { clip-path: inset(0 10% 0 0); }
+.overlay.swipe-10 img.top { clip-path: none; }
+
+/* A rendered file (night phase 02, E2): a README or a Markdown file in the registry's own style.
+   The authors' classes and styles never reach the page; these rules are the only look it has.
+   Headings carry a "§" link to themselves; alerts are said in words (no icon, no pill); math is
+   MathML drawn by the browser (no font, no stylesheet of its own). */
+.markdown-body { overflow-wrap: break-word; line-height: 1.5; }
+.markdown-body > :first-child { margin-top: 0; }
+.markdown-body h1, .markdown-body h2 { border-bottom: 1px solid var(--rule); padding-bottom: .15em; }
+.markdown-body h1 { font-size: 1.6em; margin: 1em 0 .5em; }
+.markdown-body h2 { font-size: 1.3em; margin: 1em 0 .45em; }
+.markdown-body h3 { font-size: 1.12em; margin: .9em 0 .4em; }
+.markdown-body h4, .markdown-body h5, .markdown-body h6 { font-size: 1em; margin: .8em 0 .35em; }
+.markdown-body h6 { color: var(--muted); }
+.markdown-body a.anchor { font-size: .8em; font-weight: normal; color: var(--muted); visibility: hidden; }
+.markdown-body :is(h1, h2, h3, h4, h5, h6):hover a.anchor, .markdown-body a.anchor:focus { visibility: visible; }
+.markdown-body p, .markdown-body ul, .markdown-body ol, .markdown-body dl, .markdown-body blockquote,
+.markdown-body pre, .markdown-body details, .markdown-body .table-scroll { margin: 0 0 .9em; }
+.markdown-body ul, .markdown-body ol { padding-left: 1.8em; }
+.markdown-body li + li { margin-top: .2em; }
+.markdown-body li > p { margin: .3em 0; }
+.markdown-body blockquote { margin-left: 0; padding: 0 .9em; color: var(--muted); border-left: 3px solid var(--rule); }
+.markdown-body code { background: var(--bg-sidebar); padding: .05em .25em; }
+.markdown-body pre code { background: none; padding: 0; }
+.markdown-body pre.code-block { line-height: 1.4; tab-size: 4; }
+.markdown-body img { max-width: 100%; height: auto; }
+.markdown-body hr { border: 0; border-top: 1px solid var(--rule); margin: 1.2em 0; }
+.markdown-body kbd { font-family: var(--font-code); font-size: .85em; padding: .05em .35em; border: 1px solid var(--rule); border-bottom-width: 2px; background: var(--bg-sidebar); }
+.markdown-body details { border: 1px solid var(--rule); padding: .3em .7em; }
+.markdown-body summary { cursor: pointer; }
+.markdown-body .align-center { text-align: center; }
+.markdown-body .align-right { text-align: right; }
+.markdown-body .align-left { text-align: left; }
+.markdown-body img.align-right { float: right; margin: 0 0 .5em 1em; }
+.markdown-body img.align-left { float: left; margin: 0 1em .5em 0; }
+.markdown-body .table-scroll { overflow-x: auto; }
+.markdown-body table { border-collapse: collapse; }
+.markdown-body th, .markdown-body td { border: 1px solid var(--rule); padding: .25em .6em; vertical-align: top; }
+.markdown-body th { background: var(--bg-sidebar); }
+.markdown-body ul.contains-task-list { list-style: none; padding-left: 1.2em; }
+.markdown-body li.task-list-item input { margin: 0 .35em 0 -1.2em; vertical-align: middle; }
+.markdown-body .markdown-alert { margin: 0 0 .9em; padding: .3em .9em; border-left: 3px solid var(--rule); }
+.markdown-body .markdown-alert-title { font-weight: bold; margin: .2em 0 .3em; }
+.markdown-body .markdown-alert-note, .markdown-body .markdown-alert-tip { border-left-color: var(--masthead); }
+.markdown-body .markdown-alert-important { border-left-color: var(--link-visited); }
+.markdown-body .markdown-alert-warning, .markdown-body .markdown-alert-caution { border-left-color: var(--warning); }
+.markdown-body .markdown-alert-warning .markdown-alert-title, .markdown-body .markdown-alert-caution .markdown-alert-title { color: var(--warning); }
+.markdown-body .math-block { margin: 0 0 .9em; padding: .15em 0; overflow-x: auto; overflow-y: hidden; }
+.markdown-body math { font-size: 1.05em; }
+.markdown-body .math-unknown { color: var(--warning); font-family: var(--font-code); }
+.markdown-body .external-image, .markdown-body .missing-image { font-size: .92em; color: var(--muted); }
+.markdown-body a.external-image { color: var(--link); text-decoration: underline dotted; }
+.markdown-body figure.diagram-source { margin: 0 0 .9em; }
+.markdown-body figure.diagram-source figcaption { font-size: .88em; color: var(--muted); margin: 0 0 .3em; }
+.markdown-body section.footnotes { font-size: .9em; border-top: 1px solid var(--rule); margin-top: 1.5em; padding-top: .3em; }
+.markdown-body a.footnote-back { margin-left: .3em; }
+details.outline { margin: 0 0 .8em; font-size: .92em; }
+details.outline summary { cursor: pointer; color: var(--link); }
+details.outline ul { list-style: none; margin: .3em 0; padding-left: .2em; }
+details.outline li.level-2 { padding-left: 1em; } details.outline li.level-3 { padding-left: 2em; }
+details.outline li.level-4, details.outline li.level-5, details.outline li.level-6 { padding-left: 3em; }
+/* A directory's README under its files, as on GitHub; a README that is not Markdown as text */
+section.readme { margin: 1.2em 0; border: 1px solid var(--rule); padding: .2em 1em 1em; }
+section.readme h2.readme-name { font-size: .95em; font-family: var(--font-code); border-bottom: 1px solid var(--rule); margin: .3em -1em .9em; padding: 0 1em .4em; }
+pre.readme-text { white-space: pre-wrap; overflow-wrap: anywhere; background: none; border: 0; padding: 0; }
+
+/* Tracing maps in the code view (night phase 02, E4): the traced lines in the reader's colours
+   (.pair-N), a bar in the gutter; the note that says which paragraphs they carry out, each range
+   in its colour; "explain these lines" in the line menu */
+ol.lines.code li.traced { cursor: auto; }
+ol.lines.code li.traced::before { box-shadow: inset -3px 0 0 var(--masthead); color: var(--text); }
+.traced-note { margin: .5em 0 .8em; padding: .3em .8em; border: 1px solid var(--rule); border-left: 3px solid var(--masthead); font-size: .93em; }
+.traced-note p { margin: .3em 0; }
+.traced-note p.traced-title { font-weight: bold; }
+.traced-note ul { margin: .2em 0 .5em; padding-left: 1.2em; }
+.traced-note li { margin: .15em 0; padding: 0 .3em; cursor: auto; }
+p.traced-explain { margin: .3em 0; }
+
+/* Rich files (night phase 02, E5): a notebook's cells as saved (its inputs in their prompt, its
+   outputs below, never run), a table with its rows numbered and a filter, and the sentence above a
+   file shown as source although it is more (a map, a 3D model, another markup) */
+p.rich-note { margin: .3em 0 .8em; color: var(--muted); font-size: .93em; }
+.notebook { margin: .4em 0 1em; }
+.nb-cell { margin: 0 0 .9em; }
+.nb-markdown { padding: 0 .2em; }
+.nb-prompt { display: block; font-family: var(--font-code); font-size: .8em; color: var(--muted); margin: 0 0 .15em; }
+.nb-input pre.code-block { margin: 0; line-height: 1.4; tab-size: 4; }
+.nb-output { margin: .3em 0 0 1.2em; }
+.nb-output pre { margin: 0; background: none; border: 0; border-left: 2px solid var(--rule); padding: .2em .6em; white-space: pre-wrap; overflow-wrap: anywhere; font-size: .85em; }
+.nb-stderr pre { background: #fbf3e6; }
+.nb-error pre { background: #fbeaea; color: #6b1414; }
+.nb-image img { max-width: 100%; height: auto; border: 1px solid var(--rule); background: var(--bg); }
+.nb-note p, p.nb-note { margin: .2em 0; color: var(--muted); font-size: .9em; font-style: italic; }
+.data-table p.table-filter { font-size: .92em; margin: .3em 0 .5em; }
+.data-table p.table-filter input { width: min(18em, 60%); }
+.data-table .table-scroll { overflow: auto; max-height: 75vh; width: fit-content; max-width: 100%; box-sizing: border-box; border: 1px solid var(--rule); }
+table.data { border-collapse: collapse; font-size: .88em; }
+table.data th, table.data td { border-bottom: 1px solid var(--rule); border-right: 1px solid #e6e6e6; padding: .2em .6em; text-align: left; vertical-align: top; white-space: pre-wrap; max-width: 30em; overflow-wrap: anywhere; }
+table.data th { background: var(--bg-sidebar); position: sticky; top: 0; }
+table.data .num { text-align: right; font-variant-numeric: tabular-nums; }
+table.data .row-num { color: var(--muted); text-align: right; background: var(--bg-sidebar); user-select: none; }
+
+/* The Docs view: a repository's documentation as pages, their list on the left (above on a phone) */
+.docs-layout { display: flex; gap: 1.4em; align-items: flex-start; }
+nav.docs-nav { flex: 0 0 14em; font-size: .9em; border: 1px solid var(--rule); background: var(--bg-sidebar); padding: .3em .7em; position: sticky; top: .5em; max-height: calc(100vh - 2em); overflow: auto; }
+nav.docs-nav p.docs-root { font-weight: bold; margin: .2em 0 .4em; font-family: var(--font-code); }
+nav.docs-nav ul { list-style: none; margin: 0; padding: 0; }
+nav.docs-nav li { margin: .15em 0; overflow-wrap: anywhere; }
+nav.docs-nav li.level-2 { padding-left: .8em; } nav.docs-nav li.level-3 { padding-left: 1.6em; } nav.docs-nav li.level-4 { padding-left: 2.4em; }
+nav.docs-nav [aria-current="page"] { font-weight: bold; color: var(--text); }
+.docs-main { flex: 1; min-width: 0; }
+p.docs-head { font-size: .9em; color: var(--muted); margin: .2em 0 .8em; }
+p.docs-link { margin: .8em 0 0; }
+
+/* The About panel's parts read from the files (night phase 02, E6): the languages in words, the
+   community files, "Cite this repository" with its APA and BibTeX */
+.sidebar p.languages { margin: .3em 0 .6em; }
+.sidebar p.community-title { font-weight: bold; margin: .6em 0 .2em; }
+.sidebar ul.community { margin: 0 0 .6em; padding-left: 1.1em; }
+details.cite-repo { margin: .6em 0; }
+details.cite-repo summary { cursor: pointer; font-weight: bold; }
+details.cite-repo p { margin: .35em 0; }
+p.cite-apa { overflow-wrap: anywhere; }
+pre.cite-bibtex { font-size: .8em; white-space: pre-wrap; overflow-wrap: anywhere; margin: .3em 0; }
+p.cite-message { color: var(--muted); font-size: .92em; }
+
+/* The file finder (key t) and the search of a repository (night phase 02, E7): the matched letters
+   and words marked, the chosen file underlined in the list, the lines numbered as links */
+form.finder, form.repo-search { margin: .6em 0 .4em; }
+form.finder input[type="search"], form.repo-search input[type="search"] { width: min(32em, 100%); }
+form.finder small { color: var(--muted); }
+p.finder-count { color: var(--muted); font-size: .9em; margin: .3em 0; }
+ol.finder-results { list-style: none; margin: 0; padding: 0; font-family: var(--font-code); font-size: .9em; }
+ol.finder-results li { padding: .15em .5em; border-bottom: 1px solid #eee; overflow-wrap: anywhere; }
+ol.finder-results li.selected { background: var(--bg-sidebar); box-shadow: inset 3px 0 0 var(--masthead); }
+ol.finder-results mark, ol.search-results mark { padding: 0; }
+ol.search-results { list-style: none; margin: .5em 0; padding: 0; }
+ol.search-results > li { margin: 0 0 .9em; border: 1px solid var(--rule); }
+p.search-file { margin: 0; padding: .3em .6em; background: var(--bg-sidebar); border-bottom: 1px solid var(--rule); font-family: var(--font-code); font-size: .9em; overflow-wrap: anywhere; }
+ol.search-lines { list-style: none; margin: 0; padding: .3em .6em; font-size: .85em; }
+ol.search-lines li { white-space: pre-wrap; overflow-wrap: anywhere; }
+ol.search-lines code { background: none; }
+a.search-line-num { display: inline-block; min-width: 3em; text-align: right; color: var(--muted); font-family: var(--font-code); }
+
+/* Editing in the browser (night phase 03): the registry's own editor looks like its viewer. The
+   viewer's lines (ol.lines.code: the gutter, highlight.js's classes, the exact indentation) lie
+   under a transparent textarea in one grid cell: the same font, line height, padding and tab
+   width, so the caret sits on the letters. No wrapping unless asked; the block scrolls sideways. */
+.edit-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: .3em .6em; margin: .6em 0 .3em; }
+.edit-head .path-crumbs { margin: 0; font-family: var(--font-code); font-size: .92em; overflow-wrap: anywhere; }
+.edit-head .edit-name { margin: 0; flex: 1 1 16em; }
+main .edit-head .edit-name input[type="text"], .edit-head .edit-name input[type="text"] {
+  font: inherit; font-family: var(--font-code); font-size: .92em; width: min(24em, 100%); padding: .15em .35em; border: 1px solid var(--border-strong); border-radius: 0; box-sizing: border-box;
+}
+.edit-head .edit-branch { color: var(--muted); font-size: .92em; }
+.edit-head .edit-actions { margin: 0; }
+p.edit-name-said { margin: .2em 0; font-size: .92em; color: var(--muted); }
+p.edit-name-said.warning { color: var(--warning); }
+.name-helper:empty { display: none; }
+.name-helper { margin: .4em 0; }
+button.primary { font: inherit; font-weight: bold; color: var(--masthead-text); background: var(--masthead); border: 1px solid var(--masthead); border-radius: 0; padding: .15em .7em; cursor: pointer; }
+button.primary:hover { text-decoration: underline; }
+.editor-tabs { display: flex; gap: 0; margin: .7em 0 0; border-bottom: 1px solid var(--rule); }
+.editor-tabs button {
+  font: inherit; background: var(--bg-sidebar); border: 1px solid var(--rule); border-bottom: 0; border-radius: 0;
+  padding: .2em .9em; margin: 0 .2em -1px 0; cursor: pointer; color: var(--link);
+}
+.editor-tabs button[aria-selected="true"] { background: var(--bg); color: var(--text); font-weight: bold; border-bottom: 1px solid var(--bg); }
+.editor-panel { margin: 0 0 .6em; }
+.editor-panel.preview, .editor-panel.changes { border: 1px solid var(--rule); border-top: 0; padding: .4em .8em; }
+.editor-tools, .editor-find p, form.editor-goto { margin: .4em 0; font-size: .9em; }
+.editor-tools select, .editor-find input, .editor-find button, form.editor-goto input, form.editor-goto button { font: inherit; border-radius: 0; }
+.editor-find { border: 1px solid var(--rule); background: var(--bg-sidebar); padding: 0 .6em; }
+.editor-find input[type="search"], .editor-find input[type="text"] { width: min(18em, 100%); padding: .1em .3em; border: 1px solid var(--border-strong); box-sizing: border-box; }
+.editor-find .find-said { color: var(--muted); }
+form.editor-goto input { width: 6em; padding: .1em .3em; border: 1px solid var(--border-strong); }
+.editor-surface {
+  overflow-x: auto; border: 1px solid var(--rule); background: var(--bg);
+  font-family: var(--font-code); font-size: .85em; line-height: 1.5;
+}
+.editor-surface:focus-within { outline: 2px solid var(--focus); outline-offset: 1px; }
+.editor-stack { display: grid; grid-template-columns: 100%; width: max-content; min-width: 100%; }
+.editor-stack > * { grid-area: 1 / 1; }
+.editor-surface ol.lines.code.editor-lines { margin: 0; border: 0; font-size: 1em; overflow: visible; pointer-events: none; }
+.editor-surface ol.lines.code.editor-lines li::before { cursor: text; }
+textarea.editor-input {
+  box-sizing: border-box; width: 100%; height: 100%; min-height: 3em; margin: 0; border: 0; border-radius: 0;
+  padding: 0 .8em 0 4.6em; resize: none; overflow: hidden; background: transparent;
+  font: inherit; line-height: 1.5; letter-spacing: normal; white-space: pre; overflow-wrap: normal; tab-size: 4;
+  color: transparent; -webkit-text-fill-color: transparent; caret-color: var(--text); outline: 0;
+}
+textarea.editor-input::selection { color: transparent; -webkit-text-fill-color: transparent; background: rgba(6, 69, 173, .22); }
+.editor-surface.tab-2 textarea.editor-input { tab-size: 2; }
+.editor-surface.tab-4 textarea.editor-input { tab-size: 4; }
+.editor-surface.tab-8 textarea.editor-input { tab-size: 8; }
+.editor-surface.wrap .editor-stack { width: auto; }
+.editor-surface.wrap ol.lines.code li { width: auto; white-space: pre-wrap; overflow-wrap: anywhere; }
+.editor-surface.wrap textarea.editor-input { white-space: pre-wrap; overflow-wrap: anywhere; }
+p.editor-status { margin: .25em 0 0; color: var(--muted); font-size: .85em; }
+p.editor-foot { margin: .4em 0; font-size: .9em; }
+p.editor-foot .editor-draft { color: var(--muted); }
+.editor-moved { margin: .5em 0; }
+p.draft-note { margin: .3em 0; padding: .3em .6em; background: var(--highlighter); font-size: .92em; }
+
+/* The commit dialog: a ruled section under the editor, its choices as sentences */
+section.commit-dialog { margin: 1em 0; padding: .4em .9em .6em; border: 1px solid var(--masthead); background: var(--bg-sidebar); }
+section.commit-dialog h2 { margin: .3em 0 .5em; font-size: 1.15em; }
+section.commit-dialog input[type="text"], section.commit-dialog textarea {
+  font: inherit; width: min(40em, 100%); padding: .15em .35em; border: 1px solid var(--border-strong); border-radius: 0; box-sizing: border-box; background: var(--bg);
+}
+section.commit-dialog textarea { min-height: 4.5em; resize: vertical; }
+section.commit-dialog fieldset.choices legend { font-weight: bold; }
+section.commit-dialog .branch-name { margin: .4em 0 0 1.7em; }
+section.commit-dialog .branch-name input[type="text"] { font-family: var(--font-code); width: min(24em, 100%); }
+section.commit-dialog p.explain { color: var(--muted); font-size: .92em; }
+section.commit-dialog label .explain { display: block; margin: .05em 0 0 1.7em; color: var(--muted); font-size: .92em; }
+.secret-warning { margin: .5em 0; padding: .2em .7em; border: 1px solid var(--warning); background: var(--bg); }
+.secret-warning ul { margin: .2em 0; padding-left: 1.3em; font-family: var(--font-code); font-size: .9em; }
+
+/* Uploads and deletions (night phase 03, E4): a ruled drop area, the files listed with what happens
+   to each in words; a refused file keeps its row, its reason in the warning colour */
+.upload-drop { margin: .6em 0; padding: .6em .9em; border: 1px dashed var(--muted); background: var(--bg-sidebar); }
+.upload-drop.over { border-style: solid; border-color: var(--masthead); background: var(--highlighter); }
+.upload-drop p { margin: .3em 0; }
+.upload-drop input[type="file"] { font: inherit; font-size: .92em; max-width: 100%; }
+table.upload-files td:last-child { font-size: .92em; }
+table.upload-files tr.refused td.name { color: var(--muted); text-decoration: line-through; }
+ul.delete-files { margin: .3em 0 .8em; padding-left: 1.3em; font-family: var(--font-code); font-size: .9em; max-height: 20em; overflow: auto; }
+ul.delete-files li { overflow-wrap: anywhere; }
+p.editor-extra { margin: .3em 0; font-size: .9em; color: var(--muted); }
+
+/* Templates and writing aids (night phase 03, E5): a ruled picker under the name, the Markdown
+   toolbar as plain word buttons, a metadata file's check in words */
+.template-picker { padding: .2em .8em; border: 1px solid var(--rule); background: var(--bg-sidebar); }
+.template-picker p { margin: .35em 0; }
+.template-picker select, .template-picker input, .template-picker button { font: inherit; border-radius: 0; }
+.template-picker input[type="text"] { padding: .1em .3em; border: 1px solid var(--border-strong); width: min(14em, 100%); }
+.template-picker .explain { color: var(--muted); font-size: .92em; }
+.md-toolbar { margin: .4em 0 0; font-size: .88em; }
+.md-toolbar button { font: inherit; border-radius: 0; border: 1px solid var(--rule); background: var(--bg-sidebar); padding: .05em .5em; margin: 0 0 .2em; cursor: pointer; }
+.md-toolbar button:hover { text-decoration: underline; }
+.md-toolbar .md-hint { color: var(--muted); }
+p.metadata-check { margin: .3em 0; font-size: .9em; overflow-wrap: anywhere; }
+p.community-missing { font-size: .9em; color: var(--muted); }
+
+/* Pull requests and forks (night phase 04, E3): the list as ruled rows, the state said in a word
+   (Open, Draft, Merged, Closed) before the title, never a pill; the creation form as a ruled
+   section like the commit dialog; a fork's standing as a status line */
+form.pull-filter input[type="search"] { width: min(34em, 100%); }
+p.pull-quick { margin: .2em 0 .8em; font-size: .92em; }
+ul.pull-list { list-style: none; margin: 0 0 1em; padding: 0; }
+ul.pull-list li.pull-row { display: flex; gap: .6em; align-items: baseline; padding: .45em 0; border-bottom: 1px solid var(--rule); }
+ul.pull-list li.pull-row > div { min-width: 0; }
+ul.pull-list .title { margin: 0; overflow-wrap: anywhere; }
+ul.pull-list .line { margin: .1em 0 0; color: var(--muted); font-size: .9em; overflow-wrap: anywhere; }
+.pull-state { font-weight: bold; }
+.pull-state.ok { color: var(--ok); }
+.pull-state.muted { color: var(--muted); }
+p.pull-bulk { font-size: .92em; }
+section.pull-form { margin: 1em 0; padding: .4em .9em .6em; border: 1px solid var(--masthead); background: var(--bg-sidebar); }
+section.pull-form h2 { margin: .3em 0 .5em; font-size: 1.15em; overflow-wrap: anywhere; }
+section.pull-form input[type="text"], section.pull-form textarea, textarea.pull-text {
+  font: inherit; width: min(48em, 100%); padding: .15em .35em; border: 1px solid var(--border-strong); border-radius: 0; box-sizing: border-box; background: var(--bg);
+}
+section.pull-form textarea, textarea.pull-text { min-height: 8em; resize: vertical; font-family: var(--font-code); font-size: .9em; }
+section.pull-form select { font: inherit; border-radius: 0; }
+section.pull-form p.explain { color: var(--muted); font-size: .92em; }
+section.pull-form fieldset.choices legend { font-weight: bold; }
+.pull-preview { margin: .4em 0; padding: .4em .8em; border: 1px solid var(--rule); background: var(--bg); }
+ul.pull-suggested { margin: .2em 0 .6em; padding-left: 1.3em; font-size: .92em; }
+.pull-summary { margin: .6em 0; padding: .2em .7em; border-left: 3px solid var(--rule); background: var(--bg); }
+.pull-summary p { margin: .25em 0; font-size: .92em; }
+.pull-summary p.traced-title { font-weight: bold; }
+p.closing { margin: .3em 0; font-size: .92em; }
+ul.fork-list { margin: .3em 0 1em; padding-left: 1.3em; }
+ul.fork-list li { margin: .2em 0; overflow-wrap: anywhere; }
+ul.fork-list .line { color: var(--muted); font-size: .92em; }
+p.fork-links { margin: .3em 0; font-size: .92em; }
+p.fork-status { margin: .3em 0; }
+form.fork-form p { margin: .5em 0; }
+form.fork-form .explain { color: var(--muted); font-size: .92em; }
+
+/* A pull request's page (night phase 04, E4): its head with the merge status at the top, its tabs,
+   the conversation as ruled comments (a review's decision in words, a role in words), the
+   conversations on lines indented under their review, the merge box as a ruled section */
+.pull-head h2 { margin: .4em 0 .2em; font-size: 1.35em; overflow-wrap: anywhere; }
+.pull-head .pull-number { color: var(--muted); font-weight: normal; }
+p.merge-status { margin: .2em 0 .6em; font-weight: bold; }
+p.merge-status.ok { color: var(--ok); }
+p.merge-status.warning { color: var(--warning); }
+nav.pull-tabs { margin-top: .4em; }
+.pull-record .body { min-width: 0; }
+.pull-wide { margin: .6em 0 1em; }
+.comment { margin: 0 0 1em; padding: .3em .8em .5em; border: 1px solid var(--rule); }
+.comment > .markdown-body { margin: .3em 0 0; }
+p.comment-head { margin: 0 -.8em .3em; padding: .25em .8em; background: var(--bg-sidebar); border-bottom: 1px solid var(--rule); font-size: .92em; overflow-wrap: anywhere; }
+p.comment-head .role { color: var(--muted); }
+.comment.review-approved > p.comment-head { color: var(--ok); }
+.comment.review-changes_requested > p.comment-head { color: var(--warning); }
+p.muted-note { color: var(--muted); font-style: italic; }
+p.timeline-event { margin: .3em 0 .8em .8em; color: var(--muted); font-size: .92em; }
+.thread { margin: .6em 0 .3em; padding: .2em .7em; border-left: 3px solid var(--rule); }
+.thread.outdated { border-left-style: dashed; }
+p.thread-where { margin: .2em 0; font-family: var(--font-code); font-size: .88em; overflow-wrap: anywhere; }
+.thread-comment { margin: .4em 0; }
+.thread-comment > p.comment-head { margin: 0 0 .2em; padding: 0; background: none; border: 0; }
+p.thread-actions, p.suggestion-note { margin: .3em 0; font-size: .9em; }
+section.merge-box { margin: 1em 0; padding: .3em .9em .6em; border: 1px solid var(--masthead); background: var(--bg-sidebar); }
+section.merge-box h3 { margin: .3em 0; }
+section.merge-box p { margin: .35em 0; }
+.merge-form input[type="text"] { font: inherit; width: min(40em, 100%); padding: .15em .35em; border: 1px solid var(--border-strong); border-radius: 0; box-sizing: border-box; background: var(--bg); }
+.merge-form select { font: inherit; border-radius: 0; }
+.merge-form .explain { color: var(--muted); font-size: .9em; }
+a.primary-link { font-weight: bold; }
+section.comment-form { margin: 1em 0; }
+section.comment-form h3 { margin: .3em 0; }
+ul.reviewers { margin: .2em 0 .5em; padding-left: 1.2em; }
+ul.reviewers li { margin: .15em 0; overflow-wrap: anywhere; }
+p.ask-review input[type="text"] { font: inherit; width: 10em; padding: .1em .3em; border: 1px solid var(--border-strong); border-radius: 0; }
+.sidebar p.summary-line { margin: .25em 0; font-size: .9em; }
+.sidebar p.explain { color: var(--muted); font-size: .88em; }
+
+/* A pull request's Files changed (night phase 04, E5): a line's number takes a comment (a pointer,
+   underlined on hover), the comments sit in a row under their lines, a suggestion shows the change
+   it makes, a pending comment is marked in words; the review bar and its panel are ruled sections */
+form.commit-select { margin: .3em 0 .6em; font-size: .92em; }
+form.commit-select select { font: inherit; border-radius: 0; max-width: 100%; }
+.review-bar { margin: .4em 0 .8em; }
+.review-bar p { margin: .3em 0; }
+p.review-progress { color: var(--muted); font-size: .92em; }
+.review-bar .explain { color: var(--muted); font-size: .9em; }
+section.review-panel { margin: .4em 0 .8em; padding: .3em .9em .6em; border: 1px solid var(--masthead); background: var(--bg-sidebar); }
+section.review-panel h3 { margin: .3em 0; }
+section.review-panel .explain { color: var(--muted); font-size: .92em; }
+section.review-panel fieldset.choices legend { font-weight: bold; }
+p.file-review { margin: 0; padding: .15em .7em; font-size: .88em; border-bottom: 1px solid var(--rule); background: var(--bg-sidebar); }
+table.diff td.num.commentable { cursor: pointer; }
+table.diff td.num.commentable:hover { text-decoration: underline; color: var(--link); }
+table.diff > tbody > tr.comment-row > td { padding: .3em .7em .5em; background: var(--bg); font-family: var(--font); font-size: 1.2em; white-space: normal; border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule); }
+.comment-box p { margin: .3em 0; }
+.thread.pending { border-left-color: var(--warning); }
+.suggestion { margin: .3em 0; border: 1px solid var(--rule); }
+.suggestion p.suggestion-title { margin: 0; padding: .15em .6em; font-size: .88em; background: var(--bg-sidebar); border-bottom: 1px solid var(--rule); }
+.suggestion table.diff { font-size: .78em; }
+.traced-note.file-traced { margin: 0; border-width: 0 0 1px 0; }
+p.review-said, .review-said p { margin: .3em 0; }
+
+/* Conflicts resolved in the browser (night phase 04, E6): each conflict shows the two sides' lines
+   in ruled blocks, its choices as sentences; the lines alike around it are folded */
+.conflict-file .file-body { padding: .3em .7em .6em; }
+.conflict { margin: .5em 0; padding: .3em .6em; border-left: 3px solid var(--warning); background: var(--bg); }
+p.conflict-side { margin: .3em 0 .1em; font-size: .9em; font-weight: bold; }
+pre.conflict-ours, pre.conflict-theirs, pre.conflict-context, .conflict details pre { margin: 0 0 .3em; padding: .2em .5em; font-size: .85em; white-space: pre-wrap; overflow-wrap: anywhere; border: 1px solid var(--rule); }
+pre.conflict-ours { background: #e8f5e8; }
+pre.conflict-theirs { background: #eef2f6; }
+pre.conflict-context { color: var(--muted); background: var(--bg-sidebar); }
+.conflict fieldset.choices p { margin: .15em 0; }
+p.conflict-whole { margin: .2em .7em .5em; font-size: .9em; }
+section.conflict-guide { margin: 1.2em 0; }
+
+/* Issues (night phase 05, E4): the list as ruled rows (the state and the type in words, never a
+   pill), a label as its name after a small square of its colour (a fixed palette of 16, chosen by
+   `data-color`: no style attribute), the chooser's entries, the new-issue form's fields, similar
+   issues and the suggestions set by rule in a quiet ruled box */
+ul.issue-list { list-style: none; margin: 0 0 1em; padding: 0; }
+ul.issue-list li.issue-row { display: flex; gap: .6em; align-items: baseline; padding: .45em 0; border-bottom: 1px solid var(--rule); }
+ul.issue-list li.issue-row > div { min-width: 0; }
+ul.issue-list li.issue-row.pinned { border-left: 3px solid var(--masthead); padding-left: .5em; }
+ul.issue-list .title { margin: 0; overflow-wrap: anywhere; }
+ul.issue-list .line { margin: .1em 0 0; color: var(--muted); font-size: .9em; overflow-wrap: anywhere; }
+.issue-state { font-weight: bold; }
+.issue-state.muted { color: var(--muted); }
+.issue-type { color: var(--muted); }
+.issue-type.research { color: var(--masthead); font-weight: bold; }
+.issue-flag { color: var(--muted); font-size: .9em; }
+.label { white-space: nowrap; }
+.label-mark { display: inline-block; width: .7em; height: .7em; margin-right: .3em; border: 1px solid #888; vertical-align: -.05em; }
+.label-mark[data-color="red"] { background: #d73a4a; }
+.label-mark[data-color="orange"] { background: #e99695; }
+.label-mark[data-color="amber"] { background: #fbca04; }
+.label-mark[data-color="yellow"] { background: #e4e669; }
+.label-mark[data-color="lime"] { background: #c2e0c6; }
+.label-mark[data-color="green"] { background: #0e8a16; }
+.label-mark[data-color="teal"] { background: #008672; }
+.label-mark[data-color="cyan"] { background: #a2eeef; }
+.label-mark[data-color="blue"] { background: #0075ca; }
+.label-mark[data-color="navy"] { background: #1d76db; }
+.label-mark[data-color="violet"] { background: #7057ff; }
+.label-mark[data-color="purple"] { background: #d876e3; }
+.label-mark[data-color="pink"] { background: #f9d0c4; }
+.label-mark[data-color="brown"] { background: #8a5a2b; }
+.label-mark[data-color="gray"] { background: #cfd3d7; }
+.label-mark[data-color="white"] { background: #fff; }
+ul.label-list, ul.milestone-list, ul.template-list { list-style: none; margin: .3em 0 1em; padding: 0; }
+ul.label-list li.label-row { padding: .35em 0; border-bottom: 1px solid var(--rule); overflow-wrap: anywhere; }
+ul.label-list .label-about { color: var(--muted); }
+ul.milestone-list li, ul.template-list li { padding: .4em 0; border-bottom: 1px solid var(--rule); }
+ul.milestone-list .title, ul.template-list .title { margin: 0; font-weight: bold; overflow-wrap: anywhere; }
+ul.milestone-list .line, ul.template-list .line { margin: .1em 0 0; color: var(--muted); font-size: .92em; overflow-wrap: anywhere; }
+.issue-bulk p { margin: .3em 0; }
+.issue-bulk select, .issue-form select { font: inherit; border-radius: 0; max-width: 100%; }
+section.issue-form .form-field { margin: .6em 0; }
+section.issue-form .form-field label { display: block; font-weight: bold; }
+section.issue-form .form-field input[type="text"] { width: min(40em, 100%); }
+section.issue-form .form-markdown { margin: .5em 0; padding: .1em .7em; border-left: 3px solid var(--rule); }
+section.issue-form fieldset.choices label { display: block; margin: .15em 0; }
+section.issue-form details.issue-meta { margin: .6em 0; }
+section.issue-form details.issue-meta summary { cursor: pointer; font-size: .92em; }
+fieldset.issue-labels label.label { display: inline-block; margin: .1em .8em .1em 0; }
+.similar, .rule-suggestions { margin: .3em 0; font-size: .92em; }
+.similar ul { margin: .2em 0 .4em; padding-left: 1.3em; }
+p.similar-title { margin: .3em 0 .1em; color: var(--muted); }
+p.rule-suggestion { margin: .3em 0; padding: .2em .6em; border-left: 3px solid var(--rule); background: var(--bg-sidebar); }
+section.template-problems { margin: 1em 0; }
+/* An issue's page (night phase 05, E5): a comment's actions in a quiet line, the reactions as their
+   characters and names, the task list as boxes in a ruled section, the sub-issues as a short list */
+p.comment-actions { margin: .4em 0 0; font-size: .88em; color: var(--muted); }
+p.comment-actions select { font: inherit; border-radius: 0; }
+p.reactions { margin: .4em 0 0; font-size: .9em; }
+.reaction { white-space: nowrap; }
+.edit-box { margin: .5em 0; }
+.edit-box input[type="text"] { font: inherit; width: min(40em, 100%); padding: .15em .35em; border: 1px solid var(--border-strong); border-radius: 0; box-sizing: border-box; }
+section.task-panel { margin: 1em 0; padding: .2em .8em .5em; border: 1px solid var(--rule); background: var(--bg); }
+section.task-panel h3 { margin: .3em 0; font-size: 1em; }
+ul.task-list { list-style: none; margin: .2em 0; padding: 0; }
+ul.task-list li { margin: .15em 0; overflow-wrap: anywhere; }
+.completions { font-size: .9em; }
+.completions button { margin: .1em .5em .1em 0; }
+ul.sub-issues { margin: .1em 0 .4em; padding-left: 1.2em; font-size: .9em; }
+ul.sub-issues li { margin: .1em 0; overflow-wrap: anywhere; }
+#issue-actions p { margin: .35em 0; font-size: .9em; }
+/* The current tab of a repository's bar (Code, Issues, Pull requests…), in words and weight */
+nav.tabs a[aria-current="page"] { font-weight: bold; color: var(--text); }
+#issue-actions input[type="text"], #issue-actions select { font: inherit; border-radius: 0; max-width: 100%; }
+#issue-actions input[type="text"] { padding: .1em .3em; border: 1px solid var(--border-strong); }
+
+/* Releases (night phase 07, E4): the list as ruled rows, a release's states in words (Latest,
+   Pre-release, Draft, Immutable: never a pill), its files as a ruled table with their SHA-256 in the
+   code font, the tie to a paper's version as a quiet ruled block, the form's fields in columns like
+   the pull request form's; the table of contents in the sidebar as a short list */
+ul.release-list { list-style: none; margin: 0 0 1em; padding: 0; }
+ul.release-list li.release-row { padding: .5em 0; border-bottom: 1px solid var(--rule); }
+ul.release-list .title { margin: 0; font-weight: bold; overflow-wrap: anywhere; }
+ul.release-list .line { margin: .15em 0 0; color: var(--muted); font-size: .9em; overflow-wrap: anywhere; }
+ul.release-list .excerpt { margin: .25em 0 0; font-size: .92em; overflow-wrap: anywhere; }
+.states { font-size: .88em; font-weight: normal; }
+.state { color: var(--muted); }
+.state.ok { color: var(--ok); }
+.state.warning { color: var(--warning); }
+.release-head h2 { margin: .4em 0 .2em; font-size: 1.35em; overflow-wrap: anywhere; }
+.release-head .line { margin: .15em 0; color: var(--muted); font-size: .92em; overflow-wrap: anywhere; }
+section.release-notes { margin: .8em 0 1em; padding: .1em .9em .4em; border: 1px solid var(--rule); }
+table.assets { width: 100%; border-collapse: collapse; margin: .4em 0 .8em; font-size: .92em; }
+table.assets th, table.assets td { text-align: left; vertical-align: baseline; padding: .3em .8em .3em 0; border-bottom: 1px solid var(--rule); }
+table.assets th { font-weight: bold; border-bottom-color: var(--text); }
+table.assets td.name { overflow-wrap: anywhere; }
+table.assets .label-text { color: var(--muted); }
+code.digest, td.digest code { font-family: var(--font-code); font-size: .9em; overflow-wrap: anywhere; word-break: break-all; }
+.tie { margin: .4em 0 .8em; padding: .2em .8em; border-left: 3px solid var(--masthead); background: var(--bg-sidebar); }
+.tie p { margin: .3em 0; overflow-wrap: anywhere; }
+.tie p.ok { color: var(--ok); }
+.tie p.warning { color: var(--warning); }
+form.release-research p, form.tag-form p { margin: .4em 0; }
+form.release-research select, form.release-research input[type="text"], form.tag-form input[type="text"] { font: inherit; border-radius: 0; max-width: 100%; }
+form.release-research input[type="text"], form.tag-form input[type="text"] { padding: .1em .3em; border: 1px solid var(--border-strong); }
+section.release-form input[type="text"] { width: min(24em, 100%); }
+section.release-form #rel-name { width: min(40em, 100%); }
+section.release-form select { max-width: 100%; }
+section.release-form fieldset.release-research { margin: 1em 0; padding: .2em .9em .5em; border: 1px solid var(--rule); }
+section.release-form fieldset.release-research legend { font-weight: bold; }
+section.release-form fieldset.release-research p { margin: .45em 0; }
+ul.release-ties { margin: .3em 0 .6em; padding-left: 1.2em; }
+ul.release-ties li { margin: .25em 0; overflow-wrap: anywhere; }
+ul.release-toc { list-style: none; margin: .2em 0 .6em; padding: 0; font-size: .9em; }
+ul.release-toc li { margin: .15em 0; overflow-wrap: anywhere; }
+table.tags td.archives { white-space: nowrap; }
+/* The environment a release carries (night phase 07, E6): each file with its reading as a short list of
+   sentences in their tone, the places it runs as plain links, the packages with their install line
+   in the code font */
+section.env-panel { margin: 1em 0; }
+ul.env-files, ul.env-elsewhere, ul.env-packages { margin: .3em 0 .8em; padding-left: 1.2em; }
+ul.env-files > li, ul.env-packages > li { margin: .4em 0; overflow-wrap: anywhere; }
+ul.env-files p, ul.env-packages p { margin: .15em 0; }
+ul.env-checks { margin: .1em 0 .3em; padding-left: 1.2em; font-size: .92em; }
+ul.env-checks li.ok { color: var(--ok); }
+ul.env-checks li.warning { color: var(--warning); }
+ul.env-elsewhere li { margin: .3em 0; font-size: .95em; }
+code.install { font-family: var(--font-code); font-size: .9em; overflow-wrap: anywhere; }
+section.asset-form { margin: .6em 0 1em; padding: .1em .9em .5em; border: 1px solid var(--rule); }
+section.asset-form h4 { margin: .4em 0 .2em; }
+section.asset-form p { margin: .35em 0; }
+section.asset-form input[type="text"], section.asset-form select { font: inherit; border-radius: 0; max-width: 100%; }
+section.asset-form input[type="text"] { width: min(24em, 100%); padding: .1em .3em; border: 1px solid var(--border-strong); box-sizing: border-box; }
+
+/* Night phase 08: the search's other types (src/scripts/search-types.ts): the results numbered, their
+   second line quieter; the form's help. */
+ol.results { padding-left: 2em; }
+ol.results li { margin: .7em 0; }
+ol.results p.line { margin: .15em 0 0; color: var(--muted); font-size: .92em; }
+form.search-form p.explain { color: var(--muted); font-size: .92em; margin-top: .2em; }
+form.search-form input[type="search"] { font: inherit; padding: .15em .3em; border: 1px solid var(--border-strong); border-radius: 0; width: min(28em, 100%); box-sizing: border-box; }
+
+/* Night phase 08: the social pages. Star, Watch and Follow as plain buttons with their counts in
+   words (never a badge); the inbox as ruled rows, an unread one in bold with a rule on its left; the
+   stars and lists; a profile's head with its identicon (a 5 × 5 table whose cells take one of eight
+   hues by class: no image, no style attribute); the contribution calendar as a table of cells whose
+   level (0–4) is a class, a published paper a dot; the feed and the topics as plain lists. */
+p.explain, span.explain { color: var(--muted); font-size: .92em; }
+.social-actions { display: flex; flex-wrap: wrap; gap: .4em .6em; align-items: center; margin: .4em 0 .8em; font-size: .95em; }
+.social-actions button, .social-actions select { font: inherit; border-radius: 0; }
+.social-actions .said { color: var(--muted); }
+.sidebar .social-actions { display: block; }
+.sidebar .social-actions > * { margin: .2em 0; }
+details.lists-menu { display: inline-block; }
+details.lists-menu[open] { display: block; border: 1px solid var(--rule); padding: .2em .6em; }
+details.lists-menu p { margin: .2em 0; }
+fieldset.custom-watch { display: block; margin: .3em 0; padding: .2em .6em .4em; border: 1px solid var(--rule); }
+fieldset.custom-watch[hidden] { display: none; }
+fieldset.custom-watch label { margin-right: .8em; white-space: nowrap; }
+ul.notices { list-style: none; margin: 0 0 1em; padding: 0; }
+ul.notices li.notice { padding: .45em 0 .45em .5em; border-bottom: 1px solid var(--rule); overflow-wrap: anywhere; }
+ul.notices li.notice.unread { border-left: 3px solid var(--masthead); }
+ul.notices .notice-what { color: var(--muted); }
+ul.notices p.line { margin: .1em 0 0; color: var(--muted); font-size: .9em; }
+ul.notices p.notice-actions { margin: .25em 0 0; font-size: .9em; }
+ul.notices button, p.notice-bulk button, p.notice-filters button, ul.watching button, section.star-list button, ul.stars button { font: inherit; font-size: .9em; border-radius: 0; }
+h2.notice-group { font-size: 1em; margin: 1em 0 .2em; border-bottom: 1px solid var(--rule); }
+form.notice-filter input[type="search"] { font: inherit; width: min(30em, 100%); box-sizing: border-box; padding: .15em .3em; border: 1px solid var(--border-strong); border-radius: 0; }
+p.notice-filters, p.notice-bulk { font-size: .92em; margin: .4em 0; }
+ul.watching li { margin: .25em 0; }
+section.notice-settings { margin-top: 1.5em; }
+ul.stars { padding-left: 1.2em; }
+ul.stars li { margin: .3em 0; overflow-wrap: anywhere; }
+p.star-filters input[type="search"], p.star-filters select, form.list-form input[type="text"] { font: inherit; border-radius: 0; }
+p.star-filters input[type="search"], form.list-form input[type="text"] { padding: .1em .3em; border: 1px solid var(--border-strong); max-width: 100%; box-sizing: border-box; }
+section.star-list { margin: .8em 0; padding: .1em .9em .5em; border: 1px solid var(--rule); }
+section.star-list h3 { margin: .4em 0 .2em; }
+section.star-list .list-state { font-weight: normal; color: var(--muted); font-size: .85em; }
+.profile-head { display: flex; gap: 1em; align-items: center; margin: .4em 0; }
+.profile-head h1 { margin: 0; }
+p.handles, p.status { margin: .15em 0; color: var(--muted); }
+p.bio { font-size: 1.05em; }
+table.identicon { border-collapse: collapse; flex: none; border: 1px solid var(--rule); }
+table.identicon td { width: 12px; height: 12px; padding: 0; }
+table.identicon.hue-0 td.on { background: #1f3b4d; }
+table.identicon.hue-1 td.on { background: #0e8a16; }
+table.identicon.hue-2 td.on { background: #8a5a00; }
+table.identicon.hue-3 td.on { background: #0075ca; }
+table.identicon.hue-4 td.on { background: #7057ff; }
+table.identicon.hue-5 td.on { background: #b60205; }
+table.identicon.hue-6 td.on { background: #008672; }
+table.identicon.hue-7 td.on { background: #5a3696; }
+form.profile-form p.line label { display: inline-block; min-width: 12em; }
+form.profile-form input[type="text"] { font: inherit; width: min(28em, 100%); box-sizing: border-box; padding: .1em .3em; border: 1px solid var(--border-strong); border-radius: 0; }
+.calendar-scroll { overflow-x: auto; }
+table.calendar { border-collapse: separate; border-spacing: 2px; }
+table.calendar td { width: 10px; height: 10px; padding: 0; font-size: 8px; line-height: 10px; text-align: center; color: #000; background: #ebedf0; }
+table.calendar td.none { background: transparent; }
+table.calendar td.level-1 { background: #c6dbe8; }
+table.calendar td.level-2 { background: #8fb3cc; }
+table.calendar td.level-3 { background: #4f7f9f; }
+table.calendar td.level-4 { background: #1f3b4d; color: #fff; }
+table.calendar td.published { outline: 1px solid #8a5a00; }
+ul.milestones li, ul.timeline li, ul.feed li, ul.pinned li { margin: .3em 0; overflow-wrap: anywhere; }
+ul.feed { list-style: none; padding: 0; }
+ul.feed li { padding: .35em 0; border-bottom: 1px solid var(--rule); }
+ul.feed li button { font: inherit; font-size: .85em; border-radius: 0; margin-left: .4em; }
+ul.topics li { margin: .4em 0; }
+ul.topics p.line { margin: .1em 0 0; color: var(--muted); font-size: .92em; }
+
+/* Phase 10: automation and integrations. The settings of tokens and webhooks (their lists, a secret
+   shown once), the checks of a commit (the registry's findings in words, the repository's own tests,
+   the statuses posted to the registry, the tested environments), the public API's reference. */
+section.token-made pre.commands, .confirm pre.commands { font-family: var(--font-code); }
+ul.hooks { list-style: none; padding: 0; margin: .4em 0 1em; }
+ul.hooks > li { padding: .5em 0; border-bottom: 1px solid var(--rule); overflow-wrap: anywhere; }
+ul.hooks p { margin: .2em 0; }
+p.hook-actions button, table.tokens button, table.deliveries button { font-size: .88em; padding: .05em .6em; }
+section.checks-report, section.checks-ci, section.checks-posted, section.checks-env { margin: .8em 0 1.2em; }
+section.checks-report h3, section.checks-ci h3, section.checks-posted h3, section.checks-env h3 { font-size: 1.05em; margin: .6em 0 .3em; }
+ul.findings { margin: .3em 0 .6em; padding-left: 1.3em; }
+ul.findings li { margin: .35em 0; overflow-wrap: anywhere; }
+ul.findings .fix { color: var(--muted); }
+section.api-route { margin: 1.1em 0; padding-top: .3em; border-top: 1px solid var(--rule); }
+section.api-route h3 { font-size: 1em; margin: .3em 0; overflow-wrap: anywhere; }
+section.api-route p { margin: .25em 0; }
+
 footer {
   max-width: var(--width); margin: 0 auto; padding: 1em;
   border-top: 1px solid var(--rule); font-size: .85em; color: var(--muted);
@@ -444,6 +1320,52 @@ footer a { margin-right: 1em; }
   /* The body of a record takes the column's width: a long word or a <pre> no longer widens it. */
   .record .body { width: 100%; }
   nav.tabs a { padding: .25em .5em; }
+  /* The GitHub side (night phase 01): the masthead's links wrap; tables and the repository's
+     heading take the column's width */
+  .masthead nav { flex-wrap: wrap; gap: .2em 1em; }
+  .repo-head { display: block; }
+  table.branches, .limits { display: block; overflow-x: auto; }
+  /* Phase 02: the code views take the column; the kind of a file gives way to its name */
+  .code-head { display: block; }
+  .code-head > * { margin: .3em 0; }
+  table.files td.what, table.files th:nth-child(2) { display: none; }
+  ol.lines.code li { padding-left: 3.6em; }
+  ol.lines.code li::before { width: 2.8em; }
+  /* Phase 03: the editor's textarea keeps the gutter's width, its head wraps */
+  textarea.editor-input { padding-left: 3.6em; }
+  .edit-head { display: block; }
+  .edit-head > * { margin: .3em 0; }
+  section.commit-dialog { padding-left: .6em; padding-right: .6em; }
+  .code-layout { flex-direction: column; align-items: stretch; }
+  nav.file-tree { order: 2; flex-basis: auto; position: static; max-height: 20em; margin: .6em 0 0; }
+  table.diff.split td.code { width: auto; }
+  form.commit-filters input[type="text"], form.compare-form input[type="text"] { width: 100%; box-sizing: border-box; }
+  section.danger, .setup, .panel { padding-left: .6em; padding-right: .6em; }
+  section.readme { padding-left: .6em; padding-right: .6em; }
+  .docs-layout { flex-direction: column; align-items: stretch; }
+  nav.docs-nav { position: static; flex-basis: auto; max-height: 16em; }
+  section.readme h2.readme-name { margin-left: -.6em; margin-right: -.6em; padding-left: .6em; }
+  .markdown-body img.align-right, .markdown-body img.align-left { float: none; margin: 0; }
+  /* Phase 04: the pull request forms take the column */
+  section.pull-form { padding-left: .6em; padding-right: .6em; }
+  section.merge-box, .comment { padding-left: .6em; padding-right: .6em; }
+  p.comment-head { margin-left: -.6em; margin-right: -.6em; padding-left: .6em; }
+  form.pull-filter input[type="search"] { width: 100%; }
+  /* Phase 05: the issue forms take the column; a label keeps its words together */
+  section.issue-form .form-field input[type="text"] { width: 100%; box-sizing: border-box; }
+  ul.issue-list li.issue-row.pinned { padding-left: .3em; }
+  /* Phase 07: a release's files scroll within the column; the forms take it */
+  table.assets { display: block; overflow-x: auto; }
+  section.release-form input[type="text"], section.release-form #rel-name { width: 100%; box-sizing: border-box; }
+  section.release-notes, .tie { padding-left: .6em; padding-right: .6em; }
+  /* Phase 08: the masthead's search wraps under the site's name (the type and the field) */
+  .masthead form { flex-wrap: wrap; }
+  /* Phase 08: the profile's head and the forms take the column; the calendar scrolls within it */
+  .profile-head { align-items: flex-start; }
+  form.profile-form p.line label { display: block; min-width: 0; }
+  .social-actions { font-size: .92em; }
+  /* Phase 10: the tokens', deliveries' and reference's tables scroll within the column */
+  table.tokens, table.deliveries, table.scopes, table.errors { display: block; overflow-x: auto; }
 }
 
 /* ------------------------------------------------------------------------------------------
@@ -543,3 +1465,338 @@ table.facts td.n, table.facts th.n { text-align: right; overflow-wrap: normal; }
 .swatch-link { background: var(--link); }
 .swatch-text { background: var(--text); }
 .swatch-white { background: #fff; }
+/* Night phase 16: the content rules. The human check (Cloudflare Turnstile's widget, drawn in its own
+   frame) keeps its room so that the form does not jump when it appears; something hidden by moderation
+   is said in a ruled line, as a status, never a badge; the owner's queue is a table like the others,
+   the reporters' words with their line breaks. */
+.human-check { min-height: 70px; margin: .6em 0; }
+p.moderated { margin: .4em 0 1em; padding: .3em .7em; background: var(--bg-sidebar); border-left: 3px solid var(--warning); }
+table.queue { width: 100%; border-collapse: collapse; margin: .5em 0 1em; font-size: .95em; }
+table.queue th, table.queue td { text-align: left; vertical-align: top; padding: .3em .8em .3em 0; border-bottom: 1px solid var(--rule); }
+table.queue th { font-weight: bold; border-bottom-color: var(--text); }
+table.queue td.text { white-space: pre-wrap; overflow-wrap: anywhere; }
+table.queue td code { font-size: .85em; overflow-wrap: anywhere; }
+table.queue td:first-child { white-space: nowrap; }
+/* The footer's links, more of them since the rules' pages: a link's words stay together on a phone */
+footer a { white-space: nowrap; }
+form.lookup input[type="text"] { width: min(28em, 100%); }
+@media (max-width: 640px) {
+  table.queue { display: block; overflow-x: auto; }
+}
+/* Night phase 16: the rules and privacy pages. A draft says so first, in a ruled block (neither a
+   banner nor a badge); the pages' numbered sections and their tables are the site's ordinary ones. */
+.draft-notice { margin: .6em 0 1.2em; padding: .3em .9em; border: 1px solid var(--warning); background: var(--bg-sidebar); }
+.draft-notice p { margin: .3em 0; }
+.policy h2 { margin-top: 1.4em; }
+.policy dl { margin: .4em 0 1em; }
+.policy dt { font-weight: bold; margin-top: .6em; }
+.policy dd { margin: .1em 0 .3em 1.2em; }
+.policy table { border-collapse: collapse; margin: .5em 0 1em; font-size: .95em; }
+.policy th, .policy td { text-align: left; vertical-align: top; padding: .25em 1em .25em 0; border-bottom: 1px solid var(--rule); }
+.policy th { font-weight: bold; }
+@media (max-width: 640px) {
+  .policy table { display: block; overflow-x: auto; }
+}
+/* Night phase 14: a command line's sign-in, approved on /device/. The code the person types from their
+   terminal is set in the code font, its letters spaced, as the terminal prints it; the request is the
+   settings' own list. */
+input.device-code { font-family: var(--font-code); font-size: 1.25em; letter-spacing: .12em; text-transform: uppercase; width: 9em; max-width: 100%; padding: .15em .4em; border: 1px solid var(--border-strong); border-radius: 0; }
+.panel dl.settings dd ul { margin: .2em 0; padding-left: 1.2em; }
+/* Night phase 11: the Security (and quality) tab. The dependency graph is a definition list, as the
+   catalogue's listing; its facts are said in words (.ok or .warning), never a pill or an uppercase
+   label. The filter form is a row of labelled controls; "show paths" is a details disclosure. */
+.security h2 { margin-top: .4em; }
+.security-deps { margin: 1.2em 0; }
+.security-deps h3 { margin: .2em 0 .3em; }
+.dep-summary { color: var(--muted); margin: .2em 0 .6em; }
+form.dep-filter { display: flex; flex-wrap: wrap; gap: .4em 1.2em; align-items: end; margin: .4em 0 .8em; }
+form.dep-filter label { display: flex; flex-direction: column; font-size: .9em; color: var(--muted); gap: .15em; }
+form.dep-filter input, form.dep-filter select { font: inherit; padding: .15em .35em; border: 1px solid var(--border-strong); border-radius: 0; background: var(--bg); }
+dl.deps { margin: .3em 0; }
+dl.deps dt { font-weight: normal; margin-top: .5em; }
+dl.deps dt .dep-name { font-weight: bold; }
+dl.deps dt .dep-eco { color: var(--muted); font-size: .85em; }
+dl.deps dt .dep-version { font-family: var(--font-code); font-size: .9em; }
+dl.deps dt .dep-req { font-family: var(--font-code); font-size: .9em; color: var(--muted); }
+dd.dep { margin: 0 0 .1em 1.2em; }
+dd.dep .dep-facts { font-size: .9em; color: var(--muted); }
+details.dep-paths { margin: .15em 0; }
+details.dep-paths summary { cursor: pointer; color: var(--link); font-size: .9em; }
+details.dep-paths ul { margin: .2em 0 .2em 1em; padding-left: 1em; }
+details.dep-paths code { font-size: .85em; }
+@media (max-width: 640px) {
+  form.dep-filter { flex-direction: column; align-items: stretch; gap: .5em; }
+}
+/* Phase 11: the alerts (secret, vulnerability, code scanning). A list, each with its severity in a
+   tone (.warning or .muted, never a pill) and the fix in muted text; no value is ever shown whole. */
+.security-secrets, .security-alerts, .security-scanning { margin: 1.2em 0; }
+.security-secrets h3, .security-alerts h3, .security-scanning h3 { margin: .2em 0 .3em; }
+ul.alerts { list-style: none; margin: .4em 0; padding: 0; }
+ul.alerts li.alert { margin: .5em 0; padding-left: .8em; border-left: 3px solid var(--rule); }
+ul.alerts .alert-head { margin: .1em 0; }
+ul.alerts .fix { color: var(--muted); margin: .1em 0 .2em; }
+ul.alerts .alert-meta { color: var(--muted); font-size: .9em; }
+ul.alerts code { font-size: .85em; overflow-wrap: anywhere; }
+/* Phase 11: the licence compatibility section and the SBOM download. */
+.security-licences { margin: 1.2em 0; }
+.security-licences h3 { margin: .2em 0 .3em; }
+.sbom-actions { margin: .5em 0; }
+.alert-actions button, .sbom-actions button { font: inherit; padding: .1em .6em; border: 1px solid var(--border-strong); border-radius: 0; background: var(--bg-sidebar); cursor: pointer; }
+.alert-actions button:hover, .sbom-actions button:hover { background: #e8e8e8; }
+.alert-actions { margin: .2em 0; }
+li.alert.is-dismissed { opacity: .65; }
+/* Phase 11: private vulnerability reporting. */
+.security-reporting { margin: 1.2em 0; }
+.security-reporting h3 { margin: .2em 0 .3em; }
+ul.advisories { list-style: none; margin: .4em 0; padding: 0; }
+ul.advisories li.advisory { margin: .4em 0; padding-left: .8em; border-left: 3px solid var(--rule); }
+button.advisory-open { font: inherit; background: none; border: none; color: var(--link); cursor: pointer; padding: 0; text-align: left; }
+button.advisory-open:hover { text-decoration: underline; }
+.advisory-thread { margin: .3em 0 .3em 1em; padding-left: .6em; border-left: 2px solid var(--rule); }
+ul.advisory-posts { list-style: none; margin: .2em 0; padding: 0; }
+ul.advisory-posts li { margin: .2em 0; }
+details.advisory-new { margin: .8em 0; }
+form.advisory-form label { display: block; margin: .3em 0; }
+form.advisory-form input, form.advisory-form select { font: inherit; padding: .15em .35em; border: 1px solid var(--border-strong); border-radius: 0; min-width: min(28em, 100%); }
+
+/* Repository statistics (night phase 12): the registry draws every chart itself, in inline SVG, and
+   shows the same numbers as a table. No chart library, no GitHub image. Colour is set here, never as
+   an SVG attribute, so a chart reads the same wherever the theme goes. */
+.insights { margin: 1em 0; }
+.insights h2 { margin: .2em 0 .4em; }
+.insights section { margin: 1.4em 0; }
+.insights section > h3 { margin: .2em 0 .3em; }
+.insights .at-source { color: var(--muted); font-size: .9em; margin: .2em 0 .6em; }
+.figure-with-table { margin: 1em 0; }
+figure.chart { margin: .4em 0; }
+figure.chart svg { width: 100%; height: auto; display: block; }
+figure.chart figcaption { color: var(--muted); font-size: .9em; margin-top: .3em; }
+figure.chart-empty { color: var(--muted); font-style: italic; }
+.chart .axis { stroke: var(--chart-grid); stroke-width: 1; }
+.chart .tick { fill: var(--muted); font-size: 11px; font-family: var(--font); }
+.chart .line { fill: none; stroke-width: 1.6; }
+.chart .line-1 { stroke: var(--series-1); } .chart .area-1 { fill: var(--series-1); opacity: .14; }
+.chart .line-2 { stroke: var(--series-2); } .chart .area-2 { fill: var(--series-2); opacity: .14; }
+.chart .line-3 { stroke: var(--series-3); } .chart .area-3 { fill: var(--series-3); opacity: .14; }
+.chart .line-4 { stroke: var(--series-4); } .chart .area-4 { fill: var(--series-4); opacity: .14; }
+.chart .line-5 { stroke: var(--series-5); } .chart .area-5 { fill: var(--series-5); opacity: .14; }
+.chart .line-6 { stroke: var(--series-6); } .chart .area-6 { fill: var(--series-6); opacity: .14; }
+.chart .col-up { fill: var(--chart-add); }
+.chart .col-down { fill: var(--chart-del); }
+.chart .bar-1 { fill: var(--series-1); } .chart .bar-2 { fill: var(--series-2); }
+.chart .bar-3 { fill: var(--series-3); } .chart .bar-4 { fill: var(--series-4); }
+.chart .bar-5 { fill: var(--series-5); } .chart .bar-6 { fill: var(--series-6); }
+.chart .bar-label { fill: var(--bg); font-size: 11px; font-family: var(--font); }
+.chart .bar-value { fill: var(--chart-ink); font-size: 11px; font-family: var(--font); }
+.chart .mark { stroke-width: 1; stroke-dasharray: 2 2; }
+.chart .mark-dot { stroke: none; }
+.chart .mark-paper, .chart circle.mark-paper { stroke: var(--mark-paper); fill: var(--mark-paper); }
+.chart .mark-map, .chart circle.mark-map { stroke: var(--mark-map); fill: var(--mark-map); }
+.chart .mark-tag, .chart circle.mark-tag { stroke: var(--mark-tag); fill: var(--mark-tag); }
+.chart-legend { font-size: .85em; color: var(--muted); margin: .2em 0; }
+.chart-legend .key { margin-right: 1em; white-space: nowrap; }
+.chart-legend .key::before { content: ""; display: inline-block; width: .8em; height: .8em; margin-right: .3em; vertical-align: -.05em; }
+.chart-legend .series-1::before { background: var(--series-1); } .chart-legend .series-2::before { background: var(--series-2); }
+.chart-legend .series-3::before { background: var(--series-3); } .chart-legend .series-4::before { background: var(--series-4); }
+.chart-legend .series-5::before { background: var(--series-5); } .chart-legend .series-6::before { background: var(--series-6); }
+.chart-legend .key-up::before { background: var(--chart-add); } .chart-legend .key-down::before { background: var(--chart-del); }
+.chart-legend .mark-paper::before { background: var(--mark-paper); } .chart-legend .mark-map::before { background: var(--mark-map); } .chart-legend .mark-tag::before { background: var(--mark-tag); }
+table.chart-table { border-collapse: collapse; font-size: .9em; margin: .4em 0; }
+table.chart-table caption { text-align: left; color: var(--muted); font-size: .95em; margin-bottom: .2em; }
+table.chart-table th, table.chart-table td { border: 1px solid var(--rule); padding: .1em .5em; text-align: right; }
+table.chart-table th:first-child { text-align: left; }
+.chart-downloads { font-size: .85em; margin: .3em 0; }
+.chart-downloads button { font: inherit; background: none; border: none; color: var(--link); cursor: pointer; padding: 0; margin-right: 1em; }
+.chart-downloads button:hover { text-decoration: underline; }
+details.chart-data > summary { cursor: pointer; color: var(--link); font-size: .9em; }
+.used-by-count { font-weight: bold; }
+.traffic-note { color: var(--muted); font-size: .9em; }
+.checklist { list-style: none; margin: .5em 0; padding: 0; }
+.checklist li { margin: .25em 0; }
+.checklist .done::before { content: "\2713 "; color: var(--ok); }
+.checklist .todo::before { content: "\2022 "; color: var(--muted); }
+
+/* Snippets, OSCR's gists (night phase 13). */
+dd.snippet-row { margin: .15em 0 .6em 2.4em; }
+dd.snippet-row .title { display: block; }
+.snippet-actions { display: flex; flex-wrap: wrap; gap: .5em; align-items: center; margin: .8em 0; }
+.snippet-actions button, .owner-actions button { font: inherit; border-radius: 0; cursor: pointer; }
+.owner-actions { display: inline-flex; flex-wrap: wrap; gap: .5em; align-items: center; }
+.snippet-file { margin: .4em 0; }
+.snippet-file input { display: block; width: 100%; margin-bottom: .2em; font: inherit; }
+.snippet-file textarea { display: block; width: 100%; font-family: var(--mono, monospace); font-size: .9em; }
+.comments ol { list-style: none; margin: .4em 0; padding: 0; }
+.comments .comment { margin: 0 0 .6em; }
+
+/* ─── Ease of use (night phase 15) ──────────────────────────────────────────── */
+
+/* The skip link: the first focusable element, off-screen until focused, so a keyboard or a
+   screen reader jumps straight to the content (WCAG 2.4.1 Bypass blocks). */
+.skip-link {
+  position: absolute; left: .5em; top: -3em; z-index: 50;
+  background: var(--panel); color: var(--link); border: 1px solid var(--border-strong);
+  padding: .35em .7em; border-radius: 0;
+}
+.skip-link:focus { top: .5em; }
+
+/* Themes are options, never the default. Light stays the default (no data-theme). A dark theme and
+   the colour-vision palettes redefine the tokens of :root, and nothing else: every rule above reads
+   these tokens, so one override repaints the whole site, light and dark alike (CLAUDE.md: no dark
+   theme by default). */
+html[data-theme="dark"] {
+  --text: #e8e8e8;
+  --muted: #a6adb4;
+  --rule: #3a4047;
+  --bg: #15181c;
+  --bg-sidebar: #1d2228;
+  --link: #74a7ff;
+  --link-visited: #c3a6ea;
+  --ok: #5fc25f;
+  --warning: #e3ad52;
+  --highlighter: #5a4a00;
+  --panel: #1b2026;
+  --border-strong: #5a626b;
+  --pane-border: #4a525b;
+  --shadow: rgba(0, 0, 0, .5);
+  --chart-ink: #d2d2d2;
+  --chart-grid: #3a4047;
+  color-scheme: dark;
+}
+
+/* Increased contrast: for signed-out visitors too. It darkens text, muted text and rules, and
+   thickens the focus ring (WCAG 1.4.11). It stacks with the theme (it only re-reads the tokens). */
+html[data-contrast="more"] {
+  --muted: #333;
+  --rule: #999;
+  --border-strong: #333;
+  --pane-border: #555;
+}
+html[data-theme="dark"][data-contrast="more"] {
+  --text: #fff;
+  --muted: #d4d4d4;
+  --rule: #6a727a;
+  --border-strong: #8a929a;
+  --pane-border: #7a828a;
+}
+html[data-contrast="more"] a:focus-visible,
+html[data-contrast="more"] button:focus-visible,
+html[data-contrast="more"] input:focus-visible,
+html[data-contrast="more"] select:focus-visible { outline-width: 3px; }
+
+/* Colour-vision palettes: the registry's own charts and the coloured marks use a token palette
+   (defined once on :root, night phase 12). A reader who does not tell green from brown (the diff
+   colours) can pick a palette that keeps every series distinct. Geometry is untouched; only the
+   tokens change, so a chart reads the same whatever the theme. */
+html[data-vision="deuteranopia"], html[data-vision="protanopia"] {
+  --series-1: #004c8c;
+  --series-2: #d55e00;
+  --series-3: #0072b2;
+  --series-4: #cc79a7;
+  --series-5: #332288;
+  --series-6: #555;
+  --chart-add: #0072b2;
+  --chart-del: #d55e00;
+  --mark-paper: #004c8c;
+  --mark-map: #cc79a7;
+  --mark-tag: #d55e00;
+}
+html[data-vision="tritanopia"] {
+  --series-1: #006d77;
+  --series-2: #d62246;
+  --series-3: #009e9e;
+  --series-4: #b5179e;
+  --series-5: #005f73;
+  --series-6: #555;
+  --chart-add: #009e9e;
+  --chart-del: #d62246;
+  --mark-paper: #006d77;
+  --mark-map: #b5179e;
+  --mark-tag: #d62246;
+}
+
+/* Link underlines: a reader can ask for an underline on every link, not only on hover. */
+html[data-underline="always"] a { text-decoration: underline; }
+
+/* Line spacing and tab size: the preferences change the tokens, nothing else. */
+html[data-line="roomy"] { --line-height: 1.8; }
+html[data-line="tight"] { --line-height: 1.3; }
+html[data-tab="2"] { --tab-size: 2; }
+html[data-tab="8"] { --tab-size: 8; }
+
+/* A fixed-width font for rendered Markdown, for a reader who prefers it (code and prose align). */
+html[data-md="fixed"] { --md-font: var(--font-code); }
+.rich, .markdown-body, .readme-body { font-family: var(--md-font); }
+
+/* Reduced motion: the site carries almost no animation, but the preference (and the system
+   setting, honoured by default) stops every transition and animation (WCAG 2.3.3). */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; scroll-behavior: auto !important; }
+}
+html[data-motion="reduced"] *, html[data-motion="reduced"] *::before, html[data-motion="reduced"] *::after {
+  animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; scroll-behavior: auto !important;
+}
+
+/* The preferences page (/settings/preferences/): a plain list of controls, the archive density. */
+.prefs { display: grid; grid-template-columns: minmax(0, 18em) minmax(0, 1fr); gap: .5em 1.2em; margin: 1em 0; }
+.prefs dt { font-weight: bold; }
+.prefs dd { margin: 0; }
+.prefs dd .help { display: block; color: var(--muted); font-size: .9em; margin-top: .15em; }
+.prefs select, .prefs input { font: inherit; border-radius: 0; }
+.prefs-saved { color: var(--ok); margin-left: .6em; }
+.prefs-actions { margin: 1em 0; display: flex; flex-wrap: wrap; gap: .6em; align-items: center; }
+.prefs-actions button { font: inherit; border-radius: 0; cursor: pointer; }
+
+/* The keyboard-shortcut help, and the command palette (night phase 15): both are modal dialogs,
+   built by their scripts and styled only here. A plain surface, the archive density, no pills. */
+dialog.shortcuts-dialog, dialog.command-palette {
+  padding: 0; border: 1px solid var(--border-strong); border-radius: 0;
+  background: var(--panel); color: var(--text); box-shadow: 0 4px 20px var(--shadow);
+  max-width: 44em; width: calc(100% - 2em); max-height: 90vh; overflow: hidden;
+  display: flex; flex-direction: column;
+  /* Anchor near the top rather than vertically centred, so a tall dialog is never clipped on a
+     phone and it opens where the eye expects it (like a command bar). */
+  margin: 4vh auto auto;
+}
+@media (max-width: 480px) {
+  dialog.shortcuts-dialog, dialog.command-palette { width: calc(100% - 1em); max-width: none; }
+  td.shortcut-keys { width: 6em; }
+}
+dialog.shortcuts-dialog::backdrop, dialog.command-palette::backdrop { background: rgba(0, 0, 0, .35); }
+.dialog-head { display: flex; align-items: baseline; justify-content: space-between; gap: 1em; padding: .6em .9em; border-bottom: 1px solid var(--rule); }
+.dialog-head h2 { margin: 0; font-size: 1.1em; }
+.dialog-head button { font: inherit; border-radius: 0; cursor: pointer; }
+
+/* The shortcut help: one table per group, keys on the left. */
+.shortcut-help { padding: .6em .9em 1em; flex: 1 1 auto; overflow: auto; }
+.shortcut-group { margin: .6em 0 1em; }
+.shortcut-group h3 { margin: .4em 0 .3em; font-size: 1em; }
+table.shortcut-table { border-collapse: collapse; width: 100%; }
+table.shortcut-table td { padding: .2em .4em; vertical-align: top; }
+td.shortcut-keys { white-space: nowrap; width: 9em; }
+td.shortcut-keys kbd, .shortcut-help kbd {
+  font-family: var(--font-code); font-size: .85em; padding: .05em .35em; margin-right: .15em;
+  border: 1px solid var(--rule); border-bottom-width: 2px; background: var(--bg-sidebar);
+}
+
+/* The command palette: an input, then the results, keyboard-navigable. */
+.command-palette .palette-input { display: block; width: 100%; box-sizing: border-box; font: inherit; padding: .5em .9em; border: 0; border-bottom: 1px solid var(--rule); background: var(--panel); color: var(--text); }
+.command-palette .palette-input:focus-visible { outline: none; }
+.palette-hint { padding: .35em .9em; font-size: .85em; color: var(--muted); border-bottom: 1px solid var(--rule); }
+.palette-results { list-style: none; margin: 0; padding: .3em 0; max-height: 60vh; overflow: auto; }
+.palette-results .palette-group { padding: .35em .9em .1em; font-size: .78em; color: var(--muted); }
+.palette-results li.palette-option { padding: .3em .9em; cursor: pointer; display: flex; gap: .6em; align-items: baseline; }
+.palette-results li.palette-option .palette-kind { color: var(--muted); font-size: .85em; }
+.palette-results li.palette-option[aria-selected="true"] { background: var(--bg-sidebar); }
+.palette-results li.palette-option mark { background: var(--highlighter); color: inherit; }
+.palette-empty { padding: .6em .9em; color: var(--muted); }
+
+/* The service status page (/status/, night phase 15): a 90-day grid of small cells, each a day,
+   coloured by availability from the tokens. Also readable as text (title and aria-label per cell). */
+.status-grid { list-style: none; margin: .6em 0; padding: 0; display: flex; flex-wrap: wrap; gap: 2px; }
+.status-day { display: inline-block; width: 11px; height: 16px; border: 1px solid var(--rule); border-radius: 0; vertical-align: middle; }
+.status-day.state-up { background: var(--ok); border-color: var(--ok); }
+.status-day.state-partial { background: var(--warning); border-color: var(--warning); }
+.status-day.state-down { background: var(--chart-del); border-color: var(--chart-del); }
+.status-day.state-none { background: var(--bg-sidebar); }
+.status-key { display: flex; flex-wrap: wrap; gap: .4em 1em; align-items: center; }
+.status-key .status-day { margin-right: .25em; }

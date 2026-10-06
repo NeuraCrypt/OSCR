@@ -1,0 +1,36 @@
+---
+// /device/: the approval of a command line's sign-in (night phase 14; D14-2). The terminal prints this
+// page's address with a sealed request (?r=…) and a code of 8 letters; the signed-in person reads what
+// the token may do, types the code, and approves or refuses. One page (the file budget: no file per
+// request). Its script (src/scripts/device.ts) reads GET /api/forge/device and sends POST
+// /api/forge/device/decide. science.css only.
+import Base from "../layouts/Base.astro";
+import { SITE_NAME } from "../config";
+---
+<Base
+  title="Approve a command line"
+  description="Approve or refuse a sign-in started in a terminal: what the token may do, for how long, with the code the terminal shows."
+  breadcrumb={[{ text: "Account", href: "/account/" }, { text: "Approve a command line" }]}
+>
+  <div id="device-shell">
+    <h1>Approve a command line</h1>
+    <p class="summary" aria-live="polite">Reading the sign-in request…</p>
+    <noscript><p class="warning">This page reads the request and sends your decision in your browser, which needs JavaScript.</p></noscript>
+    <div id="device-box"></div>
+    <div id="device-said" aria-live="polite"></div>
+    <h2>What this is</h2>
+    <p>
+      The <code>oscr</code> command line signs in to {SITE_NAME} this way: it asks for a token, you approve it
+      here, signed in, and the token goes to your terminal, which keeps it in your system's keychain.{" "}
+      {SITE_NAME} keeps only its fingerprint (SHA-256). The command line's GitHub sign-in is GitHub's own,
+      on GitHub's page: that token never reaches {SITE_NAME}.
+    </p>
+    <p>
+      Your tokens, and how to revoke one: <a href="/settings/tokens/">personal tokens</a>. The API the
+      command line calls:{" "}<a href="/developers/">the developers' reference</a>.
+    </p>
+  </div>
+  <script>
+    import "../scripts/device";
+  </script>
+</Base>

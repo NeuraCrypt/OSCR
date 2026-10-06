@@ -1,0 +1,1785 @@
+{
+ "about": "The registry's checks and citations, with their answers (night phase 14, D14-6): written by website/scripts/checks-cases.ts from the TypeScript (checks-core.ts, citation.ts, environments.ts); cli/src/oscr_cli/checks.py and citation.py must answer alike (cli/tests/test_registry.py).",
+ "checks": [
+  {
+   "name": "a complete repository",
+   "input": {
+    "entries": [
+     {
+      "path": "LICENSE",
+      "type": "blob",
+      "size": 100
+     },
+     {
+      "path": "README.md",
+      "type": "blob",
+      "size": 100
+     },
+     {
+      "path": "CITATION.cff",
+      "type": "blob",
+      "size": 100
+     },
+     {
+      "path": "requirements.txt",
+      "type": "blob",
+      "size": 100
+     },
+     {
+      "path": "analysis/preprocess.py",
+      "type": "blob",
+      "size": 100
+     },
+     {
+      "path": "plot.py",
+      "type": "blob",
+      "size": 100
+     },
+     {
+      "path": "docs",
+      "type": "tree",
+      "size": null
+     }
+    ],
+    "truncated": false,
+    "texts": {
+     "LICENSE": "MIT License\n\nCopyright (c) 2026 The authors\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\n",
+     "README.md": "# Tool\n\nThe code of doi:10.5555/oscr.fixture.1.\n\n## Installation\n\npip install .\n",
+     "CITATION.cff": "cff-version: 1.2.0\nmessage: \"If you use this software, please cite the paper.\"\ntitle: eeg-analysis\nauthors:\n  - family-names: Lovelace\n    given-names: Ada\n    orcid: https://orcid.org/0000-0002-1825-0097\npreferred-citation:\n  type: article\n  title: \"A synthetic EEG study\"\n  journal: eLife\n  volume: \"12\"\n  issue: \"3\"\n  start: \"101\"\n  end: \"118\"\n  year: \"2026\"\n  month: \"3\"\n  doi: 10.5555/oscr.fixture.1\n  authors:\n    - family-names: Lovelace\n      given-names: Ada Augusta\n    - name-particle: van\n      family-names: Rossum\n      given-names: Guido\n    - name: The EEG Consortium\n"
+    },
+    "papers": [
+     "10.5555/oscr.fixture.1"
+    ],
+    "traced": [
+     {
+      "path": "analysis/preprocess.py",
+      "paper": "10.5555/oscr.fixture.1",
+      "commit": "0123456789abcdef0123456789abcdef01234567"
+     },
+     {
+      "path": "plot.py",
+      "paper": "10.5555/oscr.fixture.1",
+      "commit": "0123456789abcdef0123456789abcdef01234567"
+     }
+    ],
+    "change": null
+   },
+   "expected": {
+    "conclusion": "success",
+    "title": "All 7 checks passed",
+    "summary": "These checks read the repository's files as text; they never run its code.\n\n- **Licence** — Passed. MIT, in LICENSE.\n- **Environment** — Passed. requirements.txt (pip's requirements).\n- **The paper's DOI** — Passed. Linked in the registry to its paper: 10.5555/oscr.fixture.1.\n- **CITATION.cff** — Passed. CITATION.cff cites “A synthetic EEG study” (10.5555/oscr.fixture.1).\n- **Tracing maps** — Passed. Every file the tracing maps point to is still here (2).\n- **File sizes** — Passed. No file over 50 MiB.\n- **README** — Passed. README: README.md, with how to run the code.",
+    "findings": [
+     {
+      "id": "licence",
+      "level": "ok",
+      "words": "MIT, in LICENSE.",
+      "fix": "",
+      "annotations": []
+     },
+     {
+      "id": "environment",
+      "level": "ok",
+      "words": "requirements.txt (pip's requirements).",
+      "fix": "",
+      "annotations": []
+     },
+     {
+      "id": "doi",
+      "level": "ok",
+      "words": "Linked in the registry to its paper: 10.5555/oscr.fixture.1.",
+      "fix": "",
+      "annotations": []
+     },
+     {
+      "id": "citation",
+      "level": "ok",
+      "words": "CITATION.cff cites “A synthetic EEG study” (10.5555/oscr.fixture.1).",
+      "fix": "",
+      "annotations": []
+     },
+     {
+      "id": "map",
+      "level": "ok",
+      "words": "Every file the tracing maps point to is still here (2).",
+      "fix": "",
+      "annotations": []
+     },
+     {
+      "id": "sizes",
+      "level": "ok",
+      "words": "No file over 50 MiB.",
+      "fix": "",
+      "annotations": []
+     },
+     {
+      "id": "readme",
+      "level": "ok",
+      "words": "README: README.md, with how to run the code.",
+      "fix": "",
+      "annotations": []
+     }
+    ],
+    "annotations": []
+   }
+  },
+  {
+   "name": "nothing but a script",
+   "input": {
+    "entries": [
+     {
+      "path": "run.m",
+      "type": "blob",
+      "size": 100
+     }
+    ],
+    "truncated": false,
+    "texts": {},
+    "papers": [],
+    "traced": [],
+    "change": null
+   },
+   "expected": {
+    "conclusion": "neutral",
+    "title": "2 passed, 5 to look at",
+    "summary": "These checks read the repository's files as text; they never run its code.\n\n- **Licence** — To look at. No licence file: others may read the code but not reuse it, and the registry keeps no copy of its scripts. Add a LICENSE file with an open licence (MIT, Apache-2.0, BSD-3-Clause, GPL-3.0…).\n- **Environment** — To look at. No file says how the code runs again: its dependencies and their versions are unknown. Add an environment file: requirements.txt, environment.yml, renv.lock, Project.toml, a Dockerfile… with versions pinned.\n- **The paper's DOI** — To look at. No paper is linked, and no DOI is named: readers cannot tell which paper this code belongs to. Link the repository to its paper in the registry, or name the paper's DOI in CITATION.cff or the README.\n- **CITATION.cff** — To look at. No CITATION.cff: GitHub, Zenodo and reference managers cannot say how to cite this code. Add a CITATION.cff with its title, authors (with their ORCID iDs) and the paper's DOI (the registry's editor writes one from the paper).\n- **Tracing maps** — Passed. No tracing map points to this repository yet.\n- **File sizes** — Passed. No file over 50 MiB.\n- **README** — To look at. No README: nothing says what the code does, nor how to run it. Add a README: what the code does, the paper it belongs to, how to install and run it.",
+    "findings": [
+     {
+      "id": "licence",
+      "level": "warning",
+      "words": "No licence file: others may read the code but not reuse it, and the registry keeps no copy of its scripts.",
+      "fix": "Add a LICENSE file with an open licence (MIT, Apache-2.0, BSD-3-Clause, GPL-3.0…).",
+      "annotations": []
+     },
+     {
+      "id": "environment",
+      "level": "warning",
+      "words": "No file says how the code runs again: its dependencies and their versions are unknown.",
+      "fix": "Add an environment file: requirements.txt, environment.yml, renv.lock, Project.toml, a Dockerfile… with versions pinned.",
+      "annotations": []
+     },
+     {
+      "id": "doi",
+      "level": "warning",
+      "words": "No paper is linked, and no DOI is named: readers cannot tell which paper this code belongs to.",
+      "fix": "Link the repository to its paper in the registry, or name the paper's DOI in CITATION.cff or the README.",
+      "annotations": []
+     },
+     {
+      "id": "citation",
+      "level": "warning",
+      "words": "No CITATION.cff: GitHub, Zenodo and reference managers cannot say how to cite this code.",
+      "fix": "Add a CITATION.cff with its title, authors (with their ORCID iDs) and the paper's DOI (the registry's editor writes one from the paper).",
+      "annotations": []
+     },
+     {
+      "id": "map",
+      "level": "ok",
+      "words": "No tracing map points to this repository yet.",
+      "fix": "",
+      "annotations": []
+     },
+     {
+      "id": "sizes",
+      "level": "ok",
+      "words": "No file over 50 MiB.",
+      "fix": "",
+      "annotations": []
+     },
+     {
+      "id": "readme",
+      "level": "warning",
+      "words": "No README: nothing says what the code does, nor how to run it.",
+      "fix": "Add a README: what the code does, the paper it belongs to, how to install and run it.",
+      "annotations": []
+     }
+    ],
+    "annotations": []
+   }
+  },
+  {
+   "name": "Apache, only scripts, a README without how to run, a CITATION.cff without DOI, a DOI in the README",
+   "input": {
+    "entries": [
+     {
+      "path": "LICENSE.txt",
+      "type": "blob",
+      "size": 100
+     },
+     {
+      "path": "readme.rst",
+      "type": "blob",
+      "size": 100
+     },
+     {
+      "path": "CITATION.cff",
+      "type": "blob",
+      "size": 100
+     },
+     {
+      "path": "setup.py",
+      "type": "blob",
+      "size": 100
+     },
+     {
+      "path": "Makefile",
+      "type": "blob",
+      "size": 100
+     }
+    ],
+    "truncated": false,
+    "texts": {
+     "LICENSE.txt": "                                 Apache License\n                           Version 2.0, January 2004\n",
+     "readme.rst": "# Tool\n\nIt does things. See 10.1234/abc.def, and more.\n",
+     "CITATION.cff": "cff-version: 1.2.0\ntitle: Contact ada@example.org for the tool\nauthors:\n  - name: A Lab\n"
+    },
+    "papers": [],
+    "traced": [],
+    "change": null
+   },
+   "expected": {
+    "conclusion": "neutral",
+    "title": "6 passed, 1 to look at",
+    "summary": "These checks read the repository's files as text; they never run its code.\n\n- **Licence** — Passed. Apache-2.0, in LICENSE.txt.\n- **Environment** — To look at. Only scripts say how the code runs (Makefile, setup.py): no file lists its dependencies. Add an environment file: requirements.txt, environment.yml, renv.lock, Project.toml, a Dockerfile… with versions pinned.\n- **The paper's DOI** — Note. A DOI is named (10.1234/abc.def), but the repository is not linked to its paper in the registry. Link the repository to its paper (the repository's page, Papers), so that the paper's readers find its code.\n- **CITATION.cff** — Note. CITATION.cff cites “Contact [email hidden] for the tool”, without a DOI. Add the paper's DOI (doi:, or a preferred-citation with its DOI).\n- **Tracing maps** — Passed. No tracing map points to this repository yet.\n- **File sizes** — Passed. No file over 50 MiB.\n- **README** — Note. The README (readme.rst) does not say how to install or run the code. Add a section on installing and running it, to reproduce the paper's results.",
+    "findings": [
+     {
+      "id": "licence",
+      "level": "ok",
+      "words": "Apache-2.0, in LICENSE.txt.",
+      "fix": "",
+      "annotations": []
+     },
+     {
+      "id": "environment",
+      "level": "warning",
+      "words": "Only scripts say how the code runs (Makefile, setup.py): no file lists its dependencies.",
+      "fix": "Add an environment file: requirements.txt, environment.yml, renv.lock, Project.toml, a Dockerfile… with versions pinned.",
+      "annotations": []
+     },
+     {
+      "id": "doi",
+      "level": "notice",
+      "words": "A DOI is named (10.1234/abc.def), but the repository is not linked to its paper in the registry.",
+      "fix": "Link the repository to its paper (the repository's page, Papers), so that the paper's readers find its code.",
+      "annotations": []
+     },
+     {
+      "id": "citation",
+      "level": "notice",
+      "words": "CITATION.cff cites “Contact [email hidden] for the tool”, without a DOI.",
+      "fix": "Add the paper's DOI (doi:, or a preferred-citation with its DOI).",
+      "annotations": [
+       {
+        "path": "CITATION.cff",
+        "line": 1,
+        "level": "notice",
+        "title": "No DOI",
+        "message": "The citation names no DOI."
+       }
+      ]
+     },
+     {
+      "id": "map",
+      "level": "ok",
+      "words": "No tracing map points to this repository yet.",
+      "fix": "",
+      "annotations": []
+     },
+     {
+      "id": "sizes",
+      "level": "ok",
+      "words": "No file over 50 MiB.",
+      "fix": "",
+      "annotations": []
+     },
+     {
+      "id": "readme",
+      "level": "notice",
+      "words": "The README (readme.rst) does not say how to install or run the code.",
+      "fix": "Add a section on installing and running it, to reproduce the paper's results.",
+      "annotations": [
+       {
+        "path": "readme.rst",
+        "line": 1,
+        "level": "notice",
+        "title": "How to run it",
+        "message": "No section on installing or running the code."
+       }
+      ]
+     }
+    ],
+    "annotations": [
+     {
+      "path": "CITATION.cff",
+      "line": 1,
+      "level": "notice",
+      "title": "No DOI",
+      "message": "The citation names no DOI."
+     },
+     {
+      "path": "readme.rst",
+      "line": 1,
+      "level": "notice",
+      "title": "How to run it",
+      "message": "No section on installing or running the code."
+     }
+    ]
+   }
+  },
+  {
+   "name": "an unknown licence, a broken CITATION.cff, a large file, a traced file gone",
+   "input": {
+    "entries": [
+     {
+      "path": "COPYING",
+      "type": "blob",
+      "size": 100
+     },
+     {
+      "path": "CITATION.cff",
+      "type": "blob",
+      "size": 100
+     },
+     {
+      "path": "data/raw.h5",
+      "type": "blob",
+      "size": 125829120
+     },
+     {
+      "path": "environment.yml",
+      "type": "blob",
+      "size": 100
+     },
+     {
+      "path": "README",
+      "type": "blob",
+      "size": 100
+     }
+    ],
+    "truncated": false,
+    "texts": {
+     "COPYING": "All rights reserved, by the authors.",
+     "CITATION.cff": "title: no version\nauthors:\n  - name: Someone\n",
+     "README": null
+    },
+    "papers": [],
+    "traced": [
+     {
+      "path": "src/gone.py",
+      "paper": "10.5555/oscr.fixture.2",
+      "commit": "abcdefabcdefabcdefabcdefabcdefabcdefabcd"
+     }
+    ],
+    "change": null
+   },
+   "expected": {
+    "conclusion": "neutral",
+    "title": "2 passed, 5 to look at",
+    "summary": "These checks read the repository's files as text; they never run its code.\n\n- **Licence** — To look at. The licence file COPYING names no licence the registry recognises. Use a standard licence's text as it is, so that people and tools recognise it.\n- **Environment** — Passed. environment.yml (a conda environment).\n- **The paper's DOI** — To look at. No paper is linked, and no DOI is named: readers cannot tell which paper this code belongs to. Link the repository to its paper in the registry, or name the paper's DOI in CITATION.cff or the README.\n- **CITATION.cff** — To look at. CITATION.cff has no cff-version, or is not readable as YAML. Write cff-version, message, title and authors (the Citation File Format 1.2.0).\n- **Tracing maps** — To look at. Tracing maps point to a file this commit no longer has: src/gone.py. The maps stay valid at their pinned commits. Nothing is broken for the paper; its authors may trace the code's new place in a new version of the map.\n- **File sizes** — To look at. A file weighs over 50 MiB: data/raw.h5 (120 MiB). Put data and archives in a data repository with a DOI (Zenodo, OSF, a field's own), and link it from the README.\n- **README** — Passed. README: README.",
+    "findings": [
+     {
+      "id": "licence",
+      "level": "warning",
+      "words": "The licence file COPYING names no licence the registry recognises.",
+      "fix": "Use a standard licence's text as it is, so that people and tools recognise it.",
+      "annotations": [
+       {
+        "path": "COPYING",
+        "line": 1,
+        "level": "warning",
+        "title": "Licence not recognised",
+        "message": "This text is not a standard licence the registry recognises."
+       }
+      ]
+     },
+     {
+      "id": "environment",
+      "level": "ok",
+      "words": "environment.yml (a conda environment).",
+      "fix": "",
+      "annotations": []
+     },
+     {
+      "id": "doi",
+      "level": "warning",
+      "words": "No paper is linked, and no DOI is named: readers cannot tell which paper this code belongs to.",
+      "fix": "Link the repository to its paper in the registry, or name the paper's DOI in CITATION.cff or the README.",
+      "annotations": []
+     },
+     {
+      "id": "citation",
+      "level": "warning",
+      "words": "CITATION.cff has no cff-version, or is not readable as YAML.",
+      "fix": "Write cff-version, message, title and authors (the Citation File Format 1.2.0).",
+      "annotations": [
+       {
+        "path": "CITATION.cff",
+        "line": 1,
+        "level": "warning",
+        "title": "CITATION.cff",
+        "message": "CITATION.cff has no cff-version, or is not readable as YAML."
+       }
+      ]
+     },
+     {
+      "id": "map",
+      "level": "warning",
+      "words": "Tracing maps point to a file this commit no longer has: src/gone.py. The maps stay valid at their pinned commits.",
+      "fix": "Nothing is broken for the paper; its authors may trace the code's new place in a new version of the map.",
+      "annotations": []
+     },
+     {
+      "id": "sizes",
+      "level": "warning",
+      "words": "A file weighs over 50 MiB: data/raw.h5 (120 MiB).",
+      "fix": "Put data and archives in a data repository with a DOI (Zenodo, OSF, a field's own), and link it from the README.",
+      "annotations": []
+     },
+     {
+      "id": "readme",
+      "level": "ok",
+      "words": "README: README.",
+      "fix": "",
+      "annotations": []
+     }
+    ],
+    "annotations": [
+     {
+      "path": "COPYING",
+      "line": 1,
+      "level": "warning",
+      "title": "Licence not recognised",
+      "message": "This text is not a standard licence the registry recognises."
+     },
+     {
+      "path": "CITATION.cff",
+      "line": 1,
+      "level": "warning",
+      "title": "CITATION.cff",
+      "message": "CITATION.cff has no cff-version, or is not readable as YAML."
+     }
+    ]
+   }
+  },
+  {
+   "name": "the same, the listing cut",
+   "input": {
+    "entries": [
+     {
+      "path": "src/x.py",
+      "type": "blob",
+      "size": 100
+     }
+    ],
+    "truncated": true,
+    "texts": {},
+    "papers": [],
+    "traced": [
+     {
+      "path": "src/gone.py",
+      "paper": "p",
+      "commit": "abcdefabcdefabcdefabcdefabcdefabcdefabcd"
+     }
+    ],
+    "change": null
+   },
+   "expected": {
+    "conclusion": "neutral",
+    "title": "2 passed, 5 to look at",
+    "summary": "These checks read the repository's files as text; they never run its code.\n\n- **Licence** — To look at. No licence file: others may read the code but not reuse it, and the registry keeps no copy of its scripts. Add a LICENSE file with an open licence (MIT, Apache-2.0, BSD-3-Clause, GPL-3.0…).\n- **Environment** — To look at. No file says how the code runs again: its dependencies and their versions are unknown. Add an environment file: requirements.txt, environment.yml, renv.lock, Project.toml, a Dockerfile… with versions pinned.\n- **The paper's DOI** — To look at. No paper is linked, and no DOI is named: readers cannot tell which paper this code belongs to. Link the repository to its paper in the registry, or name the paper's DOI in CITATION.cff or the README.\n- **CITATION.cff** — To look at. No CITATION.cff: GitHub, Zenodo and reference managers cannot say how to cite this code. Add a CITATION.cff with its title, authors (with their ORCID iDs) and the paper's DOI (the registry's editor writes one from the paper).\n- **Tracing maps** — Passed. Every file the tracing maps point to is still here (1).\n- **File sizes** — Passed. No file over 50 MiB.\n- **README** — To look at. No README: nothing says what the code does, nor how to run it. Add a README: what the code does, the paper it belongs to, how to install and run it.\n\nThe forge cut the tree's listing: files beyond it were not looked at.",
+    "findings": [
+     {
+      "id": "licence",
+      "level": "warning",
+      "words": "No licence file: others may read the code but not reuse it, and the registry keeps no copy of its scripts.",
+      "fix": "Add a LICENSE file with an open licence (MIT, Apache-2.0, BSD-3-Clause, GPL-3.0…).",
+      "annotations": []
+     },
+     {
+      "id": "environment",
+      "level": "warning",
+      "words": "No file says how the code runs again: its dependencies and their versions are unknown.",
+      "fix": "Add an environment file: requirements.txt, environment.yml, renv.lock, Project.toml, a Dockerfile… with versions pinned.",
+      "annotations": []
+     },
+     {
+      "id": "doi",
+      "level": "warning",
+      "words": "No paper is linked, and no DOI is named: readers cannot tell which paper this code belongs to.",
+      "fix": "Link the repository to its paper in the registry, or name the paper's DOI in CITATION.cff or the README.",
+      "annotations": []
+     },
+     {
+      "id": "citation",
+      "level": "warning",
+      "words": "No CITATION.cff: GitHub, Zenodo and reference managers cannot say how to cite this code.",
+      "fix": "Add a CITATION.cff with its title, authors (with their ORCID iDs) and the paper's DOI (the registry's editor writes one from the paper).",
+      "annotations": []
+     },
+     {
+      "id": "map",
+      "level": "ok",
+      "words": "Every file the tracing maps point to is still here (1).",
+      "fix": "",
+      "annotations": []
+     },
+     {
+      "id": "sizes",
+      "level": "ok",
+      "words": "No file over 50 MiB.",
+      "fix": "",
+      "annotations": []
+     },
+     {
+      "id": "readme",
+      "level": "warning",
+      "words": "No README: nothing says what the code does, nor how to run it.",
+      "fix": "Add a README: what the code does, the paper it belongs to, how to install and run it.",
+      "annotations": []
+     }
+    ],
+    "annotations": []
+   }
+  },
+  {
+   "name": "a change that deletes the licence and CITATION.cff and renames a traced file",
+   "input": {
+    "entries": [
+     {
+      "path": "README.md",
+      "type": "blob",
+      "size": 100
+     },
+     {
+      "path": "src/new.py",
+      "type": "blob",
+      "size": 100
+     }
+    ],
+    "truncated": false,
+    "texts": {
+     "README.md": "# Tool\n\nThe code of doi:10.5555/oscr.fixture.1.\n\n## Installation\n\npip install .\n"
+    },
+    "papers": [],
+    "traced": [
+     {
+      "path": "src/old.py",
+      "paper": "10.5555/oscr.fixture.1",
+      "commit": "0123456789abcdef0123456789abcdef01234567"
+     }
+    ],
+    "change": {
+     "files": [
+      {
+       "path": "LICENSE",
+       "previousPath": null,
+       "status": "removed"
+      },
+      {
+       "path": "CITATION.cff",
+       "previousPath": null,
+       "status": "removed"
+      },
+      {
+       "path": "src/new.py",
+       "previousPath": "src/old.py",
+       "status": "renamed"
+      }
+     ],
+     "truncated": true
+    }
+   },
+   "expected": {
+    "conclusion": "failure",
+    "title": "3 checks fail: licence, citation.cff, tracing maps",
+    "summary": "These checks read the repository's files as text; they never run its code.\n\n- **Licence** — Failed. This change deletes the licence file LICENSE: without it, nobody may reuse the code. Keep the licence file, or replace it with another open licence in the same change.\n- **Environment** — To look at. No file says how the code runs again: its dependencies and their versions are unknown. Add an environment file: requirements.txt, environment.yml, renv.lock, Project.toml, a Dockerfile… with versions pinned.\n- **The paper's DOI** — Note. A DOI is named (10.5555/oscr.fixture.1), but the repository is not linked to its paper in the registry. Link the repository to its paper (the repository's page, Papers), so that the paper's readers find its code.\n- **CITATION.cff** — Failed. This change deletes CITATION.cff: the repository no longer says how to cite it. Keep CITATION.cff.\n- **Tracing maps** — Failed. A tracing map points to a file this change takes away: src/old.py (10.5555/oscr.fixture.1) is renamed to src/new.py. Keep the file where the map points, or ask the map's author to trace the new place first (the map stays valid at its pinned commit).\n- **File sizes** — Passed. No file over 50 MiB.\n- **README** — Passed. README: README.md, with how to run the code.\n\nThe change has more files than the registry reads: the tracing maps were checked against the first ones.",
+    "findings": [
+     {
+      "id": "licence",
+      "level": "failure",
+      "words": "This change deletes the licence file LICENSE: without it, nobody may reuse the code.",
+      "fix": "Keep the licence file, or replace it with another open licence in the same change.",
+      "annotations": []
+     },
+     {
+      "id": "environment",
+      "level": "warning",
+      "words": "No file says how the code runs again: its dependencies and their versions are unknown.",
+      "fix": "Add an environment file: requirements.txt, environment.yml, renv.lock, Project.toml, a Dockerfile… with versions pinned.",
+      "annotations": []
+     },
+     {
+      "id": "doi",
+      "level": "notice",
+      "words": "A DOI is named (10.5555/oscr.fixture.1), but the repository is not linked to its paper in the registry.",
+      "fix": "Link the repository to its paper (the repository's page, Papers), so that the paper's readers find its code.",
+      "annotations": []
+     },
+     {
+      "id": "citation",
+      "level": "failure",
+      "words": "This change deletes CITATION.cff: the repository no longer says how to cite it.",
+      "fix": "Keep CITATION.cff.",
+      "annotations": []
+     },
+     {
+      "id": "map",
+      "level": "failure",
+      "words": "A tracing map points to a file this change takes away: src/old.py (10.5555/oscr.fixture.1) is renamed to src/new.py.",
+      "fix": "Keep the file where the map points, or ask the map's author to trace the new place first (the map stays valid at its pinned commit).",
+      "annotations": []
+     },
+     {
+      "id": "sizes",
+      "level": "ok",
+      "words": "No file over 50 MiB.",
+      "fix": "",
+      "annotations": []
+     },
+     {
+      "id": "readme",
+      "level": "ok",
+      "words": "README: README.md, with how to run the code.",
+      "fix": "",
+      "annotations": []
+     }
+    ],
+    "annotations": []
+   }
+  },
+  {
+   "name": "a change that breaks CITATION.cff and touches a traced file",
+   "input": {
+    "entries": [
+     {
+      "path": "LICENSE.md",
+      "type": "blob",
+      "size": 100
+     },
+     {
+      "path": "CITATION.cff",
+      "type": "blob",
+      "size": 100
+     },
+     {
+      "path": "src/a.py",
+      "type": "blob",
+      "size": 100
+     },
+     {
+      "path": "pyproject.toml",
+      "type": "blob",
+      "size": 100
+     }
+    ],
+    "truncated": false,
+    "texts": {
+     "LICENSE.md": "BSD 3-Clause License\n\nRedistribution and use in source and binary forms, with or without\nmodification...\nNeither the name of the copyright holder nor the names of its contributors may be used\n",
+     "CITATION.cff": "title: no version\nauthors:\n  - name: Someone\n"
+    },
+    "papers": [
+     "10.1/a",
+     "10.1/b",
+     "10.1/c",
+     "10.1/d"
+    ],
+    "traced": [
+     {
+      "path": "src/a.py",
+      "paper": "10.1/a",
+      "commit": "1111111111111111111111111111111111111111"
+     },
+     {
+      "path": "src/a.py",
+      "paper": "10.1/b",
+      "commit": "2222222222222222222222222222222222222222"
+     }
+    ],
+    "change": {
+     "files": [
+      {
+       "path": "CITATION.cff",
+       "previousPath": null,
+       "status": "modified"
+      },
+      {
+       "path": "src/a.py",
+       "previousPath": null,
+       "status": "modified"
+      }
+     ],
+     "truncated": false
+    }
+   },
+   "expected": {
+    "conclusion": "failure",
+    "title": "1 check fails: citation.cff",
+    "summary": "These checks read the repository's files as text; they never run its code.\n\n- **Licence** — Passed. BSD-3-Clause, in LICENSE.md.\n- **Environment** — Passed. pyproject.toml (a Python project (pyproject.toml)).\n- **The paper's DOI** — Passed. Linked in the registry to 4 papers: 10.1/a, 10.1/b, 10.1/c.\n- **CITATION.cff** — Failed. This change leaves CITATION.cff unusable: cITATION.cff has no cff-version, or is not readable as YAML. Write cff-version, message, title and authors (the Citation File Format 1.2.0).\n- **Tracing maps** — Note. This change touches a file a tracing map points to: src/a.py. The maps stay valid at their pinned commits; the paper's authors may want to review this change.\n- **File sizes** — Passed. No file over 50 MiB.\n- **README** — To look at. No README: nothing says what the code does, nor how to run it. Add a README: what the code does, the paper it belongs to, how to install and run it.",
+    "findings": [
+     {
+      "id": "licence",
+      "level": "ok",
+      "words": "BSD-3-Clause, in LICENSE.md.",
+      "fix": "",
+      "annotations": []
+     },
+     {
+      "id": "environment",
+      "level": "ok",
+      "words": "pyproject.toml (a Python project (pyproject.toml)).",
+      "fix": "",
+      "annotations": []
+     },
+     {
+      "id": "doi",
+      "level": "ok",
+      "words": "Linked in the registry to 4 papers: 10.1/a, 10.1/b, 10.1/c.",
+      "fix": "",
+      "annotations": []
+     },
+     {
+      "id": "citation",
+      "level": "failure",
+      "words": "This change leaves CITATION.cff unusable: cITATION.cff has no cff-version, or is not readable as YAML.",
+      "fix": "Write cff-version, message, title and authors (the Citation File Format 1.2.0).",
+      "annotations": [
+       {
+        "path": "CITATION.cff",
+        "line": 1,
+        "level": "failure",
+        "title": "CITATION.cff",
+        "message": "CITATION.cff has no cff-version, or is not readable as YAML."
+       }
+      ]
+     },
+     {
+      "id": "map",
+      "level": "notice",
+      "words": "This change touches a file a tracing map points to: src/a.py.",
+      "fix": "The maps stay valid at their pinned commits; the paper's authors may want to review this change.",
+      "annotations": [
+       {
+        "path": "src/a.py",
+        "line": 1,
+        "level": "notice",
+        "title": "Traced by a paper",
+        "message": "A tracing map of 10.1/a, 10.1/b points to this file, pinned to commit 1111111: the map stays valid there; after this change, its author may want a new version."
+       }
+      ]
+     },
+     {
+      "id": "sizes",
+      "level": "ok",
+      "words": "No file over 50 MiB.",
+      "fix": "",
+      "annotations": []
+     },
+     {
+      "id": "readme",
+      "level": "warning",
+      "words": "No README: nothing says what the code does, nor how to run it.",
+      "fix": "Add a README: what the code does, the paper it belongs to, how to install and run it.",
+      "annotations": []
+     }
+    ],
+    "annotations": [
+     {
+      "path": "CITATION.cff",
+      "line": 1,
+      "level": "failure",
+      "title": "CITATION.cff",
+      "message": "CITATION.cff has no cff-version, or is not readable as YAML."
+     },
+     {
+      "path": "src/a.py",
+      "line": 1,
+      "level": "notice",
+      "title": "Traced by a paper",
+      "message": "A tracing map of 10.1/a, 10.1/b points to this file, pinned to commit 1111111: the map stays valid there; after this change, its author may want a new version."
+     }
+    ]
+   }
+  },
+  {
+   "name": "many environment files",
+   "input": {
+    "entries": [
+     {
+      "path": "LICENSE",
+      "type": "blob",
+      "size": 100
+     },
+     {
+      "path": "requirements-dev.txt",
+      "type": "blob",
+      "size": 100
+     },
+     {
+      "path": "requirements.txt",
+      "type": "blob",
+      "size": 100
+     },
+     {
+      "path": "binder/environment.yml",
+      "type": "blob",
+      "size": 100
+     },
+     {
+      "path": ".devcontainer/devcontainer.json",
+      "type": "blob",
+      "size": 100
+     },
+     {
+      "path": ".devcontainer/py/devcontainer.json",
+      "type": "blob",
+      "size": 100
+     },
+     {
+      "path": "recipe/meta.yaml",
+      "type": "blob",
+      "size": 100
+     },
+     {
+      "path": "DESCRIPTION",
+      "type": "blob",
+      "size": 100
+     },
+     {
+      "path": "sub/package.json",
+      "type": "blob",
+      "size": 100
+     },
+     {
+      "path": "package.json",
+      "type": "blob",
+      "size": 100
+     },
+     {
+      "path": "Dockerfile.gpu",
+      "type": "blob",
+      "size": 100
+     },
+     {
+      "path": "renv.lock",
+      "type": "blob",
+      "size": 100
+     },
+     {
+      "path": "uv.lock",
+      "type": "blob",
+      "size": 100
+     },
+     {
+      "path": "runtime.txt",
+      "type": "blob",
+      "size": 100
+     },
+     {
+      "path": "apt.txt",
+      "type": "blob",
+      "size": 100
+     },
+     {
+      "path": "postBuild",
+      "type": "blob",
+      "size": 100
+     },
+     {
+      "path": "src/requirements.txt",
+      "type": "blob",
+      "size": 100
+     }
+    ],
+    "truncated": false,
+    "texts": {
+     "LICENSE": "                    GNU GENERAL PUBLIC LICENSE\n                       Version 3, 29 June 2007\n"
+    },
+    "papers": [],
+    "traced": [],
+    "change": null
+   },
+   "expected": {
+    "conclusion": "neutral",
+    "title": "4 passed, 3 to look at",
+    "summary": "These checks read the repository's files as text; they never run its code.\n\n- **Licence** — Passed. GPL-3.0, in LICENSE.\n- **Environment** — Passed. binder/environment.yml (a conda environment), requirements-dev.txt (pip's requirements), requirements.txt (pip's requirements), uv.lock (a lock file (every version pinned)), and 9 more.\n- **The paper's DOI** — To look at. No paper is linked, and no DOI is named: readers cannot tell which paper this code belongs to. Link the repository to its paper in the registry, or name the paper's DOI in CITATION.cff or the README.\n- **CITATION.cff** — To look at. No CITATION.cff: GitHub, Zenodo and reference managers cannot say how to cite this code. Add a CITATION.cff with its title, authors (with their ORCID iDs) and the paper's DOI (the registry's editor writes one from the paper).\n- **Tracing maps** — Passed. No tracing map points to this repository yet.\n- **File sizes** — Passed. No file over 50 MiB.\n- **README** — To look at. No README: nothing says what the code does, nor how to run it. Add a README: what the code does, the paper it belongs to, how to install and run it.",
+    "findings": [
+     {
+      "id": "licence",
+      "level": "ok",
+      "words": "GPL-3.0, in LICENSE.",
+      "fix": "",
+      "annotations": []
+     },
+     {
+      "id": "environment",
+      "level": "ok",
+      "words": "binder/environment.yml (a conda environment), requirements-dev.txt (pip's requirements), requirements.txt (pip's requirements), uv.lock (a lock file (every version pinned)), and 9 more.",
+      "fix": "",
+      "annotations": []
+     },
+     {
+      "id": "doi",
+      "level": "warning",
+      "words": "No paper is linked, and no DOI is named: readers cannot tell which paper this code belongs to.",
+      "fix": "Link the repository to its paper in the registry, or name the paper's DOI in CITATION.cff or the README.",
+      "annotations": []
+     },
+     {
+      "id": "citation",
+      "level": "warning",
+      "words": "No CITATION.cff: GitHub, Zenodo and reference managers cannot say how to cite this code.",
+      "fix": "Add a CITATION.cff with its title, authors (with their ORCID iDs) and the paper's DOI (the registry's editor writes one from the paper).",
+      "annotations": []
+     },
+     {
+      "id": "map",
+      "level": "ok",
+      "words": "No tracing map points to this repository yet.",
+      "fix": "",
+      "annotations": []
+     },
+     {
+      "id": "sizes",
+      "level": "ok",
+      "words": "No file over 50 MiB.",
+      "fix": "",
+      "annotations": []
+     },
+     {
+      "id": "readme",
+      "level": "warning",
+      "words": "No README: nothing says what the code does, nor how to run it.",
+      "fix": "Add a README: what the code does, the paper it belongs to, how to install and run it.",
+      "annotations": []
+     }
+    ],
+    "annotations": []
+   }
+  }
+ ],
+ "environments": [
+  {
+   "paths": [
+    "LICENSE",
+    "README.md",
+    "CITATION.cff",
+    "requirements.txt",
+    "analysis/preprocess.py",
+    "plot.py"
+   ],
+   "expected": [
+    {
+     "path": "requirements.txt",
+     "kind": "pip"
+    }
+   ]
+  },
+  {
+   "paths": [
+    "run.m"
+   ],
+   "expected": []
+  },
+  {
+   "paths": [
+    "LICENSE.txt",
+    "readme.rst",
+    "CITATION.cff",
+    "setup.py",
+    "Makefile"
+   ],
+   "expected": [
+    {
+     "path": "Makefile",
+     "kind": "script"
+    },
+    {
+     "path": "setup.py",
+     "kind": "script"
+    }
+   ]
+  },
+  {
+   "paths": [
+    "COPYING",
+    "CITATION.cff",
+    "data/raw.h5",
+    "environment.yml",
+    "README"
+   ],
+   "expected": [
+    {
+     "path": "environment.yml",
+     "kind": "conda"
+    }
+   ]
+  },
+  {
+   "paths": [
+    "src/x.py"
+   ],
+   "expected": []
+  },
+  {
+   "paths": [
+    "README.md",
+    "src/new.py"
+   ],
+   "expected": []
+  },
+  {
+   "paths": [
+    "LICENSE.md",
+    "CITATION.cff",
+    "src/a.py",
+    "pyproject.toml"
+   ],
+   "expected": [
+    {
+     "path": "pyproject.toml",
+     "kind": "pyproject"
+    }
+   ]
+  },
+  {
+   "paths": [
+    "LICENSE",
+    "requirements-dev.txt",
+    "requirements.txt",
+    "binder/environment.yml",
+    ".devcontainer/devcontainer.json",
+    ".devcontainer/py/devcontainer.json",
+    "recipe/meta.yaml",
+    "DESCRIPTION",
+    "sub/package.json",
+    "package.json",
+    "Dockerfile.gpu",
+    "renv.lock",
+    "uv.lock",
+    "runtime.txt",
+    "apt.txt",
+    "postBuild",
+    "src/requirements.txt"
+   ],
+   "expected": [
+    {
+     "path": "binder/environment.yml",
+     "kind": "conda"
+    },
+    {
+     "path": "requirements-dev.txt",
+     "kind": "pip"
+    },
+    {
+     "path": "requirements.txt",
+     "kind": "pip"
+    },
+    {
+     "path": "uv.lock",
+     "kind": "lock"
+    },
+    {
+     "path": "renv.lock",
+     "kind": "renv"
+    },
+    {
+     "path": "DESCRIPTION",
+     "kind": "r-description"
+    },
+    {
+     "path": "package.json",
+     "kind": "npm"
+    },
+    {
+     "path": "recipe/meta.yaml",
+     "kind": "conda-recipe"
+    },
+    {
+     "path": "Dockerfile.gpu",
+     "kind": "docker"
+    },
+    {
+     "path": ".devcontainer/devcontainer.json",
+     "kind": "devcontainer"
+    },
+    {
+     "path": ".devcontainer/py/devcontainer.json",
+     "kind": "devcontainer"
+    },
+    {
+     "path": "runtime.txt",
+     "kind": "runtime"
+    },
+    {
+     "path": "apt.txt",
+     "kind": "apt"
+    },
+    {
+     "path": "postBuild",
+     "kind": "script"
+    }
+   ]
+  }
+ ],
+ "citations": [
+  {
+   "name": "a preferred citation, an article",
+   "kind": "cff",
+   "text": "cff-version: 1.2.0\nmessage: \"If you use this software, please cite the paper.\"\ntitle: eeg-analysis\nauthors:\n  - family-names: Lovelace\n    given-names: Ada\n    orcid: https://orcid.org/0000-0002-1825-0097\npreferred-citation:\n  type: article\n  title: \"A synthetic EEG study\"\n  journal: eLife\n  volume: \"12\"\n  issue: \"3\"\n  start: \"101\"\n  end: \"118\"\n  year: \"2026\"\n  month: \"3\"\n  doi: 10.5555/oscr.fixture.1\n  authors:\n    - family-names: Lovelace\n      given-names: Ada Augusta\n    - name-particle: van\n      family-names: Rossum\n      given-names: Guido\n    - name: The EEG Consortium\n",
+   "expected": {
+    "citation": {
+     "work": {
+      "type": "article",
+      "title": "A synthetic EEG study",
+      "authors": [
+       {
+        "family": "Lovelace",
+        "given": "Ada Augusta",
+        "name": "",
+        "orcid": null
+       },
+       {
+        "family": "van Rossum",
+        "given": "Guido",
+        "name": "",
+        "orcid": null
+       },
+       {
+        "family": "",
+        "given": "",
+        "name": "The EEG Consortium",
+        "orcid": null
+       }
+      ],
+      "version": "",
+      "year": "2026",
+      "month": "3",
+      "doi": "10.5555/oscr.fixture.1",
+      "url": "",
+      "journal": "eLife",
+      "volume": "12",
+      "issue": "3",
+      "pages": "101–118",
+      "publisher": ""
+     },
+     "software": {
+      "type": "software",
+      "title": "eeg-analysis",
+      "authors": [
+       {
+        "family": "Lovelace",
+        "given": "Ada",
+        "name": "",
+        "orcid": "https://orcid.org/0000-0002-1825-0097"
+       }
+      ],
+      "version": "",
+      "year": "",
+      "month": "",
+      "doi": null,
+      "url": "",
+      "journal": "",
+      "volume": "",
+      "issue": "",
+      "pages": "",
+      "publisher": ""
+     },
+     "preferred": true,
+     "source": "CITATION.cff",
+     "message": "If you use this software, please cite the paper."
+    },
+    "apa": "Lovelace, A. A., van Rossum, G., & The EEG Consortium. (2026). A synthetic EEG study. eLife, 12(3), 101–118. https://doi.org/10.5555/oscr.fixture.1",
+    "bibtex": "@article{Lovelace_A_2026,\n  author = {Lovelace, Ada Augusta and van Rossum, Guido and {The EEG Consortium}},\n  title = {{A synthetic EEG study}},\n  journal = {eLife},\n  volume = {12},\n  number = {3},\n  pages = {101--118},\n  year = {2026},\n  month = mar,\n  doi = {10.5555/oscr.fixture.1}\n}",
+    "softwareApa": "Lovelace, A. (n.d.). eeg-analysis [Computer software].",
+    "softwareBibtex": "@software{Lovelace_eeg-analysis_nd,\n  author = {Lovelace, Ada},\n  title = {{eeg-analysis}}\n}"
+   }
+  },
+  {
+   "name": "block scalars, flow lists, quoted keys, comments, identifiers",
+   "kind": "cff",
+   "text": "# A comment\ncff-version: \"1.2.0\"\nmessage: >\n  Please cite\n  this software.\n\"title\": 'It''s a tool'\nabstract: |\n  Line one\n  Line two\nkeywords: [eeg, \"meg\", 'fmri']\nauthors:\n  - given-names: Marie\n    family-names: Curie\n    affiliation: A lab # a comment\n  -\n    name: \"The \\\"Team\\\"\"\nversion: 2.0.1\ndate-released: 2026-09-29\nidentifiers:\n  - type: url\n    value: https://example.org\n  - type: doi\n    value: 10.5281/zenodo.1234567\nrepository-code: https://github.com/lab/tool\npublisher:\n  name: Zenodo\n",
+   "expected": {
+    "citation": {
+     "work": {
+      "type": "software",
+      "title": "It's a tool",
+      "authors": [
+       {
+        "family": "Curie",
+        "given": "Marie",
+        "name": "",
+        "orcid": null
+       },
+       {
+        "family": "",
+        "given": "",
+        "name": "The \"Team\"",
+        "orcid": null
+       }
+      ],
+      "version": "2.0.1",
+      "year": "2026",
+      "month": "09",
+      "doi": "10.5281/zenodo.1234567",
+      "url": "https://github.com/lab/tool",
+      "journal": "",
+      "volume": "",
+      "issue": "",
+      "pages": "",
+      "publisher": "Zenodo"
+     },
+     "software": {
+      "type": "software",
+      "title": "It's a tool",
+      "authors": [
+       {
+        "family": "Curie",
+        "given": "Marie",
+        "name": "",
+        "orcid": null
+       },
+       {
+        "family": "",
+        "given": "",
+        "name": "The \"Team\"",
+        "orcid": null
+       }
+      ],
+      "version": "2.0.1",
+      "year": "2026",
+      "month": "09",
+      "doi": "10.5281/zenodo.1234567",
+      "url": "https://github.com/lab/tool",
+      "journal": "",
+      "volume": "",
+      "issue": "",
+      "pages": "",
+      "publisher": "Zenodo"
+     },
+     "preferred": false,
+     "source": "CITATION.cff",
+     "message": "Please cite this software."
+    },
+    "apa": "Curie, M., & The \"Team\". (2026). It's a tool (Version 2.0.1) [Computer software]. Zenodo. https://doi.org/10.5281/zenodo.1234567",
+    "bibtex": "@software{Curie_Its_2026,\n  author = {Curie, Marie and {The \"Team\"}},\n  title = {{It's a tool}},\n  version = {2.0.1},\n  year = {2026},\n  doi = {10.5281/zenodo.1234567},\n  month = sep,\n  url = {https://github.com/lab/tool}\n}",
+    "softwareApa": "Curie, M., & The \"Team\". (2026). It's a tool (Version 2.0.1) [Computer software]. Zenodo. https://doi.org/10.5281/zenodo.1234567",
+    "softwareBibtex": "@software{Curie_Its_2026,\n  author = {Curie, Marie and {The \"Team\"}},\n  title = {{It's a tool}},\n  version = {2.0.1},\n  year = {2026},\n  doi = {10.5281/zenodo.1234567},\n  month = sep,\n  url = {https://github.com/lab/tool}\n}"
+   }
+  },
+  {
+   "name": "without a DOI, an address in the title",
+   "kind": "cff",
+   "text": "cff-version: 1.2.0\ntitle: Contact ada@example.org for the tool\nauthors:\n  - name: A Lab\n",
+   "expected": {
+    "citation": {
+     "work": {
+      "type": "software",
+      "title": "Contact [email hidden] for the tool",
+      "authors": [
+       {
+        "family": "",
+        "given": "",
+        "name": "A Lab",
+        "orcid": null
+       }
+      ],
+      "version": "",
+      "year": "",
+      "month": "",
+      "doi": null,
+      "url": "",
+      "journal": "",
+      "volume": "",
+      "issue": "",
+      "pages": "",
+      "publisher": ""
+     },
+     "software": {
+      "type": "software",
+      "title": "Contact [email hidden] for the tool",
+      "authors": [
+       {
+        "family": "",
+        "given": "",
+        "name": "A Lab",
+        "orcid": null
+       }
+      ],
+      "version": "",
+      "year": "",
+      "month": "",
+      "doi": null,
+      "url": "",
+      "journal": "",
+      "volume": "",
+      "issue": "",
+      "pages": "",
+      "publisher": ""
+     },
+     "preferred": false,
+     "source": "CITATION.cff",
+     "message": ""
+    },
+    "apa": "A Lab. (n.d.). Contact [email hidden] for the tool [Computer software].",
+    "bibtex": "@software{ALab_Contact_nd,\n  author = {{A Lab}},\n  title = {{Contact [email hidden] for the tool}}\n}",
+    "softwareApa": "A Lab. (n.d.). Contact [email hidden] for the tool [Computer software].",
+    "softwareBibtex": "@software{ALab_Contact_nd,\n  author = {{A Lab}},\n  title = {{Contact [email hidden] for the tool}}\n}"
+   }
+  },
+  {
+   "name": "no cff-version is still a citation",
+   "kind": "cff",
+   "text": "title: no version\nauthors:\n  - name: Someone\n",
+   "expected": {
+    "citation": {
+     "work": {
+      "type": "software",
+      "title": "no version",
+      "authors": [
+       {
+        "family": "",
+        "given": "",
+        "name": "Someone",
+        "orcid": null
+       }
+      ],
+      "version": "",
+      "year": "",
+      "month": "",
+      "doi": null,
+      "url": "",
+      "journal": "",
+      "volume": "",
+      "issue": "",
+      "pages": "",
+      "publisher": ""
+     },
+     "software": {
+      "type": "software",
+      "title": "no version",
+      "authors": [
+       {
+        "family": "",
+        "given": "",
+        "name": "Someone",
+        "orcid": null
+       }
+      ],
+      "version": "",
+      "year": "",
+      "month": "",
+      "doi": null,
+      "url": "",
+      "journal": "",
+      "volume": "",
+      "issue": "",
+      "pages": "",
+      "publisher": ""
+     },
+     "preferred": false,
+     "source": "CITATION.cff",
+     "message": ""
+    },
+    "apa": "Someone. (n.d.). no version [Computer software].",
+    "bibtex": "@software{Someone_no_nd,\n  author = {{Someone}},\n  title = {{no version}}\n}",
+    "softwareApa": "Someone. (n.d.). no version [Computer software].",
+    "softwareBibtex": "@software{Someone_no_nd,\n  author = {{Someone}},\n  title = {{no version}}\n}"
+   }
+  },
+  {
+   "name": "no author: none",
+   "kind": "cff",
+   "text": "cff-version: 1.2.0\ntitle: alone\n",
+   "expected": null
+  },
+  {
+   "name": "more than 20 authors",
+   "kind": "cff",
+   "text": "cff-version: 1.2.0\ntitle: Big collaboration\nauthors:\n  - family-names: Person0\n    given-names: Jean-Luc P0\n  - family-names: Person1\n    given-names: Jean-Luc P1\n  - family-names: Person2\n    given-names: Jean-Luc P2\n  - family-names: Person3\n    given-names: Jean-Luc P3\n  - family-names: Person4\n    given-names: Jean-Luc P4\n  - family-names: Person5\n    given-names: Jean-Luc P5\n  - family-names: Person6\n    given-names: Jean-Luc P6\n  - family-names: Person7\n    given-names: Jean-Luc P7\n  - family-names: Person8\n    given-names: Jean-Luc P8\n  - family-names: Person9\n    given-names: Jean-Luc P9\n  - family-names: Person10\n    given-names: Jean-Luc P10\n  - family-names: Person11\n    given-names: Jean-Luc P11\n  - family-names: Person12\n    given-names: Jean-Luc P12\n  - family-names: Person13\n    given-names: Jean-Luc P13\n  - family-names: Person14\n    given-names: Jean-Luc P14\n  - family-names: Person15\n    given-names: Jean-Luc P15\n  - family-names: Person16\n    given-names: Jean-Luc P16\n  - family-names: Person17\n    given-names: Jean-Luc P17\n  - family-names: Person18\n    given-names: Jean-Luc P18\n  - family-names: Person19\n    given-names: Jean-Luc P19\n  - family-names: Person20\n    given-names: Jean-Luc P20\n  - family-names: Person21\n    given-names: Jean-Luc P21\n  - family-names: Person22\n    given-names: Jean-Luc P22\n",
+   "expected": {
+    "citation": {
+     "work": {
+      "type": "software",
+      "title": "Big collaboration",
+      "authors": [
+       {
+        "family": "Person0",
+        "given": "Jean-Luc P0",
+        "name": "",
+        "orcid": null
+       },
+       {
+        "family": "Person1",
+        "given": "Jean-Luc P1",
+        "name": "",
+        "orcid": null
+       },
+       {
+        "family": "Person2",
+        "given": "Jean-Luc P2",
+        "name": "",
+        "orcid": null
+       },
+       {
+        "family": "Person3",
+        "given": "Jean-Luc P3",
+        "name": "",
+        "orcid": null
+       },
+       {
+        "family": "Person4",
+        "given": "Jean-Luc P4",
+        "name": "",
+        "orcid": null
+       },
+       {
+        "family": "Person5",
+        "given": "Jean-Luc P5",
+        "name": "",
+        "orcid": null
+       },
+       {
+        "family": "Person6",
+        "given": "Jean-Luc P6",
+        "name": "",
+        "orcid": null
+       },
+       {
+        "family": "Person7",
+        "given": "Jean-Luc P7",
+        "name": "",
+        "orcid": null
+       },
+       {
+        "family": "Person8",
+        "given": "Jean-Luc P8",
+        "name": "",
+        "orcid": null
+       },
+       {
+        "family": "Person9",
+        "given": "Jean-Luc P9",
+        "name": "",
+        "orcid": null
+       },
+       {
+        "family": "Person10",
+        "given": "Jean-Luc P10",
+        "name": "",
+        "orcid": null
+       },
+       {
+        "family": "Person11",
+        "given": "Jean-Luc P11",
+        "name": "",
+        "orcid": null
+       },
+       {
+        "family": "Person12",
+        "given": "Jean-Luc P12",
+        "name": "",
+        "orcid": null
+       },
+       {
+        "family": "Person13",
+        "given": "Jean-Luc P13",
+        "name": "",
+        "orcid": null
+       },
+       {
+        "family": "Person14",
+        "given": "Jean-Luc P14",
+        "name": "",
+        "orcid": null
+       },
+       {
+        "family": "Person15",
+        "given": "Jean-Luc P15",
+        "name": "",
+        "orcid": null
+       },
+       {
+        "family": "Person16",
+        "given": "Jean-Luc P16",
+        "name": "",
+        "orcid": null
+       },
+       {
+        "family": "Person17",
+        "given": "Jean-Luc P17",
+        "name": "",
+        "orcid": null
+       },
+       {
+        "family": "Person18",
+        "given": "Jean-Luc P18",
+        "name": "",
+        "orcid": null
+       },
+       {
+        "family": "Person19",
+        "given": "Jean-Luc P19",
+        "name": "",
+        "orcid": null
+       },
+       {
+        "family": "Person20",
+        "given": "Jean-Luc P20",
+        "name": "",
+        "orcid": null
+       },
+       {
+        "family": "Person21",
+        "given": "Jean-Luc P21",
+        "name": "",
+        "orcid": null
+       },
+       {
+        "family": "Person22",
+        "given": "Jean-Luc P22",
+        "name": "",
+        "orcid": null
+       }
+      ],
+      "version": "",
+      "year": "",
+      "month": "",
+      "doi": null,
+      "url": "",
+      "journal": "",
+      "volume": "",
+      "issue": "",
+      "pages": "",
+      "publisher": ""
+     },
+     "software": {
+      "type": "software",
+      "title": "Big collaboration",
+      "authors": [
+       {
+        "family": "Person0",
+        "given": "Jean-Luc P0",
+        "name": "",
+        "orcid": null
+       },
+       {
+        "family": "Person1",
+        "given": "Jean-Luc P1",
+        "name": "",
+        "orcid": null
+       },
+       {
+        "family": "Person2",
+        "given": "Jean-Luc P2",
+        "name": "",
+        "orcid": null
+       },
+       {
+        "family": "Person3",
+        "given": "Jean-Luc P3",
+        "name": "",
+        "orcid": null
+       },
+       {
+        "family": "Person4",
+        "given": "Jean-Luc P4",
+        "name": "",
+        "orcid": null
+       },
+       {
+        "family": "Person5",
+        "given": "Jean-Luc P5",
+        "name": "",
+        "orcid": null
+       },
+       {
+        "family": "Person6",
+        "given": "Jean-Luc P6",
+        "name": "",
+        "orcid": null
+       },
+       {
+        "family": "Person7",
+        "given": "Jean-Luc P7",
+        "name": "",
+        "orcid": null
+       },
+       {
+        "family": "Person8",
+        "given": "Jean-Luc P8",
+        "name": "",
+        "orcid": null
+       },
+       {
+        "family": "Person9",
+        "given": "Jean-Luc P9",
+        "name": "",
+        "orcid": null
+       },
+       {
+        "family": "Person10",
+        "given": "Jean-Luc P10",
+        "name": "",
+        "orcid": null
+       },
+       {
+        "family": "Person11",
+        "given": "Jean-Luc P11",
+        "name": "",
+        "orcid": null
+       },
+       {
+        "family": "Person12",
+        "given": "Jean-Luc P12",
+        "name": "",
+        "orcid": null
+       },
+       {
+        "family": "Person13",
+        "given": "Jean-Luc P13",
+        "name": "",
+        "orcid": null
+       },
+       {
+        "family": "Person14",
+        "given": "Jean-Luc P14",
+        "name": "",
+        "orcid": null
+       },
+       {
+        "family": "Person15",
+        "given": "Jean-Luc P15",
+        "name": "",
+        "orcid": null
+       },
+       {
+        "family": "Person16",
+        "given": "Jean-Luc P16",
+        "name": "",
+        "orcid": null
+       },
+       {
+        "family": "Person17",
+        "given": "Jean-Luc P17",
+        "name": "",
+        "orcid": null
+       },
+       {
+        "family": "Person18",
+        "given": "Jean-Luc P18",
+        "name": "",
+        "orcid": null
+       },
+       {
+        "family": "Person19",
+        "given": "Jean-Luc P19",
+        "name": "",
+        "orcid": null
+       },
+       {
+        "family": "Person20",
+        "given": "Jean-Luc P20",
+        "name": "",
+        "orcid": null
+       },
+       {
+        "family": "Person21",
+        "given": "Jean-Luc P21",
+        "name": "",
+        "orcid": null
+       },
+       {
+        "family": "Person22",
+        "given": "Jean-Luc P22",
+        "name": "",
+        "orcid": null
+       }
+      ],
+      "version": "",
+      "year": "",
+      "month": "",
+      "doi": null,
+      "url": "",
+      "journal": "",
+      "volume": "",
+      "issue": "",
+      "pages": "",
+      "publisher": ""
+     },
+     "preferred": false,
+     "source": "CITATION.cff",
+     "message": ""
+    },
+    "apa": "Person0, J.-L. P., Person1, J.-L. P., Person2, J.-L. P., Person3, J.-L. P., Person4, J.-L. P., Person5, J.-L. P., Person6, J.-L. P., Person7, J.-L. P., Person8, J.-L. P., Person9, J.-L. P., Person10, J.-L. P., Person11, J.-L. P., Person12, J.-L. P., Person13, J.-L. P., Person14, J.-L. P., Person15, J.-L. P., Person16, J.-L. P., Person17, J.-L. P., Person18, J.-L. P., … Person22, J.-L. P. (n.d.). Big collaboration [Computer software].",
+    "bibtex": "@software{Person0_Big_nd,\n  author = {Person0, Jean-Luc P0 and Person1, Jean-Luc P1 and Person2, Jean-Luc P2 and Person3, Jean-Luc P3 and Person4, Jean-Luc P4 and Person5, Jean-Luc P5 and Person6, Jean-Luc P6 and Person7, Jean-Luc P7 and Person8, Jean-Luc P8 and Person9, Jean-Luc P9 and Person10, Jean-Luc P10 and Person11, Jean-Luc P11 and Person12, Jean-Luc P12 and Person13, Jean-Luc P13 and Person14, Jean-Luc P14 and Person15, Jean-Luc P15 and Person16, Jean-Luc P16 and Person17, Jean-Luc P17 and Person18, Jean-Luc P18 and Person19, Jean-Luc P19 and Person20, Jean-Luc P20 and Person21, Jean-Luc P21 and Person22, Jean-Luc P22},\n  title = {{Big collaboration}}\n}",
+    "softwareApa": "Person0, J.-L. P., Person1, J.-L. P., Person2, J.-L. P., Person3, J.-L. P., Person4, J.-L. P., Person5, J.-L. P., Person6, J.-L. P., Person7, J.-L. P., Person8, J.-L. P., Person9, J.-L. P., Person10, J.-L. P., Person11, J.-L. P., Person12, J.-L. P., Person13, J.-L. P., Person14, J.-L. P., Person15, J.-L. P., Person16, J.-L. P., Person17, J.-L. P., Person18, J.-L. P., … Person22, J.-L. P. (n.d.). Big collaboration [Computer software].",
+    "softwareBibtex": "@software{Person0_Big_nd,\n  author = {Person0, Jean-Luc P0 and Person1, Jean-Luc P1 and Person2, Jean-Luc P2 and Person3, Jean-Luc P3 and Person4, Jean-Luc P4 and Person5, Jean-Luc P5 and Person6, Jean-Luc P6 and Person7, Jean-Luc P7 and Person8, Jean-Luc P8 and Person9, Jean-Luc P9 and Person10, Jean-Luc P10 and Person11, Jean-Luc P11 and Person12, Jean-Luc P12 and Person13, Jean-Luc P13 and Person14, Jean-Luc P14 and Person15, Jean-Luc P15 and Person16, Jean-Luc P16 and Person17, Jean-Luc P17 and Person18, Jean-Luc P18 and Person19, Jean-Luc P19 and Person20, Jean-Luc P20 and Person21, Jean-Luc P21 and Person22, Jean-Luc P22},\n  title = {{Big collaboration}}\n}"
+   }
+  },
+  {
+   "name": "codemeta.json",
+   "kind": "codemeta",
+   "text": "{\"@context\":\"https://doi.org/10.5063/schema/codemeta-2.0\",\"name\":\"tool\",\"version\":\"1.0\",\"author\":[{\"givenName\":\"Ada\",\"familyName\":\"Lovelace\",\"@id\":\"https://orcid.org/0000-0002-1825-0097\",\"email\":\"ada@example.org\"}],\"identifier\":\"https://doi.org/10.5281/zenodo.42\",\"datePublished\":\"2025-02-03\",\"codeRepository\":\"https://github.com/lab/tool\"}",
+   "expected": {
+    "citation": {
+     "work": {
+      "type": "software",
+      "title": "tool",
+      "authors": [
+       {
+        "family": "Lovelace",
+        "given": "Ada",
+        "name": "",
+        "orcid": "https://orcid.org/0000-0002-1825-0097"
+       }
+      ],
+      "version": "1.0",
+      "year": "2025",
+      "month": "02",
+      "doi": "10.5281/zenodo.42",
+      "url": "https://github.com/lab/tool",
+      "journal": "",
+      "volume": "",
+      "issue": "",
+      "pages": "",
+      "publisher": ""
+     },
+     "software": {
+      "type": "software",
+      "title": "tool",
+      "authors": [
+       {
+        "family": "Lovelace",
+        "given": "Ada",
+        "name": "",
+        "orcid": "https://orcid.org/0000-0002-1825-0097"
+       }
+      ],
+      "version": "1.0",
+      "year": "2025",
+      "month": "02",
+      "doi": "10.5281/zenodo.42",
+      "url": "https://github.com/lab/tool",
+      "journal": "",
+      "volume": "",
+      "issue": "",
+      "pages": "",
+      "publisher": ""
+     },
+     "preferred": false,
+     "source": "codemeta.json",
+     "message": ""
+    },
+    "apa": "Lovelace, A. (2025). tool (Version 1.0) [Computer software]. https://doi.org/10.5281/zenodo.42",
+    "bibtex": "@software{Lovelace_tool_2025,\n  author = {Lovelace, Ada},\n  title = {{tool}},\n  version = {1.0},\n  year = {2025},\n  doi = {10.5281/zenodo.42},\n  month = feb,\n  url = {https://github.com/lab/tool}\n}",
+    "softwareApa": "Lovelace, A. (2025). tool (Version 1.0) [Computer software]. https://doi.org/10.5281/zenodo.42",
+    "softwareBibtex": "@software{Lovelace_tool_2025,\n  author = {Lovelace, Ada},\n  title = {{tool}},\n  version = {1.0},\n  year = {2025},\n  doi = {10.5281/zenodo.42},\n  month = feb,\n  url = {https://github.com/lab/tool}\n}"
+   }
+  },
+  {
+   "name": "codemeta.json unreadable",
+   "kind": "codemeta",
+   "text": "{not json",
+   "expected": null
+  }
+ ]
+}

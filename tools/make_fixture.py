@@ -284,7 +284,31 @@ def build(out: Path = OUT) -> Path:
         elif src.exists():
             shutil.copy2(src, out / name)
     shutil.rmtree(tmp, ignore_errors=True)
+    _site_status(out)
     return out
+
+
+def _site_status(out: Path) -> None:
+    """The /status page's fixture data (night phase 15): deterministic availability over 90 days,
+    with two incidents, so the built page renders the enabled state in the tests. The real file is
+    written by the Mac's own outbound checks (oscr/sitestatus.py); here it is synthesised."""
+    from datetime import UTC, datetime
+
+    from oscr import sitestatus
+
+    now = int(datetime(2026, 10, 5, 12, 0, tzinfo=UTC).timestamp())
+    base = datetime(2026, 10, 5, tzinfo=UTC).timestamp()
+    checks = []
+    for d in range(89, -1, -1):
+        for h in range(0, 24, 2):  # 12 checks a day
+            t = int(base - d * 86400 + h * 3600)
+            ok = True
+            if d == 7 and h in (6, 8, 10):  # a one-hour outage, seven days ago
+                ok = False
+            if d == 20 and h in (14, 16):  # a partial day, twenty days ago
+                ok = False
+            checks.append(sitestatus.Check(t=t, ok=ok, status=200 if ok else 503, ms=12.0 if ok else 0.0))
+    sitestatus.write_status(out / "site-status.json", sitestatus.build(checks, now=now))
 
 
 def _phase4(con, a: str, b: str, c: str, d: str, x: str) -> None:

@@ -522,3 +522,21 @@ request comes. They stay here for a reinstallation:
 - The page reads a static paper's facts from its HTML: a paper page restructured without them fails
   `npm run check`.
 - The README link uses `HEAD` (GitHub's default branch); the Mac does not record the branch's name.
+
+## Discussions and projects (night phase 06)
+
+Two more ways a signed-in reader takes part, OSCR-native (D00-6; `docs/DISCUSSIONS.md`, D06-*), all
+behind `FORGE_OPEN` until phase 16:
+
+- **Discussions** (`/api/forge/discussions/*`): a space per paper (its verified authors maintain it),
+  per repository and per organization; open a thread, ask and answer a question (the answered state),
+  run a poll, upvote, comment (65,536 chars), label, lock, pin, close, transfer. Turnstile on a new
+  discussion or comment; blocks and interaction limits of a repository space (`mayInteract`); every
+  text masked for email addresses; a maintainer hides, redacts and deletes. These are OSCR's first
+  public, user-written free text: the phase-16 content rules, moderation, reporting, abuse limits and
+  data-rights erasure must cover them when phase 06 merges (D06-6).
+- **The wiki** (`wiki_edit`): Markdown pages on the repository's `wiki` branch, edited as the person
+  through one authorized commit (the phase-03 model); OSCR never writes to GitHub itself.
+- **Projects** (`/api/forge/projects/*`): planning boards whose items are issues, pull requests,
+  drafts, papers, tracing maps and reproduction reports, with research fields (paper, map state,
+  reproduction outcome). Only the owner manages a project.

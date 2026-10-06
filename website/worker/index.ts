@@ -13,17 +13,29 @@
 //                        docs/CONTRIBUTIONS.md)
 //   /api/rights          the signed-in person's data rights: what the site holds about them, and
 //                        their requests (rights/; docs/CONTRIBUTIONS.md "Data rights")
+//   /api/v1, /api/v1/*    the public, keyless, read-only API (v1/; docs/API_PUBLIC.md). It owns
+//                        /api/v1; a token is NEVER required to read it.
+//   /api/forge/v1,       the GitHub side's authenticated token API (night phase 10): bearer
+//   /api/forge/v1/*      tokens, CORS, dated versions (forge/service/api.ts; docs/API.md). A token
+//                        is always required (401 without one); moved off /api/v1 so it never
+//                        collides with the keyless public read API above.
+//   /api/forge/*         the GitHub side (night phase 01): one authorized action (start, act),
+//                        GitHub's webhooks, OSCR's layer over a repository (forge/service/;
+//                        docs/FORGE.md). The repository pages themselves are static (/r/*).
 //   anything else under /api/   a JSON 404
 //   anything else        pages.ts: a paper rendered on demand, else the site's 404 page
 //
-// The search's answers are public and cached (Cache-Control: public, api.ts); the accounts' and
-// the contributions' depend on the reader (a session cookie) and all say `Cache-Control: no-store`.
+// The search's answers are public and cached (Cache-Control: public, api.ts); the accounts', the
+// contributions' and the forge's depend on the reader (a session cookie) or change the registry,
+// and all say `Cache-Control: no-store`.
 //
 // Only the default export: the runtime takes every export of the main module for an entry point.
 import { handleAccount } from "./account/index.ts";
 import { error, handleSearch } from "./api.ts";
 import { handleContributions } from "./contributions/index.ts";
 import type { Context, Env, Handler } from "./env.ts";
+import { handleApi } from "./forge/service/api.ts";
+import { handleForge } from "./forge/service/index.ts";
 import { asset, handlePage, SITE_HEADERS } from "./pages.ts";
 import { handleRights } from "./rights/index.ts";
 import { handleV1 } from "./v1/index.ts";
@@ -38,6 +50,12 @@ const contributions: Handler = async (request, env, ctx) =>
   (await handleContributions(request, env, ctx)) ?? error(404, "not_found", "No such route.");
 /** The data rights, likewise. */
 const rights: Handler = async (request, env, ctx) => (await handleRights(request, env, ctx)) ?? error(404, "not_found", "No such route.");
+/** The forge service (night phase 01), likewise: GitHub's backend, built from the environment. */
+const forge: Handler = async (request, env, ctx) =>
+  (await handleForge(request, env, ctx)) ?? error(404, "not_found", "No such route.");
+/** The GitHub side's token API (night phase 10), likewise. Served under /api/forge/v1 so it never
+ *  collides with the keyless public read API at /api/v1. */
+const api: Handler = async (request, env, ctx) => (await handleApi(request, env, ctx)) ?? error(404, "not_found", "No such route.");
 
 const ROUTES: Route[] = [
   { path: "/api/v1", handle: handleV1 },
@@ -54,6 +72,9 @@ const ROUTES: Route[] = [
   { path: "/api/validations", handle: contributions },
   { path: "/api/reports", handle: contributions },
   { path: "/api/rights", handle: rights },
+  { path: "/api/forge/v1", handle: api },
+  { prefix: "/api/forge/v1/", handle: api },
+  { prefix: "/api/forge/", handle: forge },
 ];
 
 function route(pathname: string): Handler | undefined {

@@ -1,0 +1,62 @@
+---
+// /report/: report something the registry shows on its GitHub side, a person, a repository, a research
+// issue or comment, an issue, a pull request or a release, a star list, a commit status (night phase
+// 16, E1; docs/MODERATION.md). With or without an account, behind the human check (Turnstile). The
+// page is one shell: ?target= names the thing (src/lib/moderation.ts reportHref), ?label= how the page
+// named it. Its script (src/scripts/report.ts) sends POST /api/forge/report. science.css only.
+import Base from "../layouts/Base.astro";
+import { SITE_NAME, TURNSTILE_SITE_KEY } from "../config";
+import { REASON_HELP, REASON_WORDS, REPORT_REASONS } from "../lib/moderation";
+---
+<Base
+  title="Report content"
+  description="Report something that breaks the rules: spam, abuse, private information, malware, a copyright infringement, impersonation."
+  breadcrumb={[{ text: "Report content" }]}
+>
+  <h1>Report content</h1>
+  <p class="summary" id="report-what" aria-live="polite">Reading what you report…</p>
+  <noscript><p class="warning">This form needs JavaScript (the human check, then the report, are sent by your browser).</p></noscript>
+  <p>
+    {SITE_NAME}'s owner reads every report. The person you report is never told who reported them. With an
+    account, the owner sees only that you had one; without an account, nothing about you is kept. No
+    email address is asked, and none is kept: an address in your words is removed.
+  </p>
+  <p>
+    A paper's record in the catalogue, the copies of its authors' scripts or its tracing map: ask for their
+    removal on <a href="/removal/">the removal page</a> instead, from the paper's page. A takedown for
+    copyright or for private information: see <a href="/copyright/">how takedowns work</a>. What breaks the
+    rules: <a href="/acceptable-use/">the acceptable-use policy</a>.
+  </p>
+  <form id="report-form" hidden>
+    <fieldset>
+      <legend>Why do you report it?</legend>
+      <ul class="choices">
+        {REPORT_REASONS.map((r) => (
+          <li>
+            <label><input type="radio" name="reason" value={r} required /> {REASON_WORDS[r].charAt(0).toUpperCase() + REASON_WORDS[r].slice(1)}</label>
+            <div class="detail muted">{REASON_HELP[r]}</div>
+          </li>
+        ))}
+      </ul>
+    </fieldset>
+    <p id="report-github" class="moderated" hidden>
+      This is on GitHub: only GitHub can take it down. Send your notice to GitHub as well, following{" "}
+      <a href="https://docs.github.com/en/site-policy/content-removal-policies/guide-to-submitting-a-dmca-takedown-notice">GitHub's guide</a>{" "}
+      (at the source, because GitHub holds the code); while GitHub decides, the owner may hide it from the
+      registry's pages. A copyright notice needs an account: <a href="/copyright/">how takedowns work</a>.
+    </p>
+    <p id="report-private" class="muted" hidden>
+      A report of private information may be sent without an account; it is hidden as soon as the owner reads it.
+    </p>
+    <p>
+      <label for="report-details">In your words (required for “another breach” and for a copyright report)</label><br />
+      <textarea id="report-details" name="details" rows="6" maxlength="2000"></textarea>
+    </p>
+    <div class="human-check" id="report-check" data-sitekey={TURNSTILE_SITE_KEY}></div>
+    <p><button type="submit" id="report-send">Send the report</button></p>
+    <p id="report-said" role="status" aria-live="polite"></p>
+  </form>
+  <script>
+    import "../scripts/report";
+  </script>
+</Base>

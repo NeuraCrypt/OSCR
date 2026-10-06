@@ -1,0 +1,195 @@
+---
+// /new/import/: imports on the researcher's machine (D00-8). No import runs in the Worker or on the
+// Mac, and the page asks the Worker nothing: the commands are made in the browser
+// (src/scripts/import-repo.ts, from src/lib/import-commands.ts) and run on the person's computer.
+// The steps: create the EMPTY repository (/new/, no README), run the commands (git clone --mirror,
+// git push --mirror: every commit id kept, so maps pinned to the source stay valid), then link it
+// (/new/link/, with the papers). ?paper=<doi> reads the catalogue's static lookup shard and prefills
+// the paper's code links and the paper to link.
+//
+// Without JavaScript the form stays hidden and the commands below, with placeholders, are the page.
+// No SSH address is printed (it has an at sign; the site shows nothing shaped like an email address).
+// science.css only; the platform's name from src/config.ts.
+import Base from "../../layouts/Base.astro";
+import { SITE_NAME } from "../../config";
+import {
+  commandText,
+  IMPORTER_URL,
+  mirrorCommands,
+  parseGitUrl,
+  parseRecord,
+  recordCommands,
+} from "../../lib/import-commands";
+
+// Placeholders, in capitals: the source, your account, the new repository.
+const OWNER_NAME = { owner: "OWNER", name: "NAME" };
+const exampleSource = parseGitUrl("https://gitlab.com/LAB/NAME")!;
+const mirror = commandText(mirrorCommands(exampleSource, OWNER_NAME));
+const mirrorLfs = commandText(mirrorCommands(exampleSource, OWNER_NAME, { lfs: true }));
+const record = commandText(recordCommands(parseRecord("10.5281/zenodo.1234567")!, OWNER_NAME));
+const submodules = [
+  "git submodule status",
+  "git config --file .gitmodules --get-regexp url",
+  "git submodule set-url PATH/TO/SUBMODULE https://github.com/OWNER/SUBMODULE.git",
+  'git commit -am "Point the submodule to its new home"',
+  "git push",
+];
+---
+<Base
+  title="Import a repository"
+  description="Import code from another host or an archive into a repository of your own, keeping its history."
+  breadcrumb={[{ text: "Repositories", href: "/repositories/" }, { text: "Import a repository" }]}
+>
+  <h1>Import a repository</h1>
+  <p class="summary">
+    Code from GitLab, Bitbucket, Codeberg or any git host, a Zenodo, figshare or OSF record, or your paper's code links:
+    the commands that import it on your own computer into your GitHub account, every commit id kept.
+    {SITE_NAME} runs no import and sees none of your credentials.
+  </p>
+
+  <section id="from-paper" hidden>
+    <h2>From the paper</h2>
+    <p id="from-paper-status" role="status"></p>
+    <ul id="from-paper-links" hidden></ul>
+  </section>
+
+  <form id="import-form" hidden>
+    <fieldset class="choices">
+      <legend>What are you importing?</legend>
+      <label><input type="radio" name="kind" value="git" checked /> A git repository</label>
+      <span class="explain">From GitHub, GitLab, Bitbucket, Codeberg or a lab's own server: every branch, tag and commit id.</span>
+      <label><input type="radio" name="kind" value="record" /> A Zenodo, figshare or OSF record</label>
+      <span class="explain">The record's files become one commit whose message cites its DOI.</span>
+      <label><input type="radio" name="kind" value="convert" /> Subversion, Mercurial, TFVC or Perforce</label>
+      <span class="explain">Converted to Git by its own converter, on your computer.</span>
+    </fieldset>
+
+    <p>
+      <label for="import-owner">Your GitHub account</label><br />
+      <input type="text" id="import-owner" autocomplete="off" spellcheck="false" maxlength="39" />
+    </p>
+    <p>
+      <label for="import-name">The new repository's name</label> (by default, the source's)<br />
+      <input type="text" id="import-name" autocomplete="off" spellcheck="false" maxlength="100" />
+    </p>
+
+    <div id="import-git">
+      <p>
+        <label for="import-source">The source's git address</label>, https or ssh, as its Clone or Code button shows it<br />
+        <input type="text" id="import-source" autocomplete="off" spellcheck="false" maxlength="400" placeholder="https://gitlab.com/lab/eeg.git" />
+      </p>
+      <p><label><input type="checkbox" id="import-lfs" /> The source uses Git LFS: move its large files too</label></p>
+      <p><label><input type="checkbox" id="import-ongoing" /> Also show how to keep the copy up to date later (an ongoing mirror, run by you)</label></p>
+    </div>
+
+    <div id="import-record" hidden>
+      <p>
+        <label for="import-record-doi">The record's DOI or its page's address</label><br />
+        <input type="text" id="import-record-doi" autocomplete="off" spellcheck="false" maxlength="300" placeholder="10.5281/zenodo.1234567" />
+      </p>
+    </div>
+
+    <div id="import-convert" hidden>
+      <p>
+        <label for="import-convert-kind">The system</label><br />
+        <select id="import-convert-kind">
+          <option value="svn">Subversion, with svn2git</option>
+          <option value="git-svn">Subversion, with git svn</option>
+          <option value="hg">Mercurial, with hg-fast-export</option>
+          <option value="tfvc">TFVC, with git-tfs</option>
+          <option value="perforce">Perforce, with git p4</option>
+        </select>
+      </p>
+      <p>
+        <label for="import-convert-source">The source's address</label>: https, svn or svn+ssh for Subversion; https or
+        ssh for Mercurial; the collection's https address for TFVC; the depot path (//depot/project) for Perforce<br />
+        <input type="text" id="import-convert-source" autocomplete="off" spellcheck="false" maxlength="400" />
+      </p>
+      <p>
+        <label for="import-tfvc-path">TFVC only: the path in the collection</label> ($/Project/Main)<br />
+        <input type="text" id="import-tfvc-path" autocomplete="off" spellcheck="false" maxlength="300" />
+      </p>
+      <p>
+        <label for="import-p4port">Perforce only: the server</label> (ssl:perforce.example.org:1666)<br />
+        <input type="text" id="import-p4port" autocomplete="off" spellcheck="false" maxlength="300" />
+      </p>
+      <p><label><input type="checkbox" id="import-authors" /> Map the old system's user names to names for Git (an authors.txt file you write)</label></p>
+      <p><label><input type="checkbox" id="import-convert-lfs" /> Move files over 50 MB into Git LFS before the first push</label></p>
+    </div>
+
+    <p>
+      <label for="import-papers">Papers to link it to</label> (DOIs, separated by spaces; optional)<br />
+      <input type="text" id="import-papers" autocomplete="off" spellcheck="false" maxlength="2000" />
+    </p>
+    <p><button type="submit">Show the steps</button></p>
+    <p id="import-message" role="status"></p>
+  </form>
+
+  <section id="import-result" class="setup" hidden>
+    <h2>The steps</h2>
+    <p id="import-link-instead" hidden></p>
+    <h3>1. Create the repository, empty</h3>
+    <p>
+      <a id="import-create" href="/new/">Create it on GitHub</a>, with no README, licence or .gitignore: a push of a
+      whole history needs an empty repository.
+    </p>
+    <h3>2. Run these commands on your computer</h3>
+    <p>In an empty folder. Git asks GitHub for your credentials the way it does for any push.</p>
+    <pre class="commands" id="import-commands" data-copy="the import commands"></pre>
+    <p id="import-note"></p>
+    <div id="import-ongoing-step" hidden>
+      <p>Later, to bring the source's new commits over, run again, from the same folder:</p>
+      <pre class="commands" id="import-ongoing-commands" data-copy="the update commands"></pre>
+    </div>
+    <p id="import-importer">
+      Or, without a terminal: <a id="import-importer-link" href={IMPORTER_URL}>GitHub's importer</a>, which copies a
+      repository over https. It does not move Git LFS objects, and it tells you by a notification when it has finished.
+    </p>
+    <h3>3. Link it</h3>
+    <p>
+      When the push has finished, <a id="import-link" href="/new/link/">link the repository</a> to {SITE_NAME} and to its
+      papers. Tracing maps made on the source carry over, because the commit ids are the same.
+    </p>
+  </section>
+
+  <h2 id="by-hand">The commands, by hand</h2>
+  <p>
+    In these commands OWNER is your GitHub account, NAME the new repository, and the first address the source's.
+    Create the repository first, empty (<a href="/new/?readme=0">create a repository</a>, with no README), then:
+  </p>
+  <pre class="commands" data-copy="the mirror commands">{mirror}</pre>
+  <p>
+    git clone --mirror and git push --mirror keep every branch, tag and commit id. The two refspecs fetch branches and
+    tags only, and the line with git for-each-ref deletes the source's hidden refs (pull and merge requests), which
+    GitHub refuses on a push. When the source uses Git LFS, its large files move with two more lines:
+  </p>
+  <pre class="commands" data-copy="the mirror commands with LFS">{mirrorLfs}</pre>
+  <p>An SSH source works the same: use the address its Clone button shows under SSH.</p>
+
+  <h3 id="record">A Zenodo, figshare or OSF record</h3>
+  <p>
+    An archive has no history: its files become the first commit of the repository, and the commit's message cites the
+    record's DOI.
+  </p>
+  <pre class="commands" data-copy="the record's commands">{record}</pre>
+
+  <h3 id="submodules">Submodules</h3>
+  <p>
+    A mirror copies a repository, not the repositories it names as submodules: those still point to their own
+    addresses. List them; import each one the same way if it should move too; then point the submodule to its new
+    address.
+  </p>
+  <pre class="commands" data-copy="the submodule commands">{submodules.join("\n")}</pre>
+
+  <h2 id="more">More</h2>
+  <ul>
+    <li><a href="/hosting/import/">The import guide</a>: planning, trial imports, sizes, Subversion, Mercurial, TFVC and
+      Perforce, splitting a folder, several repositories at once.</li>
+    <li><a href="/new/link/">Link a repository you already have</a>, with no import.</li>
+    <li><a href="/hosting/leave/">Leaving the registry</a>: your repository stays yours.</li>
+  </ul>
+
+  <script>
+    import "../../scripts/import-repo";
+  </script>
+</Base>

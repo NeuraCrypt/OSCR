@@ -1,0 +1,3 @@
+$ oscr api /user
+{"github": "ada-fixture", "orcid": "0000-0000-0000-001X", "token": {"id": "HHw-9pwoN_M2LP_u", "scopes": ["repos:read", "research:read"], "expires_at": "2026-12-28T16:30:22.000Z"}}
+[exit 0]

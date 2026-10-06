@@ -15,8 +15,14 @@
 //
 // It prints the number of files, folder by folder: a Worker's static assets stop at 20,000 per
 // version, and the budget (src/lib/shards.ts) keeps the site under 15,000 whatever the size of
-// the catalogue: at most STATIC_PAPERS files of papers (one each, the reader on its page), and
-// FIXED_FILES_MAX for the rest.
+// the catalogue: at most STATIC_PAPERS files of papers (one each, the reader on its page, "code
+// first"), and FIXED_FILES_MAX for the rest.
+//
+// The GitHub side (night phases 01-16), all dormant behind FORGE_OPEN: its fixed pages are in FIXED;
+// every /r/<owner>/<name>/… link is served by the one shell /r/index.html (public/_redirects:
+// "/r/* /r/ 200"), likewise /u/… and /research/…; OSCR's static layer, when the export has one, is at
+// most 64 shards /forge/layer/NN.json, each a JSON object. Phase 02: the tracing maps, exactly 64
+// shards /forge/traced/NN.json. They count in FIXED_FILES_MAX: a fixed number, whatever the catalogue.
 import { createHash } from "node:crypto";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -42,16 +48,46 @@ if (!existsSync(DIST)) {
 }
 const files = walk(DIST).map((f) => f.slice(DIST.length).split("\\").join("/"));
 const all = new Set(files);
-/** A route ("/browse/", "/lookup/6c.json") is served by a file of dist/. */
+/** A route ("/browse/", "/lookup/6c.json") is served by a file of dist/. Every repository page
+ *  (/r/<owner>/<name>/…) is served by the shell /r/index.html, a person's by /u/index.html, a
+ *  research issue's by /research/index.html (public/_redirects). */
 const exists = (route) =>
-  route.endsWith("/") ? all.has(`${route}index.html`) : all.has(route) || all.has(`${route}/index.html`);
+  route.startsWith("/r/")
+    ? all.has("/r/index.html")
+    : /^\/u\/[^/?#]+\/?(?:\?.*)?$/.test(route)
+      ? all.has("/u/index.html")
+    : /^\/research\/(?:[1-9]\d{0,9}|new)?(?:\?.*)?$/.test(route)
+      ? all.has("/research/index.html")
+      : route.endsWith("/") ? all.has(`${route}index.html`) : all.has(route) || all.has(`${route}/index.html`);
 const json = (f) => JSON.parse(readFileSync(join(DIST, f), "utf8"));
 
 // 1. The fixed pages, the shells of the pages rendered on demand, and the rewrites that serve
 // an entity's shell for its address (public/_redirects).
 const FIXED = ["/", "/about/", "/help/", "/policies/", "/privacy/", "/brand/", "/labs/", "/taxonomy/", "/list/", "/sitemap.xml", "/robots.txt", "/browse/", "/authors/", "/journals/", "/institutions/", "/tools/", "/datasets/",
   "/lookup/", "/search/", "/404.html", "/account/", "/submit/", "/removal/", "/data-rights/", "/badge.svg", "/paper/404.html",
-  ...ENTITY_TYPES.map((t) => `/${t}/`)];
+  ...ENTITY_TYPES.map((t) => `/${t}/`),
+  // The GitHub side (night phase 01), dormant behind FORGE_OPEN.
+  "/new/", "/new/link/", "/new/import/", "/repositories/", "/forge/authorized/", "/r/", "/hosting/", "/hosting/limits/",
+  "/hosting/large-files/", "/hosting/git/", "/hosting/history/", "/hosting/tokens/", "/hosting/import/", "/hosting/leave/",
+  // Night phase 05: the research issues' one shell.
+  "/research/",
+  // Night phase 08: the social pages, and the people's one shell.
+  "/notifications/", "/stars/", "/feed/", "/explore/", "/u/",
+  // Night phase 09: organizations, and the account's security page.
+  "/organizations/",
+  // Night phase 10: the tokens, the webhooks, the API's reference.
+  "/settings/tokens/", "/settings/hooks/", "/developers/",
+  // Night phase 13: snippets, and the snippet shell.
+  "/snippets/",
+  // Night phase 14: the command line's device approval.
+  "/device/",
+  // Night phase 15: the ease-of-use pages.
+  "/settings/preferences/", "/accessibility/", "/status/",
+  // Night phase 16: the report form, the owner's queue, a person's page of hidden things.
+  "/report/", "/moderation/", "/account/moderation/", "/notices/", "/settings/blocked/",
+  // Night phase 16: the rules and privacy pages.
+  "/terms/", "/acceptable-use/", "/guidelines/", "/limits/", "/copyright/"];
+
 for (const route of FIXED) if (!exists(route)) problems.push(`missing page ${route}`);
 
 const rewrites = new Map();
@@ -74,9 +110,9 @@ for (const t of ENTITY_TYPES) {
 // static pages' Content-Security-Policy.
 if (all.has("/paper/404.html")) {
   const shell = readFileSync(join(DIST, "paper/404.html"), "utf8");
-  for (const [what, re] of [["<main>", /<main>[\s\S]*<\/main>/], ["<title>", /<title>[^<]*<\/title>/],
+  for (const [what, re] of [["<main>", /<main[^>]*>[\s\S]*<\/main>/], ["<title>", /<title>[^<]*<\/title>/],
     ["the breadcrumb's #crumb", /<span id="crumb">[^<]*<\/span>/], ["application-name", /<meta name="application-name" content="/],
-    ["module script in <main>", /<main>[\s\S]*<script type="module" src="\/[^"]+"><\/script>[\s\S]*<\/main>/]]) {
+    ["module script in <main>", /<main[^>]*>[\s\S]*<script type="module" src="\/[^"]+"><\/script>[\s\S]*<\/main>/]]) {
     if (!re.test(shell)) problems.push(`/paper/404.html: no ${what}, which the Worker fills`);
   }
   if (/<script(?![^>]*\ssrc=)[^>]*>/.test(shell)) problems.push("/paper/404.html: an inline script, which its Content-Security-Policy forbids");
@@ -166,7 +202,7 @@ for (const a of catalog.articles) {
   // the page /removal/ and the Worker read it there, and stop reading.
   if (file) {
     const html = readFileSync(join(DIST, `paper/${a.slug}/index.html`), "utf8");
-    const m = html.match(/<main><script type="application\/json" id="paper-facts">([^<]*)<\/script>/);
+    const m = html.match(/<main[^>]*><script type="application\/json" id="paper-facts">([^<]*)<\/script>/);
     let facts = null;
     try {
       facts = m ? JSON.parse(m[1]) : null;
@@ -203,8 +239,109 @@ for (const name of shards) {
   if (!exists(`/lookup/${name}`)) problems.push(`missing lookup shard ${name}`);
 }
 
-/** A path of the site, with no query nor fragment, leads to a file, to an entity's record behind
- *  the rewrite of its shell, or to a paper rendered on demand. */
+// OSCR's static layer for the repository pages (scripts/data.mjs copies it when the export has one):
+// at most 64 shards, 00.json to 63.json, each an object keyed by "owner/name" in lower case.
+const layer = existsSync("public/forge/layer") ? readdirSync("public/forge/layer") : [];
+if (layer.length > 64) problems.push(`${layer.length} forge layer shards: 64 at most`);
+for (const name of layer) {
+  const m = /^(\d{2})\.json$/.exec(name);
+  if (!m || Number(m[1]) > 63) {
+    problems.push(`public/forge/layer/${name}: not a shard (00.json to 63.json)`);
+    continue;
+  }
+  if (!exists(`/forge/layer/${name}`)) problems.push(`missing forge layer shard ${name}`);
+  let entries;
+  try {
+    entries = JSON.parse(readFileSync(`public/forge/layer/${name}`, "utf8"));
+  } catch {
+    problems.push(`public/forge/layer/${name}: not JSON`);
+    continue;
+  }
+  if (!entries || typeof entries !== "object" || Array.isArray(entries)) problems.push(`public/forge/layer/${name}: not an object`);
+  else for (const key of Object.keys(entries)) if (key !== key.toLowerCase() || key.split("/").length !== 2) problems.push(`public/forge/layer/${name}: key ${key}`);
+}
+
+// The research issues for signed-out readers (night phase 05; scripts/data.mjs copies them when the
+// export has them): at most 64 shards, 00.json to 63.json, each an object keyed by an issue's number,
+// in the shard its number mod 64 names.
+const research = existsSync("public/forge/research") ? readdirSync("public/forge/research") : [];
+if (research.length > 64) problems.push(`${research.length} research shards: 64 at most`);
+for (const name of research) {
+  const m = /^(\d{2})\.json$/.exec(name);
+  if (!m || Number(m[1]) > 63) {
+    problems.push(`public/forge/research/${name}: not a shard (00.json to 63.json)`);
+    continue;
+  }
+  let entries;
+  try {
+    entries = JSON.parse(readFileSync(`public/forge/research/${name}`, "utf8"));
+  } catch {
+    problems.push(`public/forge/research/${name}: not JSON`);
+    continue;
+  }
+  if (!entries || typeof entries !== "object" || Array.isArray(entries)) problems.push(`public/forge/research/${name}: not an object`);
+  else for (const key of Object.keys(entries)) if (!/^[1-9]\d{0,9}$/.test(key) || Number(key) % 64 !== Number(m[1])) problems.push(`public/forge/research/${name}: key ${key}`);
+}
+
+// The social layer for signed-out readers (night phase 08; scripts/data.mjs copies it when the export
+// has it): at most 64 shards, 00.json to 63.json, each an object whose keys sit in the shard the first
+// byte of their SHA-256 names, mod 64; the Explore page's explore.json; no email address anywhere.
+const social = existsSync("public/social") ? readdirSync("public/social") : [];
+if (social.filter((n) => n !== "explore.json").length > 64) problems.push(`${social.length} social shards: 64 at most`);
+for (const name of social) {
+  const m = /^(\d{2})\.json$/.exec(name);
+  if (name !== "explore.json" && (!m || Number(m[1]) > 63)) {
+    problems.push(`public/social/${name}: not a shard (00.json to 63.json) nor explore.json`);
+    continue;
+  }
+  const text = readFileSync(`public/social/${name}`, "utf8");
+  if (/[\w.+-]+@[\w-]+(?:\.[\w-]+)*\.[A-Za-z]{2,}/.test(text)) problems.push(`public/social/${name}: an email address`);
+  let entries;
+  try {
+    entries = JSON.parse(text);
+  } catch {
+    problems.push(`public/social/${name}: not JSON`);
+    continue;
+  }
+  if (!entries || typeof entries !== "object" || Array.isArray(entries)) problems.push(`public/social/${name}: not an object`);
+  else if (m) {
+    for (const key of Object.keys(entries)) if (createHash("sha256").update(key).digest()[0] % 64 !== Number(m[1])) problems.push(`public/social/${name}: key ${key} out of its shard`);
+  }
+}
+
+// The tracing maps of the repository pages (night phase 02, E4): exactly 64 shards built from the
+// catalogue, /forge/traced/00.json to 63.json, each an object keyed by "owner/name" in lower case,
+// holding maps (paper, commit, pairs) and no paper text.
+const traced = existsSync(join(DIST, "forge/traced")) ? readdirSync(join(DIST, "forge/traced")) : [];
+if (traced.length !== 64) problems.push(`${traced.length} tracing-map shards: 64 expected`);
+for (const name of traced) {
+  const m = /^(\d{2})\.json$/.exec(name);
+  if (!m || Number(m[1]) > 63) {
+    problems.push(`/forge/traced/${name}: not a shard (00.json to 63.json)`);
+    continue;
+  }
+  let entries;
+  try {
+    entries = JSON.parse(readFileSync(join(DIST, "forge/traced", name), "utf8"));
+  } catch {
+    problems.push(`/forge/traced/${name}: not JSON`);
+    continue;
+  }
+  if (!entries || typeof entries !== "object" || Array.isArray(entries)) {
+    problems.push(`/forge/traced/${name}: not an object`);
+    continue;
+  }
+  for (const [key, maps] of Object.entries(entries)) {
+    if (key !== key.toLowerCase() || key.split("/").length !== 2) problems.push(`/forge/traced/${name}: key ${key}`);
+    for (const map of Array.isArray(maps) ? maps : [null]) {
+      if (!map || !/^[0-9a-f]{40}$/.test(map.commit ?? "") || !Array.isArray(map.pairs)) problems.push(`/forge/traced/${name}: a map of ${key} without its commit or pairs`);
+      else for (const p of map.pairs) if (Object.keys(p).some((k) => !["pair", "path", "start", "end", "section", "paragraph", "symbol"].includes(k))) problems.push(`/forge/traced/${name}: a pair of ${key} carries more than its link`);
+    }
+  }
+}
+
+/** A path of the site, with no query nor fragment, leads to a file (or a shell of the GitHub side),
+ *  to an entity's record behind the rewrite of its shell, or to a paper rendered on demand. */
 function leads(path) {
   if (exists(path)) return true;
   const m = path.match(/^\/([a-z]+)\/([^/]+)\/$/);
@@ -253,7 +390,8 @@ for (const page of pages) {
     if (missing.length) problems.push(`${page}: no section ${missing.map((id) => `#${id}`).join(", ")}`);
   }
   // (The reader's data, a <script type="application/json">, is not run: it is allowed.)
-  if (/^\/(paper\/[^/]+|account|submit|removal|data-rights)\/index\.html$/.test(page) && /<script(?![^>]*\s(?:src=|type="application\/json"))[^>]*>/.test(html)) {
+  if (/^\/(paper\/[^/]+|account|submit|removal|new|new\/link|new\/import|repositories|forge\/authorized|r|research|settings\/tokens|settings\/hooks|developers|report|moderation|account\/moderation|settings\/blocked|data-rights)\/index\.html$/.test(page) &&
+      /<script(?![^>]*\s(?:src=|type="application\/json"))[^>]*>/.test(html)) {
     problems.push(`${page}: an inline script, which its Content-Security-Policy forbids`);
   }
 }

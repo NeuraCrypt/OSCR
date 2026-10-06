@@ -1,0 +1,171 @@
+---
+// /hosting/limits/: GitHub's limits (file, push, repository, tree, push policy, Pages), the registry's
+// own caps, and who pays for what (D00-9). A static page (0 requests), science.css only; the
+// platform's name from src/config.ts. Every figure comes from GITHUB_LIMITS (worker/forge/limits.ts)
+// and the registry's caps (worker/forge/service/caps.ts) through src/lib/limits-text.ts, with GitHub's
+// documentation page as its source.
+import Base from "../../layouts/Base.astro";
+import { SITE_NAME } from "../../config";
+import { hostingFacts, limitTables, SOURCES } from "../../lib/limits-text";
+
+const t = hostingFacts();
+const tables = limitTables();
+const pushInParts = [
+  "git log --oneline --reverse main",
+  "git push origin OLDER-COMMIT:refs/heads/main",
+  "git push origin NEWER-COMMIT:refs/heads/main",
+  "git push origin main",
+];
+---
+<Base
+  title="Limits"
+  description="File, push and repository sizes on GitHub, and the registry's own caps."
+  breadcrumb={[{ text: "Hosting code", href: "/hosting/" }, { text: "Limits" }]}
+>
+  <h1>Limits</h1>
+  <p class="summary">
+    File, push and repository sizes on GitHub, and {SITE_NAME}'s own caps. Your repositories live in your GitHub account,
+    so GitHub's limits are the ones that apply; each figure links to GitHub's page that states it.
+  </p>
+  <p>{t.units}</p>
+
+  <h2 id="file-size">File size</h2>
+  <p>
+    GitHub warns when you push a file larger than {t.fileWarn}, and blocks a file larger than {t.file}{" "}
+    ({t.fileInWords}). Its web upload page accepts files up to {t.webUpload}. A larger file belongs in a release asset,
+    a data archive or Git LFS: <a href="/hosting/large-files/">the large-files guide</a>.
+    Source: <a href={SOURCES.largeFiles}>About large files on GitHub</a>.
+  </p>
+
+  <h2 id="push-size">Push size</h2>
+  <p>
+    One push is at most {t.push} ({t.pushInWords}). A first push of a long history, or of a converted repository, can
+    cross it. Source: <a href={SOURCES.repositoryLimits}>Repository limits</a>.
+  </p>
+  <h3 id="push-limit">{t.pushLimitTitle}</h3>
+  <p>
+    Push the history in parts, oldest first: list the commits, push an older commit to the branch, then a newer one,
+    until the branch is whole. Each part stays under the limit.
+  </p>
+  <pre class="commands">{pushInParts.join("\n")}</pre>
+  <p>Source: <a href={SOURCES.pushLimit}>GitHub's page on the push limit</a>.</p>
+
+  <h2 id="repository-size">Repository size</h2>
+  <p>
+    GitHub asks that repositories stay small: ideally under {t.repoIdeal}, and under {t.repoStrongly} strongly
+    recommended. Research code rarely comes near it; data does, and goes elsewhere
+    (<a href="/hosting/large-files/">large files</a>). Source: <a href={SOURCES.repositoryLimits}>Repository limits</a>.
+  </p>
+  <table class="limits">
+    <caption>Sizes on GitHub</caption>
+    <thead><tr><th>What</th><th>Limit</th><th>Source</th></tr></thead>
+    <tbody>
+      {tables.sizes.map((r) => (
+        <tr><td>{r.what}</td><td class="num">{r.value}</td><td>{r.source ? <a href={r.source}>GitHub's documentation</a> : SITE_NAME}</td></tr>
+      ))}
+    </tbody>
+  </table>
+
+  <h2 id="tree-limits">Tree limits</h2>
+  <p>
+    Beyond these, GitHub's pages and its API slow down or stop listing: keep a directory to fewer entries (a
+    folder of many small files is better as one archive in a release), and a repository's branches few.
+  </p>
+  <table class="limits">
+    <caption>Tree limits and repositories per account</caption>
+    <thead><tr><th>What</th><th>Limit</th><th>Source</th></tr></thead>
+    <tbody>
+      {tables.tree.map((r) => (
+        <tr><td>{r.what}</td><td class="num">{r.value}</td><td>{r.source ? <a href={r.source}>GitHub's documentation</a> : SITE_NAME}</td></tr>
+      ))}
+    </tbody>
+  </table>
+
+  <h2 id="push-policy">Push policy</h2>
+  <p>
+    Branch and tag updates per push: in a repository's settings, GitHub's push policy can limit how many branches and
+    tags one push may update. It stops an accidental <code>git push --mirror</code> from overwriting or deleting every
+    branch at once. When a push is refused for it, git's output names the setting.
+    Source: <a href={SOURCES.pushPolicy}>Managing the push policy for your repository</a>.
+  </p>
+  <table class="limits">
+    <caption>Branch and tag updates per push</caption>
+    <thead><tr><th>What</th><th>Figure</th><th>Source</th></tr></thead>
+    <tbody>
+      {tables.pushPolicy.map((r) => (
+        <tr><td>{r.what}</td><td class="num">{r.value}</td><td>{r.source ? <a href={r.source}>GitHub's documentation</a> : SITE_NAME}</td></tr>
+      ))}
+    </tbody>
+  </table>
+  <h3 id="path-exceptions">Push rule path exceptions</h3>
+  <p>
+    A push ruleset can refuse files by path, extension, path length or size. Since 2026-08-25 the path and size rules
+    can exempt chosen paths: a size rule, for example, can let through the small folder of reference data a paper's
+    figures are built from. Sources: <a href={SOURCES.availableRules}>Available rules for rulesets</a>,
+    <a href={SOURCES.pushRulePathExceptions}>GitHub's changelog</a>.
+  </p>
+
+  <h2 id="registry-caps">{SITE_NAME}'s own caps</h2>
+  <p>
+    What passes through {SITE_NAME}'s Worker is capped so that the service stays free. A larger commit or asset goes
+    through GitHub's own pages or <code>git push</code>, which {SITE_NAME} never sees. The per-account counts are over
+    the last {t.capWindow}, and a refusal says when you can try again.
+  </p>
+  <table class="limits">
+    <caption>{SITE_NAME}'s caps</caption>
+    <thead><tr><th>What</th><th>Cap</th><th>Set by</th></tr></thead>
+    <tbody>
+      {tables.registry.map((r) => (
+        <tr><td>{r.what}</td><td class="num">{r.value}</td><td>{r.source ? <a href={r.source}>GitHub's documentation</a> : SITE_NAME}</td></tr>
+      ))}
+    </tbody>
+  </table>
+
+  <h2 id="billing">Billing</h2>
+  <p>
+    {SITE_NAME} costs nothing and bills nothing: it asks for no payment method, and it has no plan to sell. What you
+    use on GitHub is on your own GitHub account, under GitHub's plan.
+  </p>
+  {t.lfs && (
+    <>
+      <p>
+        GitHub Free's Git LFS quotas are per account: {t.lfsStorage} of storage and {t.lfsBandwidth} of downloads a
+        month. Without a payment method on file, Git LFS is blocked for the account once a quota is spent, until the next
+        month; with one, the excess is billed. Source: <a href={SOURCES.lfsBilling}>Git LFS billing</a>.
+      </p>
+      <table class="limits">
+        <caption>GitHub Free's Git LFS quotas</caption>
+        <thead><tr><th>What</th><th>Limit</th><th>Source</th></tr></thead>
+        <tbody>
+          {tables.lfs.map((r) => (
+            <tr><td>{r.what}</td><td class="num">{r.value}</td><td>{r.source ? <a href={r.source}>GitHub's documentation</a> : SITE_NAME}</td></tr>
+          ))}
+        </tbody>
+      </table>
+    </>
+  )}
+  <h3 id="budgets">Budgets and usage alerts</h3>
+  <p>
+    Budgets and usage alerts are GitHub's: you set them on GitHub's billing pages, and GitHub sends the alerts. Usage
+    is counted by calendar month. {SITE_NAME} sets no budget and sees none of your usage.
+    Sources: <a href={SOURCES.budgets}>Budgets and alerts</a>, <a href={SOURCES.setUpBudgets}>Setting up budgets</a>,
+    <a href={SOURCES.billingCycles}>Billing cycles</a>.
+  </p>
+
+  <h2 id="pages">GitHub Pages size limits</h2>
+  <p>
+    A GitHub Pages site built from your repository has its own limits. {SITE_NAME} links a repository's Pages site,
+    and never rebuilds or copies it. Source: <a href={SOURCES.pagesLimits}>GitHub Pages limits</a>.
+  </p>
+  <table class="limits">
+    <caption>GitHub Pages</caption>
+    <thead><tr><th>What</th><th>Limit</th><th>Source</th></tr></thead>
+    <tbody>
+      {tables.pages.map((r) => (
+        <tr><td>{r.what}</td><td class="num">{r.value}</td><td>{r.source ? <a href={r.source}>GitHub's documentation</a> : SITE_NAME}</td></tr>
+      ))}
+    </tbody>
+  </table>
+
+  <p><a href="/hosting/">The hosting guides</a></p>
+</Base>

@@ -26,3 +26,9 @@ export const OPERATOR_ADDRESS: string = import.meta.env.OPERATOR_ADDRESS || "";
 
 /** The platform's source code, public (Apache-2.0): the About page, the footer, the policies. */
 export const SOURCE_URL = "https://github.com/NeuraCrypt/OSCR";
+
+/** Night phase 16: Turnstile's site key (public), written into the forms that need the human check
+ *  (reports, appeals, research issues and comments, profiles, lists, tokens, webhooks, data-rights
+ *  requests). Set at build time (`TURNSTILE_SITE_KEY=… npm run build`, or website/.env); unset, those
+ *  forms say the check is not set up and cannot be sent. Its secret is a Cloudflare secret, never here. */
+export const TURNSTILE_SITE_KEY: string = import.meta.env.TURNSTILE_SITE_KEY || "";

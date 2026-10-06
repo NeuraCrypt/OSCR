@@ -1,0 +1,43 @@
+---
+// /moderation/: the owner's moderation queue (night phase 16, E1; docs/MODERATION.md). Its script
+// (src/scripts/moderation-queue.ts) reads GET /api/forge/moderation (the owner's account only: anyone
+// else is told the queue is not theirs) and sends the decisions (POST /api/forge/moderation/decide,
+// with the session's CSRF token). The removal requests of catalogue records (Phase 6) are decided on
+// the Mac: `oscr reports list`. science.css only.
+import Base from "../layouts/Base.astro";
+import { REASON_WORDS, HIDE_REASONS } from "../../worker/forge/service/moderation-core.ts";
+---
+<Base
+  title="Moderation"
+  description="The owner's moderation queue: reports, appeals and data-rights requests."
+  breadcrumb={[{ text: "Account", href: "/account/" }, { text: "Moderation" }]}
+>
+  <h1>Moderation</h1>
+  <p class="summary" id="queue-status" aria-live="polite">Reading the queue…</p>
+  <noscript><p class="warning">The queue is read in your browser, which needs JavaScript.</p></noscript>
+  <p>
+    Every decision is logged, and its public notice (without the hidden words, without who reported) goes to{" "}
+    <a href="/notices/">the notices</a> at the next nightly publication. The person whose content it is reads
+    your message on their page, and may appeal once. The removal requests of catalogue records are decided on
+    the Mac: <code>oscr reports list</code>.
+  </p>
+  <h2>Open reports</h2>
+  <div id="queue-reports" aria-live="polite"></div>
+  <h2>Appeals and counter-notices</h2>
+  <div id="queue-appeals" aria-live="polite"></div>
+  <h2>Data-rights requests</h2>
+  <div id="queue-rights" aria-live="polite"></div>
+  <h2>Look up, hide or restore</h2>
+  <form id="queue-lookup" class="lookup">
+    <p>
+      <label for="lookup-target">What (as a report names it: <code>person:github:12</code>, <code>repo:github:5</code>, <code>research:3#2</code>…)</label><br />
+      <input type="text" id="lookup-target" name="target" autocomplete="off" />
+      <button type="submit">Look up</button>
+    </p>
+  </form>
+  <div id="queue-found" aria-live="polite"></div>
+  <template id="hide-reasons">{HIDE_REASONS.map((r) => <option value={r}>{REASON_WORDS[r]}</option>)}</template>
+  <script>
+    import "../scripts/moderation-queue";
+  </script>
+</Base>

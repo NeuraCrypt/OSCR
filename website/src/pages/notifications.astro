@@ -1,0 +1,22 @@
+---
+// /notifications/: the in-site inbox (night phase 08, E5; docs/SOCIAL.md). In the site only: no email
+// is ever sent (D5). Its script (src/scripts/notifications.ts) reads GET /api/forge/social/inbox when
+// the reader is signed in (1 request), filters and switches views in the browser.
+import Base from "../layouts/Base.astro";
+import { SITE_NAME } from "../config";
+---
+<Base
+  title="Notifications"
+  description="Your notifications: the repositories and papers you watch, the conversations you take part in, where you are mentioned. In the site only: no email is ever sent."
+  breadcrumb={[{ text: "Notifications" }]}
+>
+  <div id="notifications-shell" data-site={SITE_NAME}>
+    <h1>Notifications</h1>
+    <p class="summary" aria-live="polite">Reading your notifications…</p>
+    <noscript><p class="warning">This page reads your notifications in your browser, which needs JavaScript.</p></noscript>
+    <p>{SITE_NAME}'s notifications stay in this site: no email is ever sent, and no email address is asked for.</p>
+  </div>
+  <script>
+    import "../scripts/notifications";
+  </script>
+</Base>

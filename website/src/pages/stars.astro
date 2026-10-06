@@ -1,0 +1,21 @@
+---
+// /stars/: the reader's stars and star lists (night phase 08, E5; docs/SOCIAL.md). Its script
+// (src/scripts/stars.ts) reads GET /api/forge/social/mine when signed in (1 request).
+import Base from "../layouts/Base.astro";
+import { SITE_NAME } from "../config";
+---
+<Base
+  title="Stars"
+  description="Your stars: repositories, papers and topics, gathered into lists you can export as references (BibTeX, RIS)."
+  breadcrumb={[{ text: "Stars" }]}
+>
+  <div id="stars-shell" data-site={SITE_NAME}>
+    <h1>Your stars</h1>
+    <p class="summary" aria-live="polite">Reading your stars…</p>
+    <noscript><p class="warning">This page reads your stars in your browser, which needs JavaScript.</p></noscript>
+    <p>Stars are {SITE_NAME}'s own: nothing is starred on GitHub.</p>
+  </div>
+  <script>
+    import "../scripts/stars";
+  </script>
+</Base>

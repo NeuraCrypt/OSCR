@@ -197,8 +197,9 @@ ${site}api/search?q=tool:mne&format=csv        (the first 500 results, CSV or JS
       repository, never running the code it reads. Not published yet.</dd>
     <dt>A token layer over the API, with write routes</dt>
     <dd>On top of the keyless read API (which is live: see <a href="/api/">the API page</a>), authenticated write routes
-      under <code>/api/v1/</code>, by personal tokens only, shown once, stored as a digest, each with its rights and an
-      expiry, with limits per token. A token would never be required to read.</dd>
+      under <code>/api/forge/v1/</code> (kept off <code>/api/v1/</code>, which the keyless read API owns), by personal
+      tokens only, shown once, stored as a digest, each with its rights and an expiry, with limits per token. A token
+      would never be required to read.</dd>
     <dt>Checks that never run the code</dt>
     <dd>On a repository's pull requests and at any commit: its licence, an environment file saying how the code runs
       again, its link to the paper's DOI, a usable CITATION.cff, the files its tracing maps point to, file sizes, a README

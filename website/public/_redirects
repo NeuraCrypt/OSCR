@@ -1,6 +1,7 @@
 # Rewrites of the Worker's static assets (developers.cloudflare.com/workers/static-assets/redirects/):
 # served by the assets themselves, free, with no Worker request. The limit is 2,000 static and 100
-# dynamic rules; these are 10 dynamic ones, whatever the number of entities.
+# dynamic rules; these are 13 dynamic ones (10 for the entities, 3 for the GitHub side's shells),
+# whatever the number of entities, repositories, issues or people.
 #
 # An author, journal, institution, tool or dataset has no file of its own (src/lib/shards.ts): its
 # address is answered with the one shell page of its type (status 200, the address unchanged), and
@@ -17,3 +18,27 @@
 /tool/:key /tool/:key/ 301
 /dataset/:key/ /dataset/ 200
 /dataset/:key /dataset/:key/ 301
+
+# The GitHub side (night phases 01, 05, 08): a 200 serves another file of the site at the same
+# address, as above.
+#
+# The repository pages (the GitHub side, night phase 01): ONE static shell serves every
+# /r/<owner>/<name>/… path, and its script reads the repository in the reader's browser (GitHub's
+# anonymous API on the reader's own quota, OSCR's static layer). No file per repository (C5: the
+# catalogue already uses most of the 20,000 files a version may hold); 0 Worker requests.
+/r/* /r/ 200
+
+# The registry's research issues (night phase 05): ONE shell serves /research/<n>, /research/new and a
+# paper's list (?paper=); signed out it reads the nightly static shards, signed in the Worker. No file
+# per issue.
+/research/* /research/ 200
+
+# People's pages (night phase 08): ONE shell serves /u/<GitHub login or ORCID iD>/, and its script reads
+# the profile (last night's static shard signed out, the Worker signed in). No file per person.
+/u/* /u/ 200
+
+# Snippets, OSCR's gists (night phase 13): ONE shell serves discover (/snippets/), the new form
+# (/snippets/new), a person's list (/snippets/?owner=…) and one snippet (/snippet/<owner>/<folder>/, and
+# /snippets/?id=<n>); its script reads the Worker. No file per snippet.
+/snippets/* /snippets/ 200
+/snippet/* /snippets/ 200

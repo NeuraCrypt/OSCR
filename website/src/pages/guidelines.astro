@@ -1,0 +1,35 @@
+---
+// /guidelines/: the community guidelines (night phase 16, E4; docs/POLICIES.md): how to take part in a
+// paper's conversation well. A draft for the owner's review. Static; science.css only.
+import Base from "../layouts/Base.astro";
+import PolicyDraft from "../components/PolicyDraft.astro";
+import { SITE_NAME } from "../config";
+---
+<Base
+  title="Community guidelines"
+  description="How to take part in the conversation about a paper's code: about the code and the paper, with evidence, kindly."
+  breadcrumb={[{ text: "Community guidelines" }]}
+>
+  <div class="policy">
+    <h1>Community guidelines</h1>
+    <PolicyDraft drafted="2026-09-29" />
+    <p class="summary">
+      {SITE_NAME} exists so that research code can be read, checked, reused and improved. The people who
+      published it did something many do not: be generous with them, and precise.
+    </p>
+    <ul>
+      <li><strong>Talk about the code and the paper, not the person.</strong> "Line 42 filters at order 4; §2.3 says 2" helps; a judgement of the authors does not.</li>
+      <li><strong>Bring evidence.</strong> A mismatch names the paragraph and the lines; a reproduction failure says what you ran, on what data and environment, and what came out. The research issue forms ask for it.</li>
+      <li><strong>Assume good faith.</strong> Most mismatches are honest mistakes or undocumented choices. Ask before concluding.</li>
+      <li><strong>Credit.</strong> Cite papers by their DOI and code by its commit; say where an idea or a fix comes from.</li>
+      <li><strong>Keep private things private.</strong> Never post someone's contact details, data about patients or participants, or a secret key.</li>
+      <li><strong>Stay on topic.</strong> One issue per problem; a paper's discussion is about that paper.</li>
+      <li><strong>Accept "no".</strong> Authors and maintainers decide what goes into their code; they may lock a heated conversation or limit interactions for a while.</li>
+      <li><strong>Report, do not retaliate.</strong> Use the “Report” link, or block someone; the owner reads every report.</li>
+    </ul>
+    <p>
+      What is not allowed at all is in the <a href="/acceptable-use/">acceptable-use policy</a>; what happens then
+      is in the <a href="/terms/">terms</a>.
+    </p>
+  </div>
+</Base>

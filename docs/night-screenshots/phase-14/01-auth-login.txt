@@ -1,0 +1,10 @@
+$ oscr auth login
+GitHub: open http://127.0.0.1:9490/web/login/device and enter the code 1001-8409
+Waiting for your approval on GitHub…
+GitHub: signed in as ada-fixture. The token is in the macOS keychain; the registry never sees it.
+OSCR: open http://localhost:8791/device/?r=…
+  sign in, then type the code DNQP-XSBB and approve (it may: repos:read, research:read; for 90 days)
+Waiting for your approval on OSCR…
+OSCR: signed in as ada-fixture. The token is in the macOS keychain.
+To let git use your GitHub token (for 127.0.0.1:9490 only, never another host): oscr auth setup-git
+[exit 0]

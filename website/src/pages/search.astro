@@ -8,6 +8,12 @@ import Search from "../components/Search.svelte";
 import { SITE_NAME } from "../config";
 import { number, withPage } from "../lib/catalog";
 import { categories } from "../lib/entities";
+// Night phase 08: the search's other types (repositories, issues, people, topics, commits, code), one
+// script beside the papers' island (src/scripts/search-types.ts). GitHub's API address for a local run
+// against the fake GitHub, only an http address on this machine (as the /r/ shell's).
+const local = (v: unknown): string | undefined =>
+  typeof v === "string" && /^http:\/\/(?:localhost|127\.0\.0\.1)(?::\d{1,5})?(?:\/[A-Za-z0-9._/-]*)?$/.test(v) ? v : undefined;
+const githubApi = local(import.meta.env.FORGE_GITHUB_API_URL);
 
 // The names of the category values, as Browse shows them, when the export gives them.
 const labels: Record<string, Record<string, string>> = {};
@@ -20,7 +26,7 @@ for (const [facet, values] of Object.entries(categories.facets)) {
 ---
 <Base
   title="Search"
-  description="Search the papers with their authors' code, code on request or data only: words, phrases, fields, filters by modality, organism, tool, journal, year and status."
+  description="Search the papers with their authors' code, code on request or data only, and the repositories, research issues, people and topics of the registry."
   breadcrumb={[{ text: "Search" }]}
 >
   <h1>Search</h1>
@@ -28,11 +34,18 @@ for (const [facet, values] of Object.entries(categories.facets)) {
     The {number(withPage.length)} papers {SITE_NAME} has a page for: their titles, keywords, MeSH terms, authors, journals, code
     repositories, the tools found in their code, their identifiers, and their abstracts when the paper's license is open.
   </p>
-  <Search client:load labels={labels} />
+  <div id="search-types" data-github-api={githubApi}>
+    <div id="paper-search">
+      <Search client:load labels={labels} />
+    </div>
+  </div>
   <noscript>
     <p class="warning">
       The search runs in your browser: it needs JavaScript. <a href="/browse/">Browse</a> and the{" "}
       <a href="/lookup/">DOI lookup</a> work without it.
     </p>
   </noscript>
+  <script>
+    import "../scripts/search-types";
+  </script>
 </Base>
