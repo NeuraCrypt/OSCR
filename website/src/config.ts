@@ -21,8 +21,8 @@ export const SITE_FULL_NAME = SITE_TAGLINE === SITE_NAME ? SITE_NAME : `${SITE_N
  *  and postal address (the data controller's, under the GDPR). Empty until the owner fills them,
  *  here or at build time (OPERATOR_NAME=… OPERATOR_ADDRESS=… npm run build): the pages then say
  *  that they are published before the public launch, and `npm run check` prints a launch warning. */
-export const OPERATOR_NAME: string = import.meta.env.OPERATOR_NAME || "";
-export const OPERATOR_ADDRESS: string = import.meta.env.OPERATOR_ADDRESS || "";
+export const OPERATOR_NAME: string = import.meta.env.OPERATOR_NAME || "Yann V. Bellec";
+export const OPERATOR_ADDRESS: string = import.meta.env.OPERATOR_ADDRESS || "2024 2nd Ave N Ste C, Ground Floor, Birmingham, AL 35203, USA";
 
 /** The platform's source code, public (Apache-2.0): the About page, the footer, the policies. */
 export const SOURCE_URL = "https://github.com/NeuraCrypt/OSCR";
@@ -31,4 +31,4 @@ export const SOURCE_URL = "https://github.com/NeuraCrypt/OSCR";
  *  (reports, appeals, research issues and comments, profiles, lists, tokens, webhooks, data-rights
  *  requests). Set at build time (`TURNSTILE_SITE_KEY=… npm run build`, or website/.env); unset, those
  *  forms say the check is not set up and cannot be sent. Its secret is a Cloudflare secret, never here. */
-export const TURNSTILE_SITE_KEY: string = import.meta.env.TURNSTILE_SITE_KEY || "";
+export const TURNSTILE_SITE_KEY: string = import.meta.env.TURNSTILE_SITE_KEY || "0x4AAAAAAFPa5GcnoA1H5hKL";
