@@ -13,9 +13,12 @@ oscr"). Decisions: [DECISIONS.md](DECISIONS.md) D14-1 to D14-16. The API it call
 ## Install
 
 ```sh
-pipx install oscr-cli            # or: uv tool install oscr-cli   (the name on PyPI is provisional)
+pipx install openscicode         # or: uv tool install openscicode   (pip install openscicode works too)
 oscr --version
 ```
+
+The package on PyPI is **`openscicode`** (it matches the domain, and the short name `oscr` is already
+taken there by an unrelated project); the command you type stays **`oscr`**.
 
 From a copy of the registry's repository: `pipx install ./cli` (or `uv tool install ./cli`): an
 environment of its own, never the repository's `.venv`.
@@ -243,8 +246,8 @@ writes, opens a browser or asks a question (D14-11).
 - **Local end-to-end run**: `tests/forge-service/e2e.sh` ends with `e2e-cli.ts` (stage 8): the command
   line against the fake GitHub and `wrangler dev`, the harness approving as Ada; `TRANSCRIPTS=<folder>`
   keeps its terminal transcripts (`docs/night-screenshots/phase-14/*.txt`).
-- **Publishing** (the owner's step, an outside contact): choose the name on PyPI (in
-  `cli/pyproject.toml`), then `cd cli && uv build` (hatchling; offline from the local cache works:
+- **Publishing** (the owner's step, an outside contact): the name on PyPI is **`openscicode`**
+  (`cli/pyproject.toml`), then `cd cli && uv build` (hatchling; offline from the local cache works:
   `uv build --offline`) and `uv publish` with a PyPI token of the owner's (never in the repository).
 
 ## Security review (the phase's close)

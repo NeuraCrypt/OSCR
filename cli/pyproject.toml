@@ -7,26 +7,35 @@
 #   (`uv tool install ./cli`, `pipx install ./cli`), never into the repository's `.venv`;
 # - the standard library only: nothing to install besides Python.
 #
-# The name on PyPI is the owner's choice (`oscr-cli` is a placeholder); publishing is the owner's step.
+# The name on PyPI is `openscicode` (it matches the domain, openscicode.org). The short name `oscr` is
+# already taken on PyPI by an unrelated project, so the distribution is `openscicode`; the command a
+# user types stays `oscr` (the console script below). Publishing is the owner's step (a PyPI token of
+# the owner's, never in the repository).
 
 [project]
-name = "oscr-cli"
+name = "openscicode"
 version = "0.1.0"
-description = "The Open Scientific Code Registry on the command line: sign in, link a repository to its paper, trace, check and cite research code, and work with its GitHub repository."
+description = "Open Scientific Code Registry on the command line (the `oscr` command): sign in, link a repository to its paper, trace lines to the paper's Methods, check and cite research code, and work with its GitHub repository. Standard library only."
 readme = "README.md"
 license = "Apache-2.0"
 license-files = ["LICENSE"]
 requires-python = ">=3.10"
 authors = [{ name = "The OSCR contributors" }]
-keywords = ["research software", "reproducibility", "open science", "command line", "citation", "tracing"]
+keywords = ["research software", "reproducibility", "open science", "command line", "citation", "tracing", "neuroscience", "github"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Environment :: Console",
     "Intended Audience :: Science/Research",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
     "Operating System :: MacOS",
     "Operating System :: POSIX :: Linux",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Topic :: Scientific/Engineering",
     "Topic :: Software Development :: Version Control :: Git",
 ]
@@ -36,9 +45,9 @@ dependencies = []
 oscr = "oscr_cli.main:main"
 
 [project.urls]
-Homepage = "https://oscr.yannbellec-b.workers.dev"
-Documentation = "https://github.com/NeuraCrypt/OSCR/blob/main/docs/CLI.md"
-Repository = "https://github.com/NeuraCrypt/OSCR"
+Homepage = "https://openscicode.org"
+Documentation = "https://openscicode.org/help/cli/"
+Source = "https://github.com/NeuraCrypt/OSCR"
 
 [build-system]
 requires = ["hatchling"]

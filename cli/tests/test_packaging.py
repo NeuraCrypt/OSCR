@@ -14,7 +14,7 @@ CLI = Path(__file__).resolve().parents[1]
 def test_the_metadata_and_the_version():
     text = (CLI / "pyproject.toml").read_text()
     assert re.search(r'^version = "([^"]+)"', text, re.M).group(1) == oscr_cli.__version__
-    assert 'name = "oscr-cli"' in text and "dependencies = []" in text
+    assert 'name = "openscicode"' in text and "dependencies = []" in text
     assert 'oscr = "oscr_cli.main:main"' in text and 'packages = ["src/oscr_cli"]' in text
     assert 'requires-python = ">=3.10"' in text
     assert (CLI / "README.md").read_text().startswith("# oscr") and (CLI / "LICENSE").is_file()
