@@ -37,7 +37,7 @@ run_worker_first = ["/api/*"]
 # cache, static assets included, is billed as a Worker request (developers.cloudflare.com,
 # Workers pricing, note 4). The search sets Cache-Control and uses the Cache API instead.
 
-# The databases of the search (docs/SEARCH.md) and of the accounts (docs/ACCOUNTS.md),
+# The databases of the search (docs/SEARCH.md), of the accounts (docs/ACCOUNTS.md) and of the forge (docs/FORGE.md),
 # created by tools/setup_cloudflare.sh. Their ids are identifiers, not secrets.
 
 [[d1_databases]]
@@ -57,6 +57,12 @@ binding = "COMMUNITY"
 database_name = "oscr_community"
 database_id = "38da2a3a-ecc2-4c7b-a4ee-2b3cb57c7b32"
 migrations_dir = "../migrations/d1-community"
+
+[[d1_databases]]
+binding = "FORGE"
+database_name = "oscr_forge"
+database_id = "33e9be4c-cc54-481b-8064-d2a2817855dd"
+migrations_dir = "../migrations/d1-forge"
 
 # Local development only, never deployed: `npx wrangler dev --env local`, `oscr d1 push --local`.
 # The databases live in .wrangler/state; their ids name the local files, nothing remote.
