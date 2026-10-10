@@ -17,7 +17,7 @@ dependencies = [
     "httpx>=0.28.1",
     # Publishing to Hugging Face is part of normal operation: as an "extra", the first
     # `uv run` without it uninstalled it from .venv.
-    "huggingface_hub>=2.0.0",
+    "huggingface_hub>=2.1.1",
     # The scripts' Parquet blocks (oscr/scriptstore.py): zstd page compression.
     "pyarrow>=25.0.1",
 ]
@@ -27,7 +27,7 @@ Homepage = "https://oscr.yannbellec-b.workers.dev"
 Repository = "https://github.com/NeuraCrypt/OSCR"
 
 [dependency-groups]
-dev = ["pytest>=9.1.1", "ruff>=0.16.9"]
+dev = ["pytest>=9.1.1", "ruff>=0.16.10"]
 
 [project.scripts]
 oscr = "oscr.cli:main"
