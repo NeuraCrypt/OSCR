@@ -749,9 +749,13 @@ def public_db(con: sqlite3.Connection, path: Path) -> None:
     target = sqlite3.connect(tmp)
     con.commit()
     con.backup(target)
-    # The copy inherits the working database's WAL mode: back to ONE file, readable as
-    # is by sql.js or Datasette Lite.
-    target.execute("PRAGMA journal_mode = DELETE")
+    # This .tmp is disposable: it is rebuilt from scratch on every run and only moved into place
+    # at the very end, so durability WHILE building it does not matter. Turning the rollback journal
+    # and the fsyncs off makes the strip below (tens of DELETEs over a multi-GB copy) take minutes
+    # instead of hours; a crash just means the next run rebuilds the .tmp. The single-file journal
+    # mode sql.js / Datasette Lite expect is restored at the end, before the VACUUM.
+    target.execute("PRAGMA synchronous = OFF")
+    target.execute("PRAGMA journal_mode = OFF")
     target.execute("UPDATE link SET excerpt = ''")
     # Off-topic papers stay on the Mac (D7), with everything attached to them; so do the records
     # withdrawn at someone's request (Phase 6, `oscr reports accept`).
@@ -825,6 +829,9 @@ def public_db(con: sqlite3.Connection, path: Path) -> None:
                        [(mask_emails(t), rid) for rid, t in
                         target.execute("SELECT rowid, text FROM file WHERE text LIKE '%@%'").fetchall()])
     target.commit()
+    # Back to a single-file database (no -wal) for sql.js / Datasette Lite, then compact it (the
+    # strip removed most rows). synchronous stays OFF: this is still the disposable build copy.
+    target.execute("PRAGMA journal_mode = DELETE")
     target.execute("VACUUM")
     target.close()
     shutil.move(tmp, path)

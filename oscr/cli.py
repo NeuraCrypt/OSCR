@@ -627,6 +627,8 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"{now()} another publication is running: nothing to do", flush=True)
                 return 0
             watchdog.mark("attempt")
+            from . import cycles
+            cid = cycles.start_cycle("nightly")
             out = Path(a.out)
             # Night phase 16: a file known as malware loses its text before anything is exported, and the
             # GitHub side's repository holding it is hidden (oscr/malware.py). Nothing is run.
@@ -638,7 +640,8 @@ def main(argv: list[str] | None = None) -> int:
                     print(f"{now()} " + malware.scan(con, forge_d1), flush=True)
                 except Exception as e:  # noqa: BLE001, the nightly goes on; the harvester already refuses listed files
                     print(f"{now()} malware scan failed: {e}", flush=True)
-            print(f"{now()} public catalogue → {catalog.generate(con, out, public=True)}", flush=True)
+            with cycles.step(cid, "export"):
+                print(f"{now()} public catalogue → {catalog.generate(con, out, public=True)}", flush=True)
             from . import publish
             # Each upload is attempted on its own: Hugging Face being down does not keep
             # the website from updating, and vice versa.
@@ -686,14 +689,20 @@ def main(argv: list[str] | None = None) -> int:
                     except (Exception, SystemExit) as e:
                         errors.append(f"Forge search: {e}")
             if a.dataset:
+                sid = cycles.start_step(cid, "dataset")
                 try:
                     print(f"{now()} {publish.publish_hf(out, a.dataset)}", flush=True)
+                    cycles.finish_step(sid, ok=True)
                 except (Exception, SystemExit) as e:
+                    cycles.finish_step(sid, ok=False, detail=repr(e))
                     errors.append(f"Hugging Face: {e}")
             if a.cloudflare:
+                sid = cycles.start_step(cid, "deploy")
                 try:
                     print(f"{now()} {publish.deploy_cloudflare(out, a.cloudflare)}", flush=True)
+                    cycles.finish_step(sid, ok=True)
                 except (Exception, SystemExit) as e:
+                    cycles.finish_step(sid, ok=False, detail=repr(e))
                     errors.append(f"Cloudflare: {e}")
             if cfg.get("OSCR_D1_PUSH") == "remote":
                 # The search's databases (docs/SEARCH.md): the day's changes, within the budget.
@@ -729,6 +738,7 @@ def main(argv: list[str] | None = None) -> int:
                     errors.append(f"Contacts on Hugging Face: {e}")
             # It ran to its end: an upload that failed is said below and tried again tomorrow.
             watchdog.mark("success")
+            cycles.finish_cycle(cid, ok=not errors, detail=("\n".join(errors))[:500])
             if errors:
                 raise SystemExit("\n".join(errors))
         elif a.command == "enrich":

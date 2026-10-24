@@ -20,6 +20,7 @@ dependencies = [
     "huggingface_hub>=2.0.0",
     # The scripts' Parquet blocks (oscr/scriptstore.py): zstd page compression.
     "pyarrow>=25.0.1",
+    "rumps>=0.4.0",
 ]
 
 [project.urls]
