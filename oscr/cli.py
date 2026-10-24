@@ -36,6 +36,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import signal
 import sqlite3
 import sys
@@ -558,6 +559,11 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     opts = _options(a)
     con = db.open_db(opts.db)
+    # Arret propre pour TOUTES les commandes (launchd envoie SIGTERM) : exit 0 fait tourner le
+    # finally ci-dessous (commit + checkpoint WAL + fermeture), puis on ecrit un fichier "ready".
+    _ready = str(Path(a.db).with_name("oscr.ready"))
+    signal.signal(signal.SIGTERM, lambda *_: sys.exit(0))
+    signal.signal(signal.SIGINT, lambda *_: sys.exit(0))
     client = Client(Cache(opts.cache), offline=a.offline)
     t0 = time.time()
     try:
@@ -819,7 +825,17 @@ def main(argv: list[str] | None = None) -> int:
             print(json.dumps(catalog.figures(con), ensure_ascii=False, indent=1))
     finally:
         con.commit()
+        try:
+            con.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+        except Exception:
+            pass
         con.close()
         client.close()
+        try:
+            with open(_ready + ".tmp", "w") as _f:
+                _f.write(str(int(time.time())))
+            os.replace(_ready + ".tmp", _ready)
+        except OSError:
+            pass
     print(f"({time.time() - t0:.0f} s, requests: {client.requests})", file=sys.stderr)
     return 0
