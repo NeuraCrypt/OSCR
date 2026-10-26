@@ -142,7 +142,7 @@ def test_an_unlicensed_repository_is_shown_from_oscrs_own_copy(tmp_path):
     # run.py: shown from OSCR's copy, its email masked; its digest keys the text lot.
     assert files["run.py"]["text"] == "print('hi')  # [email hidden]\n"
     assert (files["run.py"]["sha256"], files["run.py"]["size"], files["run.py"]["lines"]) == (DIGEST, 30, 1)
-    assert files["run.py"]["text_lot"] == f"{catalog.lot_of(DIGEST):02d}"
+    assert files["run.py"]["text_lot"] == f"{catalog.text_lot_of(DIGEST):02d}"
     assert "email addresses hidden" in files["run.py"]["note"] and "me@lab.org" not in json.dumps(lots)
     # big.py past SOURCE_MAX_BYTES is stored too, every file is shown.
     assert files["big.py"]["text"] == "x = 1\n" and files["big.py"]["sha256"] == "c" * 64

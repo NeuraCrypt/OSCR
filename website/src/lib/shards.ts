@@ -41,13 +41,14 @@ export const STATIC_PAPERS = 6_000;
  *  GITHUB_SIDE_SHARDS), its fixed pages and their bundles, all dormant behind FORGE_OPEN.
  *
  *  A paper's page is one file since the Code ↔ Paper reader moved onto it (2026-09-29, "code
- *  first"): the papers take STATIC_PAPERS files at most, not twice as many. Raised to 4,000 at the
- *  reconciliation to hold the launch pages AND the GitHub side's fixed files together, so that
- *  STATIC_PAPERS + FIXED_FILES_MAX = 10,000 stays well under FILE_MARGIN (15,000), and 2 ×
- *  STATIC_PAPERS + FIXED_FILES_MAX = 16,000 under the Worker's FILE_LIMIT (20,000). The check holds
+ *  first"): the papers take STATIC_PAPERS files at most, not twice as many. Raised to 5,500 on
+ *  2026-10-26 as the scripts' TEXT lots grew from 256 to 1,024 (catalog.TEXT_LOTS, so each
+ *  /scripts/NN.json stays under the 25 MiB asset limit as the stock grows), so that
+ *  STATIC_PAPERS + FIXED_FILES_MAX = 11,500 stays well under FILE_MARGIN (15,000), and 2 ×
+ *  STATIC_PAPERS + FIXED_FILES_MAX = 17,500 under the Worker's FILE_LIMIT (20,000). The check holds
  *  the build to both. */
 export const MAX_CATEGORIES = 200;
-export const FIXED_FILES_MAX = 4_000;
+export const FIXED_FILES_MAX = 5_500;
 /** The GitHub side's nightly shards at most: five families of 64, and Explore's one file. */
 export const GITHUB_SIDE_SHARDS = 5 * 64 + 1;
 

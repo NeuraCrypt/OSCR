@@ -48,11 +48,15 @@ from . import methods
 #: Script texts and matches are served in LOTS, loaded on demand: the pages stay light,
 #: and a static host serves them as they are.
 #: The text lots are keyed by the file's SHA-256 and DEDUPLICATED (each unique file once). A
-#: Workers static asset may not exceed 25 MiB; at 256 lots the largest holds ~10.6 MiB of JSON
-#: on the whole neuro stock (280k files, 227k unique; docs/SCRIPT_STORAGE.md), with room to grow.
+#: A Workers static asset may not exceed 25 MiB. The repository facts and the alignment lots stay
+#: at N_LOTS; the scripts' TEXT, far heavier and still growing (256 lots reached ~26 MiB once the
+#: stock had grown), has its own larger count TEXT_LOTS so each `/scripts/NN.json` stays well under
+#: the limit without multiplying the lighter lots. The lot number is written into the data, so the
+#: reader needs no matching constant (it reads `text_lot`).
 #: Since the owner's decision of 2026-09-29 every file is stored, whatever its license: a test
 #: asserts no lot overflows (tests/test_catalog_source.py).
 N_LOTS: int = 256
+TEXT_LOTS: int = 1024
 
 #: The licenses under which a script's text may LEAVE as a redistributable copy, the bulk
 #: outputs only (`scripts.jsonl`, the Hugging Face dataset `_mirror`, the public database): its
@@ -199,6 +203,13 @@ def withheld(con: sqlite3.Connection) -> Withheld:
 
 def lot_of(key: str) -> int:
     return int(hashlib.sha1(key.encode()).hexdigest()[:8], 16) % N_LOTS
+
+
+def text_lot_of(key: str) -> int:
+    """The lot of a script's TEXT (`/scripts/NN.json`): its own, larger count (TEXT_LOTS) so the
+    heavy text shards stay under the 25 MiB asset limit. The lot number is written into the data
+    (`text_lot`), so the reader needs no matching constant."""
+    return int(hashlib.sha1(key.encode()).hexdigest()[:8], 16) % TEXT_LOTS
 
 
 def slug(article_id: str) -> str:
@@ -544,7 +555,7 @@ def script_lots(con: sqlite3.Connection, public: bool) -> dict[int, dict[str, An
             # A file OSCR has a copy of: its digest keys its text lot (deduplicated) and lets the
             # reader fetch it. A withheld, binary, note or digest-less file has none.
             if text is not None and re.fullmatch(r"[0-9a-f]{64}", f["digest"] or ""):
-                facts = {"sha256": f["digest"], "size": f["size"], "text_lot": f"{lot_of(f['digest']):02d}"}
+                facts = {"sha256": f["digest"], "size": f["size"], "text_lot": f"{text_lot_of(f['digest']):02d}"}
                 via = file_via(source, f["path"], listed) if source and source.get("via") else ""
                 if via:
                     facts["via"] = via
@@ -572,7 +583,7 @@ def _digest_lots(scripts: dict[int, dict[str, Any]]) -> dict[int, dict[str, Any]
                 sha = f.get("sha256")
                 if not sha or f["text"] is None:
                     continue
-                lots[lot_of(sha)].setdefault(sha, {
+                lots[text_lot_of(sha)].setdefault(sha, {
                     "text": f["text"], "language": f["language"], "lines": f["lines"],
                     "truncated": f["truncated"]})
     return lots
