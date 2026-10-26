@@ -158,11 +158,20 @@ def deploy_cloudflare(catalog: Path, project: str, website: Path = WEBSITE) -> s
               ["npx", "wrangler", "deploy", "--name", project]]
     output = ""
     for step in steps:
+        is_deploy = step[:2] == ["npx", "wrangler"]
         # The site is large (the scripts' copies, the public API's static data): the build and the
         # upload of the day's changes can take well over half an hour, so allow 90 minutes a step.
-        r = subprocess.run(step, cwd=website, env=env, capture_output=True, text=True, timeout=5400)
-        if r.returncode != 0:
-            raise RuntimeError(f"{' '.join(step[:4])} failed: " + (r.stderr or r.stdout).strip()[-600:])
+        # The upload can hit Cloudflare's "Upload took too long"; it saves what it already sent, so a
+        # retry resumes and eventually completes. Retry the deploy a few times; other steps run once.
+        attempts = 6 if is_deploy else 1
+        for attempt in range(1, attempts + 1):
+            r = subprocess.run(step, cwd=website, env=env, capture_output=True, text=True, timeout=5400)
+            if r.returncode == 0:
+                break
+            err = (r.stderr or r.stdout).strip()
+            if is_deploy and attempt < attempts and "Upload took too long" in err:
+                continue  # Cloudflare kept the uploaded assets; the next attempt resumes from there.
+            raise RuntimeError(f"{' '.join(step[:4])} failed: " + err[-600:])
         output = r.stdout
         if step[:2] == ["npm", "ci"]:
             (website / "node_modules" / INSTALLED_LOCK).write_text(lock)
