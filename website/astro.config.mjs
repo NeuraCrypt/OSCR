@@ -17,6 +17,9 @@ const paperShell = {
   hooks: {
     "astro:build:done": ({ dir }) => {
       const root = fileURLToPath(dir);
+      // `.prerender/` holds Astro's prerendering intermediates (a ~100 MiB bundle of catalog.json).
+      // The Worker never reads them and a Cloudflare static asset may not exceed 25 MiB, so drop them.
+      rmSync(`${root}.prerender`, { recursive: true, force: true });
       if (!existsSync(`${root}paper/404/index.html`)) return;
       renameSync(`${root}paper/404/index.html`, `${root}paper/404.html`);
       rmSync(`${root}paper/404`, { recursive: true });
