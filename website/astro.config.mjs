@@ -4,7 +4,7 @@
 // reader's browser. Future actions (ORCID sign-in of authors, validation of a map) will be
 // the Worker's own code; only they consume requests, as the search does (/api/search,
 // worker/). The search page is a Svelte island: static HTML, then the form in the browser.
-import { existsSync, renameSync, rmSync } from "node:fs";
+import { existsSync, readdirSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { defineConfig } from "astro/config";
 import svelte from "@astrojs/svelte";
@@ -20,6 +20,20 @@ const paperShell = {
       // `.prerender/` holds Astro's prerendering intermediates (a ~100 MiB bundle of catalog.json).
       // The Worker never reads them and a Cloudflare static asset may not exceed 25 MiB, so drop them.
       rmSync(`${root}.prerender`, { recursive: true, force: true });
+      // A Cloudflare static asset may not exceed 25 MiB. The full bulk downloads (articles.csv and
+      // the like) grow with the catalogue and eventually pass it; list every oversized file in
+      // .assetsignore so the deploy skips them (they stay in the Hugging Face dataset). Done here, by
+      // size, so a newly oversized file is handled without a code change.
+      const over = [];
+      for (const rel of readdirSync(root, { recursive: true })) {
+        try {
+          const s = statSync(`${root}${rel}`);
+          if (s.isFile() && s.size > 24 * 1024 * 1024) over.push(String(rel));
+        } catch { /* a transient entry; skip it */ }
+      }
+      writeFileSync(`${root}.assetsignore`,
+        "# Above Cloudflare's 25 MiB asset limit; served from the Hugging Face dataset instead.\n" +
+        over.join("\n") + (over.length ? "\n" : ""));
       if (!existsSync(`${root}paper/404/index.html`)) return;
       renameSync(`${root}paper/404/index.html`, `${root}paper/404.html`);
       rmSync(`${root}paper/404`, { recursive: true });
