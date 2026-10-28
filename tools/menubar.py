@@ -72,13 +72,13 @@ class Oscr(rumps.App):
         if not cur:
             self.title = " ⏸" if paused else ""
             self.status_item.title = "En pause" if paused else "Aucun cycle encore"
-            self.steps_item.title = "étapes: —"
+            self.steps_item.title = "étapes: -"
             return
         c = cur["cycle"]
         st = c["status"]
         self.status_item.title = f"Publication {MARK.get(st, '?')} {st}  ({ago(c['started'])})"
         parts = [f"{s['name']}{MARK.get(s['status'], '?')}" for s in cur["steps"]]
-        self.steps_item.title = "étapes: " + ("  ".join(parts) if parts else "—")
+        self.steps_item.title = "étapes: " + ("  ".join(parts) if parts else "-")
         # Icone/titre: pause > alerte (echec/crash) > normal
         if paused:
             self.title = " ⏸"

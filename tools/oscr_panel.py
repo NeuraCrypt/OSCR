@@ -52,7 +52,7 @@ def control(action: str) -> str:
 
 def ago(ts) -> str:
     if not ts:
-        return "—"
+        return "-"
     s = int(time.time() - float(ts))
     for d, u in ((86400, "j"), (3600, "h"), (60, "min")):
         if s >= d:
@@ -213,7 +213,7 @@ class Panel:
             when = time.strftime("%d %b %H:%M", time.localtime(r["started"]))
             self.tree.insert("", "end", tags=(r["status"] or "none",),
                              values=(MARK.get(r["status"], "?"), when, r["kind"],
-                                     dur(r["started"], r["finished"]) or "—"))
+                                     dur(r["started"], r["finished"]) or "-"))
         self.root.after(3000, self.refresh)
 
 

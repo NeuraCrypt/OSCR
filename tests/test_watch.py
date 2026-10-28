@@ -207,3 +207,72 @@ def test_one_broken_document_is_not_an_outage(tmp_path):
                                   harvest.Options(library=tmp_path, verify=False, metadata=False, records=False))
     assert status == "no_fulltext"
     assert con.execute("SELECT COUNT(*) FROM log WHERE event = 'fulltext_unavailable'").fetchone()[0] == 1
+
+
+class _FakeHub:
+    """Hugging Face as far as the catalogue's publication goes: a full private storage once,
+    then the stored files of every night."""
+
+    def __init__(self, full_once=False):
+        from types import SimpleNamespace as NS
+        self.NS = NS
+        self.full_once = full_once
+        self.calls = []
+        self.stored = [NS(file_oid="old1", size=7_000_000_000), NS(file_oid="old2", size=4_000_000_000),
+                       NS(file_oid="cur", size=8_000_000_000)]
+
+    def create_repo(self, *a, **kw):
+        self.calls.append("create")
+
+    def upload_folder(self, **kw):
+        self.calls.append("upload")
+        if self.full_once:
+            self.full_once = False
+            raise RuntimeError("Bad request for commit endpoint:\nPrivate storage limit reached for user u")
+
+    def super_squash_history(self, **kw):
+        self.calls.append("squash")
+
+    def dataset_info(self, *a, **kw):
+        return self.NS(siblings=[self.NS(lfs=None), self.NS(lfs=self.NS(sha256="cur"))])
+
+    def list_lfs_files(self, *a, **kw):
+        return list(self.stored)
+
+    def permanently_delete_lfs_files(self, repo_id, files, **kw):
+        self.calls.append("delete")
+        gone = {f.file_oid for f in files}
+        self.stored = [f for f in self.stored if f.file_oid not in gone]
+
+
+def _hub(monkeypatch, hub):
+    import huggingface_hub
+    monkeypatch.setenv("HF_TOKEN", "test")
+    monkeypatch.setattr(huggingface_hub, "HfApi", lambda token=None: hub)
+
+
+def test_hugging_face_keeps_only_the_latest_night(tmp_path, monkeypatch):
+    con = db.open_db(tmp_path / "b.db")
+    catalog.generate(con, tmp_path / "out", public=True)
+    hub = _FakeHub()
+    _hub(monkeypatch, hub)
+    said = publish.publish_hf(tmp_path / "out", "u/dataset")
+    assert hub.calls == ["create", "upload", "squash", "delete"]
+    assert [f.file_oid for f in hub.stored] == ["cur"]
+    assert "11.0 GB of earlier nights freed" in said
+
+
+def test_a_full_storage_frees_the_old_nights_then_uploads_again(tmp_path, monkeypatch):
+    con = db.open_db(tmp_path / "b.db")
+    catalog.generate(con, tmp_path / "out", public=True)
+    hub = _FakeHub(full_once=True)
+    _hub(monkeypatch, hub)
+    publish.publish_hf(tmp_path / "out", "u/dataset")
+    assert hub.calls == ["create", "upload", "squash", "delete", "upload", "squash"]
+
+
+def test_nothing_is_deleted_when_the_current_night_is_not_recognized(monkeypatch):
+    hub = _FakeHub()
+    hub.stored = [f for f in hub.stored if f.file_oid != "cur"]
+    assert publish.keep_only_head(hub, "u/dataset") == 0
+    assert "delete" not in hub.calls and len(hub.stored) == 2

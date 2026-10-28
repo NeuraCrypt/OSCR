@@ -114,11 +114,44 @@ def publish_hf(site: Path, dataset: str, *, mirror: Path | None = None, dry_run:
         raise SystemExit("No Hugging Face token: `hf auth login`, or HF_TOKEN (a GitHub secret on Actions).")
     api = HfApi(token=token)
     api.create_repo(dataset, repo_type="dataset", private=private, exist_ok=True)
-    api.upload_folder(folder_path=str(folder), repo_id=dataset, repo_type="dataset",
-                      commit_message=f"Nightly publication of {time.strftime('%Y-%m-%d', time.gmtime())}",
-                      delete_patterns=["scripts/**"] if mirror is not None else None)
-    shutil.rmtree(folder, ignore_errors=True)
-    return summary
+    try:
+        def upload() -> None:
+            api.upload_folder(folder_path=str(folder), repo_id=dataset, repo_type="dataset",
+                              commit_message=f"Nightly publication of {time.strftime('%Y-%m-%d', time.gmtime())}",
+                              delete_patterns=["scripts/**"] if mirror is not None else None)
+        try:
+            upload()
+        except Exception as e:  # noqa: BLE001, only the storage limit is retried, once, after freeing the old nights
+            if "storage limit" not in str(e).lower():
+                raise
+            keep_only_head(api, dataset)
+            upload()
+        freed = keep_only_head(api, dataset)
+    finally:
+        shutil.rmtree(folder, ignore_errors=True)
+    return summary + (f", {freed / 1e9:.1f} GB of earlier nights freed" if freed else "")
+
+
+def keep_only_head(api, dataset: str) -> int:
+    """Keep only the latest night on Hugging Face. Every night replaces the whole catalogue
+    (`oscr_public.db`, `scripts.jsonl`: gigabytes) and each night stayed in the dataset's history:
+    20 nights filled the account's free private storage (2026-10-26, "Private storage limit
+    reached", 91.6 GB stored for 12.4 GB in use). The catalogue is rebuilt from the Mac's database
+    every night, so its history is worth nothing: squashed to the current commit, then every stored
+    file the current commit does not use deleted for good (a squashed history no longer points to
+    them, but the storage keeps them until they are deleted; the method of
+    `contacts.forget_history`). Deletes nothing when a current file is not among the stored ones.
+    Returns the bytes freed."""
+    api.super_squash_history(repo_id=dataset, repo_type="dataset",
+                             commit_message=f"Catalogue of {time.strftime('%Y-%m-%d', time.gmtime())}")
+    current = {s.lfs.sha256 for s in api.dataset_info(dataset, files_metadata=True).siblings if s.lfs}
+    stored = list(api.list_lfs_files(dataset, repo_type="dataset"))
+    if not current <= {f.file_oid for f in stored}:
+        return 0  # not recognized: nothing deleted, the squash alone loses nothing of the current night
+    stale = [f for f in stored if f.file_oid not in current]
+    if stale:
+        api.permanently_delete_lfs_files(dataset, stale, repo_type="dataset", rewrite_history=True)
+    return sum(f.size for f in stale)
 
 
 #: Written into node_modules after `npm ci`: the digest of the package-lock.json installed.
