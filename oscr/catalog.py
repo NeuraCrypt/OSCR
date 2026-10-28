@@ -624,6 +624,9 @@ def generate(con: sqlite3.Connection, folder: Path, *, public: bool = False, mir
     """Write the catalogue, its lots, its tables and the public database, and, when
     asked, the mirror of the republishable scripts. Returns the path of catalog.json."""
     folder.mkdir(parents=True, exist_ok=True)
+    # Spotlight would index the tens of GB written here every night (oscr_public.db's build copy
+    # included): the marker asks it not to.
+    (folder / ".metadata_never_index").touch()
     d = catalog_data(con)
     d["public"] = public
     scripts = script_lots(con, public)
@@ -750,15 +753,55 @@ def _mirror(con: sqlite3.Connection, lots: dict[int, dict[str, Any]], root: Path
                                "The source always prevails."}, ensure_ascii=False, indent=1))
 
 
-def public_db(con: sqlite3.Connection, path: Path) -> None:
+def _quoted(text: str | None) -> set[str]:
+    """Every run of characters between two consecutive double quotes of `text` (overlapping:
+    '"a","b"' gives a, "," and b). For an id without a double quote, `instr(text, '"' || id || '"')
+    > 0` holds exactly when the id is in this set."""
+    return set(_BETWEEN_QUOTES.findall(text)) if text and '"' in text else set()
+
+
+_BETWEEN_QUOTES = re.compile(r'(?="([^"]*)")')
+
+
+def _drop_unnamed_institutions(target: sqlite3.Connection) -> None:
+    """Delete the institutions no paper_author.ror names (ROR ids, or {"id": …} objects: both found
+    by the id's quoted text). One pass over paper_author instead of one per institution: the old
+    correlated `NOT EXISTS (… instr(p.ror, '"' || institution.id || '"'))` read the whole table
+    26,000 times (about 1 h 15 on 2026-10-28) and grew with the square of the catalogue."""
+    named: set[str] = set()
+    for (ror,) in target.execute("SELECT ror FROM paper_author WHERE ror LIKE '%\"%'"):
+        named |= _quoted(ror)
+    target.execute("CREATE TEMP TABLE named_institution (id TEXT PRIMARY KEY)")
+    target.executemany("INSERT OR IGNORE INTO named_institution VALUES (?)", ((i,) for i in named))
+    target.execute("DELETE FROM institution WHERE id IS NULL OR "
+                   "(instr(id, '\"') = 0 AND id NOT IN (SELECT id FROM named_institution))")
+    # An id holding a double quote (none in practice) keeps the old test.
+    target.execute("DELETE FROM institution WHERE instr(id, '\"') > 0 AND NOT EXISTS (SELECT 1 FROM paper_author p "
+                   "WHERE instr(p.ror, '\"' || institution.id || '\"') > 0)")
+    target.execute("DROP TABLE named_institution")
+
+
+#: Rows of file text masked per batch: the texts with an '@' were 5.3 GB on 2026-10-28, too much to
+#: hold at once.
+MASK_BATCH = 2000
+
+
+def public_db(con: sqlite3.Connection, path: Path, report=lambda m: print(m, flush=True)) -> None:
     """A copy of the database without the excerpts of the papers' text, and without the
     text of scripts whose license forbids republishing. The log (dates, requests,
-    counts) stays: it quotes no paper."""
+    counts) stays: it quotes no paper. `report` gets one timestamped line per sub-step, so the
+    nightly's log says where the time goes."""
+    started = time.monotonic()
+
+    def step(what: str) -> None:
+        report(f"{time.strftime('%Y-%m-%d %H:%M:%S')} public db (+{(time.monotonic() - started) / 60:.1f} min): {what}")
+
     tmp = path.with_suffix(".tmp")
     if tmp.exists():
         tmp.unlink()
     target = sqlite3.connect(tmp)
     con.commit()
+    step("backup")
     con.backup(target)
     # This .tmp is disposable: it is rebuilt from scratch on every run and only moved into place
     # at the very end, so durability WHILE building it does not matter. Turning the rollback journal
@@ -767,19 +810,23 @@ def public_db(con: sqlite3.Connection, path: Path) -> None:
     # mode sql.js / Datasette Lite expect is restored at the end, before the VACUUM.
     target.execute("PRAGMA synchronous = OFF")
     target.execute("PRAGMA journal_mode = OFF")
+    step("excerpts")
     target.execute("UPDATE link SET excerpt = ''")
     # Off-topic papers stay on the Mac (D7), with everything attached to them; so do the records
     # withdrawn at someone's request (Phase 6, `oscr reports accept`).
     off = "SELECT id FROM article WHERE on_topic = 'no' OR withdrawn != ''"
     for (table,) in target.execute("SELECT m.name FROM sqlite_master m WHERE m.type = 'table' AND EXISTS "
                                    "(SELECT 1 FROM pragma_table_info(m.name) WHERE name = 'article_id')").fetchall():
+        step(f"off-topic rows of {table}")
         target.execute(f"DELETE FROM {table} WHERE article_id IN ({off})")
+    step("off-topic provenance, log and papers")
     target.execute(f"DELETE FROM field_provenance WHERE entity = 'article' AND entity_id IN ({off})")
     target.execute(f"DELETE FROM log WHERE json_valid(details) AND json_extract(details, '$.article') IN ({off})")
     target.execute(f"DELETE FROM article WHERE id IN ({off})")
     # What accepted removal requests withhold while the record stays (0008): the copies of a
     # paper's scripts, of a repository or of a file (their text, as an unlicensed one), and a
     # paper's tracing map (its matches, its validations, its DOI). The table itself stays on the Mac.
+    step("withheld")
     held = withheld(target)
     target.executemany("UPDATE file SET text = NULL, note = ? WHERE repo = ?", [(NOTE_WITHHELD, r) for r in held.repos])
     target.executemany("UPDATE file SET text = NULL, note = ? WHERE repo = ? AND path = ?",
@@ -789,18 +836,22 @@ def public_db(con: sqlite3.Connection, path: Path) -> None:
     target.execute("DROP TABLE IF EXISTS withheld")
     # What only off-topic papers (or nothing) pointed at goes too: repositories, their files
     # and facts, datasets, people and funders no paper in scope names.
+    step("orphan repositories")
     target.execute("DELETE FROM repository WHERE repo NOT IN (SELECT repo FROM link)")
     for table in ("file", "alive_check", "repo_feature", "repo_tool", "script_manifest"):
         if target.execute("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?", (table,)).fetchone():
+            step(f"orphan rows of {table}")
             target.execute(f"DELETE FROM {table} WHERE repo NOT IN (SELECT repo FROM repository)")
+    step("orphan datasets, authors, funders, journals")
     target.execute("DELETE FROM dataset WHERE id NOT IN (SELECT dataset_id FROM paper_dataset)")
     target.execute("DELETE FROM author WHERE orcid NOT IN (SELECT orcid FROM paper_author)")
     target.execute("DELETE FROM funder WHERE id NOT IN (SELECT funder_id FROM grant_award)")
     target.execute("DELETE FROM journal WHERE id NOT IN (SELECT journal_id FROM article)")
     # OpenAlex's institutions and topics that no paper in scope names (paper_author.ror holds ROR
     # ids, or {"id": …} objects: both are found by the id's text).
-    target.execute("DELETE FROM institution WHERE NOT EXISTS (SELECT 1 FROM paper_author p "
-                   "WHERE instr(p.ror, '\"' || institution.id || '\"') > 0)")
+    step("orphan institutions")
+    _drop_unnamed_institutions(target)
+    step("orphan topics, abstracts, raw records")
     target.execute("DELETE FROM topic WHERE id NOT IN (SELECT topic_id FROM paper_topic)")
     # No text of a paper leaves: abstracts, the raw Europe PMC records, the history of the
     # enriched records; availability statements only under an open license (D1).
@@ -810,6 +861,7 @@ def public_db(con: sqlite3.Connection, path: Path) -> None:
     # may leave of them is in `article`, `paper_author`, `institution`, `paper_topic`, `paper_work`.
     target.execute("DROP TABLE IF EXISTS openalex_record")
     target.execute("DROP TABLE IF EXISTS version")
+    step("closed statements, test validations, provenance")
     closed = [r[0] for r in target.execute("SELECT id, license FROM article").fetchall()
               if not statement_is_publishable(r[1])]
     target.executemany("UPDATE statement SET text = '' WHERE article_id = ?", [(i,) for i in closed])
@@ -822,10 +874,12 @@ def public_db(con: sqlite3.Connection, path: Path) -> None:
     target.execute("UPDATE field_provenance SET source_ref = '' WHERE source IN ('author', 'maintainer', 'submitter')")
     # The licence audit's rule (`copyable`): a license that allows redistribution, verified by the
     # repository's own license file or its record.
+    step("unlicensed file text")
     target.execute(
         "UPDATE file SET text = NULL, note = ? WHERE repo IN "
         "(SELECT repo FROM repository WHERE redistributable NOT IN ('yes', 'with_conditions'))",
         (NOTE_LICENSE,))
+    step("unverified licences")
     unverified = [r["repo"] for r in con.execute("SELECT * FROM repository WHERE redistributable IN ('yes', 'with_conditions')")
                   if not copyable(con, r)]
     target.executemany("UPDATE file SET text = NULL, note = ? WHERE repo = ? AND text IS NOT NULL",
@@ -836,13 +890,18 @@ def public_db(con: sqlite3.Connection, path: Path) -> None:
     target.execute("DROP TABLE IF EXISTS contact")
     # Nor who asked not to be kept (their ORCID iD, their addresses' digests: oscr/contacts.py, migration 9).
     target.execute("DROP TABLE IF EXISTS contact_suppressed")
-    target.executemany("UPDATE file SET text = ? WHERE rowid = ?",
-                       [(mask_emails(t), rid) for rid, t in
-                        target.execute("SELECT rowid, text FROM file WHERE text LIKE '%@%'").fetchall()])
+    step("email masking")
+    last = 0
+    while batch := target.execute("SELECT rowid, text FROM file WHERE rowid > ? AND text LIKE '%@%' ORDER BY rowid LIMIT ?",
+                                  (last, MASK_BATCH)).fetchall():
+        target.executemany("UPDATE file SET text = ? WHERE rowid = ?", [(mask_emails(t), rid) for rid, t in batch])
+        last = batch[-1][0]
     target.commit()
     # Back to a single-file database (no -wal) for sql.js / Datasette Lite, then compact it (the
     # strip removed most rows). synchronous stays OFF: this is still the disposable build copy.
     target.execute("PRAGMA journal_mode = DELETE")
+    step("vacuum")
     target.execute("VACUUM")
     target.close()
     shutil.move(tmp, path)
+    step("done")

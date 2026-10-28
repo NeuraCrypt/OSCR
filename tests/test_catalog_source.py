@@ -5,6 +5,7 @@ reader's browser fetches it itself (catalog.source_of). What a removal request w
 the email addresses of a text are masked the same way here and in the reader's browser: one fixture
 (tests/fixtures/mask_emails.json), read by this file and by website/tests/source.test.ts."""
 import json
+import re
 import sqlite3
 from pathlib import Path
 
@@ -223,3 +224,44 @@ def test_a_license_its_repository_does_not_confirm_is_not_copied_in_bulk(tmp_pat
     assert "github.com/lab/code" in {r["repo"] for r, _, _ in scriptstore._publishable(con)}
     # The facts are there: digest, size, lines, the pinned version.
     assert pub.execute("SELECT digest, size, lines, version FROM file WHERE path = 'run.py'").fetchone() == (DIGEST, 30, 1, SHA)
+
+
+def test_the_institutions_kept_are_those_the_old_correlated_query_kept():
+    import sqlite3
+    rows = ['["https://ror.org/01a"]', '[{"id": "https://ror.org/02b", "name": "B"}]', None, "",
+            '["https://ror.org/03c", "https://ror.org/04d"]', 'https://ror.org/05e', '"x","y"']
+    ids = ["https://ror.org/01a", "https://ror.org/02b", "https://ror.org/03c", "https://ror.org/04d",
+           "https://ror.org/05e", "https://ror.org/06f", "https://ror.org/01", "B", "name", ",", "x", "y",
+           "https://ror.org/0", ""]
+
+    def base():
+        con = sqlite3.connect(":memory:")
+        con.execute("CREATE TABLE paper_author (ror TEXT)")
+        con.execute("CREATE TABLE institution (id TEXT)")
+        con.executemany("INSERT INTO paper_author VALUES (?)", [(r,) for r in rows])
+        con.executemany("INSERT INTO institution VALUES (?)", [(i,) for i in ids])
+        return con
+    old, new = base(), base()
+    old.execute("DELETE FROM institution WHERE NOT EXISTS (SELECT 1 FROM paper_author p "
+                "WHERE instr(p.ror, '\"' || institution.id || '\"') > 0)")
+    catalog._drop_unnamed_institutions(new)
+    kept = lambda c: sorted(r[0] for r in c.execute("SELECT id FROM institution"))  # noqa: E731
+    assert kept(new) == kept(old)
+    assert "https://ror.org/02b" in kept(new) and "https://ror.org/05e" not in kept(new) and "," in kept(new)
+
+
+def test_the_public_db_reports_each_sub_step_and_masks_by_batches(tmp_path, monkeypatch):
+    con = _world(tmp_path)
+    con.execute("UPDATE repository SET license = 'MIT', redistributable = 'yes'")
+    con.execute("UPDATE file SET text = 'a = 1  # ' || path || '@lab.org\n'")
+    con.commit()
+    monkeypatch.setattr(catalog, "MASK_BATCH", 1)            # one row per batch: every batch is walked
+    lines = []
+    catalog.public_db(con, tmp_path / "public.db", report=lines.append)
+    steps = [line.split(": ", 1)[1] for line in lines]
+    assert steps[0] == "backup" and steps[-2:] == ["vacuum", "done"]
+    assert {"orphan institutions", "email masking", "unverified licences"} <= set(steps)
+    assert all(re.match(r"\d{4}-\d\d-\d\d \d\d:\d\d:\d\d public db \(\+\d+\.\d min\): ", line) for line in lines)
+    pub = sqlite3.connect(tmp_path / "public.db")
+    texts = [t for (t,) in pub.execute("SELECT text FROM file WHERE text IS NOT NULL")]
+    assert texts and all("@lab.org" not in t for t in texts)
