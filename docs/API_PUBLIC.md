@@ -64,9 +64,9 @@ Under `/data/` (static, free, no rate limit, rebuilt nightly):
 
 | File | What | Fixture size | Production size (flagged) |
 |---|---|---|---|
-| `articles.csv` | one row per paper | small | ~17 MB (under the 25 MiB asset limit) |
+| `articles.csv.gz` | one row per paper, gzipped | small | ~34 MB plain (2026-10-28), over the 25 MiB asset limit, hence gzip |
 | `repositories.csv` | one row per repository | small | ~1.9 MB |
-| `alignments.jsonl` | one object per aligned paper | small | ~17 MB |
+| `alignments.jsonl.gz` | one object per aligned paper, gzipped | small | ~25 MB plain (2026-10-28), hence gzip |
 | `entities/<type>.json` | the full entity lists | small | ~32 MB total across the types |
 | `papers/NN.json`, `repos/NN.json` | sharded records | small | bounded (256 + 128 files) |
 

@@ -161,23 +161,23 @@ curl ${B}/tool/matplotlib`}</pre>
   <h2 id="bulk">Bulk downloads</h2>
   <p>To extract everything, read the static files; the API points to them so you can skip the Worker:</p>
   <dl class="terms">
-    <dt><a href={`${DATA_BASE}/articles.csv`}><code>{DATA_BASE}/articles.csv</code></a>, <a href={`${DATA_BASE}/repositories.csv`}><code>repositories.csv</code></a></dt>
-    <dd>One row per paper, and per repository.</dd>
-    <dt><a href={`${DATA_BASE}/alignments.jsonl`}><code>{DATA_BASE}/alignments.jsonl</code></a></dt>
-    <dd>One JSON object per aligned paper (paragraph numbers to code lines, never the paper's text).</dd>
+    <dt><a href={`${DATA_BASE}/articles.csv.gz`}><code>{DATA_BASE}/articles.csv.gz</code></a>, <a href={`${DATA_BASE}/repositories.csv`}><code>repositories.csv</code></a></dt>
+    <dd>One row per paper (gzipped: the plain file is over the hosting's 25 MiB limit), and per repository.</dd>
+    <dt><a href={`${DATA_BASE}/alignments.jsonl.gz`}><code>{DATA_BASE}/alignments.jsonl.gz</code></a></dt>
+    <dd>One JSON object per aligned paper (paragraph numbers to code lines, never the paper's text), gzipped.</dd>
     <dt><code>{DATA_BASE}/entities/&lt;type&gt;.json</code>, <code>{DATA_BASE}/papers/NN.json</code>, <code>{DATA_BASE}/repos/NN.json</code></dt>
     <dd>The full entity lists, and every paper's and repository's record (sharded).</dd>
   </dl>
-  <pre>{`# Python: download the whole paper table, then every author
-import csv, io, json, urllib.request
-with urllib.request.urlopen("${SITE}${DATA_BASE}/articles.csv") as r:
-    rows = list(csv.DictReader(io.TextIOWrapper(r, encoding="utf-8")))
+  <pre>{`# Python: download the whole paper table (gzipped), then every author
+import csv, gzip, io, json, urllib.request
+with urllib.request.urlopen("${SITE}${DATA_BASE}/articles.csv.gz") as r:
+    rows = list(csv.DictReader(io.TextIOWrapper(gzip.GzipFile(fileobj=r), encoding="utf-8")))
 print(len(rows), "papers")
 with urllib.request.urlopen("${SITE}${DATA_BASE}/entities/authors.json") as r:
     authors = json.load(r)
 print(len(authors), "authors")`}</pre>
   <pre>{`# R: the same two files
-papers  <- read.csv("${SITE}${DATA_BASE}/articles.csv")
+papers  <- read.csv(gzcon(url("${SITE}${DATA_BASE}/articles.csv.gz")))
 authors <- jsonlite::fromJSON("${SITE}${DATA_BASE}/entities/authors.json")
 nrow(papers); length(authors$orcid)`}</pre>
   <p>

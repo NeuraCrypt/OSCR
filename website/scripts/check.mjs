@@ -148,7 +148,7 @@ for (const [type, count] of Object.entries(SHARDS)) {
 // number of files, keyed the same way the Worker reads them (worker/v1/). No email address passes
 // the global scan (section 5); the OpenAPI document must match the endpoints (no drift).
 const DATA_FILES = [
-  "/data/stats.json", "/data/openapi.json", "/data/articles.csv", "/data/repositories.csv", "/data/alignments.jsonl",
+  "/data/stats.json", "/data/openapi.json", "/data/articles.csv.gz", "/data/repositories.csv", "/data/alignments.jsonl.gz",
   ...["authors", "journals", "institutions", "tools", "datasets", "categories"].map((t) => `/data/entities/${t}.json`),
 ];
 for (const f of DATA_FILES) if (!all.has(f)) problems.push(`missing API data file ${f}`);

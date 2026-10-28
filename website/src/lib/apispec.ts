@@ -25,7 +25,7 @@ export const REPO_SHARDS = 128;
 
 /** The other /data/ files besides the paper and repository shards: the six entity lists, the five
  *  list previews (entities/head/, read by the /api/v1/<type> list endpoint; categories is not a list
- *  endpoint), the three bulk exports (articles.csv, repositories.csv, alignments.jsonl), stats.json
+ *  endpoint), the three bulk exports (articles.csv.gz, repositories.csv, alignments.jsonl.gz), stats.json
  *  and openapi.json. */
 export const DATA_FIXED_FILES = 16;
 

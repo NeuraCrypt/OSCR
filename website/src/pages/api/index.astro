@@ -62,12 +62,12 @@ ${SITE}${API_BASE}/paper?doi=10.5555/oscr.fixture.1`}</pre>
         They are served by the CDN, free and with no rate limit, and are rebuilt every night:
       </p>
       <dl class="terms">
-        <dt><a href={`${DATA_BASE}/articles.csv`}><code>{DATA_BASE}/articles.csv</code></a></dt>
-        <dd>One row per paper: DOI, title, journal, date, status, code and data link counts.</dd>
+        <dt><a href={`${DATA_BASE}/articles.csv.gz`}><code>{DATA_BASE}/articles.csv.gz</code></a></dt>
+        <dd>One row per paper: DOI, title, journal, date, status, code and data link counts (gzipped).</dd>
         <dt><a href={`${DATA_BASE}/repositories.csv`}><code>{DATA_BASE}/repositories.csv</code></a></dt>
         <dd>One row per repository: host, state, licence, scripts, languages, pinned commit.</dd>
-        <dt><a href={`${DATA_BASE}/alignments.jsonl`}><code>{DATA_BASE}/alignments.jsonl</code></a></dt>
-        <dd>One JSON object per aligned paper: its paragraph to code-line matches (paragraph numbers, never text).</dd>
+        <dt><a href={`${DATA_BASE}/alignments.jsonl.gz`}><code>{DATA_BASE}/alignments.jsonl.gz</code></a></dt>
+        <dd>One JSON object per aligned paper: its paragraph to code-line matches (paragraph numbers, never text), gzipped.</dd>
         <dt><code>{DATA_BASE}/entities/&lt;type&gt;.json</code></dt>
         <dd>The full list of authors, journals, institutions, tools, datasets and categories.</dd>
         <dt><code>{DATA_BASE}/papers/NN.json</code>, <code>{DATA_BASE}/repos/NN.json</code></dt>

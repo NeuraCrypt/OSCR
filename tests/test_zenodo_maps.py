@@ -220,3 +220,63 @@ def test_the_night_installs_the_packages_when_the_lock_changed(tmp_path, monkeyp
     calls.clear()
     publish.deploy_cloudflare(tmp_path / "pub", "oscr", website=tmp_path)    # installed: not again
     assert calls == [["npm", "run"], ["npx", "wrangler"]]
+
+
+def _fake_wrangler(monkeypatch, runs):
+    """A subprocess.run whose `wrangler deploy` answers from `runs` (returncode, stdout, stderr), one
+    per call; the build always succeeds."""
+    import subprocess
+    deploys = []
+
+    def fake_run(step, cwd, env, **kw):
+        if step[:2] != ["npx", "wrangler"]:
+            return subprocess.CompletedProcess(step, 0, stdout="", stderr="")
+        code, out, err = runs[len(deploys)]
+        deploys.append(step)
+        return subprocess.CompletedProcess(step, code, stdout=out, stderr=err)
+    monkeypatch.setattr(publish.subprocess, "run", fake_run)
+    return deploys
+
+
+def _expired(left):
+    return (1, f"🌀 Found {left} new or modified static assets to upload. Proceeding with upload...\n",
+            "✘ [ERROR] Received a malformed response from the API\n  Unauthorized\n"
+            "  POST /accounts/x/workers/assets/upload?base64=true -> 401 Unauthorized\n")
+
+
+def test_the_deploy_resumes_after_its_upload_token_expired(tmp_path, monkeypatch):
+    (tmp_path / "node_modules").mkdir()
+    (tmp_path / "node_modules" / publish.INSTALLED_LOCK).write_text("")
+    deploys = _fake_wrangler(monkeypatch, [_expired(646), _expired(148),
+                                           (0, "Found 12 new or modified static assets to upload.\n"
+                                               "  https://oscr.example.workers.dev\n", "")])
+    assert publish.deploy_cloudflare(tmp_path / "pub", "oscr", website=tmp_path) == \
+        "website online: https://oscr.example.workers.dev"
+    assert len(deploys) == 3                                   # wrangler only, never a rebuild
+
+
+def test_the_deploy_stops_when_an_expired_run_sends_nothing_more(tmp_path, monkeypatch):
+    (tmp_path / "node_modules").mkdir()
+    (tmp_path / "node_modules" / publish.INSTALLED_LOCK).write_text("")
+    deploys = _fake_wrangler(monkeypatch, [_expired(646), _expired(148), _expired(148)])
+    with pytest.raises(RuntimeError, match="401"):
+        publish.deploy_cloudflare(tmp_path / "pub", "oscr", website=tmp_path)
+    assert len(deploys) == 3                                   # the third left as many: no fourth run
+
+
+def test_the_deploy_retries_an_expired_token_four_times_at_most(tmp_path, monkeypatch):
+    (tmp_path / "node_modules").mkdir()
+    (tmp_path / "node_modules" / publish.INSTALLED_LOCK).write_text("")
+    deploys = _fake_wrangler(monkeypatch, [_expired(n) for n in (600, 500, 400, 300, 200, 100)])
+    with pytest.raises(RuntimeError):
+        publish.deploy_cloudflare(tmp_path / "pub", "oscr", website=tmp_path)
+    assert len(deploys) == 1 + publish.EXPIRED_RETRIES
+
+
+def test_the_deploy_does_not_retry_another_failure(tmp_path, monkeypatch):
+    (tmp_path / "node_modules").mkdir()
+    (tmp_path / "node_modules" / publish.INSTALLED_LOCK).write_text("")
+    deploys = _fake_wrangler(monkeypatch, [(1, "", "✘ [ERROR] Asset too large.\n")])
+    with pytest.raises(RuntimeError, match="Asset too large"):
+        publish.deploy_cloudflare(tmp_path / "pub", "oscr", website=tmp_path)
+    assert len(deploys) == 1

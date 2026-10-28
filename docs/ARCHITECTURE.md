@@ -266,7 +266,7 @@ from `/api/search`'s `{ error: { code, message } }`, which is unchanged).
   (shaped once at build time, email-free like every record) and lands under `/data/`: the shards the
   Worker reads one record from (`/data/papers/NN.json`, all papers with a page, 256 at most;
   `/data/repos/NN.json`, 128 at most), the full entity lists (`/data/entities/<type>.json`), the
-  small bulk exports (`articles.csv`, `repositories.csv`, `alignments.jsonl`), `stats.json` and
+  small bulk exports (`articles.csv.gz`, `repositories.csv`, `alignments.jsonl.gz`), `stats.json` and
   `openapi.json`. A fixed number of files whatever the catalogue (held by `check.mjs` and
   `growth.mjs`, bound `SHARDS.paper + REPO_SHARDS + DATA_FIXED_FILES`).
 - **The Worker** (`website/worker/v1/index.ts`, routed by `worker/index.ts`) resolves a DOI through

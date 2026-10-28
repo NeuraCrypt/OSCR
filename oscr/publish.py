@@ -173,6 +173,53 @@ def _installed_lock(website: Path) -> str | None:
         return None
 
 
+#: How many times `wrangler deploy` runs at most when Cloudflare cuts the upload short.
+DEPLOY_ATTEMPTS = 6
+#: Of those, how many may follow an expired upload token: wrangler's upload session lasts about an
+#: hour, after which every bucket is answered "401 Unauthorized" and the deploy fails. A new run
+#: opens a new session and sends only the assets Cloudflare does not have yet.
+EXPIRED_RETRIES = 4
+_EXPIRED = re.compile(r"\b401\b|Unauthorized|expired", re.I)
+_ASSETS_LEFT = re.compile(r"Found (\d+) new or modified static assets to upload")
+
+
+def _assets_left(text: str) -> int | None:
+    """How many assets the run had to upload (wrangler's "Found N new or modified ..."), or None."""
+    found = _ASSETS_LEFT.findall(text)
+    return int(found[-1]) if found else None
+
+
+def _run_once(step: list[str], website: Path, env: dict) -> subprocess.CompletedProcess:
+    # The site is large (the scripts' copies, the public API's static data): the build and the
+    # upload of the day's changes can take well over half an hour, so allow 90 minutes a step.
+    r = subprocess.run(step, cwd=website, env=env, capture_output=True, text=True, timeout=5400)
+    if r.returncode != 0:
+        raise RuntimeError(f"{' '.join(step[:4])} failed: " + (r.stderr or r.stdout).strip()[-600:])
+    return r
+
+
+def _deploy(step: list[str], website: Path, env: dict) -> subprocess.CompletedProcess:
+    """`wrangler deploy`, run again (never rebuilt) when Cloudflare cuts the upload short: on
+    "Upload took too long", and on an expired upload token as long as each run leaves fewer assets
+    to send than the one before. Cloudflare keeps what was already sent, so each run resumes."""
+    expired, left = 0, None
+    for attempt in range(1, DEPLOY_ATTEMPTS + 1):
+        r = subprocess.run(step, cwd=website, env=env, capture_output=True, text=True, timeout=5400)
+        if r.returncode == 0:
+            return r
+        err = (r.stderr or r.stdout).strip()
+        seen = f"{r.stdout}\n{r.stderr}"
+        if attempt < DEPLOY_ATTEMPTS:
+            if "Upload took too long" in err:
+                continue  # Cloudflare kept the uploaded assets; the next attempt resumes from there.
+            now = _assets_left(seen)
+            if _EXPIRED.search(err) and expired < EXPIRED_RETRIES and (left is None or now is None or now < left):
+                expired, left = expired + 1, now
+                continue
+        raise RuntimeError(f"{' '.join(step[:4])} failed: " + err[-600:])
+    return r
+
+
 def deploy_cloudflare(catalog: Path, project: str, website: Path = WEBSITE) -> str:
     """Rebuild the website from the public catalogue (`catalog`, generated in public
     mode) and put it online as the static assets of a Cloudflare Worker (`project` is the
@@ -191,20 +238,7 @@ def deploy_cloudflare(catalog: Path, project: str, website: Path = WEBSITE) -> s
               ["npx", "wrangler", "deploy", "--name", project]]
     output = ""
     for step in steps:
-        is_deploy = step[:2] == ["npx", "wrangler"]
-        # The site is large (the scripts' copies, the public API's static data): the build and the
-        # upload of the day's changes can take well over half an hour, so allow 90 minutes a step.
-        # The upload can hit Cloudflare's "Upload took too long"; it saves what it already sent, so a
-        # retry resumes and eventually completes. Retry the deploy a few times; other steps run once.
-        attempts = 6 if is_deploy else 1
-        for attempt in range(1, attempts + 1):
-            r = subprocess.run(step, cwd=website, env=env, capture_output=True, text=True, timeout=5400)
-            if r.returncode == 0:
-                break
-            err = (r.stderr or r.stdout).strip()
-            if is_deploy and attempt < attempts and "Upload took too long" in err:
-                continue  # Cloudflare kept the uploaded assets; the next attempt resumes from there.
-            raise RuntimeError(f"{' '.join(step[:4])} failed: " + err[-600:])
+        r = _deploy(step, website, env) if step[:2] == ["npx", "wrangler"] else _run_once(step, website, env)
         output = r.stdout
         if step[:2] == ["npm", "ci"]:
             (website / "node_modules" / INSTALLED_LOCK).write_text(lock)
