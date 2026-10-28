@@ -15,15 +15,15 @@
     "deploy": "npm run build && wrangler deploy"
   },
   "dependencies": {
-    "astro": "^7.3.5",
+    "astro": "^7.4.2",
     "highlight.js": "^11.12.0"
   },
   "engines": {
     "node": ">=22.12.0"
   },
   "devDependencies": {
-    "@astrojs/svelte": "^9.0.1",
-    "svelte": "^5.57.1",
-    "wrangler": "^4.141.0"
+    "@astrojs/svelte": "^9.1.1",
+    "svelte": "^5.57.2",
+    "wrangler": "^4.152.0"
   }
 }
