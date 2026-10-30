@@ -213,10 +213,11 @@ def test_with_a_token_the_remote_push_goes_through_the_rest_api(tmp_path, monkey
 
 
 def test_the_night_pushes_the_facts_once_the_settings_say_so(tmp_path, monkeypatch, capsys):
-    from oscr import catalog
+    from oscr import catalog, watchdog
     calls = []
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(catalog, "generate", lambda con, out, public: out)
+    monkeypatch.setattr(watchdog, "refuse_to_publish", lambda articles: "")   # the export is faked: no paper to count
     monkeypatch.setattr(community, "command", lambda con, action, **kw: calls.append((action, kw["target"])) or "pushed")
     for settings, pushes in (({}, []), ({"OSCR_COMMUNITY_PUSH": "remote"}, [("push", "remote")])):
         calls.clear()

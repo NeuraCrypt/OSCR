@@ -13,7 +13,7 @@ from types import SimpleNamespace
 import pytest
 from conftest import FORGE_MIGRATIONS, forge_database
 
-from oscr import catalog, cli, community, forgejobs, forgelayer, jobs, publish, retention, social
+from oscr import catalog, cli, community, forgejobs, forgelayer, jobs, publish, retention, social, watchdog
 
 ROOT = Path(__file__).resolve().parents[1]
 TABLES = {"repos", "repo_papers", "installations", "traced_paths", "actions", "deliveries", "jobs",
@@ -246,6 +246,7 @@ def test_jobs_poll_also_polls_the_forge_jobs_when_the_settings_name_that_target(
 def test_nightly_reads_the_mirrors_and_writes_the_layer_between_the_export_and_the_deployment(base, tmp_path, monkeypatch):
     order = []
     monkeypatch.setattr(catalog, "generate", lambda con, out, public=False, **kw: order.append("export") or out)
+    monkeypatch.setattr(watchdog, "refuse_to_publish", lambda articles: "")   # the export is faked: no paper to count
     monkeypatch.setattr(publish, "deploy_cloudflare", lambda out, project: order.append("deploy") or "online")
     monkeypatch.setattr(forgejobs, "mirrors", lambda con, **kw: order.append(("mirrors", kw["target"])) or "2 heads changed")
     monkeypatch.setattr(forgelayer, "write", lambda con, d1, out: order.append(("layer", d1.database, out)) or "64 shards")

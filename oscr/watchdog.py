@@ -24,6 +24,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import IO
 
+#: Read at each call, not bound as defaults, so the tests can point them elsewhere (tests/conftest.py).
 STATE = Path("data/state/nightly.json")
 LOCK = Path("data/state/nightly.lock")
 LOGS = Path.home() / "Library" / "Logs" / "oscr"
@@ -36,30 +37,50 @@ NIGHTLY_DUE_S = 26 * 3600
 NIGHTLY_RETRY_S = 3 * 3600
 
 
-def read_state(path: Path = STATE) -> dict[str, float]:
+def read_state(path: Path | None = None) -> dict[str, float]:
+    path = STATE if path is None else path
     try:
         return {k: float(v) for k, v in json.loads(path.read_text()).items()}
     except (OSError, ValueError, AttributeError):
         return {}
 
 
-def _write_state(state: dict[str, float], path: Path = STATE) -> None:
+def _write_state(state: dict[str, float], path: Path | None = None) -> None:
+    path = STATE if path is None else path
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_suffix(".tmp")
     tmp.write_text(json.dumps(state))
     os.replace(tmp, path)
 
 
-def mark(event: str, now: float | None = None, path: Path = STATE) -> None:
-    """Record the nightly's `attempt` or `success`."""
+def mark(event: str, now: float | None = None, path: Path | None = None) -> None:
+    """Record the nightly's `attempt` or `success` (a time), or `published` (the papers sent)."""
     state = read_state(path)
     state[event] = time.time() if now is None else now
     _write_state(state, path)
 
 
-def acquire_lock(path: Path = LOCK) -> IO[str] | None:
+#: A catalogue below this share of the last published one is not published (a broken or empty export,
+#: as on 2026-10-30 when a test published an empty catalogue: the site, D1 and Hugging Face emptied).
+MIN_SHARE_OF_LAST = 0.5
+
+
+def refuse_to_publish(articles: int, path: Path | None = None) -> str:
+    """Why the nightly must send nothing, or "": a catalogue with no paper, or with fewer than half
+    the papers of the last one published (`published` in the nightly's state)."""
+    last = int(read_state(path).get("published", 0))
+    if articles <= 0:
+        return "the catalogue has no paper: nothing is published"
+    if last and articles < MIN_SHARE_OF_LAST * last:
+        return (f"the catalogue has {articles} papers, under {MIN_SHARE_OF_LAST:.0%} of the {last} last published: "
+                "nothing is published")
+    return ""
+
+
+def acquire_lock(path: Path | None = None) -> IO[str] | None:
     """The nightly's lock, held while the returned file stays open (until the process ends);
     None when another publication holds it."""
+    path = LOCK if path is None else path
     path.parent.mkdir(parents=True, exist_ok=True)
     f = open(path, "w")
     try:
@@ -90,7 +111,7 @@ def _kickstart(label: str, *, kill: bool) -> str:
     return "started" if r.returncode == 0 else f"not started ({(r.stderr or r.stdout).strip()[:120]})"
 
 
-def run(now: float | None = None, *, logs: Path = LOGS, state_path: Path = STATE,
+def run(now: float | None = None, *, logs: Path = LOGS, state_path: Path | None = None,
         kickstart: Callable[..., str] = _kickstart) -> str:
     """One round: say what was checked and what was started."""
     now = time.time() if now is None else now

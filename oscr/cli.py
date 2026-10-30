@@ -51,12 +51,14 @@ from .sources import europepmc
 SETTINGS = Path.home() / ".config" / "oscr" / "settings"
 
 
-def settings(path: Path = SETTINGS) -> dict[str, str]:
-    """The Mac installation's settings (`KEY=value`, `#` for comments).
+def settings(path: Path | None = None) -> dict[str, str]:
+    """The Mac installation's settings (`KEY=value`, `#` for comments), from SETTINGS, read at each
+    call so the tests can point it elsewhere (tests/conftest.py).
 
     Python reads them itself: launchd cannot start a shell script stored on the external
     disk (macOS refuses /bin/zsh to open the file, exit code 127), while it lets Python,
     and what Python starts, read and write there."""
+    path = SETTINGS if path is None else path
     out: dict[str, str] = {}
     try:
         lines = path.read_text().splitlines()
@@ -642,6 +644,12 @@ def main(argv: list[str] | None = None) -> int:
                     print(f"{now()} malware scan failed: {e}", flush=True)
             with cycles.step(cid, "export"):
                 print(f"{now()} public catalogue → {catalog.generate(con, out, public=True)}", flush=True)
+            # Nothing leaves when the catalogue is empty or shrank by half: every upload below replaces
+            # what is online (the site, D1's deletions, Hugging Face's history).
+            articles = con.execute(f"SELECT COUNT(*) FROM article WHERE {catalog.IN_SCOPE}").fetchone()[0]
+            if refused := watchdog.refuse_to_publish(articles):
+                cycles.finish_cycle(cid, ok=False, detail=refused)
+                raise SystemExit(f"{now()} {refused}")
             from . import publish
             # Each upload is attempted on its own: Hugging Face being down does not keep
             # the website from updating, and vice versa.
@@ -738,6 +746,7 @@ def main(argv: list[str] | None = None) -> int:
                     errors.append(f"Contacts on Hugging Face: {e}")
             # It ran to its end: an upload that failed is said below and tried again tomorrow.
             watchdog.mark("success")
+            watchdog.mark("published", articles)
             cycles.finish_cycle(cid, ok=not errors, detail=("\n".join(errors))[:500])
             if errors:
                 raise SystemExit("\n".join(errors))
