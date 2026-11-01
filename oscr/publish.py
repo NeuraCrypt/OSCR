@@ -189,10 +189,17 @@ def _assets_left(text: str) -> int | None:
     return int(found[-1]) if found else None
 
 
+#: `npm run build` took from 46 minutes to 2 hours on the whole stock, and went over 90 minutes on
+#: 2026-10-30 (the night failed): allow it 3 hours.
+BUILD_TIMEOUT_S = 3 * 3600
+
+
 def _run_once(step: list[str], website: Path, env: dict) -> subprocess.CompletedProcess:
     # The site is large (the scripts' copies, the public API's static data): the build and the
-    # upload of the day's changes can take well over half an hour, so allow 90 minutes a step.
-    r = subprocess.run(step, cwd=website, env=env, capture_output=True, text=True, timeout=5400)
+    # upload of the day's changes can take well over half an hour, so allow 90 minutes a step,
+    # and BUILD_TIMEOUT_S for the build.
+    timeout = BUILD_TIMEOUT_S if step[:3] == ["npm", "run", "build"] else 5400
+    r = subprocess.run(step, cwd=website, env=env, capture_output=True, text=True, timeout=timeout)
     if r.returncode != 0:
         raise RuntimeError(f"{' '.join(step[:4])} failed: " + (r.stderr or r.stdout).strip()[-600:])
     return r

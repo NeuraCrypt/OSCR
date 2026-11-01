@@ -21,6 +21,7 @@ import os
 import subprocess
 import time
 from collections.abc import Callable
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import IO
 
@@ -31,8 +32,12 @@ LOGS = Path.home() / "Library" / "Logs" / "oscr"
 
 #: The harvester logs each pass (every half hour at most): two hours of silence is a hang.
 HARVESTER_IDLE_S = 2 * 3600
-#: A publication is due when the last success is older than this (a day and some slack).
-NIGHTLY_DUE_S = 26 * 3600
+#: The nightly's local start (org.oscr.nightly's StartCalendarInterval): a publication is due when no
+#: success came after the last one. Not "a day since the last success": a late success (21:31 on
+#: 2026-10-31) then pushed the next due time past a morning the Mac was off at 04:17 (2026-11-01).
+NIGHTLY_AT = (4, 17)
+#: Leave launchd its own start: the deadline counts for the watchdog this long after 04:17.
+NIGHTLY_GRACE_S = 30 * 60
 #: After an attempt that did not succeed, wait this long before trying again.
 NIGHTLY_RETRY_S = 3 * 3600
 
@@ -91,8 +96,18 @@ def acquire_lock(path: Path | None = None) -> IO[str] | None:
     return f
 
 
+def last_deadline(now: float) -> float:
+    """The last local `NIGHTLY_AT` (plus the grace) at or before `now`, as a time."""
+    local = datetime.fromtimestamp(now)
+    day = local.replace(hour=NIGHTLY_AT[0], minute=NIGHTLY_AT[1], second=0, microsecond=0)
+    deadline = day.timestamp() + NIGHTLY_GRACE_S
+    if deadline > now:
+        deadline = (day - timedelta(days=1)).timestamp() + NIGHTLY_GRACE_S
+    return deadline
+
+
 def nightly_due(state: dict[str, float], now: float) -> bool:
-    if now - state.get("success", 0) < NIGHTLY_DUE_S:
+    if state.get("success", 0) >= last_deadline(now):
         return False
     return now - state.get("attempt", 0) >= NIGHTLY_RETRY_S
 
