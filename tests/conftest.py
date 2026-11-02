@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from oscr import community, cycles, net, watchdog
+from oscr import community, cycles, net, retry, watchdog
 
 FORGE_MIGRATIONS = sorted((Path(__file__).resolve().parents[1] / "migrations" / "d1-forge").glob("[0-9][0-9][0-9][0-9]_*.sql"))
 
@@ -20,6 +20,11 @@ REAL_STATE = [cycles.DB, *(Path(__file__).resolve().parents[1] / p for p in (wat
 
 def state_fingerprint() -> list[tuple[int, int] | None]:
     return [(p.stat().st_mtime_ns, p.stat().st_size) if p.exists() else None for p in REAL_STATE]
+
+
+@pytest.fixture(autouse=True)
+def no_wait_between_retries(monkeypatch):
+    monkeypatch.setattr(retry, "sleep", lambda seconds: None)
 
 
 @pytest.fixture(autouse=True)

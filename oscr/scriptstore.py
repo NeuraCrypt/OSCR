@@ -32,7 +32,7 @@ from collections.abc import Iterable
 from pathlib import Path
 from typing import Any
 
-from . import catalog, repos
+from . import catalog, repos, retry
 
 FORMAT = "oscr-script-manifest/1"
 #: Parquet layout, measured on 2026-09-26 (docs/SCRIPT_STORAGE.md).
@@ -361,12 +361,14 @@ def publish(con: sqlite3.Connection, folder: Path, dataset: str, *, platform: st
     if dry_run:
         return f"dry run: {len(send)} files to send, {len(remove)} to remove → {dataset}"
     from huggingface_hub import HfApi
-    HfApi(token=token()).upload_folder(
+    api = HfApi(token=token())
+    retry.call(lambda: api.upload_folder(
         folder_path=str(folder), repo_id=dataset, repo_type="dataset", allow_patterns=send,
         delete_patterns=remove or None,
         commit_message=f"Scripts of {time.strftime('%Y-%m-%d', time.gmtime())}: "
                        f"{sum(1 for w in send if w.startswith('blocks/'))} new block(s), "
-                       f"{sum(1 for w in send if w.startswith('manifests/'))} manifest(s), {len(remove)} removed")
+                       f"{sum(1 for w in send if w.startswith('manifests/'))} manifest(s), {len(remove)} removed"),
+        "Hugging Face scripts")
     now = time.time()
     con.execute("UPDATE script_block SET published_at = ? WHERE published_at IS NULL", (now,))
     con.execute("UPDATE script_manifest SET published_at = ? WHERE published_at IS NULL", (now,))

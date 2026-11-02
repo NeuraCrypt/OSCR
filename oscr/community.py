@@ -62,7 +62,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from . import catalog, entities
+from . import catalog, entities, retry
 
 DATABASE = "oscr_community"
 #: The D1 databases the Mac reads and writes, each with the settings key of its id for the REST API
@@ -464,7 +464,8 @@ def push(con: sqlite3.Connection, state: sqlite3.Connection, target: str, *, fol
     started, done, written = time.time(), 0, 0
     try:
         for path, statements in parts:
-            reported = send(path, statements)
+            reported = (retry.call(lambda p=path, s=statements: send(p, s), f"community D1 {target}")
+                        if target == "remote" else send(path, statements))
             rows = reported if reported is not None else sum(s.rows for s in statements)
             record(state, target, statements, rows)
             done += len(statements)
@@ -587,9 +588,11 @@ class WranglerD1(D1):
         self.where = where
 
     def _execute(self, sql: str) -> list[dict[str, Any]]:
-        try:
+        def execute() -> list[dict[str, Any]]:
             return _results(_wrangler(["d1", "execute", self.database, *self.where, "--json", "--yes", "--command", sql],
                                       self.website))
+        try:
+            return retry.call(execute, f"D1 {self.database}") if self.target == "remote" else execute()
         except PushError as e:
             raise D1Error(str(e)) from None
 
@@ -615,8 +618,8 @@ class RestD1(D1):
 
     def _execute(self, sql: str) -> list[dict[str, Any]]:
         try:
-            return apply_rest(sql, account_id=self.account_id, database_id=self.database_id, token=self.token,
-                              post=self.post)
+            return retry.call(lambda: apply_rest(sql, account_id=self.account_id, database_id=self.database_id,
+                                                 token=self.token, post=self.post), "D1 (REST)")
         except PushError as e:
             raise D1Error(str(e)) from None
 

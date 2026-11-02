@@ -51,7 +51,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from . import catalog, enrich, entities
+from . import catalog, enrich, entities, retry
 
 CATALOG, SEARCH = "catalog", "search"
 #: The D1 databases, by role (wrangler.toml, migrations/d1/<role>/).
@@ -859,7 +859,7 @@ def push(con: sqlite3.Connection, state: sqlite3.Connection, target: str, *, fol
     done = 0
     try:
         for c in todo:
-            rows = send(c)
+            rows = retry.call(lambda c=c: send(c), f"D1 {DATABASES[c.db]}") if target == "remote" else send(c)
             record(state, target, c, rows)
             written += rows
             done += len(c.statements)

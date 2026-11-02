@@ -36,6 +36,8 @@ import tempfile
 import time
 from pathlib import Path
 
+from . import retry
+
 #: The public website (Astro), next to the package.
 WEBSITE = Path(__file__).resolve().parents[1] / "website"
 
@@ -113,20 +115,20 @@ def publish_hf(site: Path, dataset: str, *, mirror: Path | None = None, dry_run:
     if not token:
         raise SystemExit("No Hugging Face token: `hf auth login`, or HF_TOKEN (a GitHub secret on Actions).")
     api = HfApi(token=token)
-    api.create_repo(dataset, repo_type="dataset", private=private, exist_ok=True)
+    retry.call(lambda: api.create_repo(dataset, repo_type="dataset", private=private, exist_ok=True), "Hugging Face")
     try:
         def upload() -> None:
             api.upload_folder(folder_path=str(folder), repo_id=dataset, repo_type="dataset",
                               commit_message=f"Nightly publication of {time.strftime('%Y-%m-%d', time.gmtime())}",
                               delete_patterns=["scripts/**"] if mirror is not None else None)
         try:
-            upload()
-        except Exception as e:  # noqa: BLE001, only the storage limit is retried, once, after freeing the old nights
+            retry.call(upload, "Hugging Face upload")
+        except Exception as e:  # noqa: BLE001, the storage limit is tried again, once, after freeing the old nights
             if "storage limit" not in str(e).lower():
                 raise
             keep_only_head(api, dataset)
-            upload()
-        freed = keep_only_head(api, dataset)
+            retry.call(upload, "Hugging Face upload")
+        freed = retry.call(lambda: keep_only_head(api, dataset), "Hugging Face history")
     finally:
         shutil.rmtree(folder, ignore_errors=True)
     return summary + (f", {freed / 1e9:.1f} GB of earlier nights freed" if freed else "")
@@ -245,7 +247,10 @@ def deploy_cloudflare(catalog: Path, project: str, website: Path = WEBSITE) -> s
               ["npx", "wrangler", "deploy", "--name", project]]
     output = ""
     for step in steps:
-        r = _deploy(step, website, env) if step[:2] == ["npx", "wrangler"] else _run_once(step, website, env)
+        if step[:2] == ["npx", "wrangler"]:
+            r = retry.call(lambda s=step: _deploy(s, website, env), "wrangler deploy")
+        else:
+            r = _run_once(step, website, env)
         output = r.stdout
         if step[:2] == ["npm", "ci"]:
             (website / "node_modules" / INSTALLED_LOCK).write_text(lock)

@@ -32,6 +32,7 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Any
 
+from . import retry
 from .jats import _analyze
 from .zenodo import orcid_is_valid
 
@@ -541,9 +542,10 @@ def publish(con: sqlite3.Connection, folder: Path, dataset: str = DATASET, *, pl
     if dry_run:
         return (f"dry run: {counts['rows']} rows ({counts['emails']} emails) ready for {dataset} (private)"
                 + (f"; {pending} erasure(s) since the last publication: its history would be rewritten" if pending else ""))
-    api.upload_folder(folder_path=str(folder), repo_id=dataset, repo_type="dataset",
-                      allow_patterns=["contacts.parquet", "README.md"],
-                      commit_message=f"Contacts of {time.strftime('%Y-%m-%d')}: {counts['rows']} rows")
+    retry.call(lambda: api.upload_folder(folder_path=str(folder), repo_id=dataset, repo_type="dataset",
+                                         allow_patterns=["contacts.parquet", "README.md"],
+                                         commit_message=f"Contacts of {time.strftime('%Y-%m-%d')}: {counts['rows']} rows"),
+               "Hugging Face contacts")
     said = f"{counts['rows']} rows ({counts['emails']} emails, {counts['papers']} papers) → {dataset} (private)"
     if not pending:
         return said
