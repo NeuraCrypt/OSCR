@@ -543,6 +543,8 @@ def main(argv: list[str] | None = None) -> int:
     n.add_argument("--dataset", default=cfg.get("OSCR_HF_DATASET", ""), help="Hugging Face user/dataset (empty: send nothing)")
     n.add_argument("--cloudflare", default=cfg.get("OSCR_CLOUDFLARE_PROJECT", ""),
                    help="Cloudflare Pages project to rebuild and put online (empty: none)")
+    n.add_argument("--resume", action="store_true",
+                   help="only the steps today's publication left, on the export already made (the watchdog does this by itself)")
 
     try:
         a = p.parse_args(argv)
@@ -620,136 +622,9 @@ def main(argv: list[str] | None = None) -> int:
             else:
                 print(f"{harvest.align_pending(con, client, force=a.force, deadline=deadline)} papers aligned")
         elif a.command == "nightly":
-            now = lambda: time.strftime("%Y-%m-%d %H:%M")  # noqa: E731
-            # One publication at a time (the 04:17 run, or the watchdog's catch-up): the lock is
-            # held until this process ends.
-            from . import watchdog
-            lock = watchdog.acquire_lock()
-            if lock is None:
-                print(f"{now()} another publication is running: nothing to do", flush=True)
-                return 0
-            watchdog.mark("attempt")
-            from . import cycles
-            cid = cycles.start_cycle("nightly")
-            out = Path(a.out)
-            # Night phase 16: a file known as malware loses its text before anything is exported, and the
-            # GitHub side's repository holding it is hidden (oscr/malware.py). Nothing is run.
-            from . import malware
-            if malware.load():
-                try:
-                    from . import community
-                    forge_d1 = community.open_d1("remote", settings=cfg, database="oscr_forge") if cfg.get("OSCR_FORGE_PUSH") == "remote" else None
-                    print(f"{now()} " + malware.scan(con, forge_d1), flush=True)
-                except Exception as e:  # noqa: BLE001, the nightly goes on; the harvester already refuses listed files
-                    print(f"{now()} malware scan failed: {e}", flush=True)
-            with cycles.step(cid, "export"):
-                print(f"{now()} public catalogue → {catalog.generate(con, out, public=True)}", flush=True)
-            # Nothing leaves when the catalogue is empty or shrank by half: every upload below replaces
-            # what is online (the site, D1's deletions, Hugging Face's history).
-            articles = con.execute(f"SELECT COUNT(*) FROM article WHERE {catalog.IN_SCOPE}").fetchone()[0]
-            if refused := watchdog.refuse_to_publish(articles):
-                cycles.finish_cycle(cid, ok=False, detail=refused)
-                raise SystemExit(f"{now()} {refused}")
-            from . import publish
-            # Each upload is attempted on its own: Hugging Face being down does not keep
-            # the website from updating, and vice versa.
-            errors = []
-            if cfg.get("OSCR_FORGE_PUSH") == "remote":
-                # The GitHub side (night phase 01, docs/FORGE.md), between the public export and the
-                # deployment: the public mirrors' heads, then OSCR's static layer into the export.
-                from . import community, forgejobs, forgelayer
-                try:
-                    print(f"{now()} forge mirrors: " + forgejobs.mirrors(
-                        con, target="remote", folder=Path("data/community"),
-                        budget=int(cfg.get("OSCR_COMMUNITY_BUDGET", "10000")), settings=cfg, client=client,
-                        report=lambda m: print(m, flush=True)), flush=True)
-                except (Exception, SystemExit) as e:
-                    errors.append(f"Forge mirrors: {e}")
-                try:
-                    forge_d1 = community.open_d1("remote", settings=cfg, database="oscr_forge")
-                    print(f"{now()} forge layer: " + forgelayer.write(con, forge_d1, out), flush=True)
-                except (Exception, SystemExit) as e:
-                    errors.append(f"Forge layer: {e}")
-                # Night phase 16: what is kept for a time only, deleted (oscr/retention.py).
-                from . import retention
-                try:
-                    print(f"{now()} forge " + retention.run(community.open_d1("remote", settings=cfg, database="oscr_forge"),
-                                                              budget=int(cfg.get("OSCR_RETENTION_BUDGET", "2000"))), flush=True)
-                except (Exception, SystemExit) as e:
-                    errors.append(f"Forge retention: {e}")
-                # Night phase 08: the social layer's shards and the Explore page (docs/SOCIAL.md).
-                from . import social
-                try:
-                    print(f"{now()} social layer: " + social.write(
-                        community.open_d1("remote", settings=cfg, database="oscr_forge"),
-                        community.open_d1("remote", settings=cfg), out, con=con), flush=True)
-                except (Exception, SystemExit) as e:
-                    errors.append(f"Social layer: {e}")
-                # The GitHub side's search index (forge_fts), with the papers' own push switch.
-                if cfg.get("OSCR_D1_PUSH") == "remote":
-                    try:
-                        state = forgelayer.open_state(forgelayer.STATE_FOLDER)
-                        try:
-                            print(f"{now()} " + social.push_search(community.open_d1("remote", settings=cfg, database="oscr_search"),
-                                                                   social.search_docs(out), state), flush=True)
-                        finally:
-                            state.close()
-                    except (Exception, SystemExit) as e:
-                        errors.append(f"Forge search: {e}")
-            if a.dataset:
-                sid = cycles.start_step(cid, "dataset")
-                try:
-                    print(f"{now()} {publish.publish_hf(out, a.dataset)}", flush=True)
-                    cycles.finish_step(sid, ok=True)
-                except (Exception, SystemExit) as e:
-                    cycles.finish_step(sid, ok=False, detail=repr(e))
-                    errors.append(f"Hugging Face: {e}")
-            if a.cloudflare:
-                sid = cycles.start_step(cid, "deploy")
-                try:
-                    print(f"{now()} {publish.deploy_cloudflare(out, a.cloudflare)}", flush=True)
-                    cycles.finish_step(sid, ok=True)
-                except (Exception, SystemExit) as e:
-                    cycles.finish_step(sid, ok=False, detail=repr(e))
-                    errors.append(f"Cloudflare: {e}")
-            if cfg.get("OSCR_D1_PUSH") == "remote":
-                # The search's databases (docs/SEARCH.md): the day's changes, within the budget.
-                from . import d1
-                try:
-                    print(f"{now()} search (D1): " + d1.command(
-                        con, "push", target="remote", budget=int(cfg.get("OSCR_D1_BUDGET", "80000")),
-                        state_path=Path("data/d1/state.db"), folder=Path("data/d1/sql"), settings=cfg), flush=True)
-                except (Exception, SystemExit) as e:
-                    errors.append(f"Search (D1): {e}")
-            if cfg.get("OSCR_COMMUNITY_PUSH") == "remote":
-                # The sign-in's facts (docs/ACCOUNTS.md, docs/CONTRIBUTIONS.md): the day's changes.
-                from . import community
-                try:
-                    print(f"{now()} community (D1): " + community.command(
-                        con, "push", target="remote", folder=Path("data/community"),
-                        budget=int(cfg.get("OSCR_COMMUNITY_BUDGET", "10000")), settings=cfg), flush=True)
-                except (Exception, SystemExit) as e:
-                    errors.append(f"Community (D1): {e}")
-            if cfg.get("OSCR_SCRIPTS_DATASET"):
-                try:
-                    print(f"{now()} " + _scripts(con, "publish", Path("data/scripts"), cfg["OSCR_SCRIPTS_DATASET"],
-                                                 platform=cfg.get("OSCR_PLATFORM_NAME", "OSCR")), flush=True)
-                except (Exception, SystemExit) as e:
-                    errors.append(f"Scripts on Hugging Face: {e}")
-            if cfg.get("OSCR_CONTACTS_DATASET"):
-                # Private: contacts.publish refuses a dataset that is not private.
-                from . import contacts
-                try:
-                    print(f"{now()} " + contacts.publish(con, Path("data/contacts"), cfg["OSCR_CONTACTS_DATASET"],
-                                                         platform=cfg.get("OSCR_PLATFORM_NAME", "OSCR")), flush=True)
-                except (Exception, SystemExit) as e:
-                    errors.append(f"Contacts on Hugging Face: {e}")
-            # It ran to its end: an upload that failed is said below and tried again tomorrow.
-            watchdog.mark("success")
-            watchdog.mark("published", articles)
-            cycles.finish_cycle(cid, ok=not errors, detail=("\n".join(errors))[:500])
-            if errors:
-                raise SystemExit("\n".join(errors))
+            from . import nightly
+            return nightly.run(con, client, cfg, out=Path(a.out), dataset=a.dataset, cloudflare=a.cloudflare,
+                               resume=a.resume)
         elif a.command == "enrich":
             from . import enrich
             if a.openalex:

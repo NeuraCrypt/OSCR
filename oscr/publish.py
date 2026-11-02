@@ -175,6 +175,28 @@ def _installed_lock(website: Path) -> str | None:
         return None
 
 
+#: Written beside dist/ after a build: what it was built from. A resumption that finds the same does
+#: not build again (46 minutes to 2 hours).
+BUILT = ".oscr-built"
+
+
+def _built_key(catalog: Path, website: Path) -> str:
+    """The export and the code a build reads, or "" when they cannot be told."""
+    try:
+        export = (catalog / "catalog.json").stat()
+        head = subprocess.run(["git", "rev-parse", "HEAD"], cwd=website, capture_output=True, text=True, timeout=30)
+    except (OSError, subprocess.TimeoutExpired):
+        return ""
+    return f"{export.st_mtime_ns} {export.st_size} {head.stdout.strip()}" if head.returncode == 0 else ""
+
+
+def _built(website: Path) -> str:
+    try:
+        return (website / BUILT).read_text()
+    except OSError:
+        return ""
+
+
 #: How many times `wrangler deploy` runs at most when Cloudflare cuts the upload short.
 DEPLOY_ATTEMPTS = 6
 #: Of those, how many may follow an expired upload token: wrangler's upload session lasts about an
@@ -243,8 +265,10 @@ def deploy_cloudflare(catalog: Path, project: str, website: Path = WEBSITE) -> s
         env["TURNSTILE_SITE_KEY"] = site_key
     lock = _lock_digest(website)
     steps = [] if _installed_lock(website) == lock else [["npm", "ci", "--no-audit", "--no-fund"]]
-    steps += [["npm", "run", "build"],
-              ["npx", "wrangler", "deploy", "--name", project]]
+    built = _built_key(catalog, website)
+    if not (built and _built(website) == built and (website / "dist").is_dir()):
+        steps += [["npm", "run", "build"]]
+    steps += [["npx", "wrangler", "deploy", "--name", project]]
     output = ""
     for step in steps:
         if step[:2] == ["npx", "wrangler"]:
@@ -254,5 +278,7 @@ def deploy_cloudflare(catalog: Path, project: str, website: Path = WEBSITE) -> s
         output = r.stdout
         if step[:2] == ["npm", "ci"]:
             (website / "node_modules" / INSTALLED_LOCK).write_text(lock)
+        if step[:3] == ["npm", "run", "build"] and built:
+            (website / BUILT).write_text(built)
     url = re.search(r"https://[\w.-]+\.workers\.dev\S*", output)
     return f"website online: {url.group(0) if url else project}"

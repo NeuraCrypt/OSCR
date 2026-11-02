@@ -10,3 +10,4 @@ public/lookup/
 .dev.vars
 .dev.vars.*
 !.dev.vars.example
+.oscr-built

@@ -133,6 +133,10 @@ def handler(db_path: Path) -> type[BaseHTTPRequestHandler]:
             if u.path in ("/", "/index.html"):
                 self._send(200, PAGE.read_bytes(), "text/html; charset=utf-8")
                 return
+            if u.path == "/api/night":
+                from . import watchdog
+                self._json({"failure": watchdog.failure()})
+                return
             if not db_path.exists():
                 self._json({"error": "the database does not exist yet: run a first pass"}, 503)
                 return

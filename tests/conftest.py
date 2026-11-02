@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from oscr import community, cycles, net, retry, watchdog
+from oscr import community, cycles, net, nightly, preflight, retry, watchdog
 
 FORGE_MIGRATIONS = sorted((Path(__file__).resolve().parents[1] / "migrations" / "d1-forge").glob("[0-9][0-9][0-9][0-9]_*.sql"))
 
@@ -25,6 +25,17 @@ def state_fingerprint() -> list[tuple[int, int] | None]:
 @pytest.fixture(autouse=True)
 def no_wait_between_retries(monkeypatch):
     monkeypatch.setattr(retry, "sleep", lambda seconds: None)
+
+
+#: The real checks, for tests/test_nightly.py: the others have no disk, network or login to look at.
+REAL_PREFLIGHT = preflight.run
+
+
+@pytest.fixture(autouse=True)
+def nightly_stays_on_this_test(monkeypatch):
+    monkeypatch.setattr(preflight, "run", lambda cfg, dataset, cloudflare: [])
+    monkeypatch.setattr(nightly, "stay_awake", lambda: None)
+    monkeypatch.setattr(watchdog, "alert", lambda message: None)
 
 
 @pytest.fixture(autouse=True)
