@@ -179,3 +179,33 @@ Receivers check the signature first, in constant time (examples on `/developers/
 | the rows | `migrations/d1-forge/0009_automation.sql` |
 | the pages | `src/pages/settings/hooks.astro`, `src/scripts/hooks.ts`, `src/lib/automation.ts`; the Checks view `src/scripts/repo-checks.ts`, `src/lib/checks-view.ts` |
 | the tests | `website/tests/forge-pages/checks-core.test.ts`, `checks-view.test.ts`, `automation.test.ts`; `website/tests/forge-service/pr-checks.test.ts`, `statuses.test.ts`, `hooks.test.ts`; the end-to-end run (`tests/forge-service/e2e.sh`) |
+
+## Publication nocturne : auto-réparation
+
+The nightly publication (`oscr nightly`, launchd at 04:17, `oscr/nightly.py`) repairs itself. Nothing
+here asks the owner for anything, except one command, once (the wake-up, below).
+
+| what goes wrong | what happens by itself | where |
+|---|---|---|
+| a passing network or Cloudflare error (401/403, `code: 10000`, 429, 5xx, timeout, cut connection) | that send is tried again after 30 s, 2 min, 10 min; never a definitive error (too large, quota, storage limit) | `oscr/retry.py` |
+| a step still fails, or the Mac stops in the middle | the watchdog resumes the steps left, on the export already made, up to 3 times a day, 1 h, 3 h then 6 h apart; no new export, no new build when `dist/` is up to date (`website/.oscr-built`) | `oscr/nightly.py`, `oscr/watchdog.py`, `oscr nightly --resume` |
+| the Mac was off or asleep at 04:17 | the night is due as soon as no success came since the last 04:17 | `watchdog.nightly_due` |
+| the disk Expansion is missing, less than 40 GB free, no network, a login refused | the night does not start, says why in `cycles.db`, and the watchdog tries again every 30 minutes | `oscr/preflight.py` |
+| a row recorded as sent never reached D1 | every night the keys of `papers`, `paper_fts`, `paper_orcid`, `paper_repo`, `repo_owner` are read back; what is missing is forgotten and sent again within the budget. A failed read forgets nothing | `oscr/reconcile.py` |
+| a night stays failed after all that (3 resumptions, or 3 whole runs) | one macOS notification and a red line on the dashboard, with the step and its exact message. Otherwise, silence | `watchdog.failure`, `watchdog.alert`, `/api/night` |
+
+- **The day of a night** starts at 04:17 local time: a failure of yesterday is never resumed after
+  that, the new night replaces it.
+- **The steps**: `export`, `forge`, `dataset`, `deploy`, `reconcile`, `search`, `community`, `scripts`,
+  `contacts`. The ones planned are written `pending` when a cycle starts, so a crash leaves them known.
+- **The guard stays**: a resumption checks again that the catalogue is not empty or halved.
+- **The lock stays**: one publication at a time; while one runs the watchdog only says `nightly running`.
+- **`cycles.db`**: the zero-second cycles tests wrote before 2026-10-29 are marked `test` once, a copy
+  in `cycles.db.bak`; nothing is deleted, and the monitors skip them.
+- **The Mac stays awake** during a publication: `caffeinate -i` follows the process (`nightly.stay_awake`).
+- **Fewer files sent**: the catalogue's date left the shared footer (it changed about 10,000 HTML pages
+  every night); it is on the home page only. What still changes each night is real: the sharded
+  records, the lookup, the scripts' lots and the lists, when papers arrive.
+- **The wake-up**, the only manual step, once: `tools/install_mac.sh --wake` (that is
+  `sudo pmset repeat wakeorpoweron MTWRFSU 04:05:00`), checked with `pmset -g sched`. A Mac fully shut
+  down may not start by itself, depending on its model; the watchdog then catches up at the next start.

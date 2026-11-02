@@ -247,7 +247,9 @@ def _deploy(step: list[str], website: Path, env: dict) -> subprocess.CompletedPr
             if _EXPIRED.search(err) and expired < EXPIRED_RETRIES and (left is None or now is None or now < left):
                 expired, left = expired + 1, now
                 continue
-        raise RuntimeError(f"{' '.join(step[:4])} failed: " + err[-600:])
+        error = RuntimeError(f"{' '.join(step[:4])} failed: " + err[-600:])
+        error.final = bool(_EXPIRED.search(err))  # the runs above already tried: the watchdog resumes it later
+        raise error
     return r
 
 

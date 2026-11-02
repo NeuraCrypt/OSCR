@@ -4,6 +4,7 @@
 #
 #   tools/install_mac.sh              install (or update) and start
 #   tools/install_mac.sh --uninstall  remove everything (the data stays)
+#   tools/install_mac.sh --wake       wake the Mac at 04:05 every day (asks for the password once)
 #
 # Three launchd tasks:
 #   org.oscr.harvester  the harvester, continuously and at low priority
@@ -28,6 +29,14 @@ remove() {
     rm -f $AGENTS/$task.plist
   done
 }
+
+# The Mac wakes (or starts, where its model can) just before the 04:17 publication. It needs the
+# owner's password once; macOS keeps it across restarts.
+if [[ ${1:-} == --wake ]]; then
+  sudo pmset repeat wakeorpoweron MTWRFSU 04:05:00
+  pmset -g sched
+  exit 0
+fi
 
 if [[ ${1:-} == --uninstall ]]; then
   remove $TASKS

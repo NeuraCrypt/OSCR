@@ -30,6 +30,8 @@ sleep: Callable[[float], None] = time.sleep
 
 def passing(error: BaseException) -> bool:
     """Whether trying again may help: never for a definitive error, whatever else it says."""
+    if getattr(error, "final", False):
+        return False
     if isinstance(error, (subprocess.TimeoutExpired, TimeoutError, ConnectionError)):
         return True
     text = str(error)
