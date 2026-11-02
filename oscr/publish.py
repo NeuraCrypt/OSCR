@@ -235,11 +235,16 @@ def _deploy(step: list[str], website: Path, env: dict) -> subprocess.CompletedPr
     to send than the one before. Cloudflare keeps what was already sent, so each run resumes."""
     expired, left = 0, None
     for attempt in range(1, DEPLOY_ATTEMPTS + 1):
+        started = time.monotonic()
         r = subprocess.run(step, cwd=website, env=env, capture_output=True, text=True, timeout=5400)
+        seen = f"{r.stdout}\n{r.stderr}"
+        count = _assets_left(seen)
+        print(f"wrangler deploy, try {attempt}: "
+              f"{'no count given' if count is None else f'Found {count} new or modified static assets'}, "
+              f"{(time.monotonic() - started) / 60:.1f} min", flush=True)
         if r.returncode == 0:
             return r
         err = (r.stderr or r.stdout).strip()
-        seen = f"{r.stdout}\n{r.stderr}"
         if attempt < DEPLOY_ATTEMPTS:
             if "Upload took too long" in err:
                 continue  # Cloudflare kept the uploaded assets; the next attempt resumes from there.

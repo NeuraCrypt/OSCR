@@ -106,3 +106,13 @@ def test_a_hugging_face_upload_is_sent_again_on_a_server_error(waits):
     api = FakeApi([RuntimeError("500 Server Error"), RuntimeError("504 Gateway Time-out")])
     retry.call(lambda: api.upload_folder(), "Hugging Face", report=lambda m: None)
     assert api.uploads == 3 and waits == [30, 120]
+
+
+def test_each_deploy_try_says_its_assets_and_its_time_in_the_log(monkeypatch, tmp_path, capsys):
+    found = "Found 412 new or modified static assets to upload"
+    answers = [(1, found, "401 Unauthorized"), (0, "Found 7 new or modified static assets to upload", "")]
+    monkeypatch.setattr(subprocess, "run", fake_run(answers, []))
+    publish._deploy(["npx", "wrangler", "deploy"], tmp_path, {})
+    out = capsys.readouterr().out
+    assert "try 1: Found 412 new or modified static assets" in out and "try 2: Found 7 new" in out
+    assert out.count(" min\n") == 2
