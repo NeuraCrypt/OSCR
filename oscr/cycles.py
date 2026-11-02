@@ -24,7 +24,7 @@ from pathlib import Path
 DB = Path(__file__).resolve().parents[1] / "data" / "state" / "cycles.db"
 
 #: The canonical steps of a publication, in order (informative; any name may be recorded).
-STEPS = ("preflight", "export", "forge", "dataset", "deploy", "search", "community", "scripts", "contacts")
+STEPS = ("preflight", "export", "forge", "dataset", "deploy", "reconcile", "search", "community", "scripts", "contacts")
 #: Under this, a "cycle" was a test's (they once wrote here): `tidy` marks it `test`, the monitors skip it.
 TEST_SECONDS = 1.0
 #: 2026-10-29 19:10: from then on the tests have their own folder, and a short cycle is a real one.

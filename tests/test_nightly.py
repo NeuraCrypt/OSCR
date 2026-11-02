@@ -208,5 +208,5 @@ def test_a_resumption_does_not_build_again_when_dist_is_up_to_date(tmp_path, mon
 def test_the_steps_are_those_the_settings_ask_for():
     assert nightly.planned({}, "", "") == ["export"]
     assert nightly.planned({"OSCR_D1_PUSH": "remote", "OSCR_CONTACTS_DATASET": "a/b"}, "x/y", "oscr") == [
-        "export", "dataset", "deploy", "search", "contacts"]
+        "export", "dataset", "deploy", "reconcile", "search", "contacts"]
 

@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from oscr import community, cycles, net, nightly, preflight, retry, watchdog
+from oscr import community, cycles, net, nightly, preflight, reconcile, retry, watchdog
 
 FORGE_MIGRATIONS = sorted((Path(__file__).resolve().parents[1] / "migrations" / "d1-forge").glob("[0-9][0-9][0-9][0-9]_*.sql"))
 
@@ -35,6 +35,7 @@ REAL_PREFLIGHT = preflight.run
 def nightly_stays_on_this_test(monkeypatch):
     monkeypatch.setattr(preflight, "run", lambda cfg, dataset, cloudflare: [])
     monkeypatch.setattr(nightly, "stay_awake", lambda: None)
+    monkeypatch.setattr(reconcile, "run", lambda cfg: "reconciled")
     monkeypatch.setattr(watchdog, "alert", lambda message: None)
 
 

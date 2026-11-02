@@ -32,7 +32,9 @@ def stay_awake() -> None:
 def planned(cfg: dict[str, str], dataset: str, cloudflare: str) -> list[str]:
     """The night's steps, in order, as the settings ask for them."""
     wanted = {"export": True, "forge": cfg.get("OSCR_FORGE_PUSH") == "remote", "dataset": bool(dataset),
-              "deploy": bool(cloudflare), "search": cfg.get("OSCR_D1_PUSH") == "remote",
+              "deploy": bool(cloudflare),
+              "reconcile": "remote" in (cfg.get("OSCR_D1_PUSH"), cfg.get("OSCR_COMMUNITY_PUSH")),
+              "search": cfg.get("OSCR_D1_PUSH") == "remote",
               "community": cfg.get("OSCR_COMMUNITY_PUSH") == "remote", "scripts": bool(cfg.get("OSCR_SCRIPTS_DATASET")),
               "contacts": bool(cfg.get("OSCR_CONTACTS_DATASET"))}
     return [name for name, on in wanted.items() if on]
@@ -162,6 +164,11 @@ def run(con: Any, client: Any, cfg: dict[str, str], *, out: Path, dataset: str, 
     step("dataset", "Hugging Face", lambda: say(publish.publish_hf(out, dataset)))
     step("deploy", "Cloudflare", lambda: say(publish.deploy_cloudflare(out, cloudflare)))
 
+    def compare() -> None:
+        # What D1 lost is forgotten here, so that the pushes below send it again (oscr/reconcile.py).
+        from . import reconcile
+        say(reconcile.run(cfg))
+
     def search() -> None:
         # The search's databases (docs/SEARCH.md): the day's changes, within the budget.
         from . import d1
@@ -185,6 +192,7 @@ def run(con: Any, client: Any, cfg: dict[str, str], *, out: Path, dataset: str, 
         say(private.publish(con, Path("data/contacts"), cfg["OSCR_CONTACTS_DATASET"],
                               platform=cfg.get("OSCR_PLATFORM_NAME", "OSCR")))
 
+    step("reconcile", "D1 comparison", compare)
     step("search", "Search (D1)", search)
     step("community", "Community (D1)", facts)
     step("scripts", "Scripts on Hugging Face", scripts)
