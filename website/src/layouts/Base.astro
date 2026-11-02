@@ -5,7 +5,6 @@
 import "../styles/science.css";
 import { SITE_FULL_NAME, SITE_NAME, SITE_TAGLINE, SOURCE_URL, TURNSTILE_SITE_KEY } from "../config";
 import { FOOTER, pageExists } from "../lib/info";
-import { catalog, generatedInWords } from "../lib/catalog";
 import { STRINGS } from "../lib/strings";
 
 interface Props {
@@ -106,8 +105,8 @@ const sections = [
         <a href={SOURCE_URL}>Source code</a>
       </nav>
       <p>
-        {SITE_FULL_NAME} · Catalogue of {generatedInWords(catalog.generated_at)}. Each script keeps the licence of its
-        repository; the source always prevails. No email address is ever asked for or shown.
+        {SITE_FULL_NAME}. Each script keeps the licence of its repository; the source always prevails. No email
+        address is ever asked for or shown.
       </p>
     </footer>
     {/* Night phase 15: the site-wide script. It applies the reader's preferences (themes among them,

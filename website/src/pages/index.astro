@@ -6,7 +6,7 @@
 import Base from "../layouts/Base.astro";
 import Listing from "../components/Listing.astro";
 import { SITE_NAME, SITE_TAGLINE } from "../config";
-import { catalog, number, plural, withCode, withPage } from "../lib/catalog";
+import { catalog, generatedInWords, number, plural, withCode, withPage } from "../lib/catalog";
 import { dateInWords, dayInWords } from "../lib/format";
 import { latestDays } from "../lib/lists";
 import { HOME_PAPERS } from "../lib/shards";
@@ -36,6 +36,7 @@ const w = (n: number, one: string, many: string) => (n === 1 ? one : many);
     <a href="/about/#cite">How to cite</a>
   </p>
 
+  <p class="line">Catalogue of {generatedInWords(catalog.generated_at)}.</p>
   <dl class="figures" id="summary">
     <div><dt>{number(f.articles)}</dt><dd>open-access neuroscience {w(f.articles, "paper", "papers")} read</dd></div>
     <div>

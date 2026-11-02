@@ -5,6 +5,7 @@ import sqlite3
 import subprocess
 import time
 from datetime import datetime
+from pathlib import Path
 
 import conftest
 import pytest
@@ -210,3 +211,9 @@ def test_the_steps_are_those_the_settings_ask_for():
     assert nightly.planned({"OSCR_D1_PUSH": "remote", "OSCR_CONTACTS_DATASET": "a/b"}, "x/y", "oscr") == [
         "export", "dataset", "deploy", "reconcile", "search", "contacts"]
 
+
+
+def test_the_shared_layout_carries_no_date_of_the_catalogue():
+    """Every page uses it: a date there changed all 10,000 pages every night, and each was sent again."""
+    layout = (Path(__file__).resolve().parents[1] / "website" / "src" / "layouts" / "Base.astro").read_text()
+    assert "generated_at" not in layout and "generatedInWords" not in layout
