@@ -494,6 +494,20 @@ pages at `/snippets/` and `/snippet/<owner>/<folder>/`.
   16's central moderation and data-rights erasure must still be extended to `snippet` and
   `snippet_comment` (D13-4, extends D06-6).
 
+## Scientific tools (2026-11-03)
+
+Research software shown from its repository, added **by hand** (`docs/SCIENTIFIC_TOOLS.md`):
+`/scientific-tools/` and `/scientific-tools/<slug>/` (not `/tools/`, the papers' entities).
+
+- **Independent of the papers**: one committed manifest per tool, `website/src/scitools/<slug>.json`,
+  written by `npm run scitool:add -- https://github.com/<owner>/<name>` (shallow clone, no checkout,
+  nothing run). `scripts/data.mjs`, the export, the nightly, D1 and Hugging Face never read or write it.
+- **No copy of the code**: the manifest pins a commit and lists each text file's SHA-256; the
+  reader's browser fetches the file from `raw.githubusercontent.com` at that commit, checks the digest,
+  masks email addresses (`src/scripts/scitool.ts`, `src/lib/source.ts` `fetchVerified`).
+- At most `SCITOOLS_MAX` (100) tools, one static page each (`src/lib/scitools.ts`,
+  `tests/scitools.test.ts`).
+
 ## The website's style (website/)
 
 - `website/src/styles/science.css` is the **only** source of style of the site. It is

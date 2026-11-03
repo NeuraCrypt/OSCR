@@ -71,6 +71,13 @@
   Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self' https://www.ebi.ac.uk https://eutils.ncbi.nlm.nih.gov https://raw.githubusercontent.com https://gitlab.com https://bitbucket.org https://codeberg.org https://huggingface.co https://zenodo.org https://archive.softwareheritage.org; form-action 'self'; frame-ancestors 'none'; base-uri 'none'; object-src 'none'
   Referrer-Policy: same-origin
 
+# A scientific tool's page (2026-11-03, src/lib/scitools.ts): its viewer reads the chosen file from
+# GitHub's raw files at the pinned commit (raw.githubusercontent.com, connect-src) and checks its SHA-256;
+# nothing else outside the site.
+/scientific-tools/:slug/
+  ! Content-Security-Policy
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self' https://raw.githubusercontent.com; form-action 'self'; frame-ancestors 'none'; base-uri 'none'; object-src 'none'
+
 # The search (/search/): a Svelte island, which Astro starts with two inline scripts and one inline
 # style of its own (display: contents on the island's elements). Allowed by their SHA-256 only, not
 # by 'unsafe-inline'; npm run check computes them again at every build and fails when Astro changes

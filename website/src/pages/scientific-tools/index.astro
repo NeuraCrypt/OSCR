@@ -1,0 +1,50 @@
+---
+// /scientific-tools/: research software added to the registry by hand, each shown from its
+// GitHub repository at a pinned commit (src/lib/scitools.ts). A section of its own, independent of
+// the papers: its data is src/scitools/*.json, never the harvester's export. Not /tools/, which
+// lists the libraries found in the papers' code.
+import Base from "../../layouts/Base.astro";
+import { SITE_NAME } from "../../config";
+import { languagesOf, toolUrl } from "../../lib/scitools";
+import { sciTools } from "../../lib/scitools-data";
+import { dateInWords, number, plural } from "../../lib/format";
+---
+<Base
+  title="Scientific tools"
+  description="Research software shown from its repository at a pinned commit: its code, its licence and its files."
+  breadcrumb={[{ text: "Browse", href: "/browse/" }, { text: "Scientific tools" }]}
+>
+  <h1>Scientific tools</h1>
+  <p class="summary">
+    {plural(sciTools.length, "tool")}: research software added to {SITE_NAME} by hand from its repository, each
+    shown at the commit it was added at. Its code is read in the page from where its authors published it, and
+    checked against the digest {SITE_NAME} recorded. The libraries found in the papers' code are on{" "}
+    <a href="/tools/">Tools</a>.
+  </p>
+  {sciTools.length === 0 ? (
+    <p>No tool yet.</p>
+  ) : (
+    <dl class="listing">
+      {sciTools.map((t, i) => {
+        const langs = languagesOf(t.files).slice(0, 3).map((l) => l.language);
+        return (
+          <>
+            <dt>
+              <span class="num">[{i + 1}]</span>{" "}
+              <a href={t.repository.url}>github.com/{t.repository.owner}/{t.repository.name}</a>
+            </dt>
+            <dd>
+              <div class="title"><a href={toolUrl(t.slug)}>{t.name}</a></div>
+              {t.description && <div class="line">{t.description}</div>}
+              <div class="line"><span class="label">Code:</span> {plural(t.files.length, "file")}
+                {langs.length > 0 && `, ${langs.join(", ")}`}, {number(t.files.reduce((s, f) => s + f.lines, 0))} lines,
+                at commit <code>{t.commit.slice(0, 7)}</code></div>
+              <div class="line"><span class="label">Licence:</span> {t.licence.spdx || (t.licence.file ? "see its licence file" : "none found")}</div>
+              <div class="line"><span class="label">Added:</span> {dateInWords(t.added)}</div>
+            </dd>
+          </>
+        );
+      })}
+    </dl>
+  )}
+</Base>

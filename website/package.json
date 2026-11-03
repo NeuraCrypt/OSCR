@@ -11,6 +11,7 @@
     "check": "node --experimental-strip-types scripts/check.mjs",
     "check:growth": "node --experimental-strip-types scripts/growth.mjs",
     "test": "node --experimental-strip-types --test \"tests/**/*.test.ts\"",
+    "scitool:add": "node --experimental-strip-types scripts/scitool-add.mjs",
     "preview": "astro preview",
     "deploy": "npm run build && wrangler deploy"
   },

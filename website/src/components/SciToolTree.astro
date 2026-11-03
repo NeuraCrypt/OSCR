@@ -1,0 +1,20 @@
+---
+// One folder of a scientific tool's files (src/lib/scitools.ts treeOf), its sub-folders first
+// (closed, but for the root's), then its files. Each file is a link the page's script opens in the
+// viewer (src/scripts/scitool.ts); without the script, the link reloads the page on that file.
+import type { TreeDir } from "../lib/scitools";
+
+interface Props { dir: TreeDir }
+const { dir } = Astro.props;
+---
+<ul>
+  {dir.dirs.map((d) => (
+    <li><details><summary>{d.name}/</summary><Astro.self dir={d} /></details></li>
+  ))}
+  {dir.files.map((f) => (
+    <li>
+      <a href={`?file=${encodeURIComponent(f.path)}`} data-path={f.path} data-sha256={f.sha256} data-size={f.size}
+        data-lines={f.lines} data-language={f.language}><span class="name">{f.path.split("/").pop()}</span></a>
+    </li>
+  ))}
+</ul>

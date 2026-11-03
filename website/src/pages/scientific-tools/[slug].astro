@@ -1,0 +1,79 @@
+---
+// A scientific tool's page (src/lib/scitools.ts): what it is, where it lives, its licence, and its
+// code at the pinned commit. The page holds no text of the code: its script fetches the file chosen
+// from GitHub's raw files at that commit, checks its SHA-256 against the manifest's, masks its email
+// addresses, and shows it (src/scripts/scitool.ts). Independent of the papers: no catalogue read.
+import Base from "../../layouts/Base.astro";
+import SciToolTree from "../../components/SciToolTree.astro";
+import { SITE_NAME } from "../../config";
+import { dateInWords, number, plural } from "../../lib/format";
+import { blobUrl, languagesOf, rawUrl, SCITOOLS_PATH, treeOf, type SciTool } from "../../lib/scitools";
+import { sciTools } from "../../lib/scitools-data";
+
+export function getStaticPaths() {
+  return sciTools.map((tool) => ({ params: { slug: tool.slug }, props: { tool } }));
+}
+interface Props { tool: SciTool }
+const { tool } = Astro.props;
+const r = tool.repository;
+const short = tool.commit.slice(0, 7);
+const lines = tool.files.reduce((s, f) => s + f.lines, 0);
+const langs = languagesOf(tool.files);
+const skipped = tool.skipped.binary + tool.skipped.large + tool.skipped.over_limit;
+const first = tool.readme || tool.files[0].path;
+---
+<Base
+  title={tool.name}
+  description={tool.description || `${tool.name}, research software shown from its repository.`}
+  breadcrumb={[{ text: "Scientific tools", href: SCITOOLS_PATH }, { text: tool.name }]}
+>
+  <div class="record">
+    <div class="body">
+      <h1>{tool.name}</h1>
+      {tool.description && <p class="summary">{tool.description}</p>}
+      <dl class="review">
+        <dt>Repository</dt><dd><a href={r.url}>github.com/{r.owner}/{r.name}</a></dd>
+        <dt>Shown at</dt>
+        <dd>commit <a href={`${r.url}/tree/${tool.commit}`}><code>{short}</code></a>
+          {tool.committed_at && `, of ${dateInWords(tool.committed_at.slice(0, 10))}`}</dd>
+        <dt>Licence</dt>
+        <dd>{tool.licence.spdx || "not recognised"}{tool.licence.file && (
+          <>, <a href={blobUrl(tool, tool.licence.file)}>{tool.licence.file}</a></>
+        )}{!tool.licence.file && !tool.licence.spdx && ": no licence file, so no reuse is granted"}</dd>
+        {tool.homepage && <><dt>Website</dt><dd><a href={tool.homepage}>{tool.homepage.replace(/^https:\/\//, "")}</a></dd></>}
+        <dt>Code</dt>
+        <dd>{plural(tool.files.length, "file")}, {number(lines)} lines{langs.length > 0 && `: ${langs.slice(0, 5).map((l) => `${l.language} (${number(l.lines)})`).join(", ")}`}</dd>
+        <dt>Added</dt><dd>{dateInWords(tool.added)}</dd>
+      </dl>
+
+      <h2 id="code">Code</h2>
+      <p class="line">
+        Each file is read in your browser from GitHub at commit <code>{short}</code>, then checked against the SHA-256{" "}
+        {SITE_NAME} recorded when the tool was added; a file that differs is not shown. {SITE_NAME} keeps no copy of it,
+        and email addresses are hidden.{skipped > 0 && ` ${plural(skipped, "file")} of the repository ${skipped === 1 ? "is" : "are"} not listed (binary, over 1 MB or kept in Git LFS).`}
+      </p>
+      <div class="compare">
+        <section class="pane code-pane" id="scitool" aria-label="Code" data-raw={rawUrl(tool, "")} data-blob={blobUrl(tool, "")}
+          data-first={first}>
+          <header>
+            <div class="file-head">
+              <span class="file-path"><span class="repo">{r.name}</span><span class="sep">/</span><span id="scitool-path">{first}</span></span>
+              <div class="file-actions"><a id="scitool-source" href={blobUrl(tool, first)}>On GitHub</a></div>
+            </div>
+            <div class="file-head"><p class="file-facts" id="scitool-facts" aria-live="polite"></p></div>
+          </header>
+          <div class="code-body">
+            <nav class="files" aria-label="Files"><SciToolTree dir={treeOf(tool.files)} /></nav>
+            <div class="viewer" id="scitool-viewer">
+              <noscript><p class="unavailable">This viewer reads the code in your browser, which needs JavaScript. Every
+                file is also <a href={`${r.url}/tree/${tool.commit}`}>on GitHub at this commit</a>.</p></noscript>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+  </div>
+  <script>
+    import "../../scripts/scitool";
+  </script>
+</Base>
