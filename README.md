@@ -283,6 +283,21 @@ The rules:
   (see the roadmap); until then, deposits go to the Zenodo sandbox, whose DOIs (prefix
   `10.5072`) are not real.
 
+## Add the OSCR badge to your code
+
+An author or maintainer adds the paper's badge to its README in one line; it says what the registry
+knows (code, a validated tracing map, "not registered" for a paper it does not know yet) and links to
+the paper's page, and updates itself every night:
+
+```markdown
+[![OSCR](https://openscicode.org/badge/doi/10.1234/abcd.svg)](https://openscicode.org/badge/doi/10.1234/abcd)
+```
+
+Make yours, with every snippet (HTML, reStructuredText, AsciiDoc, Org, LaTeX, a card, shields.io's
+endpoint, GitLab group badges), at **[openscicode.org/badge/](https://openscicode.org/badge/)**; the
+full guide is [openscicode.org/help/badge/](https://openscicode.org/help/badge/), the design
+[docs/BADGE.md](docs/BADGE.md). From a clone: `oscr badge --write`.
+
 ## Architecture: the $0 stack
 
 | Piece | Runs on | Does | Cost |

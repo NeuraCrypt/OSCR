@@ -147,6 +147,21 @@ pre-filled, `/new/link/?repo=…&paper=…` for a repository the registry does n
 Papers otherwise, where you confirm and GitHub authorizes that one action as you. `--no-browser`
 prints the address.
 
+### `oscr badge`
+
+```sh
+oscr badge                       # the badge of this repository's paper, in Markdown
+oscr badge 10.1234/abcd --write  # into README.md, between <!-- oscr-badge:start --> and <!-- oscr-badge:end -->
+oscr badge --repo-badge --write  # the repository's own badge (no DOI needed)
+oscr badge --format rst          # rst, asciidoc, org, html (default: the README's own markup)
+oscr badge --remove              # take it out
+```
+
+The addresses and snippets are the site's (`website/src/lib/badge.ts`, the same vectors in both test
+suites). `--write` puts the block under the README's title (after a Hugging Face card's YAML front
+matter, never inside it) and replaces it there next time: it never adds a second one. It writes that one
+file of the working tree; committing and pushing stay yours (docs/BADGE.md).
+
 ## Your repository on GitHub
 
 GitHub's side of every command talks to **GitHub directly, with your own GitHub token** (the registry

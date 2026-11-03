@@ -1,0 +1,162 @@
+---
+// The badge generator (docs/BADGE.md): a paper's DOI or a repository's address in, its badge out,
+// with every snippet, the repositories of the paper and whether their README already carries it.
+// One static page (no file per paper); its script (src/scripts/badge.ts) reads the static lookup and
+// /data/ files of this site, and, to find a README, GitHub's, GitLab's and Hugging Face's own public
+// APIs from the reader's browser (on the reader's quota, nothing sent to the registry). The badges
+// themselves are drawn by the Worker (worker/badge.ts). Also the chooser a repository's badge links
+// to when the repository is the code of several papers (?repo=).
+import Base from "../../layouts/Base.astro";
+import { SITE_NAME } from "../../config";
+import { BADGE_SHOWS, BADGE_STYLES, BADGE_TARGETS, badgeUrls, snippet } from "../../lib/badge";
+
+const origin = new URL("/", Astro.site).origin;
+const example = badgeUrls(origin, { kind: "repo", repo: "gitlab.com/%{project_path}" }, { missing: "hide" });
+const gitlab = {
+  link: example.link.replace(/%25/g, "%"),
+  image: example.image.replace(/%25/g, "%"),
+};
+const STYLE_WORDS: Record<string, string> = {
+  flat: "flat, 20 pixels (a README)",
+  large: "large, 28 pixels (a web page)",
+  mark: "the mark alone",
+  card: "a card: title, journal, what is known (a web page, a slide)",
+};
+const SHOW_WORDS: Record<string, string> = {
+  status: "what the registry knows (the default)",
+  doi: "the paper's DOI",
+  map: "the validated tracing map's DOI",
+  code: "the number of repositories (or of papers)",
+  scripts: "the number of scripts",
+  language: "the main language",
+  license: "the code's licence",
+  journal: "the journal and the year",
+};
+const TARGET_WORDS: Record<string, string> = {
+  paper: "the paper's page (the default)",
+  reader: "the Code ↔ Paper reader",
+  map: "the tracing map",
+  cite: "how to cite it",
+  code: "the code's repository",
+  doi: "the paper at its publisher (doi.org)",
+  api: "the record in the public API (JSON)",
+};
+---
+<Base
+  title="Badges"
+  description={`Make the ${SITE_NAME} badge of a paper or a repository: one line to paste in a README, a model card or a web page, which says what the registry knows and links to the paper.`}
+  breadcrumb={[{ text: "Badges" }]}
+>
+  <h1>Badges</h1>
+  <p class="summary">
+    The {SITE_NAME} badge, in the README of a paper's code, on its Hugging Face card or on a lab's page, says what the
+    registry knows of the paper and takes its readers to it: the paper beside the code, its tracing map, its citation.
+    Give a DOI or a repository's address; the badge stays true by itself, since the registry draws it from its own
+    records every night. The <a href="/help/badge/">guide</a> explains every option.
+  </p>
+
+  <form id="badge-form" class="badge-form" action="/badge/" method="get" data-origin={origin} data-name={SITE_NAME}>
+    <p>
+      <label for="badge-subject">A paper's DOI, or a repository's address</label><br />
+      <input id="badge-subject" name="q" type="text" size="44" autocomplete="off" spellcheck="false" required
+        placeholder="10.1234/abcd or https://github.com/owner/name" />{" "}
+      <button type="submit">Make the badge</button>
+    </p>
+    <details class="badge-options">
+      <summary>Options</summary>
+      <p>
+        <label for="badge-style">Shape</label><br />
+        <select id="badge-style" name="style">
+          {BADGE_STYLES.map((s) => <option value={s}>{STYLE_WORDS[s]}</option>)}
+        </select>
+      </p>
+      <p>
+        <label for="badge-show">What it says</label><br />
+        <select id="badge-show" name="show">
+          {BADGE_SHOWS.map((s) => <option value={s}>{SHOW_WORDS[s]}</option>)}
+        </select>
+      </p>
+      <p>
+        <label for="badge-theme">Colours</label><br />
+        <select id="badge-theme" name="theme">
+          <option value="blue">the logo's blue (the default)</option>
+          <option value="light">white, framed in blue</option>
+        </select>
+      </p>
+      <p>
+        <label for="badge-to">Where a click goes</label><br />
+        <select id="badge-to" name="to">
+          {BADGE_TARGETS.map((t) => <option value={t}>{TARGET_WORDS[t]}</option>)}
+        </select>
+      </p>
+      <p>
+        <label for="badge-text">Your own words instead (optional, 40 characters)</label><br />
+        <input id="badge-text" name="text" type="text" size="30" maxlength="40" autocomplete="off" />
+      </p>
+    </details>
+  </form>
+  <noscript><p class="warning">The generator runs in your browser: it needs JavaScript. The <a href="/help/badge/">guide</a> gives the addresses to write by hand.</p></noscript>
+  <p id="badge-status" role="status" aria-live="polite"></p>
+
+  <section id="badge-choose" hidden aria-labelledby="badge-choose-title">
+    <h2 id="badge-choose-title">This repository is the code of several papers</h2>
+    <ul id="badge-papers"></ul>
+  </section>
+
+  <section id="badge-result" hidden aria-labelledby="badge-result-title">
+    <h2 id="badge-result-title">The badge</h2>
+    <p class="badge-preview"><a id="badge-link" href="/"><img id="badge-img" src="/badge.svg" alt="" /></a></p>
+    <p id="badge-facts"></p>
+    <h3>Copy it</h3>
+    <div id="badge-snippets"></div>
+    <h3>Its addresses</h3>
+    <dl class="settings" id="badge-addresses"></dl>
+    <p id="badge-copy-status" role="status" aria-live="polite" data-copy-status></p>
+  </section>
+
+  <section id="badge-repos-block" hidden aria-labelledby="badge-repos-title">
+    <h2 id="badge-repos-title">The paper's code</h2>
+    <p class="summary">
+      Each repository the registry links to the paper, and whether its README carries the badge already, read now from
+      the forge by your browser. A link opens the README in the forge's own editor: paste the snippet under the title,
+      and the forge offers to commit it, or to open a pull request when you cannot write to the repository. {SITE_NAME}{" "}
+      never writes to a repository and never asks for that permission.
+    </p>
+    <ul id="badge-repos" class="badge-repos"></ul>
+  </section>
+
+  <h2 id="everywhere">Every repository at once</h2>
+  <ul>
+    <li>
+      <strong>A GitLab group</strong> (or a whole instance): one group badge reaches every project of the group. In the
+      group's Settings, General, Badges, add a badge with these two addresses; GitLab fills in each project's path, and a
+      project the registry does not know shows nothing.
+      <dl class="settings">
+        <dt>Link</dt><dd><code>{gitlab.link}</code></dd>
+        <dt>Badge image URL</dt><dd><code>{gitlab.image}</code></dd>
+      </dl>
+    </li>
+    <li>
+      <strong>Your own clones</strong>: the researchers' command line writes the badge into a README and keeps it up to
+      date, between two marks, without adding it twice: <code>oscr badge --write</code> in the clone (the{" "}
+      <a href="/help/badge/#cli">guide</a>).
+    </li>
+    <li>
+      <strong>All your papers</strong>: signed in with your ORCID iD, <a href="/account/#badges">your account page</a>{" "}
+      lists the papers you are a verified author of, each with its badge and the repositories that still lack it.
+    </li>
+  </ul>
+
+  <h2 id="static">Without the registry's server</h2>
+  <p>
+    Where an SVG drawn on demand cannot go, the static images never change and need nothing from the server:{" "}
+    <a href="/badge.svg"><code>/badge.svg</code></a> and, for LaTeX, a word processor or an email,{" "}
+    <a href="/badge.png"><code>/badge.png</code></a>. Link them to the paper's page yourself.
+  </p>
+  <p><img src="/badge.svg" alt={`${SITE_NAME}: paper ↔ code`} /> <img src="/badge.png" alt={SITE_NAME} height="20" /></p>
+  <pre>{snippet("markdown", `${origin}/badge.svg`, `${origin}/badge/doi/10.1234/abcd`, SITE_NAME)}</pre>
+
+  <script>
+    import "../../scripts/badge";
+  </script>
+</Base>

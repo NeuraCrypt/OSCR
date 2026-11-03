@@ -1,70 +1,239 @@
 ---
-// Help: the badge (src/pages/badge.svg.ts; the Contribute section's snippets; docs/CONTRIBUTIONS.md,
-// "The badge").
+// Help: the badge, the complete guide (docs/BADGE.md; the generator /badge/, src/pages/badge/;
+// the Worker's badges, worker/badge.ts; the drawing, src/lib/badge.ts; the CLI, `oscr badge`).
 import Info from "../../components/Info.astro";
 import { SITE_NAME } from "../../config";
+import { BADGE_MAX_AGE, badgeUrls, snippet } from "../../lib/badge";
 
-const site = new URL("/", Astro.site).href;
-const badge = new URL("/badge.svg", Astro.site).href;
-const page = `${site}paper/<your paper>/`;
-const snippets = [
-  { label: "Markdown (a README.md)", text: `[![${SITE_NAME}](${badge})](${page})` },
-  { label: "reStructuredText (a README.rst)", text: `.. image:: ${badge}\n   :target: ${page}\n   :alt: ${SITE_NAME}` },
-  { label: "HTML", text: `<a href="${page}"><img src="${badge}" alt="${SITE_NAME}"></a>` },
-];
+const origin = new URL("/", Astro.site).origin;
+const DOI = "10.1234/abcd";
+const REPO = "github.com/owner/name";
+const paper = badgeUrls(origin, { kind: "doi", doi: DOI });
+const repo = badgeUrls(origin, { kind: "repo", repo: REPO });
+const md = snippet("markdown", paper.image, paper.link, SITE_NAME);
+const gitlabGroup = badgeUrls(origin, { kind: "repo", repo: "gitlab.com/%{project_path}" }, { missing: "hide" });
+const unpct = (s: string) => s.replace(/%25/g, "%");
 const toc = [
-  { id: "what", text: "What the badge is" },
-  { id: "get", text: "Getting your snippet" },
-  { id: "github", text: "Adding it on GitHub" },
+  { id: "quick", text: "In thirty seconds" },
+  { id: "what", text: "What the badge says" },
+  { id: "addresses", text: "Its addresses" },
+  { id: "platforms", text: "Platform by platform" },
+  { id: "options", text: "The options" },
+  { id: "shields", text: "With shields.io" },
+  { id: "everywhere", text: "Every repository at once" },
+  { id: "cli", text: "From the command line" },
   { id: "why", text: "Why no pull request is made for you" },
+  { id: "fresh", text: "How it stays true" },
+  { id: "privacy", text: "Privacy" },
+  { id: "trouble", text: "When it does not show" },
 ];
 ---
 <Info
   title="The badge"
-  description={`The ${SITE_NAME} badge links a paper's code repository to its page: one image, three snippets, added by the author.`}
+  description={`Add a paper's ${SITE_NAME} badge to a README, a Hugging Face card, GitLab, a web page or a poster: every snippet, every option, every repository at once.`}
   group="help"
   path="/help/badge/"
   parents={[{ text: "Help", href: "/help/" }]}
   toc={toc}
 >
   <p class="lead" slot="lead">
-    The badge, in the README of a paper's code, sends the code's readers to the paper's page on {SITE_NAME}: the paper
-    beside the code, its tracing map, its citation.
+    The badge puts the paper beside its code. In the README of a paper's code, on its Hugging Face card or on a lab's
+    page, it says what {SITE_NAME} knows of the paper and takes the code's readers to it: the paper and the code side by
+    side, the tracing map, the citation. One line to paste, true by itself afterwards.
   </p>
 
-  <h2 id="what">What the badge is</h2>
+  <h2 id="quick">In thirty seconds</h2>
+  <ol>
+    <li>Open <a href="/badge/">the badge page</a> and give your paper's DOI (or your repository's address).</li>
+    <li>Copy the Markdown line. It looks like this:
+      <pre>{md}</pre>
+    </li>
+    <li>Paste it under the title of your README, and commit. That is all: the badge updates itself every night.</li>
+  </ol>
+  <p>
+    No account, no key, no file to host. Signed in as a verified author, <a href="/account/#badges">your account page</a>{" "}
+    lists each of your papers with its badge, and the badge page says which of their repositories still lack it.
+  </p>
+
+  <h2 id="what">What the badge says</h2>
   <p><img src="/badge.svg" alt={`${SITE_NAME}: paper ↔ code`} /></p>
   <p>
-    One image for every paper, <a href="/badge.svg"><code>/badge.svg</code></a>: a flat rectangle with the platform's name
-    and "paper ↔ code". What makes it yours is the link around it, to your paper's page. There is no image per paper,
-    the site keeps a fixed number of files, and the badge says nothing that could become false.
+    On the left, the {SITE_NAME} wordmark on its blue; on the right, what the registry knows, drawn from its records:
+  </p>
+  <table class="facts">
+    <thead><tr><th>The badge says</th><th>When</th><th>A click goes to</th></tr></thead>
+    <tbody>
+      <tr><td>paper ↔ code</td><td>the paper has a page, with its authors' code</td><td>the paper's page</td></tr>
+      <tr><td>paper ↔ code · validated (green)</td><td>an author validated its tracing map, which has a DOI</td><td>the paper's page</td></tr>
+      <tr><td>code on request, data only</td><td>what the paper's availability statement says</td><td>the paper's page</td></tr>
+      <tr><td>code of 3 papers</td><td>a repository's badge, when the repository is the code of several papers</td><td>the list of those papers</td></tr>
+      <tr><td>read, no code found (grey)</td><td>the paper was read but no code was found</td><td>the DOI lookup</td></tr>
+      <tr><td>not registered (grey)</td><td>the registry does not know the paper or the repository yet</td><td>the submission form, filled in</td></tr>
+    </tbody>
+  </table>
+  <p>
+    So a badge added before the paper is in the registry is not wasted: it invites its readers to submit it, and turns
+    into the paper's badge on the night the record is published.
   </p>
 
-  <h2 id="get">Getting your snippet</h2>
+  <h2 id="addresses">Its addresses</h2>
+  <p>A paper's badge is addressed by its DOI, a repository's by its host, owner and name, exactly as in its URL.</p>
+  <dl class="settings">
+    <dt>A paper's image</dt><dd><code>{paper.image}</code></dd>
+    <dt>A paper's link</dt><dd><code>{paper.link}</code> (it follows the paper's page wherever it moves)</dd>
+    <dt>A repository's image</dt><dd><code>{repo.image}</code></dd>
+    <dt>A repository's link</dt><dd><code>{repo.link}</code></dd>
+    <dt>shields.io's endpoint</dt><dd><code>{paper.json}</code></dd>
+    <dt>The static images</dt><dd><code>{origin}/badge.svg</code> and <code>{origin}/badge.png</code> (no server work at all)</dd>
+  </dl>
   <p>
-    Signed in as a verified author of the paper, or a maintainer of its code, open the paper's page: its Contribute
-    section shows "Add the badge to its README" with three snippets, already pointing to the paper's page, each with a
-    Copy button. They look like this:
+    A DOI's characters other than the slash are percent-encoded in the path (the badge page does it for you). A DOI that
+    ends in <code>.svg</code> or <code>.json</code> goes in the query instead: <code>{origin}/badge/doi.svg?doi=…</code>.
+    A paper's badge is the better choice in a README that serves one paper; a repository's badge needs no DOI and suits
+    a template, a group badge or a repository that is the code of several papers.
   </p>
-  {snippets.map((s) => (
-    <>
-      <h3>{s.label}</h3>
-      <pre>{s.text}</pre>
-    </>
-  ))}
 
-  <h2 id="github">Adding it on GitHub</h2>
+  <h2 id="platforms">Platform by platform</h2>
+  <dl class="settings">
+    <dt>GitHub, Codeberg, Bitbucket, Gitea, Forgejo</dt>
+    <dd>
+      <p>The Markdown line, under the README's title. GitHub shows images through its own proxy (camo): the badge is
+        public, needs no cookie and is cached an hour, which is what that proxy expects.</p>
+      <pre>{md}</pre>
+    </dd>
+    <dt>GitLab</dt>
+    <dd>
+      <p>The Markdown line in the README, or better, a project badge: Settings, General, Badges, with the link and the
+        image's address above; it then shows under the project's name on every page. A group badge reaches every project
+        of a group at once (<a href="#everywhere">below</a>).</p>
+    </dd>
+    <dt>Hugging Face (a model, a dataset, a Space)</dt>
+    <dd>
+      <p>The card is the repository's <code>README.md</code>: paste the Markdown line in its body, after the YAML block
+        between the two <code>---</code> lines, never inside it. Through the website: the card's Edit button, then
+        "Commit changes", or "Open as a pull request" on someone else's repository.</p>
+    </dd>
+    <dt>PyPI, Read the Docs, Sphinx</dt>
+    <dd>
+      <p>A Markdown README needs nothing more (<code>long_description_content_type = "text/markdown"</code>). In
+        reStructuredText:</p>
+      <pre>{snippet("rst", paper.image, paper.link, SITE_NAME)}</pre>
+    </dd>
+    <dt>R (README.Rmd, pkgdown), Julia (Documenter), Quarto, MkDocs, a Jupyter notebook</dt>
+    <dd><p>The Markdown line, in the README or in a Markdown cell at the top of the notebook.</p></dd>
+    <dt>AsciiDoc and Org (README.adoc, README.org)</dt>
+    <dd>
+      <pre>{snippet("asciidoc", paper.image, paper.link, SITE_NAME)}</pre>
+      <pre>{snippet("org", paper.image, paper.link, SITE_NAME)}</pre>
+    </dd>
+    <dt>A web page, a lab's site, WordPress, a Zenodo record's description</dt>
+    <dd>
+      <pre>{snippet("html", paper.image, paper.link, SITE_NAME)}</pre>
+      <p>For a page, the card (<code>?style=card</code>) shows the title, the journal and what the registry knows, 420 by
+        64 pixels; <code>?style=large</code> is 28 pixels high.</p>
+    </dd>
+    <dt>LaTeX (a thesis, slides, a poster), Word, PowerPoint, an email signature</dt>
+    <dd>
+      <p>They read no SVG: save <a href="/badge.png"><code>/badge.png</code></a> (the mark, sharp at any size) next to
+        your file and link it to the paper's link. With hyperref:</p>
+      <pre>{snippet("latex", paper.image, paper.link, SITE_NAME)}</pre>
+    </dd>
+  </dl>
+
+  <h2 id="options">The options</h2>
+  <p>Added to the image's address as a query, for example <code>{paper.image}?style=large&amp;show=doi</code>.</p>
+  <table class="facts">
+    <thead><tr><th>Option</th><th>Values</th></tr></thead>
+    <tbody>
+      <tr><td><code>style</code></td><td><code>flat</code> (20 pixels, the default), <code>large</code> (28), <code>mark</code> (the wordmark alone), <code>card</code> (title, journal, state)</td></tr>
+      <tr><td><code>show</code></td><td><code>status</code> (the default), <code>doi</code>, <code>map</code> (the validated map's DOI), <code>code</code> (the number of repositories, or of papers), <code>scripts</code>, <code>language</code>, <code>license</code>, <code>journal</code></td></tr>
+      <tr><td><code>theme</code></td><td><code>blue</code> (the default), <code>light</code> (white, framed in blue)</td></tr>
+      <tr><td><code>text</code></td><td>your own words for the right part, 40 characters at most</td></tr>
+      <tr><td><code>missing</code></td><td><code>hide</code>: an empty image when the registry does not know the key (for a group badge)</td></tr>
+    </tbody>
+  </table>
   <p>
-    For each GitHub repository of the paper, the section links to its README in GitHub's own editor (or to the
-    repository when it has none). Paste the snippet at the top, and GitHub offers to commit it, or to open a pull request
-    if you cannot write to the repository. Elsewhere, edit the README as you usually do.
+    And on the link, <code>?to=</code> chooses where a click goes: <code>paper</code> (the default), <code>reader</code>{" "}
+    (the Code ↔ Paper reader), <code>map</code>, <code>cite</code>, <code>code</code> (the repository),{" "}
+    <code>doi</code> (the publisher) or <code>api</code> (the record as JSON).
   </p>
+
+  <h2 id="shields">With shields.io</h2>
+  <p>
+    Every badge also answers as a <a href="https://shields.io/badges/endpoint-badge">shields.io endpoint</a>, for a
+    README whose other badges are shields' and should look alike (rounded corners, <code>for-the-badge</code>, a colour
+    of your own): the same facts and the same logo, drawn by shields.io.
+  </p>
+  <pre>{`[![${SITE_NAME}](${paper.shields}&style=flat-square)](${paper.link})`}</pre>
+
+  <h2 id="everywhere">Every repository at once</h2>
+  <ul>
+    <li>
+      <strong>A GitLab group</strong>: in the group's Settings, General, Badges, one badge with the link{" "}
+      <code>{unpct(gitlabGroup.link)}</code> and the image <code>{unpct(gitlabGroup.image)}</code>. GitLab puts each
+      project's path in place of <code>%&lbrace;project_path&rbrace;</code>; a project the registry does not know shows
+      nothing, and a project it learns later shows its badge the next night. On your own GitLab, use its host instead of{" "}
+      <code>gitlab.com</code>.
+    </li>
+    <li>
+      <strong>Your papers</strong>: <a href="/account/#badges">your account page</a> links each paper you are a
+      verified author of to its badge, and the badge page reads each of its repositories' README, says which lack the
+      badge, and opens each one in the forge's own editor (on GitHub, a repository without a README gets a new one,
+      already filled with the badge).
+    </li>
+    <li><strong>Your clones</strong>: <code>oscr badge --write</code>, below.</li>
+  </ul>
+
+  <h2 id="cli">From the command line</h2>
+  <p>
+    The researchers' <a href="/help/cli/">command line</a> writes the badge into a clone's README, between two marks,
+    under its title, and replaces it there next time instead of adding it twice. It finds the paper the registry links
+    to the repository; give the DOI otherwise. You then commit and push it yourself.
+  </p>
+  <pre>{`oscr badge                      # the snippets, for this clone's paper
+oscr badge 10.1234/abcd --write # into README.md, between <!-- oscr-badge:start --> and <!-- oscr-badge:end -->
+oscr badge --repo-badge --write # the repository's own badge instead of the paper's
+oscr badge --format rst         # README.rst, AsciiDoc, Org, HTML: --format rst|asciidoc|org|html
+oscr badge --remove             # take it out again`}</pre>
 
   <h2 id="why">Why no pull request is made for you</h2>
   <p>
-    A one-click pull request would need your GitHub authorization with the <code>public_repo</code> scope, which gives
-    write access to every public repository you have. {SITE_NAME} never asks GitHub for any permission: the badge is added
-    by you, in GitHub's editor, your consent is in the gesture itself. The <a href="/brand/#badge">brand page</a> gives
-    the badge's rules of use.
+    Opening pull requests on the authors' repositories by itself would need write permission on them, and would send
+    unrequested changes to people who did not ask for them: {SITE_NAME} never asks a forge for permission to write to your repositories, never
+    writes to a repository and sends no mass message (the <a href="/policies/">policies</a>). The badge is added by
+    you, in the forge's own editor or with your own command line: your consent is in the gesture itself. What{" "}
+    {SITE_NAME} does instead is make that gesture one click: the right snippet, the README already found, the editor
+    already open.
   </p>
+
+  <h2 id="fresh">How it stays true</h2>
+  <ul>
+    <li>The badge is drawn from the registry's public records, which change once a night: it says nothing that the
+      paper's page does not.</li>
+    <li>Browsers, GitHub's image proxy and the registry's own cache keep it {BADGE_MAX_AGE / 3600} hour, then ask again
+      (and may show the old one for up to a day while they do). A change made tonight shows on every README by the next
+      morning.</li>
+    <li>Each badge carries an accessible name ("{SITE_NAME}: paper ↔ code") for screen readers, and a text that stays in
+      its box whatever font the reader has.</li>
+  </ul>
+
+  <h2 id="privacy">Privacy</h2>
+  <p>
+    A badge sets no cookie, runs no script, loads nothing from elsewhere (its logo is inside it), and counts nothing:{" "}
+    {SITE_NAME} keeps no record of who sees a badge, and has no view counter. On GitHub, the images go through
+    GitHub's proxy, so the registry does not even see the reader's address.
+  </p>
+
+  <h2 id="trouble">When it does not show</h2>
+  <ul>
+    <li><strong>An old badge on GitHub</strong>: GitHub's proxy keeps it an hour; past a day, its cache can be purged
+      as GitHub explains (an anonymized image URL's <code>PURGE</code>).</li>
+    <li><strong>A grey "not registered"</strong>: check the DOI on <a href="/lookup/">the DOI lookup</a>; the badge's link
+      opens the submission form, already filled in.</li>
+    <li><strong>A broken image</strong>: the badges drawn on demand share the registry's free daily allowance; on a
+      day it runs out, they may not show until midnight UTC. The static <code>/badge.svg</code> and{" "}
+      <code>/badge.png</code> never run out.</li>
+    <li><strong>The rules of use</strong> (no changed image or colours; your own words are allowed) are on the{" "}
+      <a href="/brand/#badge">brand page</a>.</li>
+  </ul>
 </Info>

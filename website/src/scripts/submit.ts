@@ -78,6 +78,11 @@ byId<HTMLFormElement>("submit-form")?.addEventListener("submit", async (ev) => {
     return write(out, "warning", text);
   }
   form.reset();
+  try {
+    sessionStorage.removeItem("oscr-submit-prefill");
+  } catch {
+    // nothing kept
+  }
   write(
     out,
     "ok",
@@ -87,6 +92,28 @@ byId<HTMLFormElement>("submit-form")?.addEventListener("submit", async (ev) => {
   );
 });
 
+/** A badge of an unregistered paper or repository links here with ?doi= or ?code= (worker/badge.ts):
+ *  the form starts filled. Kept for this tab through a sign-in, which comes back without the query. */
+function prefill() {
+  const KEY = "oscr-submit-prefill";
+  const q = new URLSearchParams(location.search);
+  let doi = q.get("doi") ?? "";
+  let code = q.get("code") ?? "";
+  try {
+    if (doi || code) sessionStorage.setItem(KEY, JSON.stringify({ doi, code }));
+    else ({ doi = "", code = "" } = JSON.parse(sessionStorage.getItem(KEY) ?? "{}") as { doi?: string; code?: string });
+  } catch {
+    // storage refused: the query alone
+  }
+  const field = (id: string, value: string) => {
+    const el = byId<HTMLInputElement | HTMLTextAreaElement>(id);
+    if (el && value && !el.value) el.value = value.slice(0, 300);
+  };
+  field("submit-doi", doi);
+  field("submit-links", /^https:\/\/[^\s]+$/.test(code) ? code : "");
+}
+
+prefill();
 sayArrival();
 void load();
 

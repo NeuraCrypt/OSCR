@@ -70,16 +70,15 @@ code, the `oscr` community. The DOI and the record's address go back to the auth
 records the validation as `test`, which only Zenodo's sandbox accepts, and which no public output
 shows (`catalog.public_db`, `catalog.json`).
 
-**The badge** (a verified author or a maintainer of the paper's code). One static image,
-`/badge.svg` (a flat rectangle, the platform's name from `SITE_NAME`: no file per paper, the site
-holds at most 20,000), and three snippets that link it to the paper's page, Markdown,
-reStructuredText, HTML, each with a Copy button. **Proposing it on GitHub** needs no permission: a
-link opens the README of each GitHub repository of the paper (`/blob/HEAD/<README>`, the name read
-from the repository's file list) or the repository itself when it has none; the author edits it in
-GitHub's own editor and opens the pull request themselves, explicit consent by construction. The
-one-click pull request (the author's own GitHub authorization, a token used once) is **not built**:
-it needs the `public_repo` scope, which gives write access to every public repository of the
-person, for a gain of two clicks.
+**The badge** (since 2026-11-03, docs/BADGE.md). Each paper and each repository has its own badge,
+drawn by the Worker from the static records (`/badge/doi/<doi>.svg`, `/badge/repo/<host>/<path>.svg`,
+their shields.io endpoint `.json`, and their link, a redirect to the paper's page); the generic static
+`/badge.svg` and `/badge.png` stay for where nothing is drawn on demand. A verified author or a
+maintainer finds the paper's three snippets in its Contribute section, and every form on the generator
+`/badge/`, which also reads each repository's README from the forge (in the reader's browser) and opens
+the forge's own editor; the account page lists each of their papers' badges. **Proposing it** needs no
+permission: the author edits the README in the forge's own editor and opens the pull request
+themselves, explicit consent by construction.
 
 **Request a removal** (the page `/removal/?paper=<the registry's id or a DOI>`, since 2026-09-29;
 signed in until Turnstile comes with Phase 7). One static page for every record, linked from each
@@ -154,7 +153,7 @@ rule did (`reverse`).
 | an author claim | the role that allows corrections, validations and removals applied at once | verified when the paper lists the ORCID iD, or when Crossref's automatic update put the paper in the claimant's ORCID record (never a work the claimant added, by hand or through a search wizard); else closed after 30 days |
 | a maintainer claim | the maintainer role | GitHub checks it at once (the Worker, Phase 5); otherwise closed after 30 days. A contributor gets the role, but the rules trust only an owner or an organization member for what changes a record or removes at once |
 | a removal request | hides: the record, copies (and their display from the source), the map | below |
-| the badge | a static image, no input | n/a |
+| the badge | a static image; the Worker's badges read static files only, no input kept | n/a |
 | an account's display name (from its provider) | only as a map's creator on Zenodo, when the paper does not list the validator | `public_name` |
 
 **No free text a reader types reaches a public page**, so no language model is used (Workers AI or
@@ -503,7 +502,8 @@ request comes. They stay here for a reinstallation:
 
 ## Limits and what comes next
 
-- The one-click pull request of the badge is not built (see "The badge").
+- The one-click pull request of the badge is not built (see "The badge" and docs/BADGE.md, which weighs
+  every way of adding it to all the authors' repositories).
 - Moderation is automatic (above, since 2026-09-29), with the owner's commands to decide, override and
   reverse; a moderation interface in the site comes with Phase 7. No global daily cap on the Worker's
   writes, no Turnstile yet.

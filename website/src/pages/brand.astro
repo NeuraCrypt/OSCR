@@ -25,8 +25,8 @@ const FILES = [
   { path: "/brand/logo-original.png", what: "The owner's original file", size: "2000 × 2000", use: "reference; prefer the cropped files" },
 ];
 const COLOURS = [
-  { cls: "swatch-logo", name: "Logo blue", hex: "#04408F", rgb: "4, 64, 143", use: "the wordmark, the icons' ground" },
-  { cls: "swatch-masthead", name: "Masthead", hex: "#1F3B4D", rgb: "31, 59, 77", use: "the site's masthead, the badge's right half" },
+  { cls: "swatch-logo", name: "Logo blue", hex: "#04408F", rgb: "4, 64, 143", use: "the wordmark, the icons' ground, the badge's left part" },
+  { cls: "swatch-masthead", name: "Masthead", hex: "#1F3B4D", rgb: "31, 59, 77", use: "the site's masthead, the badge's right part" },
   { cls: "swatch-link", name: "Link", hex: "#0645AD", rgb: "6, 69, 173", use: "links in the site's text" },
   { cls: "swatch-text", name: "Text", hex: "#000000", rgb: "0, 0, 0", use: "the site's text" },
   { cls: "swatch-white", name: "White", hex: "#FFFFFF", rgb: "255, 255, 255", use: "the ground, the white wordmark" },
@@ -148,15 +148,18 @@ const toc = [
   <h2 id="badge">The badge</h2>
   <p><img src="/badge.svg" alt={`${SITE_NAME}: paper ↔ code`} /></p>
   <p>
-    <a href="/badge.svg"><code>/badge.svg</code></a> is one image for every paper, a flat rectangle, never a rounded
-    pill, with the platform's name and "paper ↔ code". It belongs in the README of a paper's code, linked to that paper's
-    page on {SITE_NAME}:
+    The badge is the wordmark, white on the logo's blue, then a short fact on the masthead's colour (green once an author
+    has validated the paper's tracing map, grey when the registry does not know the paper): a flat rectangle, never a
+    rounded pill, 20 pixels high. Each paper and each repository has its own, drawn from the registry's records
+    (<code>/badge/doi/&lt;DOI&gt;.svg</code>, <code>/badge/repo/&lt;host/owner/name&gt;.svg</code>), and its link goes to
+    the paper's page. <a href="/badge/">The badge page</a> makes it, with every snippet; the static{" "}
+    <a href="/badge.svg"><code>/badge.svg</code></a> and <a href="/badge.png"><code>/badge.png</code></a> are for where
+    nothing is drawn on demand.
   </p>
-  <pre>{`[![${SITE_NAME}](${new URL("/badge.svg", Astro.site).href})](${site}paper/<your paper>/)`}</pre>
   <p>
-    Use it only for a paper {SITE_NAME} lists, linked to that paper's page; do not change its image or words. A paper's
-    authors and its code's maintainers find the three snippets ready on its page (<a href="/help/badge/">the badge's
-    guide</a>).
+    Use it only for a paper {SITE_NAME} lists, or for its code, linked to the address the badge page gives; do not change
+    its image or colours (its words may be your own, <code>?text=</code>). <a href="/help/badge/">The badge's guide</a>{" "}
+    explains every option.
   </p>
 
   <h2 id="link">Citing and linking</h2>

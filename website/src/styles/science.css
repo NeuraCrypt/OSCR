@@ -1800,3 +1800,16 @@ td.shortcut-keys kbd, .shortcut-help kbd {
 .status-day.state-none { background: var(--bg-sidebar); }
 .status-key { display: flex; flex-wrap: wrap; gap: .4em 1em; align-items: center; }
 .status-key .status-day { margin-right: .25em; }
+
+/* The badge (docs/BADGE.md): the generator /badge/ (its form, its preview on a plain ground, the
+   paper's repositories), and the call-out that points authors to it from /help/. */
+p.callout { border-left: 3px solid var(--masthead); background: var(--bg-sidebar); padding: .5em .8em; margin: .6em 0 1em; max-width: 46em; }
+form.badge-form input[type="text"] { max-width: 100%; }
+details.badge-options { margin: .3em 0 .8em; }
+details.badge-options > summary { cursor: pointer; }
+details.badge-options p { margin: .45em 0; }
+p.badge-preview { padding: 1em; border: 1px solid var(--rule); background: #fff; line-height: 0; }
+p.badge-preview img { max-width: 100%; height: auto; }
+#badge-snippets details { margin: .3em 0; }
+#badge-snippets details > summary { cursor: pointer; font-weight: bold; }
+ul.badge-repos > li { margin: .7em 0; overflow-wrap: anywhere; }

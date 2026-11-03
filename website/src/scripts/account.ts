@@ -196,6 +196,15 @@ function showSignedIn(me: Me) {
   );
   byId("authorship-form")?.toggleAttribute("hidden", !me.handles?.orcid);
 
+  // The badges (docs/BADGE.md): one line a paper with a DOI, one a maintained repository, each to the
+  // generator, which reads whether their READMEs carry it already.
+  const badgeItems = [
+    ...papers.filter((p) => p.doi).map((p) => item({ href: `/badge/?q=${encodeURIComponent(p.doi!)}`, text: `The badge of ${p.title || p.doi}` })),
+    ...(me.repositories ?? []).map((r) => item({ href: `/badge/?q=${encodeURIComponent(r.repo)}`, text: `The badge of ${r.repo}` })),
+  ];
+  byId("badges-list")?.replaceChildren(...badgeItems);
+  if (!badgeItems.length) write(byId("badges-intro"), "", "Once you are a verified author of a paper, or the maintainer of its code, its badge is listed here. Anyone can make one on ", { href: "/badge/", text: "the badge page" }, ".");
+
   const claims = me.claims ?? [];
   byId("claims-none")?.toggleAttribute("hidden", claims.length > 0);
   byId("claims")?.replaceChildren(

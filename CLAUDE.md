@@ -151,8 +151,13 @@ What signed-in readers ask of the registry (`website/worker/contributions/`, `os
   the page showed (its digest; a map that changed since is not deposited). Deposit on the **Zenodo
   sandbox** unless `OSCR_ZENODO_INSTANCE=zenodo`. While sign-in uses ORCID's sandbox, a validation
   is recorded as a test (`proof = 'test'`), never exported.
-- **Badge**: one static image (`/badge.svg`, no file per paper) and snippets; the author opens the
-  pull request in GitHub's own editor. No write permission is ever asked of GitHub.
+- **Badge** (rebuilt 2026-11-03, `docs/BADGE.md`): a badge per paper and per repository, drawn by the
+  Worker from static files only (`worker/badge.ts`: `/badge/doi/<doi>.svg|.json`, `/badge/repo/<host>/<path>.svg|.json`,
+  and their link, a redirect to the paper, to `/submit/` when unknown), cached an hour; the drawing is
+  `src/lib/badge.ts` (the wordmark embedded, `tools/make_badge_logo.py`); the static `/badge.svg` and
+  `/badge.png` stay as the fallback. The generator `/badge/` (one page), the account's `#badges`, GitLab
+  group badges and `oscr badge --write` add it everywhere; the author opens every change in the forge's
+  own editor. No write permission is ever asked of GitHub, no pull request or message is sent for them.
 - **Takedown**: one page, `/removal/?paper=…`, linked from every record (signed in until Turnstile):
   who asks, what (the record, the scripts' copies, a repository, a file, the tracing map), why, a
   justification without an email address, two confirmations, a review before sending. Decided by the

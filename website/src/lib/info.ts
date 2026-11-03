@@ -39,7 +39,7 @@ export const HELP: InfoLink[] = [
   { href: "/help/correct/", text: "Correcting a record's links", summary: "Adding, removing or re-labelling a paper's code and data links, as a verified author or a maintainer." },
   { href: "/help/claim/", text: "Claiming authorship", summary: "When your ORCID iD is on the paper, and when it is not." },
   { href: "/help/validate/", text: "Validating a map and its DOI", summary: "What a validation checks, the deposit on Zenodo, and what the DOI covers." },
-  { href: "/help/badge/", text: "The badge", summary: "One image for every paper, its snippets, and how to add it to your README." },
+  { href: "/help/badge/", text: "The badge", summary: "Add a paper's badge to a README, a Hugging Face card, GitLab, a web page or a poster: every snippet, every option, every repository at once." },
   { href: "/help/removal/", text: "Requesting a removal", summary: "What can be removed, who may ask, how the rules decide a request, and when a decision takes effect." },
   { href: "/help/data/", text: "Accessing the data", summary: "The datasets on Hugging Face, their licences, and what stays private." },
   { href: "/help/api/", text: "The public API", summary: "The free, keyless read API: every endpoint with an example in curl, Python and R, bulk downloads, rates and citation." },

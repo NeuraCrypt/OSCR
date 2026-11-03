@@ -23,6 +23,9 @@
 //                        GitHub's webhooks, OSCR's layer over a repository (forge/service/;
 //                        docs/FORGE.md). The repository pages themselves are static (/r/*).
 //   anything else under /api/   a JSON 404
+//   /badge/doi/*, /badge/repo/*  a paper's or a repository's badge, its shields.io endpoint, its
+//                        link (badge.ts; docs/BADGE.md). No static file lives there, so they come
+//                        here through not_found_handling, like the pages below.
 //   anything else        pages.ts: a paper rendered on demand, else the site's 404 page
 //
 // The search's answers are public and cached (Cache-Control: public, api.ts); the accounts', the
@@ -31,6 +34,7 @@
 //
 // Only the default export: the runtime takes every export of the main module for an entry point.
 import { handleAccount } from "./account/index.ts";
+import { handleBadge } from "./badge.ts";
 import { error, handleSearch } from "./api.ts";
 import { handleContributions } from "./contributions/index.ts";
 import type { Context, Env, Handler } from "./env.ts";
@@ -109,6 +113,10 @@ export default {
     if (handle) return handle(request, env, ctx);
     if (path === "/api" || path === "/api/") return apiPage(request, env.ASSETS);
     if (path === "/api" || path.startsWith("/api/")) return error(404, "not_found", "No such route.");
+    if (path.startsWith("/badge/")) {
+      const badge = await handleBadge(request, env, ctx);
+      if (badge) return badge;
+    }
     return handlePage(request, env.ASSETS);
   },
 };

@@ -138,6 +138,14 @@ oscr cite --software             # the software itself, not the paper the file p
 oscr cite --release v1.2.0       # that version, with the DOI its release notes name
 oscr cite --swhid                # the commit's Software Heritage identifiers`}</pre>
   <p>
+    <code>oscr badge</code> gives the <a href="/help/badge/">badge</a> of the repository's paper, and with{" "}
+    <code>--write</code> puts it under the README's title, between two marks, replacing it there next time:
+  </p>
+  <pre>{`oscr badge                       # the snippet, in Markdown
+oscr badge --write               # into README.md (README.rst, .adoc, .org: their own markup)
+oscr badge --repo-badge --write  # the repository's own badge, no DOI needed
+oscr badge --remove              # take it out again`}</pre>
+  <p>
     <code>oscr trace</code> works with the <a href="/help/maps/">tracing maps</a> that tie a paper's Methods
     paragraphs to lines of its code at a pinned commit. <code>check</code> finds each link's lines again at
     another commit the way the site's reader does (the same lines, the nearest copy, else the map's symbol):

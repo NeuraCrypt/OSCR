@@ -210,3 +210,24 @@
 # allow Turnstile's script and frame, from challenges.cloudflare.com, and nothing else outside the site.
 # /data-rights/ keeps the strict, self-only policy defined above (the live GDPR page is signed-in and
 # carries no Turnstile): it is NOT relaxed for the GitHub side.
+
+# The badge generator (/badge/, docs/BADGE.md): it reads this site's static files, and each
+# repository's README from the forge's own public API, in the reader's browser (GitHub's, GitLab.com's,
+# Hugging Face's), to say whether the badge is in it. Its preview is a badge of this site.
+/badge/
+  ! Content-Security-Policy
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self' https://api.github.com https://gitlab.com https://huggingface.co; form-action 'self'; frame-ancestors 'none'; base-uri 'none'; object-src 'none'
+
+# The static badges: anyone may embed them, from any site (a README, a model card, a lab's page),
+# and the SVG may load and run nothing. An hour in every cache, like the badges the Worker draws.
+/badge.svg
+  ! Content-Security-Policy
+  Content-Security-Policy: default-src 'none'; img-src data:; style-src 'unsafe-inline'; sandbox
+  Cross-Origin-Resource-Policy: cross-origin
+  Access-Control-Allow-Origin: *
+  Cache-Control: public, max-age=3600, stale-while-revalidate=86400
+
+/badge.png
+  Cross-Origin-Resource-Policy: cross-origin
+  Access-Control-Allow-Origin: *
+  Cache-Control: public, max-age=86400
