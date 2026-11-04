@@ -125,7 +125,10 @@ export async function handlePage(request: Request, assets: Assets | undefined): 
   // /paper/<slug>: to the page itself.
   if (!m[3] || m[1] !== slug) return Response.redirect(new URL(`/paper/${slug}/`, url).toString(), 301);
   const shell = await asset(assets, url, "/paper/404.html");
-  const page = shell.ok ? fillShell(await shell.text(), paperView(record)) : null;
+  const text = shell.ok ? await shell.text() : "";
+  // The badge box names the platform as the shell does (<meta name="application-name">).
+  const name = text.match(/<meta name="application-name" content="([^"]*)"/)?.[1] ?? "";
+  const page = shell.ok ? fillShell(text, paperView(record, url.origin, name)) : null;
   if (page === null) return new Response("This page could not be rendered.", { status: 500 });
   return html(head ? null : page, 200, PAPER_HEADERS);
 }

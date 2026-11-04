@@ -412,3 +412,50 @@ export function hasBadge(readme: string, host: string): boolean {
   const h = host.toLowerCase().replace(/^https?:\/\//, "").replace(/\/$/, "");
   return text.includes(`${h}/badge`) || text.includes(`${h}%2fbadge`) || text.includes(README_MARKS.start);
 }
+
+// ── the "Add the badge" box (every paper's and every scientific tool's page) ─────────────────────────
+
+/** The marks around a badge in a README, by markup (cli/src/oscr_cli/badge.py MARKS). A snippet copied
+ *  with its marks is one that `oscr badge --write`, the GitHub Action and the App replace in place. */
+export const BOX_MARKS: Record<"markdown" | "rst" | "html", { start: string; end: string }> = {
+  markdown: README_MARKS,
+  html: README_MARKS,
+  rst: { start: ".. oscr-badge:start", end: ".. oscr-badge:end" },
+};
+
+/** A snippet between its marks, ready to paste (rst keeps a blank line around its directive). */
+export function markedSnippet(format: keyof typeof BOX_MARKS, text: string): string {
+  const m = BOX_MARKS[format];
+  return format === "rst" ? `${m.start}\n\n${text}\n\n${m.end}` : `${m.start}\n${text}\n${m.end}`;
+}
+
+/** A repository whose README a box points to: its name, its address, its README's path when known. */
+export interface BoxRepo {
+  name: string;
+  url: string;
+  readme?: string;
+}
+
+/** What the box shows, for a paper (its DOI) or a repository (a scientific tool): the image, the
+ *  three common snippets with their marks, and for each GitHub repository its README on GitHub,
+ *  where the author edits it themselves (the registry asks GitHub for nothing). */
+export function badgeBox(origin: string, subject: BadgeSubject, alt: string, repos: readonly BoxRepo[] = []) {
+  const urls = badgeUrls(origin, subject);
+  const formats = ["markdown", "rst", "html"] as const;
+  return {
+    image: urls.image,
+    link: urls.link,
+    snippets: formats.map((f) => ({
+      format: f,
+      label: SNIPPET_FORMATS.find((s) => s.id === f)!.label,
+      text: markedSnippet(f, snippet(f, urls.image, urls.link, alt)),
+    })),
+    github: repos
+      .filter((r) => /^https:\/\/github\.com\/[^/]+\/[^/]+/i.test(r.url))
+      .map((r) => {
+        const base = r.url.replace(/[?#].*$/, "").replace(/\/+$/, "").replace(/\.git$/i, "").split("/").slice(0, 5).join("/");
+        return { name: r.name, readme: r.readme ?? "", url: r.readme ? `${base}/blob/HEAD/${r.readme}` : base };
+      }),
+  };
+}
+export type BadgeBox = ReturnType<typeof badgeBox>;

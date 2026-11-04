@@ -7,6 +7,7 @@
 // The classes are science.css's, and only them. Every text is escaped (`esc`), every address
 // is checked (`href`): only a web address or a path of this site becomes a link. Nothing here
 // names the platform: the page's shell does (SITE_NAME, src/config.ts).
+import { badgeBox } from "./badge.ts";
 import { dateInWords, dayInWords, number, plural } from "./format.ts";
 import { removalUrl } from "./removal.ts";
 import { STATIC_PAPERS, type EntityType } from "./shards.ts";
@@ -466,11 +467,34 @@ const ROLES: readonly [string, string][] = [
 const options = (list: readonly [string, string][], selected = "") =>
   list.map(([value, text]) => `<option value="${esc(value)}"${value === selected ? " selected" : ""}>${esc(text)}</option>`).join("");
 
+/** The "Add the badge" box (the static pages' components/BadgeBox.astro), for a paper rendered on
+ *  demand: `origin` is the site's, `name` the platform's (the shell's own); without them, none. */
+function badgeSection(p: PaperRecord, origin: string, name: string): string {
+  if (!origin || !name || !p.code.length) return "";
+  const box = badgeBox(origin, p.doi ? { kind: "doi", doi: p.doi.toLowerCase() } : { kind: "repo", repo: p.code[0].repo }, name, p.code.map((r) => ({ name: r.name, url: r.url })));
+  return (
+    `<section id="badge" class="badge-box" aria-labelledby="badge-title"><h3 id="badge-title">Add the badge to the code's README</h3>` +
+    `<p class="badge-preview"><img src="${esc(box.image)}" alt="${esc(name)}: the badge of this paper"></p>` +
+    `<p>Authors and maintainers of this paper's code: the badge says what ${esc(name)} knows of the paper and links the code to ` +
+    `this page. Paste one of these under the README's title. Keep the two marks around it: they let the badge be replaced in ` +
+    `place, never added twice. Nothing is changed for you.</p>` +
+    box.snippets.map((s) => `<details${s.format === "markdown" ? " open" : ""}><summary>${esc(s.label)}</summary><pre><code data-copy="the badge in ${esc(s.label)}">${esc(s.text)}</code></pre></details>`).join("") +
+    (box.github.length
+      ? `<p>On GitHub, open the README, choose Edit (the pencil), paste the snippet under the title, then "Commit changes".</p><ul>` +
+        box.github.map((g) => `<li>${a(`${g.name} on GitHub`, g.url)}</li>`).join("") +
+        `</ul>`
+      : "") +
+    `<p>Or let it be kept for you, once you choose it: <code>oscr badge --write</code> from ${a("the command line", "/help/cli/")}, ` +
+    `or ${a("the GitHub Action", "/help/badge/#action")} in your repository's workflows. Every other form is on ${a("the badge page", "/badge/")}.</p>` +
+    `<p role="status" aria-live="polite" data-copy-status></p></section>`
+  );
+}
+
 /** The Contribute section of a paper rendered on demand: the same ids and forms as the static
  *  pages' (Contribute.astro), so that the same script (src/scripts/paper-actions.ts) runs them,
  *  claim the paper, correct its links, and the same link to the removal request page (/removal/).
- *  The tracing map's validation and the badge stay on the static pages, which show the map. */
-function contribute(p: PaperRecord): string {
+ *  The tracing map's validation stays on the static pages, which show the map. */
+function contribute(p: PaperRecord, origin = "", name = ""): string {
   const back = `/paper/${p.slug}/`;
   const links = [
     ...p.code.map((r) => ({ repo: r.repo, url: r.url, role: "code", name: r.name })),
@@ -520,6 +544,7 @@ function contribute(p: PaperRecord): string {
     `<textarea id="edit-note" name="note" rows="2" maxlength="500"></textarea></p>` +
     `<p><button type="submit">Send the correction</button></p></form>` +
     `<p id="edit-state" role="status" aria-live="polite"></p></div></div>` +
+    badgeSection(p, origin, name) +
     `<h3 id="removal">Request its removal</h3>` +
     `<p>To ask for this record, the copies of its authors' scripts or its tracing map to be removed, use ` +
     `${a("the removal request page", removalUrl(p.id))}: signed in, you say who you are, what to remove and why, then review ` +
@@ -530,7 +555,7 @@ function contribute(p: PaperRecord): string {
 }
 
 /** The page of a paper past STATIC_PAPERS, from its record. It says what it leaves out. */
-export function paperView(p: PaperRecord): View {
+export function paperView(p: PaperRecord, origin = "", name = ""): View {
   const hasCode = p.code.length > 0;
   const notices = p.notices
     .filter((n) => NOTICES[n.kind])
@@ -608,7 +633,7 @@ export function paperView(p: PaperRecord): View {
       `<li><a href="#data">Data</a></li><li><a href="#contribute">Contribute</a></li></ul></nav>`,
     `<p class="summary">This page is built on request from the registry's record of the paper. The ` +
       `${esc(number(STATIC_PAPERS))} most recent papers have a fuller page, built ahead of time, with the Code ↔ Paper reader, ` +
-      `the tracing map and its validation, the record's versions, how to cite it, similar papers and the README badge. ` +
+      `the tracing map and its validation, the record's versions, how to cite it and similar papers. ` +
       `This paper is older: its record, its code, its data and the requests about it are below.</p>`,
     hasCode ? codeSection + overview : overview + codeSection,
     `<section id="data"><h2>Data</h2>`,
@@ -626,7 +651,7 @@ export function paperView(p: PaperRecord): View {
       : "",
     p.datasets.length || others.length ? "" : `<p>No dataset cited, and no data link found.</p>`,
     `</section>`,
-    contribute(p),
+    contribute(p, origin, name),
   ].join("");
   const access = [
     `<li>${a("The paper, at the publisher", doiUrl(p.doi))}</li>`,

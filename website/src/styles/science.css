@@ -1813,3 +1813,8 @@ p.badge-preview img { max-width: 100%; height: auto; }
 #badge-snippets details { margin: .3em 0; }
 #badge-snippets details > summary { cursor: pointer; font-weight: bold; }
 ul.badge-repos > li { margin: .7em 0; overflow-wrap: anywhere; }
+/* The "Add the badge" box on every paper's and tool's page (components/BadgeBox.astro): its snippets
+   keep their lines and wrap their long addresses. */
+section.badge-box details { margin: .3em 0; }
+section.badge-box details > summary { cursor: pointer; font-weight: bold; }
+section.badge-box pre { white-space: pre-wrap; overflow-wrap: anywhere; }

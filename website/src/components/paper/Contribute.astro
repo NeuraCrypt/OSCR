@@ -9,14 +9,15 @@
 // - correct its record (its links: code, data, tools): a verified author, or a maintainer of its
 //   code for their own repository;
 // - validate its tracing map, with one's ORCID iD: a verified author, when the paper has code;
-// - add the badge to the code's README: snippets to copy, and GitHub's own editor, where the
-//   author opens the pull request themselves (explicit consent, and no permission to ask);
+// - add the badge to the code's README (components/BadgeBox.astro): shown to every reader, signed in
+//   or not, the snippets to paste and GitHub's own editor, where the author commits it themselves;
 // - request the record's removal: anyone signed in, on the page /removal/ (src/pages/removal.astro),
 //   which this section links to and whose request's state it shows.
 //
 // Every form writes text only (DOM text nodes, never HTML); the Worker checks every request again.
 import { SITE_NAME } from "../../config";
-import { badgeDoi, badgeUrls, snippet } from "../../lib/badge";
+import { badgeBox, badgeDoi } from "../../lib/badge";
+import BadgeBox from "../BadgeBox.astro";
 import { shortName, type Article } from "../../lib/catalog";
 import type { PaperPage } from "../../lib/paper";
 import { removalUrl } from "../../lib/removal";
@@ -29,26 +30,16 @@ interface Props {
 const { a, p } = Astro.props;
 const back = `/paper/${a.slug}/`;
 const site = Astro.site ?? new URL("https://example.org");
-const pageUrl = new URL(back, site).href;
-// The paper's own badge (docs/BADGE.md): drawn by the Worker from the registry's records, so it
-// says what is known of the paper; its link follows the paper's page wherever it moves. Without a
-// DOI, the static image linked to this page.
+// The paper's own badge (docs/BADGE.md), in a box every reader sees: drawn by the Worker from the
+// registry's records, so it says what is known of the paper; its link follows the paper's page. Without
+// a DOI, its first repository's own badge.
 const doi = badgeDoi(a.doi ?? "");
-const urls = doi ? badgeUrls(site.origin, { kind: "doi", doi }) : { image: new URL("/badge.svg", site).href, link: pageUrl };
-const snippets = [
-  { label: "Markdown", text: snippet("markdown", urls.image, urls.link, SITE_NAME) },
-  { label: "reStructuredText", text: snippet("rst", urls.image, urls.link, SITE_NAME) },
-  { label: "HTML", text: snippet("html", urls.image, urls.link, SITE_NAME) },
-];
-const generator = doi ? `/badge/?q=${encodeURIComponent(doi)}` : "/badge/";
-/** The code on GitHub, where its README can be edited in the browser. */
-const github = a.code
-  .filter((r) => r.repo.startsWith("github.com/") && r.url)
-  .map((r) => {
-    const readme = p?.code[r.repo]?.readme ?? "";
-    const base = r.url.replace(/\/+$/, "").replace(/\.git$/, "");
-    return { repo: r.repo, name: shortName(r), readme, url: readme ? `${base}/blob/HEAD/${readme}` : base };
-  });
+const box = badgeBox(
+  site.origin,
+  doi ? { kind: "doi", doi } : { kind: "repo", repo: a.code[0]?.repo ?? "" },
+  SITE_NAME,
+  a.code.map((r) => ({ name: shortName(r), url: r.url, readme: p?.code[r.repo]?.readme ?? "" })),
+);
 /** The record's links, as a correction can change them. */
 const ROLES = [
   { value: "code", text: "the authors' code" },
@@ -162,42 +153,9 @@ const digest = map?.digest ?? "";
       </div>
     )}
 
-    {a.code.length > 0 && (
-      <div id="badge-block" hidden>
-        <h3>Add the badge to its README</h3>
-        <p><img src="/badge.svg" alt={`${SITE_NAME}: paper ↔ code`} /></p>
-        <p>
-          The badge says what {SITE_NAME} knows of this paper (its code, its validated map) and links the code to this
-          page. Copy one of these into the README of the paper's code: only you decide where it goes, and nothing is
-          changed for you. <a href={generator}>The badge page</a> gives every other form (AsciiDoc, LaTeX, a card, a
-          repository's own badge, shields.io) and says which of the paper's READMEs already carry it.
-        </p>
-        {snippets.map((s) => (
-          <details open={s.label === "Markdown"}>
-            <summary>{s.label}</summary>
-            <p><code data-copy={`the badge in ${s.label}`}>{s.text.split("\n").map((line, i) => (
-              <>{i > 0 && <br />}<Wrap text={i > 0 ? `\n${line}` : line} /></>
-            ))}</code></p>
-          </details>
-        ))}
-        {github.length > 0 && (
-          <>
-            <p>Propose it on GitHub yourself: open the README, choose Edit (the pencil), paste the snippet at the top, then
-              “Commit changes…” and, to review it first, “Create a new branch and start a pull request”. You open the pull
-              request; {SITE_NAME} asks for no permission.</p>
-            <ul>
-              {github.map((g) => (
-                <li>
-                  <a href={g.url}>{g.readme ? `${g.name}: ${g.readme} on GitHub` : `${g.name} on GitHub (add a README there)`}</a>
-                </li>
-              ))}
-            </ul>
-          </>
-        )}
-        <p id="badge-status" role="status" aria-live="polite" data-copy-status></p>
-      </div>
-    )}
   </div>
+
+  {a.code.length > 0 && <BadgeBox box={box} what="paper" />}
 
   <h3 id="removal">Request its removal</h3>
   <p>

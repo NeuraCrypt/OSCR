@@ -250,3 +250,34 @@ describe("the Worker's badges", () => {
     assert.notEqual(res.headers.get("Content-Type"), "image/svg+xml; charset=utf-8");
   });
 });
+
+describe("the box on every paper's and tool's page", () => {
+  it("gives the three snippets between their marks, and each GitHub README", async () => {
+    const { badgeBox, BOX_MARKS } = await import("../src/lib/badge.ts");
+    const box = badgeBox("https://example.org", { kind: "doi", doi: "10.1234/abc" }, "Registry", [
+      { name: "owner/name", url: "https://github.com/Owner/Name.git", readme: "README.md" },
+      { name: "elsewhere", url: "https://gitlab.com/a/b" },
+    ]);
+    assert.equal(box.image, "https://example.org/badge/doi/10.1234/abc.svg");
+    assert.deepEqual(box.snippets.map((s) => s.format), ["markdown", "rst", "html"]);
+    for (const s of box.snippets) {
+      assert.ok(s.text.startsWith(BOX_MARKS[s.format].start) && s.text.endsWith(BOX_MARKS[s.format].end), s.format);
+      assert.ok(s.text.includes(box.link));
+    }
+    assert.match(box.snippets[1].text, /^\.\. oscr-badge:start\n\n\.\. image:: /);
+    assert.deepEqual(box.github, [{ name: "owner/name", readme: "README.md", url: "https://github.com/Owner/Name/blob/HEAD/README.md" }]);
+  });
+  it("is on a paper rendered on demand, named as the shell names the platform", async () => {
+    const { paperView } = await import("../src/lib/render.ts");
+    const p = {
+      id: "doi:10.1234/abc", slug: "doi_10.1234_abc", doi: "10.1234/abc", title: "T", journal: { text: "J", href: "" }, published: "2020-01-01",
+      type: "", license: "", status: "code_verified", notices: [], authors: [], institutions: [], categories: [],
+      code: [{ repo: "github.com/o/n", name: "o/n", url: "https://github.com/o/n", license: "", state: "alive" }],
+      files: 0, pairs: 0, map: "", datasets: [], data: [], tools: [], europepmc: "",
+    };
+    const html = paperView(p as never, "https://example.org", "Registry").html;
+    assert.match(html, /id="badge"/);
+    assert.match(html, /https:\/\/example\.org\/badge\/doi\/10\.1234\/abc\.svg/);
+    assert.doesNotMatch(paperView(p as never).html, /id="badge"/);
+  });
+});

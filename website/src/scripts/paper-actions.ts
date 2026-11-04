@@ -179,7 +179,6 @@ function render(s: State) {
   sayClaim(s);
   sayEdit(s);
   sayValidation(s);
-  show("badge-block", !!s.author || maintained(s).length > 0);
   sayRemoval(s);
 }
 

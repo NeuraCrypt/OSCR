@@ -9,6 +9,8 @@ import { SITE_NAME } from "../../config";
 import { dateInWords, number, plural } from "../../lib/format";
 import { blobUrl, languagesOf, rawUrl, SCITOOLS_PATH, treeOf, type SciTool } from "../../lib/scitools";
 import { sciTools } from "../../lib/scitools-data";
+import { badgeBox } from "../../lib/badge";
+import BadgeBox from "../../components/BadgeBox.astro";
 
 export function getStaticPaths() {
   return sciTools.map((tool) => ({ params: { slug: tool.slug }, props: { tool } }));
@@ -21,6 +23,11 @@ const lines = tool.files.reduce((s, f) => s + f.lines, 0);
 const langs = languagesOf(tool.files);
 const skipped = tool.skipped.binary + tool.skipped.large + tool.skipped.over_limit;
 const first = tool.readme || tool.files[0].path;
+// The tool's own badge: its repository's, which the Worker draws as a scientific tool's.
+const site = Astro.site ?? new URL("https://example.org");
+const box = badgeBox(site.origin, { kind: "repo", repo: `github.com/${r.owner}/${r.name}`.toLowerCase() }, SITE_NAME, [
+  { name: `${r.owner}/${r.name}`, url: r.url, readme: tool.readme },
+]);
 ---
 <Base
   title={tool.name}
@@ -71,9 +78,11 @@ const first = tool.readme || tool.files[0].path;
           </div>
         </section>
       </div>
+      <BadgeBox box={box} what="tool" level={2} />
     </div>
   </div>
   <script>
     import "../../scripts/scitool";
+    import "../../scripts/cite";
   </script>
 </Base>

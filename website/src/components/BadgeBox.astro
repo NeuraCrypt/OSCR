@@ -1,0 +1,53 @@
+---
+// The "Add the badge" box (docs/BADGE.md), on every paper's page and every scientific tool's page,
+// shown to every reader (no sign-in): the badge, the snippets to paste with their marks, the README on
+// GitHub where the author edits it themselves, and the three ways to keep it there for them once they
+// choose to (`oscr badge --write`, the GitHub Action, the App). The registry writes nothing anywhere.
+// Its copy buttons are src/scripts/cite.ts's ([data-copy] in a section with [data-copy-status]).
+import { SITE_NAME } from "../config";
+import type { BadgeBox } from "../lib/badge";
+
+interface Props {
+  box: BadgeBox;
+  /** "paper" or "tool": what the badge stands for. */
+  what: "paper" | "tool";
+  /** The heading's level: 3 inside a paper's Contribute section, 2 on a tool's page. */
+  level?: 2 | 3;
+}
+const { box, what, level = 3 } = Astro.props;
+const H = level === 2 ? "h2" : "h3";
+---
+<section id="badge" class="badge-box" aria-labelledby="badge-title">
+  <H id="badge-title">Add the badge to the code's README</H>
+  <p class="badge-preview"><img src={box.image} alt={`${SITE_NAME}: the badge of this ${what}`} /></p>
+  <p>
+    {what === "paper"
+      ? `Authors and maintainers of this paper's code: the badge says what ${SITE_NAME} knows of the paper (its code, its validated tracing map) and links the code to this page.`
+      : `Maintainers of this tool: the badge says it is a scientific tool in ${SITE_NAME} and links its repository to this page.`}{" "}
+    Paste one of these under the README's title. Keep the two marks around it: they let the badge be replaced in place,
+    never added twice. Nothing is changed for you.
+  </p>
+  {box.snippets.map((s) => (
+    <details open={s.format === "markdown"}>
+      <summary>{s.label}</summary>
+      <pre><code data-copy={`the badge in ${s.label}`}>{s.text}</code></pre>
+    </details>
+  ))}
+  {box.github.length > 0 && (
+    <>
+      <p>On GitHub, open the README, choose Edit (the pencil), paste the snippet under the title, then "Commit changes".</p>
+      <ul>
+        {box.github.map((g) => (
+          <li><a href={g.url}>{g.readme ? `${g.name}: ${g.readme} on GitHub` : `${g.name} on GitHub (add a README there)`}</a></li>
+        ))}
+      </ul>
+    </>
+  )}
+  <p>
+    Or let it be kept for you, once you choose it: <code>oscr badge --write</code> from{" "}
+    <a href="/help/cli/">the command line</a>, or <a href="/help/badge/#action">the GitHub Action</a> in your
+    repository's workflows. Every other form and option (a card, AsciiDoc, LaTeX, shields.io) is on{" "}
+    <a href="/badge/">the badge page</a>.
+  </p>
+  <p role="status" aria-live="polite" data-copy-status></p>
+</section>
