@@ -1,5 +1,5 @@
 """The partners' files (oscr/outreach.py): the code link alone (never its sentence), the open licences
-only, what a removal request withheld left out, and Software Heritage asked only when turned on, a few
+only, what a removal request withheld left out, and Software Heritage asked unless turned off, a few
 at a time, stopping at the first refusal."""
 from __future__ import annotations
 
@@ -92,7 +92,7 @@ class _Res:
         return False
 
 
-def test_software_heritage_off_by_default_then_a_few_and_never_twice(con, tmp_path):
+def test_software_heritage_on_by_default_off_with_0_a_few_and_never_twice(con, tmp_path):
     for n in range(4):
         a = paper(con, n)
         code(con, a, f"github.com/lab/t{n}", f"https://github.com/lab/t{n}", "x", archived=1 if n == 3 else None)
@@ -102,7 +102,7 @@ def test_software_heritage_off_by_default_then_a_few_and_never_twice(con, tmp_pa
         calls.append(req.full_url)
         return _Res("50")
 
-    assert "off" in outreach.swh_save(con, tmp_path, {}, opener=opener)
+    assert "off" in outreach.swh_save(con, tmp_path, {"OSCR_SWH": "0"}, opener=opener)
     assert calls == []
     said = outreach.swh_save(con, tmp_path, {"OSCR_SWH": "1", "OSCR_SWH_PER_NIGHT": "2"}, opener=opener, now=1_000_000)
     assert said == "Software Heritage: 2 save requests"

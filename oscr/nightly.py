@@ -37,7 +37,7 @@ def planned(cfg: dict[str, str], dataset: str, cloudflare: str) -> list[str]:
               "linkfeeds": cfg.get("OSCR_LINKFEEDS", "1") != "0",
               # The partners' files (oscr/outreach.py), every night; Software Heritage only when turned on.
               "outreach": cfg.get("OSCR_OUTREACH", "1") != "0",
-              "swh": cfg.get("OSCR_SWH", "") == "1",
+              "swh": cfg.get("OSCR_SWH", "1") != "0",
               "reconcile": "remote" in (cfg.get("OSCR_D1_PUSH"), cfg.get("OSCR_COMMUNITY_PUSH")),
               "search": cfg.get("OSCR_D1_PUSH") == "remote",
               "community": cfg.get("OSCR_COMMUNITY_PUSH") == "remote", "scripts": bool(cfg.get("OSCR_SCRIPTS_DATASET")),
@@ -187,7 +187,7 @@ def run(con: Any, client: Any, cfg: dict[str, str], *, out: Path, dataset: str, 
     step("outreach", "the partners' files", outreach)
 
     def swh() -> None:
-        # A few "Save code now" requests a night, anonymous (OSCR_SWH=1 only).
+        # A few "Save code now" requests a night, anonymous (decided 2026-11-04; OSCR_SWH=0 stops it).
         from . import outreach as o
         say(o.swh_save(con, Path("data/outreach"), cfg))
 

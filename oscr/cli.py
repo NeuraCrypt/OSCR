@@ -346,9 +346,9 @@ def main(argv: list[str] | None = None) -> int:
     lf.add_argument("--upload", action="store_true", help="send the files by FTP (needs the settings and the keychain)")
 
     ou = sp.add_parser("outreach", help="the partners' files (docs/BADGE_OUTREACH.md): Europe PMC annotations, Scholix, "
-                       "Mix'n'match, the journals' lists; --swh asks Software Heritage too (OSCR_SWH=1 only)")
+                       "Mix'n'match, the journals' lists; --swh asks Software Heritage too (unless OSCR_SWH=0)")
     ou.add_argument("--out", default="data/outreach", help="the folder to write")
-    ou.add_argument("--swh", action="store_true", help="also the Software Heritage save requests (needs OSCR_SWH=1)")
+    ou.add_argument("--swh", action="store_true", help="also the Software Heritage save requests (unless OSCR_SWH=0)")
 
     dash = sp.add_parser("dashboard", help="the local dashboard: the database's table (http://127.0.0.1:8790)")
     dash.add_argument("--port", type=int, default=8790)

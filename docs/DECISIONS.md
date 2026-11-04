@@ -3335,3 +3335,18 @@ Main's and the night's D1 migrations live in separate directories (`migrations/d
 sides; the sequences were kept as each side wrote them. The forge binding (`oscr_forge`) is in
 `wrangler.toml`'s `env.local` for tests and dev; the production binding is added by the owner with
 `tools/setup_cloudflare.sh`, so `/api/forge/*` answers 503 until then.
+
+### 2026-11-04. Software Heritage every night for the papers' code (the owner's decision)
+
+**Decision.** Every night, `oscr/outreach.py` `swh_save` asks Software Heritage's "Save code now" to
+archive the public git repositories linked from a paper with a page that it has not archived yet.
+- Anonymous, at most `OSCR_SWH_PER_NIGHT` (10) requests a night, stopping at the first refusal or when
+  the rate limit is spent; a repository is never asked again within 90 days
+  (`data/outreach/swh-asked.json`).
+- Never a repository a removal request withheld, nor one the registry does not link to a paper with a
+  page. A repository hosted through the GitHub side keeps the earlier rule: archived only on a
+  person's request.
+- `OSCR_SWH=0` stops it.
+
+**Why.** The code of a paper should outlive its repository; Software Heritage archives it for free, and
+the registry already shows the archive when it exists.

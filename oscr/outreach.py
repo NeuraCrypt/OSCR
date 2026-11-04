@@ -13,8 +13,8 @@ function per partner, and the Software Heritage step, off unless the owner turns
 - `journals`: one CSV per journal the owner writes to (DOI, the paper's page), for the letters.
 - `swh`: Software Heritage's "Save code now" for the public repositories linked from a paper with a
   page, never archived or not asked for in 90 days, anonymous, a few a night, stopping at the first
-  refusal or spent rate limit. Off unless `OSCR_SWH=1` (the owner's decision; CLAUDE.md says Software
-  Heritage is asked on a person's request until the owner changes it).
+  refusal or spent rate limit. On every night since the owner decided it on 2026-11-04 (DECISIONS.md);
+  `OSCR_SWH=0` stops it. A repository hosted through the GitHub side keeps the on-request rule.
 
 Nothing here writes to an author's repository, sends a message or names a person: no author, no
 email address, no excerpt leaves. A repository or a paper a removal request withheld is left out."""
@@ -217,10 +217,10 @@ Opener = Callable[[urllib.request.Request], "urllib.response.addinfourl"]
 
 def swh_save(con: sqlite3.Connection, folder: Path, cfg: dict[str, str], *, opener: Opener | None = None,
              now: float | None = None) -> str:
-    """Asks Software Heritage to save a few repositories (OSCR_SWH=1 only), anonymously, stopping at
+    """Asks Software Heritage to save a few repositories (unless OSCR_SWH=0), anonymously, stopping at
     the first refusal or when the rate limit is spent. What was asked is kept in `swh-asked.json`."""
-    if cfg.get("OSCR_SWH", "") != "1":
-        return "Software Heritage: off (OSCR_SWH=1 turns it on)"
+    if cfg.get("OSCR_SWH", "1") == "0":
+        return "Software Heritage: off (OSCR_SWH=0)"
     now = time.time() if now is None else now
     state = folder / "swh-asked.json"
     asked: dict[str, float] = json.loads(state.read_text()) if state.is_file() else {}

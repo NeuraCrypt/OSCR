@@ -250,9 +250,9 @@ CatalyzeX: https://www.catalyzex.com (contact page). alphaXiv: https://www.alpha
 the public repositories linked from a paper with a page that it has not archived, anonymously, at most
 `OSCR_SWH_PER_NIGHT` (10) a night, stopping at the first refusal or a spent rate limit, and never
 asking again for the same repository within 90 days (`data/outreach/swh-asked.json`). A repository a
-removal request withheld is never asked. **Off unless `OSCR_SWH=1`** in `~/.config/oscr/settings`:
-CLAUDE.md asks Software Heritage only on a person's request, and the owner decides whether to change
-that.
+removal request withheld is never asked. **On every night** since the owner decided it on 2026-11-04
+(docs/DECISIONS.md); `OSCR_SWH=0` in `~/.config/oscr/settings` stops it. A repository hosted through
+the GitHub side keeps the on-request rule.
 
 ## 12. bio.tools, NITRC, FAIRsharing, re3data
 

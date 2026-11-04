@@ -309,7 +309,11 @@ The GitHub side (`website/worker/forge/`, D1 `oscr_forge`, `oscr/forgejobs.py`,
   (5,000 rows a day; 100 actions, 10 creations, 20 links per account a day), counted from the rows,
   with no counter row; every read goes by key or index, never a scan.
 - **Deletion**: 30 days of grace in OSCR; the deletion on GitHub is only the researcher's own fresh
-  authorization, never a timer or OSCR's token. **Software Heritage** only on a person's request.
+  authorization, never a timer or OSCR's token. **Software Heritage**: a repository hosted through the
+  GitHub side only on a person's request; the public repositories linked from a paper with a page are
+  sent to "Save code now" every night (decided 2026-11-04 by the owner; `oscr/outreach.py` `swh_save`,
+  anonymous, at most `OSCR_SWH_PER_NIGHT` (10) a night, stopping at the first refusal or a spent rate
+  limit, never a withheld one, never twice in 90 days; `OSCR_SWH=0` stops it).
 - The App's secrets are **Cloudflare secrets** set by `tools/setup_cloudflare.sh` (the private key
   read from GitHub's `.pem` file). The Mac never writes to a forge and never runs users' code.
 - Repository pages are static (`/r/*`, one shell): signed out, they ask the Worker nothing.
