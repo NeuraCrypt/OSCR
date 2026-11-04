@@ -9,6 +9,8 @@
 import Base from "../layouts/Base.astro";
 import { SITE_NAME } from "../config";
 import { GRACE_SECONDS } from "../../worker/forge/service/caps.ts";
+import { toolUrl } from "../lib/scitools";
+import { sciTools } from "../lib/scitools-data";
 
 const graceDays = Math.round(GRACE_SECONDS / 86_400);
 ---
@@ -22,6 +24,23 @@ const graceDays = Math.round(GRACE_SECONDS / 86_400);
     The repositories of your GitHub account that {SITE_NAME} knows: the ones you created or linked through it, the
     papers they are attached to, and the ones waiting for deletion.
   </p>
+  {sciTools.length > 0 && (
+    <section id="repos-scitools">
+      <h2>Scientific tools</h2>
+      <p>Research software in {SITE_NAME}, each shown from its repository at a pinned commit: <a href="/scientific-tools/">every scientific tool</a>.</p>
+      <dl class="listing">
+        {sciTools.map((t, i) => (
+          <>
+            <dt><span class="num">[{i + 1}]</span> <a href={t.repository.url}>github.com/{t.repository.owner}/{t.repository.name}</a></dt>
+            <dd>
+              <div class="title"><a href={toolUrl(t.slug)}>{t.name}</a></div>
+              {t.description && <div class="line">{t.description}</div>}
+            </dd>
+          </>
+        ))}
+      </dl>
+    </section>
+  )}
   <p id="repos-message" role="status" aria-live="polite"></p>
   <noscript><p class="warning">This page runs in your browser: it needs JavaScript.</p></noscript>
 

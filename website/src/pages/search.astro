@@ -8,6 +8,8 @@ import Search from "../components/Search.svelte";
 import { SITE_NAME } from "../config";
 import { number, withPage } from "../lib/catalog";
 import { categories } from "../lib/entities";
+import { toolCard } from "../lib/scitools";
+import { sciTools } from "../lib/scitools-data";
 // Night phase 08: the search's other types (repositories, issues, people, topics, commits, code), one
 // script beside the papers' island (src/scripts/search-types.ts). GitHub's API address for a local run
 // against the fake GitHub, only an http address on this machine (as the /r/ shell's).
@@ -34,6 +36,10 @@ for (const [facet, values] of Object.entries(categories.facets)) {
     The {number(withPage.length)} papers {SITE_NAME} has a page for: their titles, keywords, MeSH terms, authors, journals, code
     repositories, the tools found in their code, their identifiers, and their abstracts when the paper's license is open.
   </p>
+  <section id="scitool-hits" data-tools={JSON.stringify(sciTools.map(toolCard))} hidden>
+    <h2>Scientific tools</h2>
+    <dl class="listing" id="scitool-list"></dl>
+  </section>
   <div id="search-types" data-github-api={githubApi}>
     <div id="paper-search">
       <Search client:load labels={labels} />

@@ -100,6 +100,42 @@ const NAMES: Record<string, string> = {
   "cmakelists.txt": "CMake",
 };
 
+/** What the search and the lists need of a tool (the page carries it as a data attribute, so the
+ *  search finds the tools with no request: they are never in D1). */
+export interface SciToolCard {
+  slug: string;
+  name: string;
+  description: string;
+  repo: string;
+  url: string;
+  languages: string[];
+}
+
+export function toolCard(t: SciTool): SciToolCard {
+  return {
+    slug: t.slug,
+    name: t.name,
+    description: t.description,
+    repo: `${t.repository.owner}/${t.repository.name}`,
+    url: t.repository.url,
+    languages: languagesOf(t.files).slice(0, 3).map((l) => l.language),
+  };
+}
+
+/** The tools a search's words find: every word (quotes and the operators user:, org:, repo:,
+ *  type:, is:, in:, doi: dropped; a -word excludes) in the tool's name, description, repository,
+ *  languages or "scientific tool". An empty query finds none. */
+export function matchTools(cards: SciToolCard[], q: string): SciToolCard[] {
+  const words = q.toLowerCase().replace(/["“”]/g, " ").split(/\s+/).filter((w) => w && !/^-?(?:user|org|repo|type|is|in|doi):/.test(w));
+  const want = words.filter((w) => !w.startsWith("-"));
+  const not = words.filter((w) => w.startsWith("-") && w.length > 1).map((w) => w.slice(1));
+  if (!want.length) return [];
+  return cards.filter((c) => {
+    const text = [c.slug, c.name, c.description, c.repo, ...c.languages, "scientific tool"].join(" ").toLowerCase();
+    return want.every((w) => text.includes(w)) && !not.some((w) => text.includes(w));
+  });
+}
+
 /** A file's language, from its name (as the add script records it). */
 export function languageOf(path: string): string {
   const base = path.split("/").pop()!.toLowerCase();

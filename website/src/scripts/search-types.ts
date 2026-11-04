@@ -25,6 +25,7 @@ import {
   type Scope,
   type SearchType,
 } from "../lib/search-types.ts";
+import { matchTools, toolUrl, type SciToolCard } from "../lib/scitools.ts";
 import { show } from "./dom.ts";
 
 const root = document.getElementById("search-types");
@@ -151,6 +152,41 @@ async function fromGithub(box: HTMLElement, kind: "issues" | "commits", scope: S
     show(box, h("p", { class: "warning" }, "GitHub could not be reached from your browser: check the connection, then try again."));
   }
 }
+
+// The scientific tools (src/lib/scitools.ts) are not in the registry's index: the page carries
+// their short list, and the words are matched here, for every tab, with no request.
+const toolBox = document.getElementById("scitool-hits");
+let tools: SciToolCard[] = [];
+try {
+  tools = JSON.parse(toolBox?.dataset.tools ?? "[]") as SciToolCard[];
+} catch {
+  tools = [];
+}
+
+function drawTools(): void {
+  const list = document.getElementById("scitool-list");
+  if (!toolBox || !list) return;
+  const hits = matchTools(tools, new URLSearchParams(location.search).get("q") ?? "");
+  toolBox.hidden = hits.length === 0;
+  show(
+    list,
+    ...hits.flatMap((t, i) => [
+      h("dt", null, h("span", { class: "num" }, `[${i + 1}]`), " ", h("a", { href: t.url }, `github.com/${t.repo}`)),
+      h(
+        "dd",
+        null,
+        h("div", { class: "title" }, h("a", { href: toolUrl(t.slug) }, t.name)),
+        t.description ? h("div", { class: "line" }, t.description) : "",
+        h("div", { class: "line" }, h("span", { class: "label" }, "Scientific tool:"), " ", t.languages.length ? t.languages.join(", ") : "its code at a pinned commit"),
+      ),
+    ]),
+  );
+}
+
+drawTools();
+// The papers' search changes the address in place (history.pushState): follow it.
+document.addEventListener("submit", () => setTimeout(drawTools, 0), true);
+addEventListener("popstate", drawTools);
 
 function start(): void {
   if (!root) return;

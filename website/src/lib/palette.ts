@@ -39,6 +39,7 @@ export const DESTINATIONS: readonly PaletteEntry[] = [
   { id: "go-browse", kind: "go", title: "Browse", href: "/browse/", keywords: "facets topics" },
   { id: "go-lookup", kind: "go", title: "DOI lookup", href: "/lookup/", keywords: "doi find paper" },
   { id: "go-repositories", kind: "go", title: "Repositories", href: "/repositories/", keywords: "code git" },
+  { id: "go-scitools", kind: "go", title: "Scientific tools", href: "/scientific-tools/", keywords: "software research tool package library evoparam" },
   { id: "go-explore", kind: "go", title: "Explore", href: "/explore/", keywords: "discover" },
   { id: "go-notifications", kind: "go", title: "Notifications", href: "/notifications/", keywords: "inbox" },
   { id: "go-account", kind: "go", title: "Account", href: "/account/", keywords: "profile sign in" },

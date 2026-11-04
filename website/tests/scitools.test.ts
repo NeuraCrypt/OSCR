@@ -8,6 +8,7 @@ import { headersFor, parseHeaders } from "../src/lib/headers.ts";
 import {
   blobUrl, languageOf, languagesOf, licenceFileOf, licenceOf, parseGithubUrl, problemsOf, rawUrl, readmeOf,
   SCITOOL_ORIGIN, SCITOOLS_MAX, slugOf, treeOf, type SciTool,
+  matchTools, toolCard,
 } from "../src/lib/scitools.ts";
 
 const DIR = new URL("../src/scitools/", import.meta.url);
@@ -89,6 +90,22 @@ describe("the helpers", () => {
     assert.deepEqual(root.dirs.map((d) => d.path), ["src"]);
     assert.deepEqual(root.dirs[0].dirs.map((d) => d.path), ["src/a"]);
     assert.deepEqual(languagesOf([f("a.py"), f("b.md")]), [{ language: "Python", lines: 1 }]);
+  });
+});
+
+describe("found by the search", () => {
+  const cards = names.map((n) => toolCard(JSON.parse(readFileSync(new URL(n, DIR), "utf8")) as SciTool));
+  it("by its name, its repository or its language, every word, a -word excluding", () => {
+    assert.deepEqual(matchTools(cards, "evoparam").map((c) => c.slug), ["evoparam"]);
+    assert.deepEqual(matchTools(cards, "EvoParam").map((c) => c.slug), ["evoparam"]);
+    assert.deepEqual(matchTools(cards, "yannbellec/evoparam python").map((c) => c.slug), ["evoparam"]);
+    assert.deepEqual(matchTools(cards, "\"scientific tool\"").map((c) => c.slug), ["evoparam"]);
+    assert.deepEqual(matchTools(cards, "evoparam -python"), []);
+    assert.deepEqual(matchTools(cards, "evoparam zzzz"), []);
+  });
+  it("never by an empty query or operators alone", () => {
+    assert.deepEqual(matchTools(cards, ""), []);
+    assert.deepEqual(matchTools(cards, "user:yannbellec"), []);
   });
 });
 

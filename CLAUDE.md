@@ -512,6 +512,10 @@ Research software shown from its repository, added **by hand** (`docs/SCIENTIFIC
   masks email addresses (`src/scripts/scitool.ts`, `src/lib/source.ts` `fetchVerified`).
 - At most `SCITOOLS_MAX` (100) tools, one static page each (`src/lib/scitools.ts`,
   `tests/scitools.test.ts`).
+- **Part of the site like the rest** (decided 2026-11-04): the masthead's "Scientific tools", a
+  section at the top of `/repositories/`, the palette, and the search: `/search/` carries the tools'
+  short list (`toolCard`) and matches the words in the browser on every tab (`matchTools`,
+  `src/scripts/search-types.ts`), since the tools are never in D1. No request added.
 
 ## The website's style (website/)
 

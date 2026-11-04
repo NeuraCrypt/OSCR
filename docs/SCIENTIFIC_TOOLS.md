@@ -44,6 +44,17 @@ caught by `npm test` (`tests/scitools.test.ts`) before it is committed.
 addition and its description (unless `--description` is given). **Remove**: delete its manifest and
 commit.
 
+## Where they are found
+
+The section is part of the site like the rest: a "Scientific tools" link in the masthead of every
+page, the list at the top of `/repositories/` (static, signed in or not), the command palette
+(`Ctrl/Cmd+K`), and Browse. The search finds them too, though they are never in D1: `/search/`
+carries every tool's short card (`toolCard`: name, description, repository, main languages) as a
+data attribute, and `src/scripts/search-types.ts` matches the query's words against it in the
+browser (`matchTools`: every word, a `-word` excludes, operators such as `user:` are ignored), on
+every tab, when a search is asked for. No request is added, and at most `SCITOOLS_MAX` cards ride on
+the page.
+
 ## How the code is shown
 
 The page holds the file list, never the text. When a file is chosen, the reader's browser fetches it
