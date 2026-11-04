@@ -26,6 +26,8 @@
 //                                                     page; oscr/social.py; absent: none)
 import { createHash } from "node:crypto";
 import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { codeLink, maskAll } from "../src/lib/emails.ts";
+import { maskEmails } from "../worker/forge/mask.ts";
 
 const source = process.env.CATALOG_DIR ?? "../data/public";
 const file = `${source}/catalog.json`;
@@ -57,8 +59,30 @@ const scrub = (v) => {
 };
 for (const a of catalog.articles) if (a.authors) a.authors = scrub(a.authors);
 
+// A code link is a repository's address. An address with a user part is not one: "mailto:" or an
+// email address read as a link ("https://mailto:someone@lab.org", "https://someone@lab.org") is
+// dropped, and GitHub's SSH form ("git@github.com:owner/name.git") becomes the repository's https
+// address (oscr/links.py normalize does the same for what the harvester reads next).
+const fixed = { dropped: 0, rewritten: 0 };
+for (const list of [catalog.repositories ?? [], ...catalog.articles.map((a) => a.code ?? [])]) {
+  for (let i = list.length - 1; i >= 0; i--) {
+    const link = codeLink(list[i]);
+    if (link === null) {
+      list.splice(i, 1);
+      fixed.dropped += 1;
+    } else if (link !== list[i]) {
+      list[i] = link;
+      fixed.rewritten += 1;
+    }
+  }
+}
+if (fixed.dropped || fixed.rewritten) console.warn(`code links: ${fixed.dropped} contact addresses dropped, ${fixed.rewritten} SSH addresses made https.`);
+// Then every text of the catalogue loses the email addresses it still holds (catalog.mask_emails's
+// mask, shared with the Worker: worker/forge/mask.ts).
+const masked = maskAll(catalog);
+
 mkdirSync("src/data", { recursive: true });
-writeFileSync("src/data/catalog.json", JSON.stringify(catalog));
+writeFileSync("src/data/catalog.json", JSON.stringify(masked));
 
 // The matches between paragraphs and code lines. The site never serves the text of
 // a paper: a pair carries a paragraph NUMBER, a section title and a few short
@@ -102,8 +126,15 @@ rmSync("public/scripts", { recursive: true, force: true });
 if (existsSync(`${source}/scripts`)) cpSync(`${source}/scripts`, "public/scripts", { recursive: true });
 else mkdirSync("public/scripts", { recursive: true });
 rmSync("src/data/scriptmeta", { recursive: true, force: true });
-if (existsSync(`${source}/scriptmeta`)) cpSync(`${source}/scriptmeta`, "src/data/scriptmeta", { recursive: true });
-else mkdirSync("src/data/scriptmeta", { recursive: true });
+mkdirSync("src/data/scriptmeta", { recursive: true });
+// The files' facts: a path may hold an address ("analysis (someone@lab.org).r"); only a shard that
+// holds one is parsed and masked, the others are copied as they are.
+if (existsSync(`${source}/scriptmeta`)) {
+  for (const name of readdirSync(`${source}/scriptmeta`)) {
+    const text = readFileSync(`${source}/scriptmeta/${name}`, "utf8");
+    writeFileSync(`src/data/scriptmeta/${name}`, name.endsWith(".json") && maskEmails(text) !== text ? JSON.stringify(maskAll(JSON.parse(text))) : text);
+  }
+}
 
 // The entities, read at build time. An export older than Phase 2 has none: their pages
 // are then built empty.

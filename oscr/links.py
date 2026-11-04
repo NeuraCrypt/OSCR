@@ -186,14 +186,25 @@ def clean(url: str) -> str:
     return u
 
 
+#: GitHub's SSH form, "git@github.com:owner/name.git", with or without a scheme glued in front.
+_SSH = re.compile(r"^(?:[a-z][a-z0-9+.-]*://)?git@([a-z0-9-]+(?:\.[a-z0-9-]+)+)[:/]/?(.+)$", re.I)
+
+
 def normalize(url: str) -> Link | None:
     """Reduce an address to its repository. `None` if it is not an address."""
     u = clean(url)
     if u.startswith("10."):
         return _from_doi(u, u)
+    ssh = _SSH.match(u)
+    if ssh:
+        u = f"https://{ssh.group(1)}/{ssh.group(2)}"
     try:
         s = urlsplit(u)
     except ValueError:
+        return None
+    # An address with a user part is an email address, or "mailto:", read as a link
+    # ("https://mailto:someone@lab.org", seen in 10.1016/j.isci.2023.107066): no repository's.
+    if s.username is not None or s.password is not None:
         return None
     host = (s.hostname or "").lower()
     # A host name, not a query glued behind "https://":

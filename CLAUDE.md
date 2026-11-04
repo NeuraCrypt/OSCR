@@ -6,7 +6,11 @@
   alternative instead of building it.
 - **No secret in the code**: tokens go in the macOS keychain or in Cloudflare secrets.
 - **No email address or other non-public personal data is displayed.** The website hides
-  every email address, including those in the authors' code (`catalog.mask_emails`).
+  every email address, including those in the authors' code (`catalog.mask_emails`). A code link
+  with a user part (an email or `mailto:` read as a link) is no repository (`links.normalize`,
+  `src/lib/emails.ts` `codeLink`); the build masks every string of the catalogue and of the files'
+  facts (`maskAll`), and the nightly runs `npm run check:emails` before `wrangler deploy`: a built
+  file holding an address stops the deployment (decided 2026-11-04).
 - **The authors' contact details are collected, privately** (decided 2026-09-27): email,
   given and family names, ORCID, organization, address and affiliation of each author,
   linked to the paper and its DOI (`oscr/contacts.py`, table `contact`). They go only to

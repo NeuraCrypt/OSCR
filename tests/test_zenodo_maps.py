@@ -200,7 +200,7 @@ def test_the_night_rebuilds_the_website_and_puts_it_online(tmp_path, monkeypatch
     monkeypatch.setattr(publish.subprocess, "run", fake_run)
     r = publish.deploy_cloudflare(tmp_path / "pub", "oscr", website=tmp_path)
     assert r == "website online: https://oscr.example.workers.dev"
-    assert [s for s, _ in calls] == [["npm", "run", "build"], ["npx", "wrangler", "deploy"]]
+    assert [s for s, _ in calls] == [["npm", "run", "build"], ["npm", "run", "check:emails"], ["npx", "wrangler", "deploy"]]
     assert calls[0][1] == str((tmp_path / "pub").resolve())
 
 
@@ -216,10 +216,27 @@ def test_the_night_installs_the_packages_when_the_lock_changed(tmp_path, monkeyp
         return subprocess.CompletedProcess(step, 0, stdout="https://oscr.example.workers.dev\n", stderr="")
     monkeypatch.setattr(publish.subprocess, "run", fake_run)
     publish.deploy_cloudflare(tmp_path / "pub", "oscr", website=tmp_path)
-    assert calls == [["npm", "ci"], ["npm", "run"], ["npx", "wrangler"]]
+    assert calls == [["npm", "ci"], ["npm", "run"], ["npm", "run"], ["npx", "wrangler"]]
     calls.clear()
     publish.deploy_cloudflare(tmp_path / "pub", "oscr", website=tmp_path)    # installed: not again
-    assert calls == [["npm", "run"], ["npx", "wrangler"]]
+    assert calls == [["npm", "run"], ["npm", "run"], ["npx", "wrangler"]]
+
+
+def test_the_night_never_deploys_a_site_that_holds_an_email_address(tmp_path, monkeypatch):
+    import subprocess
+    (tmp_path / "node_modules").mkdir()
+    calls = []
+
+    def fake_run(step, cwd, env, **kw):
+        calls.append(step)
+        failed = step[:3] == ["npm", "run", "check:emails"]
+        return subprocess.CompletedProcess(step, 1 if failed else 0, stdout="",
+                                           stderr="FAIL /records/paper/9c.json: an email address" if failed else "")
+    monkeypatch.setattr(publish.subprocess, "run", fake_run)
+    with pytest.raises(RuntimeError):
+        publish.deploy_cloudflare(tmp_path / "pub", "oscr", website=tmp_path)
+    assert ["npm", "run", "check:emails"] in calls
+    assert not any(c[:2] == ["npx", "wrangler"] for c in calls)
 
 
 def _fake_wrangler(monkeypatch, runs):

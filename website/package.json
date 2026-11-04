@@ -10,6 +10,7 @@
     "build": "npm run data && NODE_OPTIONS=--max-old-space-size=16384 astro build",
     "check": "node --experimental-strip-types scripts/check.mjs",
     "check:growth": "node --experimental-strip-types scripts/growth.mjs",
+    "check:emails": "node --experimental-strip-types scripts/check-emails.mjs",
     "test": "node --experimental-strip-types --test \"tests/**/*.test.ts\"",
     "scitool:add": "node --experimental-strip-types scripts/scitool-add.mjs",
     "preview": "astro preview",

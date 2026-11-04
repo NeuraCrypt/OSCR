@@ -275,6 +275,9 @@ def deploy_cloudflare(catalog: Path, project: str, website: Path = WEBSITE) -> s
     built = _built_key(catalog, website)
     if not (built and _built(website) == built and (website / "dist").is_dir()):
         steps += [["npm", "run", "build"]]
+    # No email address goes online (CLAUDE.md): the built site is checked before every deployment,
+    # and a file that holds one stops it (website/scripts/check-emails.mjs).
+    steps += [["npm", "run", "check:emails"]]
     steps += [["npx", "wrangler", "deploy", "--name", project]]
     output = ""
     for step in steps:

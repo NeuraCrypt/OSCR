@@ -26,6 +26,7 @@
 import { createHash } from "node:crypto";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { checkedText, EMAIL_ON_PAGE } from "../src/lib/emails.ts";
 import { allowsHash, headersFor, parseHeaders } from "../src/lib/headers.ts";
 import { buildOpenapi, ENDPOINTS, REPO_SHARDS } from "../src/lib/apispec.ts";
 import {
@@ -468,11 +469,10 @@ for (const slug of rows.keys()) follow(`a row of ${slug}`, `/paper/${slug}/`);
 // 5. No email address on a page of the site, in the lookup or in the records. (The lines of code
 // of the Code ↔ Paper reader and the script lots show the authors' own code, as they published it,
 // their addresses masked by the export: catalog.mask_emails.)
-const EMAIL = /[\w.+-]+@[\w-]+(?:\.[\w-]+)*\.[a-z]{2,}/i;
+// The same rule as scripts/check-emails.mjs, which the nightly runs before every deployment.
 for (const f of files) {
   if (!/\.(html|json)$/.test(f) || f.startsWith("/scripts/")) continue;
-  const text = readFileSync(join(DIST, f), "utf8").replace(/<ol class="lines[^"]*" id="lines"[^>]*>[\s\S]*?<\/ol>/, "");
-  const m = text.match(EMAIL);
+  const m = checkedText(readFileSync(join(DIST, f), "utf8")).match(EMAIL_ON_PAGE);
   if (m) problems.push(`${f}: an email address (${m[0]})`);
 }
 

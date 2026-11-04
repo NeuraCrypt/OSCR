@@ -87,3 +87,19 @@ def test_an_outlook_safelinks_link_yields_the_real_address_without_the_email():
                         "Cochlin_manuscript.git&data=05|02|someone@example.org|2b10f|0|&sdata=r4q%3D&reserved=0")
     assert l is not None and l.repo == "github.com/raghumoy/cochlin_manuscript"
     assert "safelinks" not in l.url and "@" not in l.url
+
+
+def test_an_email_address_read_as_a_link_is_no_repository():
+    # 10.1016/j.isci.2023.107066 and others: "mailto:" or a bare address in a code statement.
+    for url in ("mailto:terry@sangerlab.net", "https://mailto:terry@sangerlab.net",
+                "http://mailto:Abbasi@up.edu", "liting@bme.cams.cn", "https://liting@bme.cams.cn"):
+        assert links.normalize(url) is None, url
+
+
+def test_github_s_ssh_address_is_the_repository():
+    for url in ("git@github.com:Molecular-Neurogenetics/L1CRISPR_Adami_2025.git",
+                "http://git@github.com:Molecular-Neurogenetics/L1CRISPR_Adami_2025.git",
+                "ssh://git@github.com/Molecular-Neurogenetics/L1CRISPR_Adami_2025"):
+        link = links.normalize(url)
+        assert link is not None and link.repo == "github.com/molecular-neurogenetics/l1crispr_adami_2025", url
+        assert "@" not in link.url
