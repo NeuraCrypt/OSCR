@@ -11,6 +11,8 @@ import {
 } from "./entities";
 import { ABOUT, HELP, pageExists, POLICIES } from "./info";
 import { listPaging, listUrl, newestFirst } from "./lists";
+import { sciTools } from "./scitools-data";
+import { SCITOOLS_PATH } from "./scitools";
 
 /** Every path the sitemap lists, once each, in a stable order. */
 export function sitemapPaths(): string[] {
@@ -30,6 +32,7 @@ export function sitemapPaths(): string[] {
     ...institutions.map((i) => institutionUrl(i.id)),
     ...tools.map((t) => toolUrl(t.id)),
     ...datasets.map((d) => datasetUrl(d.id)),
+    ...(sciTools.length ? [SCITOOLS_PATH, ...sciTools.map((t) => `${SCITOOLS_PATH}${t.slug}/`)] : []),
   ];
   return [...new Set(paths.filter((p) => p !== ""))];
 }
