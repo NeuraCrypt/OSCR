@@ -92,7 +92,12 @@ pages, raising `BADGE_MAX_AGE` to a day is the first lever.
 | **The generator** finds each README, says which lack the badge, opens the forge's editor (GitHub: a missing README is created already filled, `new/<branch>?filename=README.md&value=…`) | **Built**: one click per repository, the author's own gesture. |
 | **GitLab group badges** with `%{project_path}` and `?missing=hide` | **Built**: one setting badges every project of a group, now and later. |
 | **`oscr badge --write`** in a clone | **Built**: scriptable over all of a lab's clones (`for d in */; do (cd "$d" && oscr badge --write); done`), idempotent. |
-| The forge's GitHub App (night phase 01, behind `FORGE_OPEN`) suggesting the badge in its check run on repositories its owners installed it on | Later, once the forge opens: opt-in by installation, a check-run line, never a write. |
+| The forge's GitHub App (night phase 01, behind `FORGE_OPEN`) suggesting the badge in its check run on repositories its owners installed it on | **Built** (2026-11-04, `pr-checks.ts` `badgeReminder`): on a repository linked to a paper whose README lacks the badge, the check run's summary ends with one sentence and the badge page's address. One more read, nothing written. |
+| **The "Add the badge" box** on every paper's page (static, and rendered on demand by the Worker) and every scientific tool's page | **Built** (2026-11-04, `components/BadgeBox.astro`, `render.ts` `badgeSection`, `badge.ts` `badgeBox`): every reader sees it, signed in or not; the Markdown, reStructuredText and HTML snippets carry their marks, so every later tool replaces them in place. |
+| **A GitHub Action** in the researcher's own workflow | **Built** (2026-11-04, `github-action/oscr-badge/`): it runs `oscr badge --write` from this repository's `cli/` and commits the README with the workflow's own token when it changed; the researcher opts in by adding the workflow file (`/help/badge/#action`). The registry writes nothing. |
+| **The registry's editor with the badge in place** (`/r/<owner>/<name>/edit/<branch>/<README>?badge=doi:…`) | **Built**, behind `FORGE_OPEN` (2026-11-04, `repo-edit.ts`, `badge.ts` `insertBadge`, `badgeSubject`): the address names only the subject, the page builds the snippet and puts it under the title; the person commits it as themselves, one authorization (D00-4). |
+| The App opening the badge pull request by itself when installed | **Not built**: D00-4 (the installation token never writes) and CLAUDE.md (no write permission asked of GitHub). The owner's decision to change. |
+| An arXiv "Code" tab through arXivLabs | **Proposal drafted** (`docs/ARXIVLABS_PROPOSAL.md`): the owner sends it; arXiv decides. |
 
 ## Safety
 
