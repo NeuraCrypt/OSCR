@@ -157,6 +157,7 @@ export function githubBackend(config: GitHubConfig, deps: GitHubDeps): GitBacken
       const kind = credential?.kind;
       if (kind !== "anonymous" && kind !== "user" && kind !== "installation") throw invalid("not a credential");
       let authorization: (scope: Scope) => Promise<string | null>;
+      let purpose: "badge" | undefined;
       if (kind === "anonymous") {
         authorization = async () => null;
       } else if (kind === "user") {
@@ -165,6 +166,7 @@ export function githubBackend(config: GitHubConfig, deps: GitHubDeps): GitBacken
         authorization = async () => header;
       } else {
         const installationId = (credential as { installationId: string }).installationId;
+        purpose = (credential as { purpose?: "badge" }).purpose === "badge" ? "badge" : undefined;
         if (typeof installationId !== "string" || !/^\d{1,20}$/.test(installationId)) throw invalid("not an installation id");
         if (!issuer || !privateKey) throw new GitBackendError("unsupported", NOT_SET_UP);
         authorization = async (scope) => {
@@ -172,7 +174,7 @@ export function githubBackend(config: GitHubConfig, deps: GitHubDeps): GitBacken
             http,
             installationId,
             repo: scope.repo ?? null,
-            permissions: TOKEN_PERMISSIONS[scope.act === "check" ? "check" : "read"],
+            permissions: TOKEN_PERMISSIONS[purpose === "badge" ? "badge" : scope.act === "check" ? "check" : "read"],
             issuer,
             privateKey,
             now: now(),
@@ -182,7 +184,7 @@ export function githubBackend(config: GitHubConfig, deps: GitHubDeps): GitBacken
         };
       }
       const http: Http = new Http({ fetch: deps.fetch, now, endpoints, timeoutMs, kind, authorization: (s) => authorization(s) });
-      const ctx: Ctx = { kind, caps: GITHUB_CAPABILITIES[kind], limits: GITHUB_LIMITS, links, http, now };
+      const ctx: Ctx = { kind, caps: GITHUB_CAPABILITIES[kind], limits: GITHUB_LIMITS, links, http, now, purpose };
       return {
         credential: kind,
         repos: repoOps(ctx),

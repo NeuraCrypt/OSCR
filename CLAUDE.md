@@ -161,7 +161,11 @@ What signed-in readers ask of the registry (`website/worker/contributions/`, `os
   `src/lib/badge.ts` (the wordmark embedded, `tools/make_badge_logo.py`); the static `/badge.svg` and
   `/badge.png` stay as the fallback. The generator `/badge/` (one page), the account's `#badges`, GitLab
   group badges and `oscr badge --write` add it everywhere; the author opens every change in the forge's
-  own editor. No write permission is ever asked of GitHub, no pull request or message is sent for them.
+  own editor. No write permission is asked of GitHub but ONE, used for ONE pull request (D00-4 amended
+  2026-11-04, the owner's decision): the App's contents and pull requests write, used only when a
+  researcher installs it on a public repository linked to a paper whose README lacks the badge
+  (`service/badge-pr.ts`, behind `FORGE_OPEN` and `FORGE_BADGE_PR=1`, one `badge_offers` row per
+  repository, never twice); no other pull request or message is sent for them.
   Since 2026-11-04 every paper's and tool's page shows an "Add the badge" box to every reader
   (`BadgeBox.astro`, `render.ts`), its snippets with their marks; the researcher may opt in to a GitHub
   Action (`github-action/oscr-badge/`, their workflow's own token) or to the registry's editor with the
@@ -296,7 +300,8 @@ The GitHub side (`website/worker/forge/`, D1 `oscr_forge`, `oscr/forgejobs.py`,
   OSCR.
 - **Every write is the person's own**, one authorized action at a time (`/api/forge/start`, GitHub,
   `/api/forge/act`): the user token is used for that action, revoked, and never stored, logged or
-  answered. The App's installation token only posts OSCR's check runs and reads after a webhook.
+  answered. The App's installation token only posts OSCR's check runs and reads after a webhook, and opens
+  the badge's one pull request (D00-4 amended, `badge-pr.ts`; a token minted for it, narrowed to the repository).
 - **`FORGE_OPEN` stays unset until phase 16's content rules are merged**: the write routes then
   answer only to `FORGE_OWNER_GITHUB_ID`. Never set it without the owner.
 - **`oscr_forge` holds public repositories only**, and no email address, token or Git object; a

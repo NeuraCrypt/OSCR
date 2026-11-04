@@ -57,7 +57,9 @@ export type Rev = string;
 export type Credential =
   | { kind: "anonymous" }
   | { kind: "user"; token: string }
-  | { kind: "installation"; installationId: string };
+  | { kind: "installation"; installationId: string; /** D00-4 amended (2026-11-04): "badge" mints a token
+   *  that may write contents and pull requests, for the App's one badge pull request only
+   *  (service/badge-pr.ts); without it, an installation only reads and posts check runs. */ purpose?: "badge" };
 
 export type CredentialKind = Credential["kind"];
 

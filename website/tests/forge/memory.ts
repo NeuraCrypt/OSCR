@@ -257,7 +257,7 @@ export interface MemRepo {
   threads: Map<string, MemThread>;
 }
 
-export type Who = { kind: "anonymous" } | { kind: "user"; token: string } | { kind: "installation"; installationId: string };
+export type Who = { kind: "anonymous" } | { kind: "user"; token: string } | { kind: "installation"; installationId: string; purpose?: "badge" };
 
 export interface MemoryOptions {
   /** Unix seconds; default a fixed 2026-09-28 12:00 UTC that `advance` moves. */
@@ -373,7 +373,7 @@ export class MemoryBackend implements GitBackend {
     let who: Who;
     if (kind === "anonymous") who = { kind };
     else if (kind === "user" && typeof credential.token === "string") who = { kind, token: credential.token };
-    else if (kind === "installation" && typeof credential.installationId === "string") who = { kind, installationId: credential.installationId };
+    else if (kind === "installation" && typeof credential.installationId === "string") who = { kind, installationId: credential.installationId, purpose: credential.purpose === "badge" ? "badge" : undefined };
     else throw new GitBackendError("invalid", "not a credential");
     const call = new Call(this, who);
     return {
@@ -669,7 +669,7 @@ export class Call {
   /** The start of every method, once its arguments are checked: the rule, the count, the
    *  credential, the rate limit, an injected failure. */
   enter(method: string, o: { act: Act; need?: Capability; fallback?: string | null; view?: string | null; graphql?: boolean; free?: boolean; write?: boolean }): void {
-    guard(this.kind, this.caps, o.act, o.need, o.fallback);
+    guard(this.kind, this.caps, o.act, o.need, o.fallback, this.who.kind === "installation" ? this.who.purpose : undefined);
     if (!o.free) {
       if (this.who.kind === "installation") {
         const last = this.b.minted.get(this.who.installationId);
@@ -715,6 +715,8 @@ export class Call {
     const inst = this.installation();
     if (inst) {
       const covers = inst.accountId === r.ownerId && (inst.selection === "all" || inst.repos.has(r.id));
+      // The badge's session writes where the installation accepted contents and pull requests (D00-4 amended).
+      if (covers && this.who.kind === "installation" && this.who.purpose === "badge" && inst.permissions.contents === "write" && inst.permissions.pull_requests === "write") return "write";
       if (covers) return "read";
       return r.visibility === "public" ? "read" : "none";
     }

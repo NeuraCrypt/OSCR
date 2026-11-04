@@ -17,6 +17,8 @@ export interface Ctx {
   links: ForgeLinks;
   http: Http;
   now: () => number;
+  /** An installation session made for the badge's one pull request (D00-4 amended). */
+  purpose?: "badge";
 }
 
 /** "/repos/{owner}/{name}", escaped, once the names are checked. */
@@ -27,7 +29,7 @@ export function R(repo: RepoRef): string {
 
 /** The rule of rules.ts for this session. */
 export function need(ctx: Ctx, act: Act, capability?: Capability | null, fallbackUrl?: string | null): void {
-  guard(ctx.kind, ctx.caps, act, capability, fallbackUrl);
+  guard(ctx.kind, ctx.caps, act, capability, fallbackUrl, ctx.purpose);
 }
 
 /** An installation token's scope: this repository, and what the act needs. */

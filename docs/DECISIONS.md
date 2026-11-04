@@ -185,6 +185,18 @@ speaks to GitHub as usual.
   - It is minted from the App's private key.
   - It is kept in the Worker's memory for its hour, never in D1, KV or a cookie.
   - `GitBackend` refuses any other write made with an installation token.
+- **Amended 2026-11-04 (the owner's decision): the badge's one pull request.** When a researcher installs
+  the App on a public repository the registry links to a paper, and its README lacks the badge, the App
+  opens ONE pull request that adds it (`service/badge-pr.ts`).
+  - Its token is minted for that act only (`TOKEN_PERMISSIONS.badge`: contents and pull requests
+    write), narrowed to the repository, kept in memory for its hour; the session says its purpose
+    (`purpose: "badge"`), and `GitBackend` still refuses every other installation write.
+  - Once per repository, ever: a `badge_offers` row (migration 0019), even when the pull request is
+    closed. At most 20 offers per installing account a day, counted in FORGE_ROWS_PER_DAY.
+  - Off unless FORGE_OPEN and FORGE_BADGE_PR=1. The App's permissions on GitHub must add Contents and
+    Pull requests read and write; each installation accepts them.
+  - Why: the badge spreads most when it is offered where the researcher already chose the App; the
+    change is the researcher's to merge or close, and it is attributed to the App, said in its body.
 - **The App's secrets** (ID, client id and secret, private key, webhook secret) are Cloudflare
   secrets, created by the owner.
 

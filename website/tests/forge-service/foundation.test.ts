@@ -356,7 +356,8 @@ describe("the rows (store.ts)", () => {
     // Phase 10: a person's tokens, and the hooks of a subject (0009_automation.sql). Phase 16: the open
     // reports, a person's hidden things, the open appeals, the data-rights requests (0010_moderation.sql).
     assert.deepEqual(indexes.map((i) => i.name).sort(), [
-      "api_tokens_user", "content_reports_open", "discussions_space", "hooks_subject", "moderation_owner", "org_invitations_invitee",
+      "api_tokens_user",
+      "badge_offers_day", "content_reports_open", "discussions_space", "hooks_subject", "moderation_owner", "org_invitations_invitee",
       "org_members_user", "organizations_handle", "projects_owner", "repos_path", "research_paper", "rights_requests_open",
       "snippets_discover",
     ]);

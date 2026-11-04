@@ -38,9 +38,12 @@ export const TOKEN_CACHE: TokenCache = new Map();
 export const TOKEN_MARGIN = 300;
 
 /** What an installation token may do, per act (the App's permissions, narrowed). */
-export const TOKEN_PERMISSIONS: Record<"read" | "check", Record<string, "read" | "write">> = {
+export const TOKEN_PERMISSIONS: Record<"read" | "check" | "badge", Record<string, "read" | "write">> = {
   read: { metadata: "read", contents: "read", pull_requests: "read", issues: "read", checks: "read" },
   check: { metadata: "read", checks: "write" },
+  // D00-4 amended (2026-11-04): the badge's one pull request (service/badge-pr.ts), narrowed to its
+  // repository; the App's permissions on GitHub must include them, accepted by each installation.
+  badge: { metadata: "read", contents: "write", pull_requests: "write" },
 };
 
 const b64url = (bytes: Uint8Array): string => btoa(String.fromCharCode(...bytes)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");

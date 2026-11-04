@@ -25,7 +25,7 @@ const toc = [
   { id: "everywhere", text: "Every repository at once" },
   { id: "cli", text: "From the command line" },
   { id: "action", text: "With a GitHub Action" },
-  { id: "why", text: "Why no pull request is made for you" },
+  { id: "why", text: "When a pull request is made for you" },
   { id: "fresh", text: "How it stays true" },
   { id: "privacy", text: "Privacy" },
   { id: "trouble", text: "When it does not show" },
@@ -228,14 +228,16 @@ jobs:
     <code>commit-message</code>. <a href={`${SOURCE_URL}/tree/main/github-action/oscr-badge`}>Its source</a>.
   </p>
 
-  <h2 id="why">Why no pull request is made for you</h2>
+  <h2 id="why">When a pull request is made for you</h2>
   <p>
-    Opening pull requests on the authors' repositories by itself would need write permission on them, and would send
-    unrequested changes to people who did not ask for them: {SITE_NAME} never asks a forge for permission to write to your repositories, never
-    writes to a repository and sends no mass message (the <a href="/policies/">policies</a>). The badge is added by
-    you, in the forge's own editor or with your own command line: your consent is in the gesture itself. What{" "}
-    {SITE_NAME} does instead is make that gesture one click: the right snippet, the README already found, the editor
-    already open.
+    {SITE_NAME} never opens a pull request on a repository whose owner did not ask, and sends no mass message (the{" "}
+    <a href="/policies/">policies</a>). There is one exception, and you make it yourself: when you install{" "}
+    {SITE_NAME}'s GitHub App on a public repository that {SITE_NAME} links to a paper, and its README lacks the badge,
+    the App opens ONE pull request that adds it under the title, between its two marks. That is the only write the App
+    makes, with a token narrowed to that repository and kept for its hour; it is offered once, never again on that
+    repository, even if you close it. Close it to decline; uninstall the App to stop everything. Otherwise the badge is
+    added by you, in the forge's own editor, with the GitHub Action or with your own command line: your consent is in
+    the gesture itself.
   </p>
 
   <h2 id="fresh">How it stays true</h2>

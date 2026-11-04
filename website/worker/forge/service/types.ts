@@ -52,6 +52,9 @@ export type ForgeServiceEnv = AccountEnv &
     /** Phase 10 (pr-checks.ts): the platform's name (the site's SITE_NAME), for the name of the check
      *  run GitHub shows; unset, the run is "Research code checks". Never hard-coded. */
     SITE_NAME?: string;
+    /** "1": the App opens the badge's one pull request on a repository it is newly installed on
+     *  (badge-pr.ts, D00-4 amended), when FORGE_OPEN is set too. Unset: never. */
+    FORGE_BADGE_PR?: string;
     /** Development only (statuses.ts): GitHub Actions' OIDC issuer replaced by a mock (https, or http
      *  on this machine). Production: https://token.actions.githubusercontent.com. */
     GITHUB_OIDC_ISSUER?: string;

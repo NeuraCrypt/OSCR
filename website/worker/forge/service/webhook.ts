@@ -44,6 +44,7 @@ import type { ForgeEvent, RepoStub } from "../types.ts";
 import { WEBHOOK_BYTES } from "./caps.ts";
 import { eventOfDelivery, eventWrite } from "./events.ts";
 import { queueHooks } from "./hooks.ts";
+import { queueBadgeOffers } from "./badge-pr.ts";
 import { queuePullChecks } from "./pr-checks.ts";
 import { json, problem } from "./http.ts";
 import { all, deleteInstallation, deliveryRow, deliverySeen, installationById, repoByKey, rowsOf, statements, tracedCount, updateRepo, upsertInstallation } from "./store.ts";
@@ -310,6 +311,17 @@ export async function handleWebhook(r: ForgeRequest): Promise<Response> {
   // public repository the registry follows, covered by the installation that sent the delivery.
   if (event.kind === "pull_request" && seen.repo && covers(seen.installation, seen.repo, event.repo) && event.repo.visibility === "public" && ALIVE.includes(seen.repo.state) && seen.repo.name) {
     queuePullChecks(r, event, seen.repo);
+  }
+  // D00-4 amended: the badge's one pull request on the public repositories an installation just added,
+  // when the registry follows them (badge-pr.ts, behind FORGE_OPEN and FORGE_BADGE_PR), in waitUntil.
+  if (event.kind === "installation_repositories" && event.action === "added" && seen.installation && !seen.installation.suspended) {
+    const inst = seen.installation;
+    const wanted = new Map(event.added.filter((s) => s.visibility === "public").map((s) => [s.key.id, s.ref]));
+    if (wanted.size) {
+      const rows = await all<RepoRow>(r.db.prepare(`SELECT * FROM repos WHERE forge = ? AND repo_id IN (${[...wanted].map(() => "?").join(", ")})`).bind(backend.forge, ...wanted.keys()));
+      const ours = rows.filter((row) => (row.owner_id === inst.account_id || row.owner_login === inst.account_login) && ALIVE.includes(row.state));
+      queueBadgeOffers(r, inst.id, inst.account_login, ours.map((row) => ({ row, ref: wanted.get(row.repo_id)! })));
+    }
   }
   if (!p.writes.length) return acknowledged({ stored: 0, dropped: p.dropped });
   const rows = rowsOf(p.writes);

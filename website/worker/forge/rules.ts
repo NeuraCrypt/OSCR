@@ -18,7 +18,7 @@ import type { CredentialKind } from "./types.ts";
 /** What a method does: read, write (any mutation but check runs), or post a check run. */
 export type Act = "read" | "write" | "check";
 
-export const INSTALLATION_RULE = "installation sessions only post check runs";
+export const INSTALLATION_RULE = "installation sessions only post check runs (and the one badge pull request)";
 
 export function guard(
   kind: CredentialKind,
@@ -26,10 +26,12 @@ export function guard(
   act: Act,
   need?: Capability | null,
   fallbackUrl?: string | null,
+  purpose?: "badge",
 ): void {
   if (act !== "read") {
     if (kind === "anonymous") throw new GitBackendError("unauthorized", "a write needs a person's authorization");
-    if (kind === "installation" && act === "write") throw new GitBackendError("forbidden", INSTALLATION_RULE);
+    // D00-4 amended: an installation writes only in a session made for the badge's one pull request.
+    if (kind === "installation" && act === "write" && purpose !== "badge") throw new GitBackendError("forbidden", INSTALLATION_RULE);
     if (kind === "user" && act === "check") throw new GitBackendError("forbidden", "check runs are the App's acts");
     if (!caps.has("write")) throw new GitBackendError("unsupported", `this forge takes no write from ${kind} sessions`);
   } else if (!caps.has("read")) {

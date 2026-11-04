@@ -97,7 +97,7 @@ export function overCap(exceeded: NonNullable<DailyCaps["exceeded"]>): ForgeProb
 
 /** The rows the forge service wrote today (UTC), every account and every webhook together; phase 10
  *  adds the outgoing webhooks' deliveries (1 row each, hook_deliveries: one key range, like the
- *  others). */
+ *  others), and the badge's one pull request its offers (badge_offers, 1 row each, badge-pr.ts). */
 export async function globalRowsToday(db: D1Database, t: number): Promise<number> {
   const day = utcDay(t);
   const row = (
@@ -105,9 +105,10 @@ export async function globalRowsToday(db: D1Database, t: number): Promise<number
       .prepare(
         "SELECT (SELECT coalesce(sum(rows), 0) FROM (SELECT rows FROM actions WHERE day = ? LIMIT ?)) + " +
           "(SELECT coalesce(sum(rows), 0) FROM (SELECT rows FROM deliveries WHERE day = ? LIMIT ?)) + " +
-          "(SELECT count(*) FROM (SELECT 1 FROM hook_deliveries WHERE day = ? LIMIT ?)) AS n",
+          "(SELECT count(*) FROM (SELECT 1 FROM hook_deliveries WHERE day = ? LIMIT ?)) + " +
+          "(SELECT count(*) FROM (SELECT 1 FROM badge_offers WHERE day = ? LIMIT ?)) AS n",
       )
-      .bind(day, FORGE_ROWS_PER_DAY, day, FORGE_ROWS_PER_DAY, day, FORGE_ROWS_PER_DAY)
+      .bind(day, FORGE_ROWS_PER_DAY, day, FORGE_ROWS_PER_DAY, day, FORGE_ROWS_PER_DAY, day, FORGE_ROWS_PER_DAY)
       .all<{ n: number }>()
   ).results[0];
   return Number(row?.n ?? 0);
