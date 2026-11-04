@@ -64,7 +64,7 @@ const json = (f) => JSON.parse(readFileSync(join(DIST, f), "utf8"));
 
 // 1. The fixed pages, the shells of the pages rendered on demand, and the rewrites that serve
 // an entity's shell for its address (public/_redirects).
-const FIXED = ["/", "/about/", "/help/", "/policies/", "/privacy/", "/brand/", "/labs/", "/taxonomy/", "/list/", "/sitemap.xml", "/robots.txt", "/browse/", "/authors/", "/journals/", "/institutions/", "/tools/", "/datasets/",
+const FIXED = ["/", "/about/", "/help/", "/policies/", "/privacy/", "/brand/", "/labs/", "/taxonomy/", "/list/", "/sitemap.xml", "/robots.txt", "/papers.atom", "/browse/", "/authors/", "/journals/", "/institutions/", "/tools/", "/datasets/",
   "/lookup/", "/search/", "/404.html", "/account/", "/submit/", "/removal/", "/data-rights/", "/badge.svg", "/badge.png", "/badge/", "/badge/site.json", "/badge/tools.json", "/paper/404.html",
   ...ENTITY_TYPES.map((t) => `/${t}/`),
   // The GitHub side (night phase 01), dormant behind FORGE_OPEN.
