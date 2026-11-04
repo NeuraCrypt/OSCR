@@ -25,6 +25,7 @@ import type { PayloadChange } from "../../worker/forge/service/act-commit.ts";
 import { atSource, classifyFile, entryAt, isDirectory, licenceShows, pathCrumbs, refSegments, sizeInWords, textLines, unicodeWarnings } from "../lib/code-nav.ts";
 import { commitBack, type FileTouch } from "../lib/commit-view.ts";
 import * as E from "../lib/editor.ts";
+import { badgeBox, badgeSubject, insertBadge, readmeFormat } from "../lib/badge.ts";
 import { repoPath } from "../lib/forge.ts";
 import { detectLanguage } from "../lib/highlight.ts";
 import { diffTable, hunksOf } from "../lib/history.ts";
@@ -236,6 +237,21 @@ export async function mountEditor(slot: HTMLElement, env: CodeEnv, mode: "edit" 
   /** The text a three-way merge brought onto the latest version, once the person asked for it. */
   let startMerged: string | null = null;
   const notes: (El | HTMLElement)[] = [];
+  // ?badge=doi:… or repo:… (lib/badge.ts badgeEditUrl): the registry's badge put in this README, built
+  // here from its subject (never a text from the address), for the person to read and commit as themselves.
+  const subject = mode === "edit" && !draft ? badgeSubject(params.get("badge")) : null;
+  const format = original ? readmeFormat(original) : null;
+  if (subject && format) {
+    const name = document.querySelector<HTMLMetaElement>('meta[name="application-name"]')?.content ?? "";
+    const marked = badgeBox(location.origin, subject, name).snippets.find((s) => s.format === format)?.text ?? "";
+    const withBadge = marked ? insertBadge(held.text, format, marked) : held.text;
+    if (withBadge !== held.text) {
+      startText = withBadge;
+      notes.push(el("p", { class: "ok" }, "The registry's badge is in place, under the title, between its two marks: read it, then commit it."));
+    } else {
+      notes.push(el("p", {}, "This README already carries this badge."));
+    }
+  }
   if (mode === "new" && !draft) {
     const value = params.get("value");
     if (value) {

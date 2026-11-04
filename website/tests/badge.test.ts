@@ -281,3 +281,28 @@ describe("the box on every paper's and tool's page", () => {
     assert.doesNotMatch(paperView(p as never).html, /id="badge"/);
   });
 });
+
+describe("the badge put in a README by the registry's editor", () => {
+  it("goes under the title, replaces what is between its marks, and never twice", async () => {
+    const { insertBadge, markedSnippet, readmeFormat, badgeEditUrl } = await import("../src/lib/badge.ts");
+    const md = markedSnippet("markdown", "[![R](https://e.org/b.svg)](https://e.org/b)");
+    const once = insertBadge("# Title\n\nText.\n", "markdown", md);
+    assert.equal(once, `# Title\n\n${md}\n\nText.\n`);
+    assert.equal(insertBadge(once, "markdown", md), once);
+    const md2 = markedSnippet("markdown", "[![R](https://e.org/c.svg)](https://e.org/c)");
+    assert.equal(insertBadge(once, "markdown", md2), `# Title\n\n${md2}\n\nText.\n`);
+    assert.equal(insertBadge("---\nlicense: mit\n---\n# Card\nx\n", "markdown", md), `---\nlicense: mit\n---\n# Card\n\n${md}\n\nx\n`);
+    const rst = markedSnippet("rst", ".. image:: https://e.org/b.svg");
+    assert.equal(insertBadge("evoparam\n========\n\nText.\n", "rst", rst), `evoparam\n========\n\n${rst}\n\nText.\n`);
+    assert.equal(insertBadge("", "markdown", md), `${md}\n`);
+    assert.equal(readmeFormat("docs/README.rst"), "rst");
+    assert.equal(readmeFormat("README"), "markdown");
+    assert.equal(readmeFormat("README.adoc"), null);
+    assert.equal(badgeEditUrl("o", "n", "main", "README.md", { kind: "doi", doi: "10.1/x" }), "/r/o/n/edit/main/README.md?badge=doi%3A10.1%2Fx");
+    const { badgeSubject } = await import("../src/lib/badge.ts");
+    assert.deepEqual(badgeSubject("doi:10.1234/X"), { kind: "doi", doi: "10.1234/x" });
+    assert.deepEqual(badgeSubject("repo:github.com/O/N"), { kind: "repo", repo: "github.com/o/n" });
+    assert.equal(badgeSubject("[![evil](https://bad.example/x.svg)](https://bad.example)"), null);
+    assert.equal(badgeSubject(null), null);
+  });
+});

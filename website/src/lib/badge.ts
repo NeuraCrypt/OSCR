@@ -459,3 +459,82 @@ export function badgeBox(origin: string, subject: BadgeSubject, alt: string, rep
   };
 }
 export type BadgeBox = ReturnType<typeof badgeBox>;
+
+/** The markup of a README, from its name (cli/src/oscr_cli/badge.py README_NAMES), or null when the
+ *  box's three formats do not cover it. */
+export function readmeFormat(path: string): keyof typeof BOX_MARKS | null {
+  const name = (path.split("/").pop() ?? "").toLowerCase();
+  if (name === "readme" || name.endsWith(".md") || name.endsWith(".markdown")) return "markdown";
+  if (name.endsWith(".rst")) return "rst";
+  if (name.endsWith(".html") || name.endsWith(".htm")) return "html";
+  return null;
+}
+
+/** The line after a README's title (0 when it has none at its top): the same rule as the command
+ *  line's `_title_end`, for Markdown, HTML and reStructuredText. */
+function titleEnd(lines: string[], format: keyof typeof BOX_MARKS): number {
+  let i = 0;
+  while (i < lines.length && !lines[i].trim()) i++;
+  if (format === "markdown" && lines[i]?.trim() === "---") {
+    // A front matter (a Hugging Face card's YAML): the badge goes after it, never inside.
+    const j = lines.findIndex((l, k) => k > i && l.trim() === "---");
+    if (j > 0) {
+      i = j + 1;
+      while (i < lines.length && !lines[i].trim()) i++;
+    }
+  }
+  if (i >= lines.length) return i;
+  const line = lines[i];
+  if (format === "markdown" || format === "html") {
+    if (/^#\s/.test(line) || /^<h1[\s>]/i.test(line)) return i + 1;
+    if (line.trim() && /^=+\s*$/.test(lines[i + 1] ?? "")) return i + 2;
+  } else {
+    const over = /^([=#*~^-])\1+\s*$/.test(line);
+    if (over && (lines[i + 2] ?? "").trim() === line.trim()) return i + 3;
+    if (line.trim() && /^([=#*~^-])\1+\s*$/.test(lines[i + 1] ?? "")) return i + 2;
+  }
+  return format === "markdown" && i > 0 ? i : 0;
+}
+
+/** A README with a marked snippet (markedSnippet's) in place: replacing what is between the marks
+ *  when they are there, else under the title, else at the top. Idempotent, as `oscr badge --write`. */
+export function insertBadge(readme: string, format: keyof typeof BOX_MARKS, marked: string): string {
+  const m = BOX_MARKS[format];
+  const at = readme.indexOf(m.start);
+  const end = at >= 0 ? readme.indexOf(m.end, at) : -1;
+  if (at >= 0 && end > at) return readme.slice(0, at) + marked + readme.slice(end + m.end.length);
+  const lines = readme.split("\n");
+  const cut = titleEnd(lines, format);
+  const before = lines.slice(0, cut);
+  const after = lines.slice(cut);
+  while (before.length && !before[before.length - 1].trim()) before.pop();
+  while (after.length && !after[0].trim()) after.shift();
+  const out = [before.join("\n"), marked, after.join("\n")].filter((p) => p !== "").join("\n\n");
+  return out.endsWith("\n") ? out : `${out}\n`;
+}
+
+/** The registry's own editor, opened on a repository's README with the badge already in place: the
+ *  person reviews it and commits it as themselves, one authorized commit (D00-4); the registry and its
+ *  App write nothing on their own. The address names only the badge's subject ("doi:10.…" or
+ *  "repo:host/owner/name"): the editor builds the snippet itself (badgeSubject), so a link cannot put
+ *  any other text in a README. `branch` is the branch to edit (the default branch). */
+export function badgeEditUrl(owner: string, name: string, branch: string, readme: string, subject: BadgeSubject): string {
+  const seg = (s: string) => s.split("/").map(encodeURIComponent).join("/");
+  const what = subject.kind === "doi" ? `doi:${subject.doi}` : `repo:${subject.repo}`;
+  return `/r/${encodeURIComponent(owner)}/${encodeURIComponent(name)}/edit/${seg(branch)}/${seg(readme)}?badge=${encodeURIComponent(what)}`;
+}
+
+/** The subject an editor's address names (badgeEditUrl), checked: a DOI (badgeDoi) or a repository's
+ *  key (badgeRepoKey); null for anything else. */
+export function badgeSubject(param: string | null): BadgeSubject | null {
+  const v = (param ?? "").trim();
+  if (v.startsWith("doi:")) {
+    const doi = badgeDoi(v.slice(4));
+    return doi ? { kind: "doi", doi } : null;
+  }
+  if (v.startsWith("repo:")) {
+    const repo = badgeRepoKey(v.slice(5));
+    return repo ? { kind: "repo", repo } : null;
+  }
+  return null;
+}
