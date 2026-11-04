@@ -340,6 +340,11 @@ def main(argv: list[str] | None = None) -> int:
                        "database, the CSV and JSONL tables, the entities and the paper pages, for the owner to review")
     pe.add_argument("--out", default="data/public-export", help="the folder to write (overwritten)")
 
+    lf = sp.add_parser("linkfeeds", help="the reader-side links (docs/BADGE.md): Europe PMC External Links and PubMed "
+                       "LinkOut files, one link per paper with a page; --upload sends them once the accounts are set")
+    lf.add_argument("--out", default="data/linkfeeds", help="the folder to write (its labslink/ and linkout/ replaced)")
+    lf.add_argument("--upload", action="store_true", help="send the files by FTP (needs the settings and the keychain)")
+
     dash = sp.add_parser("dashboard", help="the local dashboard: the database's table (http://127.0.0.1:8790)")
     dash.add_argument("--port", type=int, default=8790)
 
@@ -676,6 +681,11 @@ def main(argv: list[str] | None = None) -> int:
             print(_jobs(con, a, cfg, client, opts))
         elif a.command == "public-export":
             print(_public_export(con, Path(a.out)))
+        elif a.command == "linkfeeds":
+            from . import linkfeeds
+            print(linkfeeds.write(con, Path(a.out), cfg))
+            if a.upload:
+                print(linkfeeds.upload(Path(a.out), cfg))
         elif a.command == "forge":
             print(_forge(con, a, cfg, client))
         elif a.command == "security":

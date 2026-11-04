@@ -33,6 +33,8 @@ def planned(cfg: dict[str, str], dataset: str, cloudflare: str) -> list[str]:
     """The night's steps, in order, as the settings ask for them."""
     wanted = {"export": True, "forge": cfg.get("OSCR_FORGE_PUSH") == "remote", "dataset": bool(dataset),
               "deploy": bool(cloudflare),
+              # The reader-side links (oscr/linkfeeds.py): written every night, sent once set up.
+              "linkfeeds": cfg.get("OSCR_LINKFEEDS", "1") != "0",
               "reconcile": "remote" in (cfg.get("OSCR_D1_PUSH"), cfg.get("OSCR_COMMUNITY_PUSH")),
               "search": cfg.get("OSCR_D1_PUSH") == "remote",
               "community": cfg.get("OSCR_COMMUNITY_PUSH") == "remote", "scripts": bool(cfg.get("OSCR_SCRIPTS_DATASET")),
@@ -163,6 +165,16 @@ def run(con: Any, client: Any, cfg: dict[str, str], *, out: Path, dataset: str, 
     step("forge", "Forge", lambda: _forge(con, client, cfg, out, say))
     step("dataset", "Hugging Face", lambda: say(publish.publish_hf(out, dataset)))
     step("deploy", "Cloudflare", lambda: say(publish.deploy_cloudflare(out, cloudflare)))
+
+    def linkfeeds() -> None:
+        # One link per paper with a page, on Europe PMC and PubMed (docs/BADGE.md); nothing is sent
+        # until the owner has registered and set the FTP account.
+        from . import linkfeeds as lf
+        folder = Path("data/linkfeeds")
+        say("linkfeeds: " + lf.write(con, folder, cfg))
+        say("linkfeeds: " + lf.upload(folder, cfg))
+
+    step("linkfeeds", "Europe PMC and PubMed links", linkfeeds)
 
     def compare() -> None:
         # What D1 lost is forgotten here, so that the pushes below send it again (oscr/reconcile.py).
