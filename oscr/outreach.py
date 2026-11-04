@@ -45,6 +45,8 @@ JOURNALS: dict[str, tuple[str, ...]] = {
     "imaging-neuroscience": ("imaging neuroscience",),
     "frontiers": ("frontiers in ",),
 }
+#: A journal's DOI prefix when its name alone is not enough ("Frontiers in Zoology" is BMC's, 10.1186).
+JOURNAL_DOI: dict[str, str] = {"frontiers": "10.3389/"}
 
 #: Software Heritage's save request for a git repository, and how often one repository is asked.
 SWH_SAVE = "https://archive.softwareheritage.org/api/1/origin/save/git/url/{url}/"
@@ -67,12 +69,17 @@ def _pages(con: sqlite3.Connection) -> list[sqlite3.Row]:
                        "ORDER BY id").fetchall()
 
 
-def _code_links(con: sqlite3.Connection) -> dict[str, list[sqlite3.Row]]:
+def _code_links(con: sqlite3.Connection, verified: bool = False) -> dict[str, list[sqlite3.Row]]:
+    """The code links of the papers with a page; `verified`: only a paper whose code the registry
+    verified (status code_verified) and only its repositories alive at the source, what a letter or an
+    annotation that says "verified" may name."""
     held = catalog.withheld(con)
+    only = (" AND r.state = 'alive' AND l.article_id IN (SELECT id FROM article WHERE status = 'code_verified')"
+            if verified else "")
     out: dict[str, list[sqlite3.Row]] = {}
     for r in con.execute(f"SELECT l.article_id, l.repo, l.url, l.section, l.excerpt, r.url AS repo_url, r.state, r.kind, "
                          f"r.swh_archived FROM link l LEFT JOIN repository r ON r.repo = l.repo "
-                         f"WHERE l.role = 'code' AND l.article_id IN ({PAGES_SQL}) ORDER BY l.article_id, l.repo"):
+                         f"WHERE l.role = 'code' AND l.article_id IN ({PAGES_SQL}){only} ORDER BY l.article_id, l.repo"):
         if r["repo"] in held.repos:
             continue
         out.setdefault(r["article_id"], []).append(r)
@@ -93,8 +100,8 @@ def exact_in(excerpt: str, url: str) -> str:
 
 
 def scilite(con: sqlite3.Connection, origin: str, name: str) -> list[dict]:
-    """Europe PMC Annotations: per article with a PMCID and an open licence, its code links."""
-    links = _code_links(con)
+    """Europe PMC Annotations: per article with a PMCID and an open licence, its verified code links."""
+    links = _code_links(con, verified=True)
     out = []
     for a in _pages(con):
         _, _, pmcid = clean_ids(a["doi"], a["pmid"], a["pmcid"])
@@ -149,8 +156,8 @@ def mixnmatch(con: sqlite3.Connection) -> str:
 
 
 def journals(con: sqlite3.Connection, origin: str) -> dict[str, str]:
-    """One CSV per journal of JOURNALS: the DOI and the page of each of its papers with code."""
-    links = _code_links(con)
+    """One CSV per journal of JOURNALS: the DOI and the page of each of its papers with verified code."""
+    links = _code_links(con, verified=True)
     rows: dict[str, list[tuple[str, str]]] = {k: [] for k in JOURNALS}
     for a in _pages(con):
         if a["id"] not in links:
@@ -158,7 +165,7 @@ def journals(con: sqlite3.Connection, origin: str) -> dict[str, str]:
         j = (a["journal"] or "").lower()
         doi, _, _ = clean_ids(a["doi"], a["pmid"], a["pmcid"])
         for key, prefixes in JOURNALS.items():
-            if doi and any(j.startswith(p) for p in prefixes):
+            if doi and any(j.startswith(p) for p in prefixes) and doi.lower().startswith(JOURNAL_DOI.get(key, "")):
                 rows[key].append((doi, _page(origin, a["id"])))
     out = {}
     for key, items in rows.items():

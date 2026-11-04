@@ -72,6 +72,20 @@ def test_scholix_mixnmatch_and_the_journals(con, tmp_path):
     assert (tmp_path / "journals" / "frontiers.csv").read_text().splitlines() == ["doi,page"]   # no code
 
 
+def test_the_letters_name_only_verified_code_and_the_right_publisher(con, tmp_path):
+    a1 = paper(con, 1, journal="eLife", pmcid="PMC1")
+    code(con, a1, "github.com/lab/tool", "https://github.com/Lab/Tool", SENTENCE)
+    a2 = paper(con, 2, journal="eLife", pmcid="PMC2")
+    code(con, a2, "github.com/lab/gone", "https://github.com/Lab/Gone", "at https://github.com/Lab/Gone")
+    con.execute("UPDATE article SET status = 'code_dead' WHERE id = ?", (a2,))
+    z = paper(con, 3, journal="Frontiers in Zoology")
+    code(con, z, "github.com/lab/z", "https://github.com/Lab/Z", "x")
+    said = outreach.write(con, tmp_path, CFG)
+    assert said.startswith("Europe PMC annotations: 1 papers")
+    assert (tmp_path / "journals" / "elife.csv").read_text().count("\n") == 2      # header + the verified one
+    assert (tmp_path / "journals" / "frontiers.csv").read_text().splitlines() == ["doi,page"]   # BMC's, not Frontiers'
+
+
 def test_a_withheld_repository_leaves_every_file(con, tmp_path):
     a1 = paper(con, 1, pmcid="PMC1")
     code(con, a1, "github.com/lab/tool", "https://github.com/Lab/Tool", SENTENCE)
