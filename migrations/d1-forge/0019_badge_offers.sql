@@ -19,5 +19,5 @@ CREATE TABLE IF NOT EXISTS badge_offers (
   outcome TEXT NOT NULL CHECK (outcome IN ('opened', 'has_badge', 'no_readme_format', 'failed')),
   pr_number INTEGER,
   PRIMARY KEY (forge, repo_id)
-);
+) WITHOUT ROWID;
 CREATE INDEX IF NOT EXISTS badge_offers_day ON badge_offers (day, account_login);
