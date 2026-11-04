@@ -134,3 +134,12 @@ def test_software_heritage_stops_at_the_first_refusal(con, tmp_path):
         raise urllib.error.HTTPError(req.full_url, 429, "Too Many Requests", {}, io.BytesIO(b""))
 
     assert outreach.swh_save(con, tmp_path, {"OSCR_SWH": "1"}, opener=opener) == "Software Heritage: 0 save requests (stopped: HTTP 429)"
+
+
+def test_software_heritage_gets_each_repository_s_git_origin():
+    assert outreach.swh_origin("bitbucket.org/aneic/meshtool", "https://bitbucket.org/aneic/meshtool/src/master/") == "https://bitbucket.org/aneic/meshtool"
+    assert outreach.swh_origin("github.com/lab/tool", "https://github.com/Lab/Tool/tree/main/src") == "https://github.com/Lab/Tool"
+    assert outreach.swh_origin("gitlab.com/a/b/c", "https://gitlab.com/A/b/c") == "https://gitlab.com/A/b/c"
+    assert outreach.swh_origin("github.com/lab/tool", "https://github.com/lab/tool.git") == "https://github.com/lab/tool"
+    assert outreach.swh_origin("huggingface.co/x/y", "https://huggingface.co/x/y") == ""
+    assert outreach.swh_origin("github.com/lab", "https://github.com/lab") == ""

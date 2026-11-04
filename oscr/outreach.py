@@ -202,6 +202,26 @@ def write(con: sqlite3.Connection, folder: Path, cfg: dict[str, str]) -> str:
 
 # ── Software Heritage ──────────────────────────────────────────────────────────────────────────
 
+#: The forges whose repositories are git origins Software Heritage saves by their https address.
+SWH_GIT_HOSTS = ("github.com", "gitlab.com", "bitbucket.org", "codeberg.org", "gitee.com", "gin.g-node.org", "framagit.org")
+
+
+def swh_origin(repo: str, url: str) -> str:
+    """A repository's git origin as Software Heritage wants it: https://host/owner/name (a GitLab
+    group path kept), the case of the address kept, never a page inside it ("/src/master/",
+    "/tree/main"); "" for a host that is not a git forge or a key that is not a repository's."""
+    host, _, path = repo.partition("/")
+    parts = [p for p in path.split("/") if p]
+    if host not in SWH_GIT_HOSTS and not host.startswith("gitlab.") or len(parts) < 2:
+        return ""
+    m = re.match(r"^https://(?:www\.)?" + re.escape(host) + r"/(.+)$", url, re.I)
+    written = [p for p in (m.group(1) if m else path).split("/") if p][: len(parts)]
+    if [w.lower() for w in written] != [p.lower() for p in parts]:
+        written = parts
+    written[-1] = re.sub(r"\.git$", "", written[-1], flags=re.I)
+    return f"https://{host}/" + "/".join(written)
+
+
 def swh_candidates(con: sqlite3.Connection, asked: dict[str, float], now: float) -> list[str]:
     """The git repositories to ask Software Heritage to save: alive, public forge repositories linked
     from a paper with a page, not archived yet, not withheld, not asked for in SWH_AGAIN_DAYS."""
@@ -211,11 +231,12 @@ def swh_candidates(con: sqlite3.Connection, asked: dict[str, float], now: float)
                          f"WHERE l.role = 'code' AND r.state = 'alive' AND r.kind = 'forge' AND coalesce(r.swh_archived, 0) = 0 "
                          f"AND l.article_id IN ({PAGES_SQL}) ORDER BY r.repo"):
         repo, url = r[0], r[1]
-        if repo in held.repos or not url.startswith("https://") or "@" in url:
+        origin = swh_origin(repo, url)
+        if repo in held.repos or not origin or "@" in origin:
             continue
         if repo in asked and now - asked[repo] < SWH_AGAIN_DAYS * 86_400:
             continue
-        out.append(url)
+        out.append(origin)
     return out
 
 
@@ -232,7 +253,7 @@ def swh_save(con: sqlite3.Connection, folder: Path, cfg: dict[str, str], *, open
     state = folder / "swh-asked.json"
     asked: dict[str, float] = json.loads(state.read_text()) if state.is_file() else {}
     per_night = int(cfg.get("OSCR_SWH_PER_NIGHT", str(SWH_PER_NIGHT)) or SWH_PER_NIGHT)
-    by_url = {r[1]: r[0] for r in con.execute("SELECT repo, url FROM repository")}
+    by_url = {swh_origin(r[0], r[1]): r[0] for r in con.execute("SELECT repo, url FROM repository")}
     opener = opener or urllib.request.urlopen
     sent = 0
     stop = ""
