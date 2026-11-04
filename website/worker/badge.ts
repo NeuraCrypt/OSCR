@@ -61,7 +61,7 @@ type ApiRepo = {
 };
 
 /** What a badge resolves to: its facts, and where its link goes. */
-type Resolved = { facts: BadgeFacts; page: string; code: string; doi: string; api: string; many?: string };
+type Resolved = { facts: BadgeFacts; page: string; code: string; doi: string; api: string; many?: string; tool?: boolean };
 
 async function readJson<T>(assets: Assets, url: URL, path: string): Promise<T | undefined> {
   try {
@@ -133,6 +133,19 @@ async function byRepo(assets: Assets, url: URL, key: string): Promise<Resolved> 
   const r = shard && Object.hasOwn(shard, key) ? shard[key] : undefined;
   const repoUrl = `https://${key}`;
   if (!r) {
+    // A scientific tool's repository (src/pages/badge/tools.json.ts): its page in the registry.
+    const tools = await readJson<Record<string, { name: string; page: string; licence: string; files: number; languages: Record<string, number> }>>(assets, url, "/badge/tools.json");
+    const t = tools && Object.hasOwn(tools, key.toLowerCase()) ? tools[key.toLowerCase()] : undefined;
+    if (t) {
+      return {
+        facts: { kind: "tool", title: t.name, license: t.licence, languages: t.languages, scripts: t.files },
+        page: t.page,
+        code: repoUrl,
+        doi: "",
+        api: t.page,
+        tool: true,
+      };
+    }
     return { facts: { kind: "unknown" }, page: `/submit/?code=${encodeURIComponent(repoUrl)}`, code: repoUrl, doi: "", api: `/api/v1/repository/${key}` };
   }
   const papers = (r.papers ?? []).filter((p) => p.doi);
@@ -155,6 +168,7 @@ async function byRepo(assets: Assets, url: URL, key: string): Promise<Resolved> 
 /** The badge's link, by `?to=`. */
 function target(res: Resolved, to: BadgeTarget): string {
   const known = res.facts.kind === "paper" || (res.facts.kind === "repo" && !res.many && res.facts.papers);
+  if (res.tool) return to === "code" ? res.code : res.page;
   if (!known) return to === "code" && res.code ? res.code : res.page;
   switch (to) {
     case "map":

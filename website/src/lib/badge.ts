@@ -47,8 +47,9 @@ export const BADGE_STALE = 86_400;
  *  it from the static lookup and /data/ files; the generator from the same files in the browser). */
 export type BadgeFacts = {
   /** paper: a paper with a page; read: read, no page (no code found); repo: a repository the
-   *  registry knows; unknown: neither. */
-  kind: "paper" | "read" | "repo" | "unknown";
+   *  registry knows; tool: a scientific tool's repository (src/lib/scitools.ts, its name in
+   *  `title`); unknown: none of these. */
+  kind: "paper" | "read" | "repo" | "tool" | "unknown";
   doi?: string;
   status?: string;
   title?: string;
@@ -128,6 +129,13 @@ function mainLanguage(langs: Record<string, number> | undefined): string {
 export function badgeMessage(f: BadgeFacts, show: BadgeShow = "status"): { text: string; tone: BadgeTone } {
   if (f.kind === "unknown") return { text: "not registered", tone: "muted" };
   if (f.kind === "read") return { text: show === "doi" && f.doi ? f.doi : "read, no code found", tone: "muted" };
+  if (f.kind === "tool") {
+    const l = mainLanguage(f.languages);
+    if (show === "language" && l) return { text: l, tone: "info" };
+    if (show === "license" && f.license) return { text: f.license, tone: "info" };
+    if (show === "scripts" && typeof f.scripts === "number") return { text: plural(f.scripts, "file"), tone: "info" };
+    return { text: "scientific tool", tone: "info" };
+  }
   const validated = !!f.mapDoi;
   switch (show) {
     case "doi":
@@ -342,9 +350,15 @@ function renderCard(name: string, f: BadgeFacts, o: BadgeOptions): string {
   const room = W - x - 14;
   // Bold text is about an eighth wider than the regular widths the table gives.
   const title = fit(f.title || f.doi || (f.kind === "unknown" ? "Not in the registry yet" : ""), room / 1.14, 13);
-  const meta = fit([f.journal, f.year, f.doi && f.title ? `doi:${f.doi}` : ""].filter(Boolean).join(" · "), room, 11);
+  const meta = fit(
+    (f.kind === "tool" ? [f.license, mainLanguage(f.languages)] : [f.journal, f.year, f.doi && f.title ? `doi:${f.doi}` : ""])
+      .filter(Boolean)
+      .join(" · "),
+    room,
+    11,
+  );
   const state = fit(
-    [said.text, f.repos ? plural(f.repos, "repository", "repositories") : "", typeof f.scripts === "number" ? plural(f.scripts, "script") : ""]
+    [said.text, f.repos ? plural(f.repos, "repository", "repositories") : "", typeof f.scripts === "number" ? plural(f.scripts, f.kind === "tool" ? "file" : "script") : ""]
       .filter(Boolean)
       .join(" · "),
     room - 12,

@@ -44,7 +44,12 @@ async function files(): Promise<Record<string, string>> {
   const repo = async (key: string, rec: unknown) => ((repos[await shardOf(key, REPO_SHARDS)] ??= {})[key] = rec);
   await repo(REPO, { repo: REPO, url: `https://${REPO}`, license: "MIT", scripts: 12, languages: { Python: 10 }, papers: [{ doi: DOI, title: "A synthetic EEG study", record: `/paper/${SLUG}/` }] });
   await repo(MANY, { repo: MANY, papers: [{ doi: DOI, title: "One", record: "/paper/a/" }, { doi: VALID, title: "Two", record: "/paper/b/" }] });
-  const out: Record<string, string> = { "/badge/site.json": JSON.stringify({ name: "OSCR" }) };
+  const out: Record<string, string> = {
+    "/badge/site.json": JSON.stringify({ name: "OSCR" }),
+    "/badge/tools.json": JSON.stringify({
+      "github.com/yannbellec/evoparam": { slug: "evoparam", name: "evoparam", page: "/scientific-tools/evoparam/", licence: "Apache-2.0", files: 40, languages: { Python: 900 } },
+    }),
+  };
   for (const [s, v] of Object.entries(lookup)) out[`/lookup/${s}.json`] = JSON.stringify(v);
   for (const [s, v] of Object.entries(papers)) out[`/data/papers/${s}.json`] = JSON.stringify(v);
   for (const [s, v] of Object.entries(repos)) out[`/data/repos/${s}.json`] = JSON.stringify(v);
@@ -228,6 +233,19 @@ describe("the Worker's badges", () => {
     assert.equal(await at(`/badge/repo/${REPO}`), `${ORIGIN}/paper/${SLUG}/`);
     assert.equal(await at(`/badge/repo/${MANY}`), `${ORIGIN}/badge/?repo=${encodeURIComponent(MANY)}`);
     assert.equal(await at("/badge/repo/github.com/x/y"), `${ORIGIN}/submit/?code=${encodeURIComponent("https://github.com/x/y")}`);
+    assert.equal(await at("/badge/repo/github.com/YannBellec/evoparam"), `${ORIGIN}/scientific-tools/evoparam/`);
+    assert.equal(await at("/badge/repo/github.com/yannbellec/evoparam?to=code"), "https://github.com/yannbellec/evoparam");
+  });
+
+  it("draws a scientific tool's badge from /badge/tools.json", async () => {
+    const svg = await (await worker.fetch(get("/badge/repo/github.com/yannbellec/evoparam.svg"), env, ctx)).text();
+    assert.match(svg, /scientific tool/);
+    const card = await (await worker.fetch(get("/badge/repo/github.com/yannbellec/evoparam.svg?style=card"), env, ctx)).text();
+    assert.match(card, /evoparam/);
+    assert.match(card, /Apache-2\.0 · Python/);
+    assert.match(card, /40 files/);
+    assert.deepEqual(badgeMessage({ kind: "tool", languages: { Python: 3 } }, "language"), { text: "Python", tone: "info" });
+    assert.deepEqual(badgeMessage({ kind: "tool" }, "doi"), { text: "scientific tool", tone: "info" });
   });
 
   it("revalidates, answers HEAD and OPTIONS, refuses a write, and still draws a malformed address", async () => {

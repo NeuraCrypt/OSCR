@@ -30,6 +30,7 @@ way. The guide for authors is the site's `/help/badge/`; the generator is `/badg
 | a repository, one paper | as its paper | | that paper's page |
 | a repository, several papers | code of N papers | masthead | `/badge/?repo=…` (the list) |
 | read, no page | read, no code found | grey | `/lookup/?doi=…` |
+| a scientific tool's repository (`/badge/tools.json`) | scientific tool | masthead | the tool's page, `/scientific-tools/<slug>/` |
 | unknown | not registered | grey | `/submit/?doi=…` or `?code=…`, filled in |
 
 `?show=` replaces the message with another fact (`doi`, `map`, `code`, `scripts`, `language`, `license`,
@@ -98,6 +99,23 @@ pages, raising `BADGE_MAX_AGE` to a day is the first lever.
 | **The registry's editor with the badge in place** (`/r/<owner>/<name>/edit/<branch>/<README>?badge=doi:…`) | **Built**, behind `FORGE_OPEN` (2026-11-04, `repo-edit.ts`, `badge.ts` `insertBadge`, `badgeSubject`): the address names only the subject, the page builds the snippet and puts it under the title; the person commits it as themselves, one authorization (D00-4). |
 | The App opening the badge pull request by itself when installed | **Not built**: D00-4 (the installation token never writes) and CLAUDE.md (no write permission asked of GitHub). The owner's decision to change. |
 | An arXiv "Code" tab through arXivLabs | **Proposal drafted** (`docs/ARXIVLABS_PROPOSAL.md`): the owner sends it; arXiv decides. |
+
+## The sites where papers are read (built 2026-11-04)
+
+A link from each paper the registry has a page for to that page, on the sites where the paper itself
+is read, for every paper at once (`oscr/linkfeeds.py`, `oscr linkfeeds [--upload]`, the nightly's
+`linkfeeds` step, `OSCR_LINKFEEDS=0` turns it off). No author's repository is touched.
+
+| Site | File | Matched by | Shown |
+|---|---|---|---|
+| Europe PMC External Links (LabsLink, schema 1.2) | `data/linkfeeds/labslink/profile.xml`, `links-NNN.xml.gz` (50,000 links each) | PMID, else PMCID, else DOI | the article's "External Links" tab |
+| PubMed LinkOut | `data/linkfeeds/linkout/resources-NNN.xml` | PMID | "LinkOut - more resources" |
+
+Until the owner registers, the provider ids are 0 (`OSCR_LABSLINK_PROVIDER`, `OSCR_LINKOUT_PROVIDER`).
+Once each service gives its FTP account, `OSCR_LABSLINK_FTP=host/folder` and `OSCR_LABSLINK_FTP_USER`
+(the same with `LINKOUT`; `…_FTP_PLAIN=1` when the service has no TLS), the password in the keychain
+(`org.oscr.labslink`, `org.oscr.linkout`): from then on the night sends the files. The profile's contact
+address (`OSCR_LABSLINK_EMAIL`) goes to Europe PMC only. The letters to send: `docs/BADGE_OUTREACH.md`.
 
 ## Safety
 
