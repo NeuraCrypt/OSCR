@@ -1,0 +1,74 @@
+# The registry's badge, kept in a repository's README by the repository's own workflow (docs/BADGE.md
+# "The GitHub Action"). It runs the researchers' command line from this repository (cli/, the standard
+# library only, nothing installed): `oscr badge --write` puts the badge between its two marks under the
+# README's title, or replaces what is there; when the README changed, the workflow commits it with its
+# own token. The registry writes nothing and is asked nothing but its public, keyless facts.
+name: OSCR badge
+description: Keep the Open Scientific Code Registry's badge in this repository's README, between its two marks.
+author: Open Scientific Code Registry
+branding:
+  icon: award
+  color: blue
+inputs:
+  doi:
+    description: The paper's DOI. Default, the one the registry links to this repository (or the repository's own badge when it links none or several).
+    required: false
+    default: ""
+  repo-badge:
+    description: "true: the repository's own badge, not its paper's."
+    required: false
+    default: "false"
+  readme:
+    description: The README to write. Default, README.md, .rst, .adoc or .org, the first found.
+    required: false
+    default: ""
+  format:
+    description: The README's markup (markdown, rst, asciidoc, org, html). Default, from its name.
+    required: false
+    default: ""
+  commit:
+    description: "true: commit and push the README when it changed. false: only write it (a later step may open a pull request)."
+    required: false
+    default: "true"
+  commit-message:
+    description: The commit's message.
+    required: false
+    default: "README: OSCR badge"
+outputs:
+  changed:
+    description: '"true" when the README changed.'
+    value: ${{ steps.badge.outputs.changed }}
+runs:
+  using: composite
+  steps:
+    - id: badge
+      shell: bash
+      working-directory: ${{ github.workspace }}
+      env:
+        PYTHONPATH: ${{ github.action_path }}/../../cli/src
+        OSCR_PROMPT: "disabled"
+        INPUT_DOI: ${{ inputs.doi }}
+        INPUT_REPO_BADGE: ${{ inputs.repo-badge }}
+        INPUT_README: ${{ inputs.readme }}
+        INPUT_FORMAT: ${{ inputs.format }}
+      run: |
+        set -euo pipefail
+        args=(badge --write)
+        [ -n "$INPUT_DOI" ] && args+=("$INPUT_DOI")
+        [ "$INPUT_REPO_BADGE" = "true" ] && args+=(--repo-badge)
+        [ -n "$INPUT_README" ] && args+=(--readme "$INPUT_README")
+        [ -n "$INPUT_FORMAT" ] && args+=(--format "$INPUT_FORMAT")
+        python3 -m oscr_cli "${args[@]}"
+        if [ -n "$(git status --porcelain)" ]; then echo "changed=true" >> "$GITHUB_OUTPUT"; else echo "changed=false" >> "$GITHUB_OUTPUT"; fi
+    - if: steps.badge.outputs.changed == 'true' && inputs.commit == 'true'
+      shell: bash
+      working-directory: ${{ github.workspace }}
+      env:
+        MESSAGE: ${{ inputs.commit-message }}
+      run: |
+        set -euo pipefail
+        git config user.name "github-actions[bot]"
+        git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+        git add -A
+        git commit -m "$MESSAGE"
+        git push

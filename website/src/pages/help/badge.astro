@@ -2,7 +2,7 @@
 // Help: the badge, the complete guide (docs/BADGE.md; the generator /badge/, src/pages/badge/;
 // the Worker's badges, worker/badge.ts; the drawing, src/lib/badge.ts; the CLI, `oscr badge`).
 import Info from "../../components/Info.astro";
-import { SITE_NAME } from "../../config";
+import { SITE_NAME, SOURCE_URL } from "../../config";
 import { BADGE_MAX_AGE, badgeUrls, snippet } from "../../lib/badge";
 
 const origin = new URL("/", Astro.site).origin;
@@ -13,6 +13,8 @@ const repo = badgeUrls(origin, { kind: "repo", repo: REPO });
 const md = snippet("markdown", paper.image, paper.link, SITE_NAME);
 const gitlabGroup = badgeUrls(origin, { kind: "repo", repo: "gitlab.com/%{project_path}" }, { missing: "hide" });
 const unpct = (s: string) => s.replace(/%25/g, "%");
+// The GitHub Action's address: its folder in the registry's own repository.
+const ACTION = `${SOURCE_URL.replace(/^https:\/\/github\.com\//, "")}/github-action/oscr-badge`;
 const toc = [
   { id: "quick", text: "In thirty seconds" },
   { id: "what", text: "What the badge says" },
@@ -22,6 +24,7 @@ const toc = [
   { id: "shields", text: "With shields.io" },
   { id: "everywhere", text: "Every repository at once" },
   { id: "cli", text: "From the command line" },
+  { id: "action", text: "With a GitHub Action" },
   { id: "why", text: "Why no pull request is made for you" },
   { id: "fresh", text: "How it stays true" },
   { id: "privacy", text: "Privacy" },
@@ -182,6 +185,7 @@ const toc = [
       already filled with the badge).
     </li>
     <li><strong>Your clones</strong>: <code>oscr badge --write</code>, below.</li>
+    <li><strong>Your GitHub repositories, kept up to date</strong>: <a href="#action">the GitHub Action</a>, below.</li>
   </ul>
 
   <h2 id="cli">From the command line</h2>
@@ -195,6 +199,34 @@ oscr badge 10.1234/abcd --write # into README.md, between <!-- oscr-badge:start 
 oscr badge --repo-badge --write # the repository's own badge instead of the paper's
 oscr badge --format rst         # README.rst, AsciiDoc, Org, HTML: --format rst|asciidoc|org|html
 oscr badge --remove             # take it out again`}</pre>
+
+  <h2 id="action">With a GitHub Action</h2>
+  <p>
+    Your repository's own workflow can keep the badge there: it writes the badge between the same two marks, under the
+    README's title, and commits the README when it changed, with the workflow's own token. It runs nothing of your code
+    and asks the registry only its public facts. You choose it by adding the file; you stop it by deleting the file.
+    Save this as <code>.github/workflows/oscr-badge.yml</code>:
+  </p>
+  <pre>{`name: ${SITE_NAME} badge
+on:
+  workflow_dispatch:
+  release:
+    types: [published]
+  schedule:
+    - cron: "17 4 1 * *"   # once a month
+permissions:
+  contents: write
+jobs:
+  badge:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ${ACTION}@main`}</pre>
+  <p>
+    Its options (all optional): <code>doi</code>, <code>repo-badge: true</code>, <code>readme</code>,{" "}
+    <code>format</code>, <code>commit: false</code> (write only, for a later step that opens a pull request) and{" "}
+    <code>commit-message</code>. <a href={`${SOURCE_URL}/tree/main/github-action/oscr-badge`}>Its source</a>.
+  </p>
 
   <h2 id="why">Why no pull request is made for you</h2>
   <p>

@@ -83,3 +83,17 @@ def test_oscr_badge_with_a_doi_and_no_paper_known(run, clone, site):
     outside = Path(str(clone) + "-x")
     assert run("badge", "--write", "--readme", "../x.md", cwd=clone).code == 2
     assert not outside.exists()
+
+
+def test_the_github_action_runs_this_command_line_and_its_flags():
+    """github-action/oscr-badge/action.yml runs `python3 -m oscr_cli badge --write` from cli/src, with flags
+    the command accepts, and commits only when the README changed."""
+    from pathlib import Path
+
+    action = (Path(__file__).resolve().parents[2] / "github-action" / "oscr-badge" / "action.yml").read_text()
+    assert "${{ github.action_path }}/../../cli/src" in action
+    assert "python3 -m oscr_cli" in action and "args=(badge --write)" in action
+    for flag in ("--repo-badge", "--readme", "--format"):
+        assert flag in action
+    assert "OSCR_PROMPT: \"disabled\"" in action
+    assert "steps.badge.outputs.changed == 'true'" in action
