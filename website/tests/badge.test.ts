@@ -324,3 +324,17 @@ describe("the badge put in a README by the registry's editor", () => {
     assert.equal(badgeSubject(null), null);
   });
 });
+
+describe("a paper's page as schema.org data", () => {
+  it("is the article and each repository citing it, with no way to close its script", async () => {
+    const { paperJsonLd } = await import("../src/lib/badge.ts");
+    const ld = paperJsonLd("https://example.org", { slug: "doi_10.1234_x", doi: "10.1234/x", title: "A </script> title", journal: "J", published: "2026-01-02",
+      code: [{ url: "https://github.com/o/n", repo: "github.com/o/n" }, { url: "http://x@y.org", repo: "y.org" }] });
+    assert.ok(!ld.includes("<"));
+    const g = JSON.parse(ld)["@graph"];
+    assert.equal(g[0]["@type"], "ScholarlyArticle");
+    assert.equal(g[0]["@id"], "https://doi.org/10.1234/x");
+    assert.equal(g[0].name, "A </script> title");
+    assert.deepEqual(g.slice(1), [{ "@type": "SoftwareSourceCode", codeRepository: "https://github.com/o/n", name: "github.com/o/n", citation: { "@id": "https://doi.org/10.1234/x" } }]);
+  });
+});

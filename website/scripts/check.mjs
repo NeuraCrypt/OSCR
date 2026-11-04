@@ -392,7 +392,7 @@ for (const page of pages) {
   }
   // (The reader's data, a <script type="application/json">, is not run: it is allowed.)
   if (/^\/(paper\/[^/]+|account|submit|removal|new|new\/link|new\/import|repositories|forge\/authorized|r|research|settings\/tokens|settings\/hooks|developers|report|moderation|account\/moderation|settings\/blocked|data-rights)\/index\.html$/.test(page) &&
-      /<script(?![^>]*\s(?:src=|type="application\/json"))[^>]*>/.test(html)) {
+      /<script(?![^>]*\s(?:src=|type="application\/(?:ld\+)?json"))[^>]*>/.test(html)) {
     problems.push(`${page}: an inline script, which its Content-Security-Policy forbids`);
   }
 }
@@ -406,7 +406,7 @@ if (all.has("/_headers")) {
     const policies = (headersFor(headerRules, path).get("content-security-policy") ?? "").split(",").filter((x) => x.trim());
     const html = readFileSync(join(DIST, page), "utf8");
     const inline = [
-      ...[...html.matchAll(/<script(?![^>]*\ssrc=)(?![^>]*type="application\/json")[^>]*>([\s\S]*?)<\/script>/g)].map((m) => ["script-src", m[1]]),
+      ...[...html.matchAll(/<script(?![^>]*\ssrc=)(?![^>]*type="application\/(?:ld\+)?json")[^>]*>([\s\S]*?)<\/script>/g)].map((m) => ["script-src", m[1]]),
       ...[...html.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)].map((m) => ["style-src", m[1]]),
     ];
     for (const [directive, body] of inline) {

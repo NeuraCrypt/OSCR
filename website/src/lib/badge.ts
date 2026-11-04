@@ -659,3 +659,18 @@ export function badgeSubject(param: string | null): BadgeSubject | null {
   }
   return null;
 }
+
+/** A paper's page as schema.org JSON-LD (a ScholarlyArticle, and each code repository a
+ *  SoftwareSourceCode that cites it), so that search engines and harvesters link the paper and its
+ *  code. A data block, never run; "<" escaped so that no text can close the script element. */
+export function paperJsonLd(origin: string, a: { slug: string; doi?: string | null; title: string; journal?: string; published?: string; code: { url: string; repo: string }[] }): string {
+  const page = `${origin.replace(/\/$/, "")}/paper/${a.slug}/`;
+  const article: Record<string, unknown> = { "@type": "ScholarlyArticle", "@id": a.doi ? `https://doi.org/${a.doi}` : page, name: a.title, url: page };
+  if (a.doi) article.identifier = { "@type": "PropertyValue", propertyID: "DOI", value: a.doi };
+  if (a.journal) article.isPartOf = { "@type": "Periodical", name: a.journal };
+  if (a.published && /^\d{4}-\d{2}-\d{2}/.test(a.published)) article.datePublished = a.published.slice(0, 10);
+  const code = a.code
+    .filter((r) => /^https:\/\//.test(r.url) && !r.url.includes("@"))
+    .map((r) => ({ "@type": "SoftwareSourceCode", codeRepository: r.url, name: r.repo, citation: { "@id": article["@id"] } }));
+  return JSON.stringify({ "@context": "https://schema.org", "@graph": [article, ...code] }).replace(/</g, "\\u003c");
+}

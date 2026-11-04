@@ -25,6 +25,7 @@ import Wrap from "../../../components/paper/Wrap.astro";
 import {
   alignmentOf, europePmcUrl, plural, shortName, staticPages, status, type Article,
 } from "../../../lib/catalog";
+import { paperJsonLd } from "../../../lib/badge";
 import { datasetOf } from "../../../lib/entities";
 import { licenseLabel, pageOf, PROMINENT } from "../../../lib/paper";
 import { paperFacts } from "../../../lib/records";
@@ -41,6 +42,8 @@ const { a } = Astro.props as { a: Article };
 const p = pageOf(a);
 const s = status(a.status);
 const hasCode = a.code.length > 0;
+// The page as schema.org data (lib/badge.ts paperJsonLd): the paper and the code that goes with it.
+const ld = paperJsonLd((Astro.site ?? new URL("https://example.org")).origin, a);
 // The reader, when at least one file of the authors' code was read (its text here or not).
 const reader = hasCode && a.code.some((r) => r.files_read > 0);
 const multi = a.code.length > 1;
@@ -86,6 +89,7 @@ const moderated = hiddenReposOf(a.doi);
   breadcrumb={[{ text: "Catalogue", href: "/" }, { text: `doi:${a.doi}` }]}
 >
   <script is:inline type="application/json" id={FACTS_ID} set:html={facts}></script>
+  <script is:inline type="application/ld+json" set:html={ld}></script>
   {reader && <Head title={a.title} notices={notices} sections={sections} />}
   {moderated.map((m) => (
     <p class="moderated">
