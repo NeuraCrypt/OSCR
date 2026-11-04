@@ -207,10 +207,11 @@ def test_a_resumption_does_not_build_again_when_dist_is_up_to_date(tmp_path, mon
 
 
 def test_the_steps_are_those_the_settings_ask_for():
-    assert nightly.planned({}, "", "") == ["export", "linkfeeds"]
-    assert nightly.planned({"OSCR_LINKFEEDS": "0"}, "", "") == ["export"]
+    assert nightly.planned({}, "", "") == ["export", "linkfeeds", "outreach"]
+    assert nightly.planned({"OSCR_LINKFEEDS": "0", "OSCR_OUTREACH": "0"}, "", "") == ["export"]
+    assert nightly.planned({"OSCR_SWH": "1"}, "", "") == ["export", "linkfeeds", "outreach", "swh"]
     assert nightly.planned({"OSCR_D1_PUSH": "remote", "OSCR_CONTACTS_DATASET": "a/b"}, "x/y", "oscr") == [
-        "export", "dataset", "deploy", "linkfeeds", "reconcile", "search", "contacts"]
+        "export", "dataset", "deploy", "linkfeeds", "outreach", "reconcile", "search", "contacts"]
 
 
 

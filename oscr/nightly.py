@@ -35,6 +35,9 @@ def planned(cfg: dict[str, str], dataset: str, cloudflare: str) -> list[str]:
               "deploy": bool(cloudflare),
               # The reader-side links (oscr/linkfeeds.py): written every night, sent once set up.
               "linkfeeds": cfg.get("OSCR_LINKFEEDS", "1") != "0",
+              # The partners' files (oscr/outreach.py), every night; Software Heritage only when turned on.
+              "outreach": cfg.get("OSCR_OUTREACH", "1") != "0",
+              "swh": cfg.get("OSCR_SWH", "") == "1",
               "reconcile": "remote" in (cfg.get("OSCR_D1_PUSH"), cfg.get("OSCR_COMMUNITY_PUSH")),
               "search": cfg.get("OSCR_D1_PUSH") == "remote",
               "community": cfg.get("OSCR_COMMUNITY_PUSH") == "remote", "scripts": bool(cfg.get("OSCR_SCRIPTS_DATASET")),
@@ -175,6 +178,20 @@ def run(con: Any, client: Any, cfg: dict[str, str], *, out: Path, dataset: str, 
         say("linkfeeds: " + lf.upload(folder, cfg))
 
     step("linkfeeds", "Europe PMC and PubMed links", linkfeeds)
+
+    def outreach() -> None:
+        # The files the partners read (docs/BADGE_OUTREACH.md), for the owner to send: nothing is sent.
+        from . import outreach as o
+        say("outreach: " + o.write(con, Path("data/outreach"), cfg))
+
+    step("outreach", "the partners' files", outreach)
+
+    def swh() -> None:
+        # A few "Save code now" requests a night, anonymous (OSCR_SWH=1 only).
+        from . import outreach as o
+        say(o.swh_save(con, Path("data/outreach"), cfg))
+
+    step("swh", "Software Heritage", swh)
 
     def compare() -> None:
         # What D1 lost is forgotten here, so that the pushes below send it again (oscr/reconcile.py).
