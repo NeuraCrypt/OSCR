@@ -3,7 +3,8 @@
 The registry's link on every paper's page at Europe PMC and PubMed (docs/BADGE.md, "The sites where
 papers are read"). The files are built every night by `oscr linkfeeds`. These two requests speak for
 the registry, so the owner sends them. Fill in the bracketed parts. The arXivLabs proposal is in
-`docs/ARXIVLABS_PROPOSAL.md`.
+`docs/ARXIVLABS_PROPOSAL.md`; arXivLabs paused new proposals (seen 2026-11-04): send it when they
+reopen.
 
 Before sending, run `oscr linkfeeds` on the Mac and attach (or quote) its line of counts, and one
 `links-001.xml.gz` as a sample.
@@ -48,24 +49,24 @@ security add-generic-password -s org.oscr.labslink -a oscr -w
 
 ## 2. PubMed LinkOut
 
-LinkOut takes an application from the provider page,
-https://www.ncbi.nlm.nih.gov/projects/linkout/ (Information for Other Resource Providers, "Apply for
-Inclusion in LinkOut"). What to give in the application:
+LinkOut takes applications by email, not by a form (NCBI Bookshelf NBK3802, "Information for Other
+Resource Providers", updated 2023-06-30): write to linkout@ncbi.nlm.nih.gov with the name, email
+address and phone number of a contact person, the scope and address of the resource, the NCBI records
+to link (PubMed) with a few example pairs (a PubMed record and its page in the registry), and any
+access restriction (none). The letter is in Mailer's `tools/send_oscr_outreach.py` (the phone number
+stays there, on the Mac, never in this repository).
 
-- **Resource**: Open Scientific Code Registry (OSCR), https://openscicode.org, a free, non-commercial
-  registry of the code published by the authors of open-access neuroscience papers, verified at its
-  source and shown beside the paper's methods.
-- **Type**: research tool, free resource, no registration.
-- **Links**: one per PubMed record whose paper has a page in the registry ([N] with a PMID today); each
-  goes straight to that paper's page, never to a search.
-- **Files**: a LinkOut resource file (`resources-NNN.xml`, one `Link` per PMID), regenerated every
-  night.
-- **Contact**: [contact address].
-
-After approval: `OSCR_LINKOUT_PROVIDER`, `OSCR_LINKOUT_FTP`, `OSCR_LINKOUT_FTP_USER` in the settings,
-and `security add-generic-password -s org.oscr.linkout -a oscr -w`. The NCBI checks the first file it
-receives; if it asks for a change of format, `oscr/linkfeeds.py` `linkout_resources` is the one place
-to change.
+After acceptance, LinkOut asks for the identity file `providerinfo.xml` and sample resource files (at
+least 5 records), validated with its File Validation Utility; then it gives a ProviderId, a name
+abbreviation and a private FTP account (host `FTP-private.ncbi.nlm.nih.gov`, folder `holdings`, no
+subfolders). `oscr linkfeeds` writes `linkout/providerinfo.xml` and `linkout/resources_NNN.xml`
+(letters, digits and underscores only, ASCII only, at most 30,000 links, about 8 MB, under LinkOut's
+20 MB); `--upload` sends them to `holdings` and deletes there any older resource file, since LinkOut
+rebuilds the links every day from the whole folder. Settings once the account exists:
+`OSCR_LINKOUT_PROVIDER`, `OSCR_LINKOUT_FTP_USER` (`OSCR_LINKOUT_FTP` defaults to
+`FTP-private.ncbi.nlm.nih.gov/holdings`; `OSCR_LINKOUT_FTP_PLAIN=1` if the host refuses TLS), and the
+password: `security add-generic-password -s org.oscr.linkout -a oscr -w`. Then tell
+linkout@ncbi.nlm.nih.gov that the first files are uploaded.
 
 ## The files behind the letters below
 

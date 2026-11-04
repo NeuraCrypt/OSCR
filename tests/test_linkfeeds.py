@@ -3,6 +3,7 @@ PubMed, in their own formats, and nothing sent until the owner has set the accou
 from __future__ import annotations
 
 import gzip
+import re
 import xml.etree.ElementTree as ET
 
 import pytest
@@ -62,12 +63,30 @@ def test_only_the_papers_with_a_page_and_the_best_identifier(con, tmp_path):
     assert profile.find("provider/id").text == "1234"
     assert profile.find("provider/resourceName").text == "OSCR"
 
-    lo = ET.fromstring((tmp_path / "linkout" / "resources-001.xml").read_text().split("\n", 2)[2])
+    text = (tmp_path / "linkout" / "resources_001.xml").read_text()
+    assert text.startswith('<?xml version="1.0"?>\n') and text.isascii()       # LinkOut reads no UTF-8
+    lo = ET.fromstring(text.split("\n", 2)[2])
     ids = [(link.find("ObjectSelector/ObjectList/ObjId").text, link.find("ObjectUrl/Base").text)
            for link in lo.findall("Link")]
     assert ids == [("111", "https://openscicode.org/paper/doi_10.5555_test.1/"),
                    ("666", "https://openscicode.org/paper/doi_10.5555_test.6/")]
     assert {link.find("ProviderId").text for link in lo.findall("Link")} == {"5678"}
+
+
+def test_linkout_s_identity_file_names_and_size(con, tmp_path):
+    paper(con, 1, pmid="111", title="Caf\u00e9 \u2192 code")
+    linkfeeds.write(con, tmp_path, {**CFG, "OSCR_PLATFORM_FULL_NAME": "Open Scientific Code Registry"})
+    names = sorted(p.name for p in (tmp_path / "linkout").iterdir())
+    assert names == ["providerinfo.xml", "resources_001.xml"]
+    assert all(re.fullmatch(r"[A-Za-z0-9_]+\.xml", n) for n in names)
+    info = (tmp_path / "linkout" / "providerinfo.xml").read_text()
+    assert info.isascii() and '<!DOCTYPE Provider PUBLIC "-//NLM//DTD LinkOut 1.0//EN"' in info
+    p = ET.fromstring(info.split("\n", 2)[2])
+    assert (p.find("ProviderId").text, p.find("Name").text, p.find("NameAbbr").text) == ("5678", "Open Scientific Code Registry", "OSCR")
+    # A full file stays far under LinkOut's 20 MB.
+    many = [linkfeeds.Paper(f"doi:10.5555/x.{n}", f"doi_10.5555_x.{n}" + "_" * 60, "", str(10_000_000 + n), "", "t")
+            for n in range(linkfeeds.LINKOUT_PER_FILE)]
+    assert len(linkfeeds.linkout_resources(5678, "https://openscicode.org/", many).encode()) < linkfeeds.LINKOUT_MAX_BYTES / 2
 
 
 def test_identifiers_are_cleaned_and_a_rerun_replaces_the_files(con, tmp_path):
@@ -122,3 +141,39 @@ def test_the_files_go_to_the_ftp_folder(tmp_path, monkeypatch):
     assert sent == [("host", "ftp.example.org"), ("login", "u", "secret"), ("cwd", "in"),
                     ("stor", "STOR links-001.xml.gz"), ("stor", "STOR profile.xml")]
     assert "labslink: 2 files sent" in said and "linkout: not sent (no password" in said
+
+
+def test_linkout_goes_to_holdings_and_its_obsolete_files_leave(tmp_path, monkeypatch):
+    (tmp_path / "labslink").mkdir()
+    (tmp_path / "linkout").mkdir()
+    (tmp_path / "linkout" / "providerinfo.xml").write_text("<Provider/>")
+    (tmp_path / "linkout" / "resources_001.xml").write_text("<LinkSet/>")
+    did = []
+
+    class Fake:
+        def __init__(self, host, timeout):
+            did.append(("host", host))
+
+        def login(self, user, password):
+            pass
+
+        def cwd(self, folder):
+            did.append(("cwd", folder))
+
+        def storbinary(self, command, f):
+            did.append(("stor", command))
+
+        def nlst(self):
+            return ["providerinfo.xml", "resources_001.xml", "resources_002.xml"]
+
+        def delete(self, name):
+            did.append(("delete", name))
+
+        def quit(self):
+            pass
+
+    monkeypatch.setattr(linkfeeds, "_password", lambda service: "secret")
+    said = linkfeeds.upload(tmp_path, {**CFG, "OSCR_LINKOUT_FTP_USER": "v"}, connect=Fake)
+    assert did == [("host", "FTP-private.ncbi.nlm.nih.gov"), ("cwd", "holdings"), ("stor", "STOR providerinfo.xml"),
+                   ("stor", "STOR resources_001.xml"), ("delete", "resources_002.xml")]
+    assert "linkout: 2 files sent" in said

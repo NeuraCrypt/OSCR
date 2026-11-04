@@ -1,5 +1,7 @@
 # arXivLabs proposal: the Open Scientific Code Registry
 
+**On hold**: arXivLabs paused new proposals (seen 2026-11-04); send this when they reopen.
+
 A draft for the owner to send through arXivLabs' proposal form (the Labs support portal, linked from
 https://info.arxiv.org/labs/). arXiv decides; nothing here is a commitment of arXiv's. The figures are
 the registry's own, counted on 2026-11-04 in its database; update them before sending. Every statement

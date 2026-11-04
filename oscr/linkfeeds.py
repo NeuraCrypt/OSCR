@@ -37,8 +37,12 @@ from .entities import PAGES_SQL
 #: Links per Europe PMC links file: under its documented ceiling (about 100,000 links in 2 MB
 #: compressed), with room for long titles.
 LABSLINK_PER_FILE = 50_000
-#: Links per LinkOut resource file.
-LINKOUT_PER_FILE = 50_000
+#: Links per LinkOut resource file: LinkOut takes at most 20 MB a file; a link is about 270 bytes, so
+#: 30,000 is about 8 MB, far under it (tests/test_linkfeeds.py holds the margin).
+LINKOUT_PER_FILE = 30_000
+LINKOUT_MAX_BYTES = 20 * 1024 * 1024
+#: Where LinkOut's files go: NCBI's private FTP host, its "holdings" folder (no subfolders).
+LINKOUT_FTP_DEFAULT = "FTP-private.ncbi.nlm.nih.gov/holdings"
 #: The keychain services of the two FTP passwords.
 KEYCHAIN = {"labslink": "org.oscr.labslink", "linkout": "org.oscr.linkout"}
 
@@ -120,9 +124,31 @@ def labslink_links(provider: int, origin: str, items: list[Paper], title: str, i
     return "\n".join(lines) + "\n"
 
 
+def linkout_provider(provider: int, origin: str, name: str) -> str:
+    """LinkOut's identity file (providerinfo.xml, its exact name): who links, free and with no
+    registration (so no barrier attribute). ASCII only: LinkOut reads no UTF-8."""
+    return _ascii("\n".join([
+        '<?xml version="1.0"?>',
+        '<!DOCTYPE Provider PUBLIC "-//NLM//DTD LinkOut 1.0//EN" '
+        '"https://www.ncbi.nlm.nih.gov/projects/linkout/doc/LinkOut.dtd">',
+        "<Provider>",
+        f"  <ProviderId>{int(provider)}</ProviderId>",
+        f"  <Name>{escape(name)}</Name>",
+        "  <NameAbbr>OSCR</NameAbbr>",
+        f"  <Url>{escape(origin.rstrip('/') + '/')}</Url>",
+        "  <Brief>The code published with open-access neuroscience papers, verified at its source</Brief>",
+        "</Provider>",
+    ]) + "\n")
+
+
+def _ascii(text: str) -> str:
+    """The text with every non-ASCII character as an XML character reference (LinkOut reads ASCII)."""
+    return text.encode("ascii", "xmlcharrefreplace").decode("ascii")
+
+
 def linkout_resources(provider: int, origin: str, items: list[Paper], start: int = 1) -> str:
     """A LinkOut resource file: one Link per paper (PMID only: LinkOut selects PubMed records)."""
-    lines = ['<?xml version="1.0" encoding="UTF-8"?>',
+    lines = ['<?xml version="1.0"?>',
              '<!DOCTYPE LinkSet PUBLIC "-//NLM//DTD LinkOut 1.0//EN" '
              '"https://www.ncbi.nlm.nih.gov/projects/linkout/doc/LinkOut.dtd">', "<LinkSet>"]
     for n, p in enumerate(items, start):
@@ -131,7 +157,7 @@ def linkout_resources(provider: int, origin: str, items: list[Paper], start: int
                      f"<ObjectList><ObjId>{p.pmid}</ObjId></ObjectList></ObjectSelector>"
                      f"<ObjectUrl><Base>{escape(page_url(origin, p))}</Base></ObjectUrl></Link>")
     lines.append("</LinkSet>")
-    return "\n".join(lines) + "\n"
+    return _ascii("\n".join(lines) + "\n")
 
 
 def write(con: sqlite3.Connection, folder: Path, cfg: dict[str, str]) -> str:
@@ -169,7 +195,9 @@ def write(con: sqlite3.Connection, folder: Path, cfg: dict[str, str]) -> str:
     with_pmid = [p for p in ps if p.pmid]
     for i, chunk in enumerate(_chunks(with_pmid, LINKOUT_PER_FILE), 1):
         start = (i - 1) * LINKOUT_PER_FILE + 1
-        (lo / f"resources-{i:03d}.xml").write_text(linkout_resources(provider, origin, chunk, start), encoding="utf-8")
+        # LinkOut's file names: letters, digits and underscores only, extension .xml.
+        (lo / f"resources_{i:03d}.xml").write_text(linkout_resources(provider, origin, chunk, start), encoding="ascii")
+    (lo / "providerinfo.xml").write_text(linkout_provider(provider, origin, cfg.get("OSCR_PLATFORM_FULL_NAME", name)), encoding="ascii")
     out.append(f"PubMed LinkOut: {len(with_pmid)} papers with a PMID"
                + ("" if provider else "; provider id 0 until the NCBI gives one (OSCR_LINKOUT_PROVIDER)"))
     return "; ".join(out)
@@ -189,7 +217,8 @@ def upload(folder: Path, cfg: dict[str, str], *, connect=None) -> str:
     what is missing. The files are replaced whole each night (the services read the folder)."""
     said = []
     for kind, setting in (("labslink", "OSCR_LABSLINK_FTP"), ("linkout", "OSCR_LINKOUT_FTP")):
-        where, user = cfg.get(setting, ""), cfg.get(f"{setting}_USER", "")
+        where = cfg.get(setting, "") or (LINKOUT_FTP_DEFAULT if kind == "linkout" and cfg.get(f"{setting}_USER") else "")
+        user = cfg.get(f"{setting}_USER", "")
         provider = cfg.get("OSCR_LABSLINK_PROVIDER" if kind == "labslink" else "OSCR_LINKOUT_PROVIDER", "")
         if not (where and user and provider):
             said.append(f"{kind}: not sent ({setting}, {setting}_USER and the provider id are not all set)")
@@ -212,6 +241,14 @@ def upload(folder: Path, cfg: dict[str, str], *, connect=None) -> str:
             for p in files:
                 with p.open("rb") as f:
                     ftp.storbinary(f"STOR {p.name}", f)
+            if kind == "linkout":
+                # LinkOut regenerates the links every day from the whole folder: an obsolete file
+                # (a resource file no longer written) is deleted there too.
+                keep = {p.name for p in files}
+                for name in ftp.nlst():
+                    base = name.rsplit("/", 1)[-1]
+                    if base.endswith(".xml") and base not in keep:
+                        ftp.delete(base)
         finally:
             try:
                 ftp.quit()
