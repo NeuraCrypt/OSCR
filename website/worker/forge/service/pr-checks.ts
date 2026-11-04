@@ -13,12 +13,15 @@
 // - 0 D1 rows written: the result lives on GitHub (the check run) and in the registry's own view of any
 //   commit (/r/<owner>/<name>/checks/<sha>, computed in the reader's browser by the same checks), which
 //   is the check run's details page.
+// - The summary ends with a reminder when the README lacks the registry's badge (badgeReminder: one more
+//   read, for a repository linked to a paper): the badge is still the person's own act.
 // - GitHub requests: 2 token mints (cached for the hour), the head commit, the tree, up to 3 files, up
-//   to 3 pages of changed files, the check run (+1 per further 50 annotations): ~10, on the
+//   to 3 pages of changed files, the README, the check run (+1 per further 50 annotations): ~11, on the
 //   installation's own quota (5,000 an hour and more).
 // - The check run's name: "<SITE_NAME>: research checks" when the Worker has SITE_NAME, else "Research
 //   code checks" (the Worker never hard-codes the platform's name).
 
+import { hasBadge } from "../../../src/lib/badge.ts";
 import { GitBackendError } from "../errors.ts";
 import type { GitBackend } from "../gitbackend.ts";
 import { checkFiles, CHECK_RUN_NAME, CHECK_RUN_SUFFIX, CHECK_TEXT_BYTES, runChecks, skipsChecks, type ChangedFile, type Report } from "../checks-core.ts";
@@ -61,6 +64,26 @@ async function tracedOf(db: D1Database, forge: string, repoId: string): Promise<
 
 const decoder = new TextDecoder();
 
+/** A reminder for the check run's summary when the repository's README, at the head, lacks the
+ *  registry's badge: one sentence and the badge page's address, for a repository linked to a paper. One
+ *  more read of the App (the README), nothing written; the badge stays the person's own act. */
+export async function badgeReminder(s: ReturnType<GitBackend["session"]>, o: Pick<PullCheck, "ref" | "headSha" | "origin">, papers: string[]): Promise<string> {
+  if (!papers.length) return "";
+  let text = "";
+  try {
+    const f = await s.repos.readme(o.ref, o.headSha);
+    text = f && !f.binary ? decoder.decode(f.bytes) : "";
+  } catch {
+    return "";
+  }
+  if (hasBadge(text, new URL(o.origin).host)) return "";
+  return (
+    `**The badge.** This repository's README does not carry the registry's badge yet: it links the code to its paper, ` +
+    `and says what the registry knows of it. One snippet to paste, or a GitHub Action that keeps it there: ` +
+    `${o.origin}/badge/?q=${encodeURIComponent(papers[0])}. Nothing is changed for you.`
+  );
+}
+
 /** The registry's checks of one pull request's head, posted as ONE check run. */
 export async function checkPullRequest(o: PullCheck): Promise<{ posted: boolean; skipped?: string; report?: Report }> {
   const installationId = o.repo.installation_id ?? o.installation ?? null;
@@ -95,6 +118,7 @@ export async function checkPullRequest(o: PullCheck): Promise<{ posted: boolean;
   }
   const papers = (await all<{ paper_id: string }>(papersOf(o.db, o.repo.forge, o.repo.repo_id))).map((p) => p.paper_id.replace(/^doi:/, ""));
   const report = runChecks({ entries, truncated: tree.truncated, texts, papers, traced: await tracedOf(o.db, o.repo.forge, o.repo.repo_id), change: { files, truncated } });
+  const reminder = await badgeReminder(s, o, papers);
   await s.checks.create(o.ref, {
     name: checkRunName(o.env),
     headSha: o.headSha,
@@ -103,7 +127,7 @@ export async function checkPullRequest(o: PullCheck): Promise<{ posted: boolean;
     detailsUrl: `${o.origin}/r/${encodeURIComponent(o.ref.owner)}/${encodeURIComponent(o.ref.name)}/checks/${o.headSha}`,
     output: {
       title: report.title,
-      summary: report.summary,
+      summary: reminder ? `${report.summary}\n\n${reminder}` : report.summary,
       annotations: report.annotations.map((a) => ({ path: a.path, startLine: a.line, endLine: a.line, level: a.level, title: a.title, message: a.message })),
     },
   });

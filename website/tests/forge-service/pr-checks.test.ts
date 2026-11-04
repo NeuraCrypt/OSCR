@@ -75,6 +75,9 @@ describe("a check run on every pull request", () => {
     assert.match(run.output.title, /tracing maps/);
     assert.match(run.output.summary, /src\/filter\.py \(10\.1234\/eeg\.2026\) is deleted/);
     assert.match(run.output.summary, /never run its code/);
+    // The README lacks the badge: the summary says so, once, with the badge page's address.
+    assert.match(run.output.summary, /does not carry the registry's badge yet/);
+    assert.ok(run.output.summary.includes(`${ORIGIN}/badge/?q=10.1234%2Feeg.2026`));
     assert.equal(run.detailsUrl, `${ORIGIN}/r/${ADA_LOGIN}/eeg/checks/${pr.head}`);
     // The delivery's own rows (its event and its row), nothing for the checks.
     assert.equal(w.forge.totals.written, 2);
@@ -107,6 +110,13 @@ describe("a check run on every pull request", () => {
     await deliver(pr);
     const [run] = await runs(pr.head);
     assert.equal(run?.conclusion, "success");
+  });
+
+  test("a README that carries the badge between its marks: no reminder", async () => {
+    const pr = await pullRequest([put("README.md", "# EEG\n\n<!-- oscr-badge:start -->\n[![R](x.svg)](y)\n<!-- oscr-badge:end -->\n")]);
+    assert.equal(await deliver(pr), 200);
+    const [run] = await runs(pr.head);
+    assert.doesNotMatch(run.output.summary, /does not carry the registry's badge/);
   });
 
   test("the run's name comes from SITE_NAME, never hard-coded", () => {
