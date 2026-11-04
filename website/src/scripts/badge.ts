@@ -174,9 +174,9 @@ async function readmeOf(key: string, text: string): Promise<Readme | undefined> 
       }
       if (!res.ok) return undefined;
       const r = (await res.json()) as { content?: string; html_url?: string };
-      const text = new TextDecoder().decode(Uint8Array.from(atob((r.content ?? "").replace(/\s/g, "")), (c) => c.charCodeAt(0)));
+      const body = new TextDecoder().decode(Uint8Array.from(atob((r.content ?? "").replace(/\s/g, "")), (c) => c.charCodeAt(0)));
       const view = r.html_url ?? `https://github.com/${path.join("/")}`;
-      return { found: true, has: hasBadge(text, host_), edit: view.replace("/blob/", "/edit/"), view };
+      return { found: true, has: hasBadge(body, host_), edit: view.replace("/blob/", "/edit/"), view };
     }
     if (host === "gitlab.com") {
       const id = encodeURIComponent(path.join("/"));

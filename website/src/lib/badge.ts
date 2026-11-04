@@ -18,9 +18,16 @@ export const BADGE_BLUE = "#04408F";
 export const BADGE_TONES = { info: "#1f3b4d", ok: "#2b6b3f", muted: "#5f5f5f", warning: "#7a4f00" } as const;
 export type BadgeTone = keyof typeof BADGE_TONES;
 
-/** The badge's shapes: 20 pixels (the README's), 28 (a web page's header), the mark alone, a card. */
-export const BADGE_STYLES = ["flat", "large", "mark", "card"] as const;
+/** The badge's shapes: 18 pixels (`small`), 20 (`flat`, the README's), 28 (`large`, a web page's
+ *  header), 36 (`xl`, a landing page), the mark alone, a card (title, journal, state), a compact card
+ *  (`tile`: the mark over one line, square-ish, for a sidebar or a poster's corner). */
+export const BADGE_STYLES = ["flat", "small", "large", "xl", "mark", "card", "tile"] as const;
 export type BadgeStyle = (typeof BADGE_STYLES)[number];
+/** The badge's colours: `blue` (the default: the mark on the logo's blue, the fact on its tone),
+ *  `white` (pure white, the blue mark, a hairline frame and a status dot), `outline` (white, all in the
+ *  logo's blue), `dark` (for a dark README), `light` (the older white-mark variant, kept). */
+export const BADGE_THEMES = ["blue", "white", "outline", "dark", "light"] as const;
+export type BadgeTheme = (typeof BADGE_THEMES)[number];
 /** What the right part says. `status` (the default) is what the registry knows of the paper. */
 export const BADGE_SHOWS = ["status", "doi", "map", "code", "scripts", "language", "license", "journal"] as const;
 export type BadgeShow = (typeof BADGE_SHOWS)[number];
@@ -59,7 +66,7 @@ export type BadgeFacts = {
 export type BadgeOptions = {
   style: BadgeStyle;
   show: BadgeShow;
-  theme: "blue" | "light";
+  theme: BadgeTheme;
   /** A reader's own text for the right part (at most TEXT_MAX characters), else "". */
   text: string;
   /** For an unknown key: draw the badge (`show`), or nothing (`hide`: an empty image, for a
@@ -78,7 +85,7 @@ export function readOptions(q: URLSearchParams): BadgeOptions {
   return {
     style: pick("style", BADGE_STYLES, "flat"),
     show: pick("show", BADGE_SHOWS, "status"),
-    theme: pick("theme", ["blue", "light"] as const, "blue"),
+    theme: pick("theme", BADGE_THEMES, "blue"),
     text: cleanText(q.get("text") ?? ""),
     missing: pick("missing", ["show", "hide"] as const, "show"),
   };
@@ -197,8 +204,36 @@ function fit(text: string, max: number, size: number): string {
 
 const r1 = (n: number) => Math.round(n * 10) / 10;
 
-/** The logo part: the mark, `h` pixels high, on the logo's blue (or white in the light theme). */
-function logoPart(x: number, height: number, markH: number, pad: number, theme: BadgeOptions["theme"]): { svg: string; width: number } {
+/** The sizes of each shape: its height, the text's size, the mark's height, the side padding. */
+const SIZES: Record<"flat" | "small" | "large" | "xl" | "mark", { h: number; size: number; mark: number; pad: number }> = {
+  small: { h: 18, size: 10, mark: 9, pad: 5 },
+  flat: { h: 20, size: 11, mark: 10, pad: 6 },
+  mark: { h: 20, size: 11, mark: 10, pad: 6 },
+  large: { h: 28, size: 13, mark: 14, pad: 9 },
+  xl: { h: 36, size: 15, mark: 18, pad: 12 },
+};
+
+/** The status dot's colours on a white or dark ground, by tone (the white themes). */
+const DOT = { info: "#04408F", ok: "#1a7f37", muted: "#8c959f", warning: "#9a6700" } as const;
+const FONT = `font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,Verdana,sans-serif"`;
+const VERDANA_FONT = `font-family="Verdana,DejaVu Sans,Geneva,sans-serif"`;
+
+/** The palette of a theme. */
+function palette(theme: BadgeTheme) {
+  switch (theme) {
+    case "white":
+      return { ground: "#ffffff", frame: "#d0d7de", divider: "#d0d7de", text: "#1f2328", logo: LOGO_BLUE, dot: true };
+    case "outline":
+      return { ground: "#ffffff", frame: BADGE_BLUE, divider: BADGE_BLUE, text: BADGE_BLUE, logo: LOGO_BLUE, dot: false };
+    case "dark":
+      return { ground: "#0d1117", frame: "#30363d", divider: "#30363d", text: "#e6edf3", logo: LOGO_WHITE, dot: true };
+    default:
+      return null;
+  }
+}
+
+/** The logo part of the two-block themes: the mark on the logo's blue (or white, `light`). */
+function logoPart(x: number, height: number, markH: number, pad: number, theme: BadgeTheme): { svg: string; width: number } {
   const markW = r1((LOGO_PX.width / LOGO_PX.height) * markH);
   const width = r1(markW + 2 * pad);
   const ground = theme === "light" ? "#ffffff" : BADGE_BLUE;
@@ -211,72 +246,144 @@ function logoPart(x: number, height: number, markH: number, pad: number, theme: 
   };
 }
 
+const svgOpen = (w: number, h: number, label: string) =>
+  `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" ` +
+  `role="img" aria-label="${escapeXml(label)}"><title>${escapeXml(label)}</title>`;
+
 /** A badge, as an SVG document (the image's whole text). `name` is the platform's (SITE_NAME). */
 export function renderBadge(name: string, f: BadgeFacts, o: BadgeOptions = DEFAULT_OPTIONS): string {
   if (f.kind === "unknown" && o.missing === "hide") {
     return `<svg xmlns="http://www.w3.org/2000/svg" width="0" height="0" role="presentation"/>`;
   }
   if (o.style === "card") return renderCard(name, f, o);
+  if (o.style === "tile") return renderTile(name, f, o);
   const said = o.text ? { text: o.text, tone: "info" as BadgeTone } : badgeMessage(f, o.show);
-  const large = o.style === "large";
-  const height = large ? 28 : 20;
-  const size = large ? 13 : 11;
-  const markH = large ? 14 : 10;
-  const pad = large ? 9 : 6;
-  const logo = logoPart(0, height, markH, pad, o.theme);
+  const z = SIZES[o.style as keyof typeof SIZES] ?? SIZES.flat;
   const label = `${name}: ${said.text}`;
-  const head =
-    `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="WIDTH" height="${height}" ` +
-    `viewBox="0 0 WIDTH ${height}" role="img" aria-label="${escapeXml(label)}"><title>${escapeXml(label)}</title>`;
+  const pal = palette(o.theme);
+  if (pal) return renderFramed(label, said, z, o.style === "mark", pal);
+  const logo = logoPart(0, z.h, z.mark, z.pad, o.theme);
   let width = logo.width;
   let body = logo.svg;
   if (o.style !== "mark") {
-    const text = fit(said.text, 360, size);
-    const tw = r1(textWidth(text, size));
-    const right = r1(tw + 2 * pad);
+    const text = fit(said.text, 360, z.size);
+    const tw = r1(textWidth(text, z.size));
+    const right = r1(tw + 2 * z.pad);
     body +=
-      `<rect x="${width}" width="${right}" height="${height}" fill="${BADGE_TONES[said.tone]}"/>` +
-      `<text x="${r1(width + pad)}" y="${r1(height / 2 + size * 0.36)}" fill="#ffffff" font-family="Verdana,DejaVu Sans,Geneva,sans-serif" ` +
-      `font-size="${size}" textLength="${tw}" lengthAdjust="spacingAndGlyphs">${escapeXml(text)}</text>`;
+      `<rect x="${width}" width="${right}" height="${z.h}" fill="${BADGE_TONES[said.tone]}"/>` +
+      `<text x="${r1(width + z.pad)}" y="${r1(z.h / 2 + z.size * 0.36)}" fill="#ffffff" ${VERDANA_FONT} ` +
+      `font-size="${z.size}" textLength="${tw}" lengthAdjust="spacingAndGlyphs">${escapeXml(text)}</text>`;
     width = r1(width + right);
   }
   if (o.theme === "light") {
     // A thin frame, so that the white part keeps its edge on a white page.
-    body += `<rect x="0.5" y="0.5" width="${r1(width - 1)}" height="${height - 1}" fill="none" stroke="${BADGE_BLUE}"/>`;
+    body += `<rect x="0.5" y="0.5" width="${r1(width - 1)}" height="${z.h - 1}" fill="none" stroke="${BADGE_BLUE}"/>`;
   }
-  return `${head.replace(/WIDTH/g, String(width))}${body}</svg>`;
+  return `${svgOpen(width, z.h, label)}${body}</svg>`;
+}
+
+/** The framed themes (white, outline, dark): one ground, the mark, a hairline divider, a status dot
+ *  (white and dark) and the fact; a 1-pixel frame, square corners. */
+function renderFramed(label: string, said: { text: string; tone: BadgeTone }, z: (typeof SIZES)["flat"], markOnly: boolean, pal: NonNullable<ReturnType<typeof palette>>): string {
+  const markW = r1((LOGO_PX.width / LOGO_PX.height) * z.mark);
+  let x = z.pad;
+  let body = `<image x="${x}" y="${r1((z.h - z.mark) / 2)}" width="${markW}" height="${z.mark}" xlink:href="${pal.logo}"/>`;
+  x = r1(x + markW + z.pad);
+  if (!markOnly) {
+    body += `<rect x="${x}" y="${r1(z.h * 0.22)}" width="1" height="${r1(z.h * 0.56)}" fill="${pal.divider}"/>`;
+    x = r1(x + 1 + z.pad);
+    if (pal.dot) {
+      const r = r1(z.size * 0.28);
+      body += `<circle cx="${r1(x + r)}" cy="${r1(z.h / 2)}" r="${r}" fill="${DOT[said.tone]}"/>`;
+      x = r1(x + 2 * r + z.size * 0.45);
+    }
+    const text = fit(said.text, 360, z.size);
+    const tw = r1(textWidth(text, z.size) * 0.95);
+    body +=
+      `<text x="${x}" y="${r1(z.h / 2 + z.size * 0.36)}" fill="${pal.text}" ${FONT} font-size="${z.size}" ` +
+      `textLength="${tw}" lengthAdjust="spacingAndGlyphs">${escapeXml(text)}</text>`;
+    x = r1(x + tw + z.pad);
+  }
+  const w = x;
+  return (
+    svgOpen(w, z.h, label) +
+    `<rect width="${w}" height="${z.h}" fill="${pal.ground}"/>` +
+    body +
+    `<rect x="0.5" y="0.5" width="${r1(w - 1)}" height="${z.h - 1}" fill="none" stroke="${pal.frame}"/>` +
+    `</svg>`
+  );
 }
 
 /** The card: a larger badge for a web page, a lab's site or a slide (the title, the journal, what
- *  the registry knows), 420 × 64 pixels. */
+ *  the registry knows), 420 × 64 pixels. White by default; `dark` for a dark page; `blue` keeps the
+ *  mark on its blue band. */
 function renderCard(name: string, f: BadgeFacts, o: BadgeOptions): string {
   const W = 420;
   const H = 64;
   const said = o.text ? { text: o.text, tone: "info" as BadgeTone } : badgeMessage(f, "status");
-  const logo = logoPart(0, H, 16, 14, o.theme);
-  const x = logo.width + 12;
-  const room = W - x - 12;
-  // Bold Verdana is about an eighth wider than the regular widths the table gives.
+  const dark = o.theme === "dark";
+  const band = o.theme === "blue" || o.theme === "light";
+  const ink = dark ? "#e6edf3" : "#1f2328";
+  const soft = dark ? "#8d96a0" : "#59636e";
+  const frame = dark ? "#30363d" : "#d0d7de";
+  let x: number;
+  let logo: string;
+  if (band) {
+    const part = logoPart(0, H, 16, 14, "blue");
+    logo = part.svg;
+    x = part.width + 14;
+  } else {
+    const markW = r1((LOGO_PX.width / LOGO_PX.height) * 16);
+    logo =
+      `<image x="16" y="${r1((H - 16) / 2)}" width="${markW}" height="16" xlink:href="${dark ? LOGO_WHITE : LOGO_BLUE}"/>` +
+      `<rect x="${r1(16 + markW + 14)}" y="12" width="1" height="${H - 24}" fill="${frame}"/>`;
+    x = r1(16 + markW + 29);
+  }
+  const room = W - x - 14;
+  // Bold text is about an eighth wider than the regular widths the table gives.
   const title = fit(f.title || f.doi || (f.kind === "unknown" ? "Not in the registry yet" : ""), room / 1.14, 13);
   const meta = fit([f.journal, f.year, f.doi && f.title ? `doi:${f.doi}` : ""].filter(Boolean).join(" · "), room, 11);
   const state = fit(
     [said.text, f.repos ? plural(f.repos, "repository", "repositories") : "", typeof f.scripts === "number" ? plural(f.scripts, "script") : ""]
       .filter(Boolean)
       .join(" · "),
-    room,
+    room - 12,
     11,
   );
   const label = `${name}: ${[f.title, said.text].filter(Boolean).join(", ")}`;
-  const font = `font-family="Verdana,DejaVu Sans,Geneva,sans-serif"`;
   return (
-    `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" ` +
-    `role="img" aria-label="${escapeXml(label)}"><title>${escapeXml(label)}</title>` +
-    `<rect width="${W}" height="${H}" fill="#ffffff"/>` +
-    logo.svg +
-    `<text x="${x}" y="22" fill="#1a1a1a" ${font} font-size="13" font-weight="bold">${escapeXml(title)}</text>` +
-    (meta ? `<text x="${x}" y="39" fill="#555555" ${font} font-size="11">${escapeXml(meta)}</text>` : "") +
-    `<text x="${x}" y="55" fill="${BADGE_TONES[said.tone]}" ${font} font-size="11">${escapeXml(state)}</text>` +
-    `<rect x="0.5" y="0.5" width="${W - 1}" height="${H - 1}" fill="none" stroke="#c8c8c8"/>` +
+    svgOpen(W, H, label) +
+    `<rect width="${W}" height="${H}" fill="${dark ? "#0d1117" : "#ffffff"}"/>` +
+    logo +
+    `<text x="${x}" y="22" fill="${ink}" ${FONT} font-size="13" font-weight="600">${escapeXml(title)}</text>` +
+    (meta ? `<text x="${x}" y="39" fill="${soft}" ${FONT} font-size="11">${escapeXml(meta)}</text>` : "") +
+    `<circle cx="${x + 3.5}" cy="51.5" r="3.5" fill="${DOT[said.tone]}"/>` +
+    `<text x="${x + 12}" y="55" fill="${ink}" ${FONT} font-size="11">${escapeXml(state)}</text>` +
+    `<rect x="0.5" y="0.5" width="${W - 1}" height="${H - 1}" fill="none" stroke="${frame}"/>` +
+    `</svg>`
+  );
+}
+
+/** The tile: the mark over one short fact, 120 × 56 pixels (a sidebar, a poster's corner, a slide). */
+function renderTile(name: string, f: BadgeFacts, o: BadgeOptions): string {
+  const W = 120;
+  const H = 56;
+  const said = o.text ? { text: o.text, tone: "info" as BadgeTone } : badgeMessage(f, o.show);
+  const dark = o.theme === "dark";
+  const blue = o.theme === "blue" || o.theme === "light";
+  const ground = blue ? BADGE_BLUE : dark ? "#0d1117" : "#ffffff";
+  const ink = blue || dark ? "#ffffff" : "#1f2328";
+  const frame = blue ? BADGE_BLUE : dark ? "#30363d" : o.theme === "outline" ? BADGE_BLUE : "#d0d7de";
+  const markH = 16;
+  const markW = r1((LOGO_PX.width / LOGO_PX.height) * markH);
+  const text = fit(said.text, W - 16, 10);
+  const tw = r1(textWidth(text, 10) * 0.95);
+  return (
+    svgOpen(W, H, `${name}: ${said.text}`) +
+    `<rect width="${W}" height="${H}" fill="${ground}"/>` +
+    `<image x="${r1((W - markW) / 2)}" y="11" width="${markW}" height="${markH}" xlink:href="${blue || dark ? LOGO_WHITE : LOGO_BLUE}"/>` +
+    `<text x="${r1((W - tw) / 2)}" y="44" fill="${ink}" ${FONT} font-size="10" textLength="${tw}" lengthAdjust="spacingAndGlyphs">${escapeXml(text)}</text>` +
+    `<rect x="0.5" y="0.5" width="${W - 1}" height="${H - 1}" fill="none" stroke="${frame}"/>` +
     `</svg>`
   );
 }
