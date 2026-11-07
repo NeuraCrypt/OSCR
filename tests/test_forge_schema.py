@@ -247,7 +247,7 @@ def test_nightly_reads_the_mirrors_and_writes_the_layer_between_the_export_and_t
     order = []
     monkeypatch.setattr(catalog, "generate", lambda con, out, public=False, **kw: order.append("export") or out)
     monkeypatch.setattr(watchdog, "refuse_to_publish", lambda articles: "")   # the export is faked: no paper to count
-    monkeypatch.setattr(publish, "deploy_cloudflare", lambda out, project: order.append("deploy") or "online")
+    monkeypatch.setattr(publish, "deploy_cloudflare", lambda out, project, **kw: order.append("deploy") or "online")
     monkeypatch.setattr(forgejobs, "mirrors", lambda con, **kw: order.append(("mirrors", kw["target"])) or "2 heads changed")
     monkeypatch.setattr(forgelayer, "write", lambda con, d1, out: order.append(("layer", d1.database, out)) or "64 shards")
     # Night phase 08: the social layer, after the forge's (oscr/social.py).

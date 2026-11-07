@@ -6,8 +6,9 @@ mode:
 - `catalog.json`: every paper, its status and its authors' code with the level of
   evidence (found → alive → inventoried → imported), the method families, the
   repositories, the website is built from it;
-- `scripts/NN.json`: the TEXT of the scripts, in lots keyed by the file's SHA-256 and
-  DEDUPLICATED (each unique file stored once), loaded on demand by the reader. Since the
+- `scripts/<lot>.json`: the TEXT of the scripts, each unique file once (keyed by its SHA-256),
+  loaded on demand by the reader; a file keeps its lot for good and a full lot never changes
+  (oscr/scriptlots.py; the nightly keeps them on the external disk). Since the
   owner's decision of 2026-09-29 every paper's code is shown from OSCR's own copy, whatever
   its license: the license no longer gates DISPLAY (`script_lots`);
 - `scriptmeta/NN.json`: the per-repository FACTS the site is built from (keyed by
@@ -47,16 +48,14 @@ from . import methods
 
 #: Script texts and matches are served in LOTS, loaded on demand: the pages stay light,
 #: and a static host serves them as they are.
-#: The text lots are keyed by the file's SHA-256 and DEDUPLICATED (each unique file once). A
-#: A Workers static asset may not exceed 25 MiB. The repository facts and the alignment lots stay
-#: at N_LOTS; the scripts' TEXT, far heavier and still growing (256 lots reached ~26 MiB once the
-#: stock had grown), has its own larger count TEXT_LOTS so each `/scripts/NN.json` stays well under
-#: the limit without multiplying the lighter lots. The lot number is written into the data, so the
-#: reader needs no matching constant (it reads `text_lot`).
-#: Since the owner's decision of 2026-09-29 every file is stored, whatever its license: a test
-#: asserts no lot overflows (tests/test_catalog_source.py).
+#: A Workers static asset may not exceed 25 MiB. The repository facts and the alignment lots are
+#: N_LOTS, by repository or paper. The scripts' TEXT is not: each unique file (keyed by SHA-256)
+#: keeps the lot it was first written to, new files fill the open lot up to scriptlots.LOT_TARGET
+#: (24 MiB), so a full lot never changes and is never sent to Cloudflare again (2026-11-07; until
+#: then sha256 modulo 1,024 changed all 1,024 lots every night). The lot is written into the data,
+#: so the reader needs no matching constant (it reads `text_lot`).
+#: Since the owner's decision of 2026-09-29 every file is stored, whatever its license.
 N_LOTS: int = 256
-TEXT_LOTS: int = 1024
 
 #: The licenses under which a script's text may LEAVE as a redistributable copy, the bulk
 #: outputs only (`scripts.jsonl`, the Hugging Face dataset `_mirror`, the public database): its
@@ -203,13 +202,6 @@ def withheld(con: sqlite3.Connection) -> Withheld:
 
 def lot_of(key: str) -> int:
     return int(hashlib.sha1(key.encode()).hexdigest()[:8], 16) % N_LOTS
-
-
-def text_lot_of(key: str) -> int:
-    """The lot of a script's TEXT (`/scripts/NN.json`): its own, larger count (TEXT_LOTS) so the
-    heavy text shards stay under the 25 MiB asset limit. The lot number is written into the data
-    (`text_lot`), so the reader needs no matching constant."""
-    return int(hashlib.sha1(key.encode()).hexdigest()[:8], 16) % TEXT_LOTS
 
 
 def slug(article_id: str) -> str:
@@ -509,8 +501,8 @@ def script_lots(con: sqlite3.Connection, public: bool) -> dict[int, dict[str, An
     Since 2026-09-29 (owner's decision) every file's text is shown from OSCR's own copy,
     whatever the repository's license: the license no longer gates DISPLAY. Each file's entry
     carries its `text` (email-masked in public mode), its `sha256` (of its original bytes), its
-    `size` and, when it has a copy, the lot of its text `text_lot` (`lot_of(sha256)`); the text
-    itself is written once per unique digest into the digest lots (`_digest_lots`).
+    `size` and, when it has a copy, the lot of its text `text_lot` (set by `generate` once the lots
+    are written, `oscr/scriptlots.py`); the text itself is stored once per unique digest.
 
     `published` is True when the reader shows the repository's files from OSCR's copy (always,
     unless the whole repository was withheld at a removal request). `copyable` says whether the
@@ -555,7 +547,8 @@ def script_lots(con: sqlite3.Connection, public: bool) -> dict[int, dict[str, An
             # A file OSCR has a copy of: its digest keys its text lot (deduplicated) and lets the
             # reader fetch it. A withheld, binary, note or digest-less file has none.
             if text is not None and re.fullmatch(r"[0-9a-f]{64}", f["digest"] or ""):
-                facts = {"sha256": f["digest"], "size": f["size"], "text_lot": f"{text_lot_of(f['digest']):02d}"}
+                # `text_lot` is set once the lots are written (`scriptlots.Store.update`, in `generate`).
+                facts = {"sha256": f["digest"], "size": f["size"]}
                 via = file_via(source, f["path"], listed) if source and source.get("via") else ""
                 if via:
                     facts["via"] = via
@@ -572,21 +565,45 @@ def script_lots(con: sqlite3.Connection, public: bool) -> dict[int, dict[str, An
     return lots
 
 
-def _digest_lots(scripts: dict[int, dict[str, Any]]) -> dict[int, dict[str, Any]]:
-    """The scripts' TEXT, keyed by SHA-256 and deduplicated: each unique file is stored once, in
-    `lot_of(sha256)`. `{ sha256: {text, language, lines, truncated} }`. A withheld, binary, note or
-    digest-less file has no `sha256` in `script_lots`, so it is never stored here."""
-    lots: dict[int, dict[str, Any]] = defaultdict(dict)
+def _digest_texts(scripts: dict[int, dict[str, Any]]) -> dict[str, dict[str, Any]]:
+    """The scripts' TEXT, keyed by SHA-256 and deduplicated: each unique file once,
+    `{ sha256: {text, language, lines, truncated} }`. A withheld, binary, note or digest-less file has
+    no `sha256` in `script_lots`, so it is never here. The lots they go to: `oscr/scriptlots.py`."""
+    texts: dict[str, dict[str, Any]] = {}
     for lot in scripts.values():
         for entry in lot.values():
             for f in entry["files"]:
                 sha = f.get("sha256")
                 if not sha or f["text"] is None:
                     continue
-                lots[text_lot_of(sha)].setdefault(sha, {
-                    "text": f["text"], "language": f["language"], "lines": f["lines"],
-                    "truncated": f["truncated"]})
-    return lots
+                texts.setdefault(sha, {"text": f["text"], "language": f["language"], "lines": f["lines"],
+                                       "truncated": f["truncated"]})
+    return texts
+
+
+def hidden_digests(con: sqlite3.Connection, public: bool) -> set[str]:
+    """The digests of the files the site must not show: those of the repositories no paper in scope
+    cites (a withdrawn or off-topic paper's code, D7), and in public mode what a removal request
+    withheld. Their text leaves the lots (oscr/scriptlots.py); a file that merely left the export
+    stays in its lot. 18 s on the whole stock (2026-11-07): the digest is read, never the text."""
+    hidden = {r[0] for r in con.execute(f"SELECT digest FROM file WHERE digest != '' AND repo NOT IN ({PUBLIC_REPOS})")}
+    if public:
+        held = withheld(con)
+        for repo in held.repos:
+            hidden |= {r[0] for r in con.execute("SELECT digest FROM file WHERE repo = ? AND digest != ''", (repo,))}
+        for repo, path in held.files:
+            hidden |= {r[0] for r in con.execute("SELECT digest FROM file WHERE repo = ? AND path = ? AND digest != ''",
+                                                  (repo, path))}
+    return hidden
+
+
+def _place_texts(scripts: dict[int, dict[str, Any]], place: dict[str, str]) -> None:
+    """Each file with a copy learns the lot of its text (`text_lot`), from the lots as written."""
+    for lot in scripts.values():
+        for entry in lot.values():
+            for f in entry["files"]:
+                if f.get("sha256") in place:
+                    f["text_lot"] = place[f["sha256"]]
 
 
 def _repo_facts(scripts: dict[int, dict[str, Any]]) -> dict[int, dict[str, Any]]:
@@ -620,9 +637,16 @@ def alignment_lots(con: sqlite3.Connection) -> dict[int, dict[str, Any]]:
     return lots
 
 
-def generate(con: sqlite3.Connection, folder: Path, *, public: bool = False, mirror: Path | None = None) -> Path:
+def generate(con: sqlite3.Connection, folder: Path, *, public: bool = False, mirror: Path | None = None,
+             lots: Any = None, heavy: Path | None = None) -> Path:
     """Write the catalogue, its lots, its tables and the public database, and, when
-    asked, the mirror of the republishable scripts. Returns the path of catalog.json."""
+    asked, the mirror of the republishable scripts. Returns the path of catalog.json.
+
+    `lots` (a `scriptlots.Store`) is where the scripts' text lots are kept from night to night: the
+    nightly's is on the external disk (`scriptlots.site_store`); by default `folder/scripts`, its table
+    beside it. A lot already written is not written again (`oscr/scriptlots.py`). `heavy`: a folder
+    for `scripts.jsonl` (gigabytes, rewritten each night), linked from `folder`; `folder` by default."""
+    from . import scriptlots
     folder.mkdir(parents=True, exist_ok=True)
     # Spotlight would index the tens of GB written here every night (oscr_public.db's build copy
     # included): the marker asks it not to.
@@ -631,16 +655,37 @@ def generate(con: sqlite3.Connection, folder: Path, *, public: bool = False, mir
     d["public"] = public
     scripts = script_lots(con, public)
     alignments = alignment_lots(con)
-    # The digest lots (the scripts' text, keyed by sha256, deduplicated), the per-repository facts
-    # the site is built from, and the paper ↔ code matches: each in its own folder of lots.
-    for name, lots in (("scripts", _digest_lots(scripts)), ("scriptmeta", _repo_facts(scripts)),
-                       ("alignments", alignments)):
+    # The scripts' text (keyed by sha256, deduplicated) into lots that keep their files for good.
+    store = lots if lots is not None else scriptlots.Store(folder / "scripts", folder / "scripts-index.db")
+    store.adopt(None)
+    place, said = store.update(_digest_texts(scripts), remove=hidden_digests(con, public))
+    print(said, flush=True)
+    _place_texts(scripts, place)
+    if lots is not None and (folder / "scripts").is_dir() and not (folder / "scripts").is_symlink() \
+            and (folder / "scripts").resolve() != store.lots.resolve():
+        # The lots of the time before the store (8.4 GB on 2026-11-07): the store has them now.
+        shutil.rmtree(folder / "scripts")
+        (folder / "scripts-index.db").unlink(missing_ok=True)
+    # The per-repository facts the site is built from, and the paper ↔ code matches: each in its own
+    # folder of lots, rewritten whole (small).
+    for name, content_lots in (("scriptmeta", _repo_facts(scripts)), ("alignments", alignments)):
         (folder / name).mkdir(parents=True, exist_ok=True)
         for old in (folder / name).glob("*.json"):
             old.unlink()
-        for n, content in lots.items():
+        for n, content in content_lots.items():
             (folder / name / f"{n:02d}.json").write_text(json.dumps(content, ensure_ascii=False, separators=(",", ":")))
-    _scripts_jsonl(scripts, folder / "scripts.jsonl")
+    jsonl = folder / "scripts.jsonl"
+    if heavy is not None and heavy.resolve() != folder.resolve():
+        heavy.mkdir(parents=True, exist_ok=True)
+        if jsonl.exists() and not jsonl.is_symlink():
+            jsonl.unlink()
+        _scripts_jsonl(scripts, heavy / "scripts.jsonl")
+        if not jsonl.is_symlink():
+            jsonl.symlink_to((heavy / "scripts.jsonl").resolve())
+    else:
+        if jsonl.is_symlink():
+            jsonl.unlink()
+        _scripts_jsonl(scripts, jsonl)
     if mirror is not None:
         _mirror(con, scripts, mirror)
     _alignments_jsonl(con, alignments, folder / "alignments.jsonl")

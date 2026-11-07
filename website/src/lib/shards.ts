@@ -48,7 +48,16 @@ export const STATIC_PAPERS = 6_000;
  *  STATIC_PAPERS + FIXED_FILES_MAX = 17,500 under the Worker's FILE_LIMIT (20,000). The check holds
  *  the build to both. */
 export const MAX_CATEGORIES = 200;
-export const FIXED_FILES_MAX = 5_500;
+/** Since 2026-11-07 the scripts' TEXT lots (/scripts/<lot>.json) are counted apart, in SCRIPT_LOTS_MAX:
+ *  they are no longer a fixed number (a full lot never changes, the new files open new lots,
+ *  oscr/scriptlots.py), so FIXED_FILES_MAX lost the 1,024 it held for them (3,579 other files on
+ *  2026-11-07). */
+export const FIXED_FILES_MAX = 4_500;
+/** The text lots at most: what FILE_MARGIN leaves beside the papers and the fixed files. 1,024 on
+ *  2026-11-07, about 9 more a night at the night's rate then (225 MB of new text, 24 MiB a lot):
+ *  about 13 months of room. Before it is spent, the oldest lots are to be read from the Hugging Face
+ *  scripts dataset instead. */
+export const SCRIPT_LOTS_MAX = FILE_MARGIN - STATIC_PAPERS - FIXED_FILES_MAX;
 /** The GitHub side's nightly shards at most: five families of 64, and Explore's one file. */
 export const GITHUB_SIDE_SHARDS = 5 * 64 + 1;
 

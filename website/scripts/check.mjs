@@ -30,7 +30,7 @@ import { checkedText, EMAIL_ON_PAGE } from "../src/lib/emails.ts";
 import { allowsHash, headersFor, parseHeaders } from "../src/lib/headers.ts";
 import { buildOpenapi, ENDPOINTS, REPO_SHARDS } from "../src/lib/apispec.ts";
 import {
-  ENTITY_TYPES, FILE_LIMIT, FILE_MARGIN, FIXED_FILES_MAX, keyOf, LIST_PAGES_MAX, LOOKUP_HEX, SHARDS, shardOf, SITEMAP_SHARDS,
+  ENTITY_TYPES, FILE_LIMIT, FILE_MARGIN, FIXED_FILES_MAX, keyOf, SCRIPT_LOTS_MAX, LIST_PAGES_MAX, LOOKUP_HEX, SHARDS, shardOf, SITEMAP_SHARDS,
   SITEMAP_URLS, STATIC_PAPERS,
 } from "../src/lib/shards.ts";
 
@@ -527,7 +527,9 @@ for (const f of files) {
   folders.set(folder, (folders.get(folder) ?? 0) + 1);
 }
 const paperFiles = files.filter((f) => /^\/paper\/[^/]+\//.test(f) && f !== "/paper/404.html").length;
-const others = files.length - paperFiles;
+// The scripts' text lots are counted apart (they grow, oscr/scriptlots.py): SCRIPT_LOTS_MAX.
+const lotFiles = files.filter((f) => /^\/scripts\/\d+\.json$/.test(f)).length;
+const others = files.length - paperFiles - lotFiles;
 console.log(`${n(files.length)} files in dist/ (${n(pages.length)} pages), ${n(links)} internal links checked; ` +
   `the limit is ${n(FILE_LIMIT)}, the margin ${n(FILE_MARGIN)}.`);
 console.log("Files by folder:");
@@ -535,7 +537,8 @@ for (const [folder, count] of [...folders].sort((x, y) => y[1] - x[1] || x[0].lo
   console.log(`  ${String(n(count)).padStart(7)}  ${folder}`);
 }
 console.log(`Papers: ${n(staticPapers.length)} static (at most ${n(STATIC_PAPERS)}, ${n(paperFiles)} files, the readers on their pages), ` +
-  `${n(onDemand.length)} rendered on demand; every other file: ${n(others)} (at most ${n(FIXED_FILES_MAX)}).`);
+  `${n(onDemand.length)} rendered on demand; scripts' text lots: ${n(lotFiles)} (at most ${n(SCRIPT_LOTS_MAX)}); ` +
+  `every other file: ${n(others)} (at most ${n(FIXED_FILES_MAX)}).`);
 console.log("Pages by kind:");
 console.log(Object.entries(kinds).map(([k, c]) => `  ${String(n(c)).padStart(7)}  ${k}`).join("\n"));
 // A launch warning, never a failure: the privacy page and the terms name the operator (OPERATOR_NAME and
@@ -545,6 +548,7 @@ if (all.has("/privacy/index.html") && readFileSync(join(DIST, "privacy/index.htm
   console.warn("LAUNCH WARNING: the operator's name and postal address are empty (OPERATOR_NAME, OPERATOR_ADDRESS in " +
     "src/config.ts, or at build time): /privacy/ and /policies/terms/ say they are published before the launch.");
 }
+if (lotFiles > SCRIPT_LOTS_MAX) problems.push(`${n(lotFiles)} scripts' text lots: past ${n(SCRIPT_LOTS_MAX)}`);
 if (others > FIXED_FILES_MAX) problems.push(`${n(others)} files besides the papers' pages: past ${n(FIXED_FILES_MAX)}`);
 if (files.length > FILE_MARGIN) problems.push(`${n(files.length)} files: past the margin of ${n(FILE_MARGIN)} (limit ${n(FILE_LIMIT)})`);
 if (problems.length) {

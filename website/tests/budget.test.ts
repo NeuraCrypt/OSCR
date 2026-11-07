@@ -9,7 +9,7 @@ import {
   type AuthorRecord, type PaperRecord, type Row, type ToolRecord,
 } from "../src/lib/render.ts";
 import {
-  ENTITY_ROWS_MAX, ENTITY_TYPES, FILE_LIMIT, FILE_MARGIN, FIXED_FILES_MAX, GITHUB_SIDE_SHARDS, groupShards, keyOf, LIST_PAGES_MAX, lookupShard, MAX_CATEGORIES, packEntities, SITEMAP_SHARDS,
+  ENTITY_ROWS_MAX, ENTITY_TYPES, FILE_LIMIT, FILE_MARGIN, FIXED_FILES_MAX, GITHUB_SIDE_SHARDS, SCRIPT_LOTS_MAX, groupShards, keyOf, LIST_PAGES_MAX, lookupShard, MAX_CATEGORIES, packEntities, SITEMAP_SHARDS,
   SHARDS, shardOf, STATIC_PAPERS, staticSelection,
 } from "../src/lib/shards.ts";
 import worker from "../worker/index.ts";
@@ -80,7 +80,9 @@ describe("the number of files", () => {
     // What the check (scripts/check.mjs) holds the build to stays within the margin: a paper's page
     // is one file (the reader on it); were it two again, still within the Worker's limit.
     assert.ok(STATIC_PAPERS + FIXED_FILES_MAX <= FILE_MARGIN);
-    assert.ok(2 * STATIC_PAPERS + FIXED_FILES_MAX <= FILE_LIMIT);
+    // The scripts' text lots, counted apart since they grow (2026-11-07), fill the rest of the margin.
+    assert.ok(SCRIPT_LOTS_MAX >= 2 * 1024, `${SCRIPT_LOTS_MAX} lots of room`);
+    assert.ok(STATIC_PAPERS + FIXED_FILES_MAX + SCRIPT_LOTS_MAX <= FILE_MARGIN);
     // The shards (the lookup's 256 with them), the lots of scripts and the category pages leave
     // room for the fixed pages and bundles.
     const shardFiles = Object.values(SHARDS).reduce((n, x) => n + x, 0) + 256;

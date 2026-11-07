@@ -122,9 +122,17 @@ if (dropped) console.warn(`${dropped} evidence terms longer than ${MAX_TERM} cha
 // The scripts' text, keyed by the file's SHA-256 and deduplicated (oscr/catalog.py), fetched on
 // demand by the reader (one file per lot). The per-repository FACTS the site is built from
 // (scriptmeta/, keyed by repository) are read at build time and never served.
-rmSync("public/scripts", { recursive: true, force: true });
-if (existsSync(`${source}/scripts`)) cpSync(`${source}/scripts`, "public/scripts", { recursive: true });
-else mkdirSync("public/scripts", { recursive: true });
+// The nightly keeps the lots outside the site's sources (SCRIPT_LOTS_DIR, oscr/scriptlots.py, on the
+// external disk): they are not copied here, Astro does not copy them into dist/, and the nightly links
+// each lot into dist/scripts/ before the deployment. Otherwise (a fixture, a development build), they
+// are copied from the export as before.
+if (process.env.SCRIPT_LOTS_DIR) {
+  if (existsSync("public/scripts")) console.warn("public/scripts exists beside SCRIPT_LOTS_DIR: Astro will copy it into dist/");
+} else {
+  rmSync("public/scripts", { recursive: true, force: true });
+  if (existsSync(`${source}/scripts`)) cpSync(`${source}/scripts`, "public/scripts", { recursive: true });
+  else mkdirSync("public/scripts", { recursive: true });
+}
 rmSync("src/data/scriptmeta", { recursive: true, force: true });
 mkdirSync("src/data/scriptmeta", { recursive: true });
 // The files' facts: a path may hold an address ("analysis (someone@lab.org).r"); only a shard that

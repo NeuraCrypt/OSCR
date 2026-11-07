@@ -148,9 +148,15 @@ def run(con: Any, client: Any, cfg: dict[str, str], *, out: Path, dataset: str, 
             say(malware.scan(con, forge_d1))
         except Exception as e:  # noqa: BLE001, the nightly goes on; the harvester already refuses listed files
             say(f"malware scan failed: {e}")
+    # The scripts' text lots, kept from night to night on the external disk (oscr/scriptlots.py): the
+    # first time, the lots online (website/public/scripts) are taken in as they are, frozen.
+    from . import publish, scriptlots
+    lots = scriptlots.site_store(publish.WEBSITE, cfg)
     if "export" in todo:
         with cycles.step(cid, "export"):
-            say(f"public catalogue → {catalog.generate(con, out, public=True)}")
+            if (adopted := lots.adopt(publish.WEBSITE / "public" / "scripts")):
+                say(f"script lots: the {adopted} lots online are kept as they are, in {lots.lots}")
+            say(f"public catalogue → {catalog.generate(con, out, public=True, lots=lots, heavy=scriptlots.heavy_folder(publish.WEBSITE, cfg))}")
     # Nothing leaves when the catalogue is empty or shrank by half: every upload below replaces
     # what is online (the site, D1's deletions, Hugging Face's history).
     articles = con.execute(f"SELECT COUNT(*) FROM article WHERE {catalog.IN_SCOPE}").fetchone()[0]
@@ -173,10 +179,9 @@ def run(con: Any, client: Any, cfg: dict[str, str], *, out: Path, dataset: str, 
         cycles.finish_step(sid, ok=not failed, detail="\n".join(failed))
         errors.extend(failed)
 
-    from . import publish
     step("forge", "Forge", lambda: _forge(con, client, cfg, out, say))
     step("dataset", "Hugging Face", lambda: say(publish.publish_hf(out, dataset)))
-    step("deploy", "Cloudflare", lambda: say(publish.deploy_cloudflare(out, cloudflare)))
+    step("deploy", "Cloudflare", lambda: say(publish.deploy_cloudflare(out, cloudflare, lots=lots)))
 
     def linkfeeds() -> None:
         # One link per paper with a page, on Europe PMC and PubMed (docs/BADGE.md); nothing is sent

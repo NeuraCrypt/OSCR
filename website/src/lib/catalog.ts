@@ -241,12 +241,16 @@ export function lotEntry(d: Repo): LotEntry | undefined {
   return lots.get(d.lot)![d.repo];
 }
 
-/** The text of one file, read from its digest lot (public/scripts/NN.json, keyed by sha256) at build
- *  time: for the file the reader inlines into a paper's page. undefined when the lot has no copy. */
+/** The text of one file, read from its lot (`<lot>.json`, keyed by sha256) at build time: for the file
+ *  the reader inlines into a paper's page. The lots are in SCRIPT_LOTS_DIR when the nightly sets it
+ *  (oscr/scriptlots.py, outside the site's sources), in public/scripts otherwise. undefined when the
+ *  lot has no copy. */
 const textLots = new Map<string, Record<string, { text: string }>>();
+const LOTS_DIR = process.env.SCRIPT_LOTS_DIR || "public/scripts";
 export function lotText(textLot: string, sha256: string): string | undefined {
+  if (!/^\d{1,6}$/.test(textLot)) return undefined;
   if (!textLots.has(textLot)) {
-    const path = `public/scripts/${textLot}.json`;
+    const path = `${LOTS_DIR}/${textLot}.json`;
     textLots.set(textLot, existsSync(path) ? JSON.parse(readFileSync(path, "utf8")) : {});
   }
   return textLots.get(textLot)![sha256]?.text;

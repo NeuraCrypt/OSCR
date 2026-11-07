@@ -92,8 +92,14 @@ license audit: `docs/SCRIPT_STORAGE.md`; code: `oscr/scriptstore.py`, `oscr scri
   paper's code from OSCR's own copy, whatever its licence, even a repository with none. On the
   **site**:
   - the scripts' text is served in lots keyed by the file's **SHA-256 and deduplicated** (each
-    unique file once): `public/scripts/NN.json` (`catalog.N_LOTS` = 256; the largest ~10.6 MiB of
-    JSON on the whole stock, under the 25 MiB Workers asset limit; a test asserts no lot overflows).
+    unique file once): `/scripts/<lot>.json`. **A file keeps its lot for good and a full lot never
+    changes** (decided 2026-11-07, `oscr/scriptlots.py`): new files fill the open lot up to 24 MiB
+    (`LOT_TARGET`, under the 25 MiB asset limit), then a new one; only a removal or a changed masking
+    rewrites the one lot concerned. The table sha256 → lot (`index.db`) and the lots live on the
+    external disk beside `website/public` (`script-lots/`), written at night only; the build does not
+    copy them, `dist/scripts/` gets one link per lot (wrangler reads through it). The 1,024 lots of the
+    sha256-modulo time were kept as they were, frozen. They count apart in the file budget
+    (`SCRIPT_LOTS_MAX`, `website/src/lib/shards.ts`).
   - the per-repository **facts** the site is built from move to `scriptmeta/NN.json` (keyed by
     repository, read at build time, never served): each file's path, language, size, lines, digest
     and the lot of its text (`text_lot`). The build inlines the first file; the reader fetches the

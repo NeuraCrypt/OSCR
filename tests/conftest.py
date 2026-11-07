@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from oscr import community, cycles, net, nightly, preflight, reconcile, retry, watchdog
+from oscr import community, cycles, net, nightly, preflight, reconcile, retry, scriptlots, watchdog
 
 FORGE_MIGRATIONS = sorted((Path(__file__).resolve().parents[1] / "migrations" / "d1-forge").glob("[0-9][0-9][0-9][0-9]_*.sql"))
 
@@ -37,6 +37,18 @@ def nightly_stays_on_this_test(monkeypatch):
     monkeypatch.setattr(nightly, "stay_awake", lambda: None)
     monkeypatch.setattr(reconcile, "run", lambda cfg: "reconciled")
     monkeypatch.setattr(watchdog, "alert", lambda message: None)
+
+
+#: The nightly's scripts' text lots live on the external disk, beside website/public
+#: (oscr/scriptlots.py): the real site_store is kept for its own test, every other test gets its own.
+REAL_SITE_STORE = scriptlots.site_store
+
+
+@pytest.fixture(autouse=True)
+def isolated_script_lots(tmp_path_factory, monkeypatch):
+    base = tmp_path_factory.mktemp("script-lots")
+    monkeypatch.setattr(scriptlots, "site_store", lambda website, cfg=None: scriptlots.Store.at(base))
+    monkeypatch.setattr(scriptlots, "heavy_folder", lambda website, cfg=None: None)
 
 
 @pytest.fixture(autouse=True)

@@ -35,6 +35,7 @@ import subprocess
 import tempfile
 import time
 from pathlib import Path
+from typing import Any
 
 from . import retry
 
@@ -83,11 +84,13 @@ Updated on {date} by the OSCR harvester, https://github.com/NeuraCrypt/OSCR
 
 
 def prepare(site: Path, mirror: Path | None) -> Path:
-    """The folder exactly as it will leave."""
+    """The folder exactly as it will leave: a LINK to each table, not a copy (until 2026-11-07 the
+    21.7 GB of tables were copied into a temporary folder of the internal disk every night). The
+    upload reads through a link to a file (`upload_folder` keeps what `Path.is_file()` says)."""
     d = Path(tempfile.mkdtemp(prefix="hf_"))
     for name in TABLES:
         if (site / name).exists():
-            shutil.copy2(site / name, d / name)
+            (d / name).symlink_to((site / name).resolve())
     if mirror is not None and mirror.exists():
         shutil.copytree(mirror, d / "scripts")
     (d / "README.md").write_text(CARD.replace("{date}", time.strftime("%Y-%m-%d", time.gmtime())))
@@ -286,13 +289,19 @@ def _deploy(step: list[str], website: Path, env: dict) -> subprocess.CompletedPr
     return r
 
 
-def deploy_cloudflare(catalog: Path, project: str, website: Path = WEBSITE) -> str:
+def deploy_cloudflare(catalog: Path, project: str, website: Path = WEBSITE, lots: Any = None) -> str:
     """Rebuild the website from the public catalogue (`catalog`, generated in public
     mode) and put it online as the static assets of a Cloudflare Worker (`project` is the
     Worker's name): no git repository and no build at Cloudflare, and only the files that
     changed are uploaded. `npx wrangler login` must have been done once; wrangler keeps and
-    renews its login itself."""
+    renews its login itself.
+
+    `lots` (a `scriptlots.Store`): the scripts' text lots, kept outside the site's sources; the build
+    reads them there (SCRIPT_LOTS_DIR) and does not copy them, and `dist/scripts/` gets one link per
+    lot before `wrangler deploy`, which sends only the lots Cloudflare does not have yet."""
     env = {**os.environ, "CATALOG_DIR": str(catalog.resolve())}
+    if lots is not None:
+        env["SCRIPT_LOTS_DIR"] = str(lots.lots.resolve())
     # Night phase 16: Turnstile's public site key, for the forms' human check (tools/setup_cloudflare.sh).
     from .cli import settings
     site_key = settings().get("OSCR_TURNSTILE_SITE_KEY", "")
@@ -309,6 +318,9 @@ def deploy_cloudflare(catalog: Path, project: str, website: Path = WEBSITE) -> s
     steps += [["npx", "wrangler", "deploy", "--name", project]]
     output = ""
     for step in steps:
+        if step[:2] == ["npm", "run"] and step[2] == "check:emails" and lots is not None:
+            from . import scriptlots
+            scriptlots.link_into(lots, website / "dist" / "scripts")
         if step[:2] == ["npx", "wrangler"]:
             r = retry.call(lambda s=step: _deploy(s, website, env), "wrangler deploy")
         else:
