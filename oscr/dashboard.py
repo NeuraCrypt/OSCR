@@ -5,6 +5,7 @@ regenerate: what the harvester wrote is there at the next reload. It listens on
 127.0.0.1 only (the machine itself) and offers no write.
 
     GET /                          the page
+    GET /api/trend                 the nights' durations, step by step, and their figures
     GET /api/stats                 the counts
     GET /api/enrichment            how much of the Phase 1 enrichment is filled
     GET /api/articles?q=&all=&offset=&n=
@@ -136,6 +137,11 @@ def handler(db_path: Path) -> type[BaseHTTPRequestHandler]:
             if u.path == "/api/night":
                 from . import watchdog
                 self._json({"failure": watchdog.failure()})
+                return
+            if u.path == "/api/trend":
+                # The nights' durations step by step, and the figures recorded at each night's end.
+                from . import nighttrend
+                self._json(nighttrend.report())
                 return
             if not db_path.exists():
                 self._json({"error": "the database does not exist yet: run a first pass"}, 503)

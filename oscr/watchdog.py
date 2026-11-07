@@ -235,6 +235,17 @@ def run(now: float | None = None, *, logs: Path = LOGS, state_path: Path | None 
         said.append(f"nightly failed, to be tried again: {'; '.join(failing)}")
     else:
         said.append(f"nightly done {_ago(state.get('success'), now)}")
+    # The trend (oscr/nighttrend.py): a night over 6 h, or nights growing 7 times in a row, said once a day.
+    try:
+        from . import nighttrend
+        trend = nighttrend.warning()
+    except Exception:  # noqa: BLE001, the watchdog's round goes on
+        trend = ""
+    if trend:
+        said.append(f"trend: {trend}")
+        if read_state(state_path).get("trend_alerted") != start:
+            notify(f"trend: {trend}")
+            mark("trend_alerted", start, state_path)
     return "; ".join(said)
 
 

@@ -210,6 +210,31 @@ _EXPIRED = re.compile(r"\b401\b|Unauthorized|expired", re.I)
 _ASSETS_LEFT = re.compile(r"Found (\d+) new or modified static assets to upload")
 
 
+#: What the last `_deploy` did, for the trend (oscr/nighttrend.py): its tries, the assets the first one
+#: had to send ("Found N"), and the bytes Cloudflare received, as wrangler's own logs count them.
+LAST_DEPLOY: dict[str, float] = {}
+_UPLOADED = re.compile(r'"assetUploadTotalBytes":(\d+)')
+
+
+def _uploaded_bytes(since: float, logs: Path | None = None) -> int | None:
+    """The bytes wrangler says it uploaded in the runs since `since` (its log of a run that ended well
+    holds `assetUploadTotalBytes`; a run cut short says nothing, so this is at least what was sent)."""
+    logs = Path.home() / ".wrangler" / "logs" if logs is None else logs
+    total, seen = 0, False
+    try:
+        candidates = [p for p in logs.glob("wrangler-*.log") if p.stat().st_mtime >= since]
+    except OSError:
+        return None
+    for p in candidates:
+        try:
+            found = _UPLOADED.findall(p.read_text(errors="replace"))
+        except OSError:
+            continue
+        if found:
+            total, seen = total + sum(int(x) for x in found), True
+    return total if seen else None
+
+
 def _assets_left(text: str) -> int | None:
     """How many assets the run had to upload (wrangler's "Found N new or modified ..."), or None."""
     found = _ASSETS_LEFT.findall(text)
@@ -261,6 +286,17 @@ def _deploy(step: list[str], website: Path, env: dict, *, until: float | None = 
     upload token as long as each run leaves fewer assets to send than the one before. `until` (a
     `time.time()`): no run starts, and none goes on, past it."""
     expired, left = 0, None
+    began = time.time()
+    LAST_DEPLOY.clear()
+
+    def note(attempt: int, count: int | None) -> None:
+        LAST_DEPLOY["tries"] = attempt
+        if count is not None and "found" not in LAST_DEPLOY:
+            LAST_DEPLOY["found"] = count
+        sent = _uploaded_bytes(began - 1)
+        if sent is not None:
+            LAST_DEPLOY["bytes"] = sent
+
     for attempt in range(1, DEPLOY_ATTEMPTS + 1):
         started = time.monotonic()
         limit = 5400.0 if until is None else min(5400.0, until - time.time())
@@ -271,6 +307,7 @@ def _deploy(step: list[str], website: Path, env: dict, *, until: float | None = 
         except subprocess.TimeoutExpired as e:
             partial = f"{_text(e.stdout)}\n{_text(e.stderr)}"
             count = _assets_left(partial)
+            note(attempt, count)
             print(f"wrangler deploy, try {attempt}: "
                   f"{'no count given' if count is None else f'Found {count} new or modified static assets'}, "
                   f"stopped after {(time.monotonic() - started) / 60:.1f} min (its {limit / 60:.0f}-minute limit); its last lines:\n"
@@ -281,6 +318,7 @@ def _deploy(step: list[str], website: Path, env: dict, *, until: float | None = 
             continue        # Cloudflare kept what was sent: the next run resumes from there
         seen = f"{r.stdout}\n{r.stderr}"
         count = _assets_left(seen)
+        note(attempt, count)
         print(f"wrangler deploy, try {attempt}: "
               f"{'no count given' if count is None else f'Found {count} new or modified static assets'}, "
               f"{(time.monotonic() - started) / 60:.1f} min"

@@ -27,6 +27,18 @@
 /* The hidden attribute must win over the display: grid/flex of the classes. */
 [hidden] { display: none !important; }
 .night-failed { margin: 0; padding: 8px 16px; color: var(--dead); font-weight: 600; }
+.trend { padding: 8px 16px 12px; border-bottom: 1px solid var(--rule); }
+.trend summary { cursor: pointer; font-weight: 600; font-size: 13px; }
+.trend-warning { color: var(--warn); font-weight: 600; margin: 6px 0; }
+.trend svg { width: 100%; max-width: 980px; height: auto; display: block; margin: 8px 0; }
+.trend svg text { fill: var(--muted); font-size: 10px; }
+.trend svg .grid { stroke: var(--rule); }
+.trend svg .limit { stroke: var(--dead); stroke-dasharray: 4 3; }
+.trend-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12px; color: var(--muted); }
+.trend-legend i { display: inline-block; width: 10px; height: 10px; margin-right: 4px; vertical-align: -1px; }
+.trend table { font-size: 12px; font-variant-numeric: tabular-nums; border-collapse: collapse; }
+.trend td, .trend th { padding: 2px 8px; text-align: right; border-bottom: 1px solid var(--rule); white-space: nowrap; }
+.trend td:first-child, .trend th:first-child { text-align: left; }
 body { margin: 0; background: var(--bg); color: var(--ink);
   font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; }
 .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12.5px; }
@@ -119,6 +131,15 @@ button.scripts { font: inherit; font-size: 13px; color: var(--accent); backgroun
 </div>
 <p class="night-failed" id="night-failed" role="alert" hidden></p>
 <p class="enrichment" id="enrichment" hidden></p>
+<details class="trend" id="trend">
+  <summary>The nights: duration of each step, the site, the disks</summary>
+  <p class="trend-warning" id="trend-warning" role="alert" hidden></p>
+  <div id="trend-chart"></div>
+  <div class="trend-legend" id="trend-legend"></div>
+  <div class="scroll"><table><thead><tr><th>Night</th><th>Status</th><th>Hours</th><th>Site files</th><th>Largest file</th>
+    <th>Sent to Cloudflare</th><th>Deploy tries</th><th>Free, internal</th><th>Free, Expansion</th></tr></thead>
+    <tbody id="trend-rows"></tbody></table></div>
+</details>
 <main>
   <div class="scroll">
     <table>
@@ -169,6 +190,54 @@ button.scripts { font: inherit; font-size: 13px; color: var(--accent); backgroun
       $("night-failed").hidden = !e.failure;
       $("night-failed").textContent = e.failure ? "Publication failed. " + e.failure : "";
     });
+  }
+  var STEP_COLORS = {export: "var(--accent)", dataset: "var(--data)", deploy: "var(--dead)", search: "var(--request)",
+    scripts: "var(--ok)", community: "var(--warn)"};
+  function trend() {
+    // The nights, oldest first: one bar per night, one segment per step (minutes), the 6-hour line.
+    api("/api/trend").then(function (t) {
+      // A preflight refusal (nothing attempted, 0 minutes) is no night of the chart.
+      var nights = (t.nights || []).filter(function (n) {
+        return Object.keys(n.steps).some(function (s) { return s !== "preflight"; }); });
+      $("trend-warning").hidden = !t.warning;
+      $("trend-warning").textContent = t.warning ? "Trend: " + t.warning : "";
+      if (!nights.length) { $("trend-chart").textContent = "No night recorded yet."; return; }
+      var W = 960, H = 220, L = 36, B = 20, top = 8;
+      var most = Math.max(t.long_night_s / 60, Math.max.apply(null, nights.map(function (n) { return n.minutes; })));
+      var y = function (m) { return H - B - (m / most) * (H - B - top); };
+      var bw = Math.min(28, (W - L) / nights.length - 4), seen = {};
+      var svg = ['<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Duration of each night, step by step">'];
+      for (var h = 0; h * 60 <= most; h += 2) {
+        svg.push('<line class="grid" x1="' + L + '" x2="' + W + '" y1="' + y(h * 60) + '" y2="' + y(h * 60) + '"/>' +
+          '<text x="2" y="' + (y(h * 60) + 3) + '">' + h + ' h</text>');
+      }
+      svg.push('<line class="limit" x1="' + L + '" x2="' + W + '" y1="' + y(t.long_night_s / 60) + '" y2="' + y(t.long_night_s / 60) + '"/>');
+      nights.forEach(function (n, i) {
+        var x = L + 4 + i * ((W - L) / nights.length), base = 0;
+        Object.keys(n.steps).forEach(function (s) {
+          var m = n.steps[s], color = STEP_COLORS[s] || "var(--neutral)";
+          seen[s] = color;
+          svg.push('<rect x="' + x + '" width="' + bw + '" y="' + y(base + m) + '" height="' + Math.max(0, y(base) - y(base + m)) +
+            '" fill="' + color + '"><title>' + esc(n.day + " " + s + ": " + m + " min") + '</title></rect>');
+          base += m;
+        });
+        if (i % Math.ceil(nights.length / 12) === 0) svg.push('<text x="' + x + '" y="' + (H - 6) + '">' + esc(n.day.slice(5, 10)) + '</text>');
+      });
+      svg.push("</svg>");
+      $("trend-chart").innerHTML = svg.join("");
+      $("trend-legend").innerHTML = Object.keys(seen).map(function (s) {
+        return '<span><i style="background:' + seen[s] + '"></i>' + esc(s) + "</span>"; }).join("") +
+        '<span>dashed: ' + (t.long_night_s / 3600) + ' h</span>';
+      var gb = function (v) { return v == null ? "" : (v / 1e9).toFixed(1) + " GB"; };
+      var mib = function (v) { return v == null ? "" : (v / 1048576).toFixed(1) + " / " + (t.asset_limit / 1048576) + " MiB"; };
+      $("trend-rows").innerHTML = nights.slice().reverse().map(function (n) {
+        var f = n.figures;
+        return "<tr><td>" + esc(n.day) + " (" + esc(n.kind) + ")</td><td>" + esc(n.status) + "</td><td>" + (n.minutes / 60).toFixed(1) +
+          "</td><td>" + (f.site_files == null ? "" : nf(f.site_files)) + "</td><td>" + mib(f.largest_file) + "</td><td>" +
+          gb(f.deploy_bytes) + (f.deploy_found == null ? "" : " (" + nf(f.deploy_found) + " files)") + "</td><td>" +
+          (f.deploy_tries == null ? "" : f.deploy_tries) + "</td><td>" + gb(f.free_internal) + "</td><td>" + gb(f.free_external) + "</td></tr>";
+      }).join("");
+    }).catch(function () {});
   }
   function counts() {
     api("/api/stats").then(function (e) {
@@ -308,8 +377,9 @@ button.scripts { font: inherit; font-size: 13px; color: var(--accent); backgroun
 
   counts();
   night();
+  trend();
   enrichment();
-  setInterval(function () { counts(); enrichment(); night(); }, 60000);  // the harvester moves on while you watch
+  setInterval(function () { counts(); enrichment(); night(); trend(); }, 60000);  // the harvester moves on while you watch
   load(false);
 })();
 </script>

@@ -209,8 +209,17 @@ def run(con: Any, client: Any, cfg: dict[str, str], *, out: Path, dataset: str, 
     from . import publish, scriptlots
     lots = scriptlots.site_store(publish.WEBSITE, cfg)
 
+    def figures() -> None:
+        # The night's figures for the trend (oscr/nighttrend.py, the dashboard): never a reason to fail.
+        try:
+            from . import nighttrend
+            nighttrend.record(cid, publish.WEBSITE, dict(publish.LAST_DEPLOY) if "deploy" in todo else None)
+        except Exception as e:  # noqa: BLE001
+            say(f"the night's figures were not recorded: {e}")
+
     def too_long(e: NightTooLong) -> SystemExit:
         # The night stops cleanly: its cycle failed with the reason, what was not run stays pending.
+        figures()
         cycles.finish_cycle(cid, ok=False, detail=str(e))
         return SystemExit(f"{time.strftime('%Y-%m-%d %H:%M')} {e}")
 
@@ -312,6 +321,7 @@ def run(con: Any, client: Any, cfg: dict[str, str], *, out: Path, dataset: str, 
     step("contacts", "Contacts on Hugging Face", contacts)
     # It ran to its end (`ended`); it SUCCEEDED (`success`) only when every step did (until 2026-11-07
     # `success` was written either way). A step that failed is said below and the watchdog resumes it.
+    figures()
     watchdog.mark("ended")
     watchdog.mark("published", articles)
     cycles.finish_cycle(cid, ok=not errors, detail="\n".join(errors))

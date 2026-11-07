@@ -45,6 +45,8 @@ def _db() -> sqlite3.Connection:
         CREATE TABLE IF NOT EXISTS step(
             id INTEGER PRIMARY KEY, cycle_id INTEGER, name TEXT, started REAL,
             finished REAL, status TEXT, detail TEXT);
+        CREATE TABLE IF NOT EXISTS measure(
+            cycle_id INTEGER, name TEXT, value REAL, PRIMARY KEY (cycle_id, name));
         """
     )
     return con
@@ -70,6 +72,27 @@ def finish_cycle(cycle_id: int, ok: bool = True, detail: str = "") -> None:
             "UPDATE cycle SET finished = ?, status = ?, detail = ? WHERE id = ?",
             (time.time(), "ok" if ok else "failed", _readable(detail), cycle_id),
         )
+
+
+def measure(cycle_id: int, name: str, value: float | None) -> None:
+    """One figure of a cycle, for the trend (oscr/nighttrend.py): the site's files, the largest one,
+    the free space of both disks, what was sent to Cloudflare. None: not known, nothing recorded."""
+    if value is None:
+        return
+    with _db() as con:
+        con.execute("INSERT OR REPLACE INTO measure(cycle_id, name, value) VALUES (?, ?, ?)",
+                    (cycle_id, name, float(value)))
+
+
+def measures(cycle_ids: list[int]) -> dict[int, dict[str, float]]:
+    out: dict[int, dict[str, float]] = {}
+    if not cycle_ids:
+        return out
+    with _db() as con:
+        for r in con.execute(f"SELECT cycle_id, name, value FROM measure WHERE cycle_id IN ({','.join('?' * len(cycle_ids))})",
+                             cycle_ids):
+            out.setdefault(r["cycle_id"], {})[r["name"]] = r["value"]
+    return out
 
 
 def skip_if_overrun(night_start: float, now: float | None = None) -> str:
