@@ -259,7 +259,8 @@ def test_the_public_db_reports_each_sub_step_and_masks_by_batches(tmp_path, monk
     lines = []
     catalog.public_db(con, tmp_path / "public.db", report=lines.append)
     steps = [line.split(": ", 1)[1] for line in lines]
-    assert steps[0] == "backup" and steps[-2:] == ["vacuum", "done"]
+    # Built row by row into an empty database (2026-11-07): no full copy, no VACUUM.
+    assert steps[0] == "schema" and steps[-1] == "done" and "backup" not in steps and "vacuum" not in steps
     assert {"orphan institutions", "email masking", "unverified licences"} <= set(steps)
     assert all(re.match(r"\d{4}-\d\d-\d\d \d\d:\d\d:\d\d public db \(\+\d+\.\d min\): ", line) for line in lines)
     pub = sqlite3.connect(tmp_path / "public.db")

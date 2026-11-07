@@ -96,6 +96,11 @@ def run(con: Any, client: Any, cfg: dict[str, str], *, out: Path, dataset: str, 
     stay_awake()
     cycles.tidy()
     cycles.reap()
+    # What a dead run left (about the public database's size, 2026-11-05) is freed before the space
+    # is counted: the lock is ours, no build is running.
+    freed = catalog.remove_public_db_leftovers(out)
+    if freed:
+        say(f"removed the leftovers of a dead export: {freed / 1e9:.1f} GB freed")
     start = watchdog.last_start(time.time())
     export_done, left = cycles.pending(start)
     steps = planned(cfg, dataset, cloudflare)
@@ -112,7 +117,7 @@ def run(con: Any, client: Any, cfg: dict[str, str], *, out: Path, dataset: str, 
     if not resuming:
         todo = steps
 
-    problems = preflight.run(cfg, dataset, cloudflare)
+    problems = preflight.run(cfg, dataset, cloudflare, need=preflight.needed(out, export="export" in todo))
     if problems:
         # Nothing was attempted: the watchdog tries again soon (a disk to mount, a network to wait for).
         cid = cycles.start_cycle("nightly")
@@ -127,6 +132,10 @@ def run(con: Any, client: Any, cfg: dict[str, str], *, out: Path, dataset: str, 
     if resuming:
         watchdog.count_resume(start)
         say(f"resuming today's publication: {', '.join(todo)}")
+    # When the data being published was exported: a resumption publishes today's export (its day began
+    # at `start`); otherwise this run's. A run that began before today's 04:17 does not count as
+    # today's night (watchdog.nightly_due).
+    begun = start if resuming else time.time()
     cid = cycles.start_cycle("resume" if resuming else "nightly")
     cycles.plan_steps(cid, todo)
     # Night phase 16: a file known as malware loses its text before anything is exported, and the
@@ -228,6 +237,7 @@ def run(con: Any, client: Any, cfg: dict[str, str], *, out: Path, dataset: str, 
     step("contacts", "Contacts on Hugging Face", contacts)
     # It ran to its end: an upload that failed is said below and the watchdog resumes it.
     watchdog.mark("success")
+    watchdog.mark("success_begun", begun)
     watchdog.mark("published", articles)
     cycles.finish_cycle(cid, ok=not errors, detail="\n".join(errors))
     if errors:

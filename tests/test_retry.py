@@ -115,4 +115,17 @@ def test_each_deploy_try_says_its_assets_and_its_time_in_the_log(monkeypatch, tm
     publish._deploy(["npx", "wrangler", "deploy"], tmp_path, {})
     out = capsys.readouterr().out
     assert "try 1: Found 412 new or modified static assets" in out and "try 2: Found 7 new" in out
-    assert out.count(" min\n") == 2
+    # A failed try says why, with the end of what wrangler wrote (2026-11-07: until then only the count).
+    assert "try 1: Found 412 new or modified static assets, 0.0 min, failed (exit 1); its last lines:\n    401 Unauthorized" in out
+    assert "try 2: Found 7 new or modified static assets, 0.0 min\n" in out
+
+
+def test_a_deploy_try_stopped_at_the_limit_says_its_last_lines(monkeypatch, tmp_path, capsys):
+    def stopped(*a, **k):
+        raise subprocess.TimeoutExpired(a[0], 5400, output=b"Found 750 new or modified static assets to upload\nUploading 700/750",
+                                        stderr=b"")
+    monkeypatch.setattr(subprocess, "run", stopped)
+    with pytest.raises(subprocess.TimeoutExpired):
+        publish._deploy(["npx", "wrangler", "deploy"], tmp_path, {})
+    out = capsys.readouterr().out
+    assert "try 1: Found 750 new or modified static assets, stopped after" in out and "Uploading 700/750" in out

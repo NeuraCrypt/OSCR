@@ -75,7 +75,7 @@ def test_resume_says_so_when_nothing_is_left(night, capsys):
 
 def test_a_refused_preflight_starts_nothing_and_is_recorded(night, monkeypatch):
     sent, broken, args = night
-    monkeypatch.setattr(preflight, "run", lambda *a: ["the external disk is not mounted"])
+    monkeypatch.setattr(preflight, "run", lambda *a, **kw: ["the external disk is not mounted"])
     with pytest.raises(SystemExit, match="external disk"):
         cli.main(args)
     assert sent == []
@@ -87,7 +87,7 @@ def test_a_refused_preflight_starts_nothing_and_is_recorded(night, monkeypatch):
     now = state["blocked"]
     assert not watchdog.nightly_due(state, now + 60) and watchdog.nightly_due(state, now + 31 * 60)
     # It passes later: the whole night runs, and the old refusal no longer counts.
-    monkeypatch.setattr(preflight, "run", lambda *a: [])
+    monkeypatch.setattr(preflight, "run", lambda *a, **kw: [])
     assert cli.main(args) == 0
     assert sent[0] == "export" and cycles.pending(0) == (True, [])
 

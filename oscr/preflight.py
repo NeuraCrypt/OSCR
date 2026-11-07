@@ -13,8 +13,12 @@ from pathlib import Path
 from . import retry
 
 WEBSITE = Path(__file__).resolve().parents[1] / "website"
-#: The export, the build and the Hugging Face copy need this much (bytes).
-MIN_FREE = 40 * 10**9
+#: Until 2026-11-06 a fixed 40 GB was asked, a guess: on 2026-11-05 a night passed it and still filled
+#: the disk (the old public database was a full copy of oscr.db, then a VACUUM). It is now computed by
+#: `needed`, from the files the night writes; MIN_FREE stays the floor when nothing is known yet.
+MIN_FREE = 10 * 10**9
+#: What is kept free on top of what the night writes (the harvester, the logs, macOS).
+MARGIN = 10 * 10**9
 HOSTS = ("api.cloudflare.com", "huggingface.co")
 
 
@@ -26,9 +30,45 @@ def disk(website: Path = WEBSITE) -> str:
     return f"the external disk is not mounted: {public} points to {os.path.realpath(public)}, which is missing"
 
 
-def space(path: Path = Path("data"), minimum: int = MIN_FREE) -> str:
+def _size(path: Path) -> int:
+    """Bytes under `path` (a file, or a folder walked without following links), 0 when missing."""
+    if path.is_symlink() or not path.exists():
+        return 0
+    if path.is_file():
+        return path.stat().st_size
+    total = 0
+    for root, _dirs, files in os.walk(path):
+        for name in files:
+            try:
+                total += os.lstat(os.path.join(root, name)).st_size
+            except OSError:
+                pass
+    return total
+
+
+def needed(out: Path, database: Path = Path("data/oscr.db"), website: Path = WEBSITE,
+           export: bool = True) -> tuple[int, str]:
+    """What the night writes on this disk, and how it was counted, in words. The export builds the
+    public database next to the previous one (catalog.public_db, about the previous one's size: 1.2
+    times it), or, the first time, half of oscr.db; the build rewrites website/dist (0.2 times it for
+    what grows); MARGIN on top. A resumption after the export (export=False) builds no database."""
+    public = _size(out / "oscr_public.db")
+    if export:
+        db_part = int(public * 1.2) if public else _size(database) // 2
+        said_db = (f"public database {public / 1e9:.1f} GB x 1.2" if public
+                   else f"no public database yet: half of oscr.db ({_size(database) / 1e9:.1f} GB)")
+    else:
+        db_part, said_db = 0, "export already done"
+    dist = _size(website / "dist")
+    need = max(MIN_FREE, db_part + int(dist * 0.2) + MARGIN)
+    return need, f"{said_db}, site {dist / 1e9:.1f} GB x 0.2, margin {MARGIN / 1e9:.0f} GB"
+
+
+def space(path: Path = Path("data"), minimum: int = MIN_FREE, why: str = "") -> str:
     free = shutil.disk_usage(path if path.exists() else ".").free
-    return "" if free >= minimum else f"{free / 1e9:.0f} GB free on the disk, {minimum / 1e9:.0f} GB are needed"
+    if free >= minimum:
+        return ""
+    return f"{free / 1e9:.0f} GB free on the disk, {minimum / 1e9:.0f} GB are needed" + (f" ({why})" if why else "")
 
 
 def network(hosts: tuple[str, ...] = HOSTS) -> str:
@@ -66,13 +106,15 @@ def huggingface() -> str:
     return ""
 
 
-def run(cfg: dict[str, str], dataset: str, cloudflare: str) -> list[str]:
-    """The problems, in words; none: the night can start."""
+def run(cfg: dict[str, str], dataset: str, cloudflare: str, need: tuple[int, str] | None = None) -> list[str]:
+    """The problems, in words; none: the night can start. `need`: the bytes the night will write and
+    how they were counted (`needed`); MIN_FREE when not given."""
     cloudflare_used = bool(cloudflare) or "remote" in (cfg.get("OSCR_D1_PUSH"), cfg.get("OSCR_COMMUNITY_PUSH"))
     huggingface_used = bool(dataset or cfg.get("OSCR_SCRIPTS_DATASET") or cfg.get("OSCR_CONTACTS_DATASET"))
     if not cloudflare_used and not huggingface_used:
         return []
-    checks = [space, network]
+    minimum, why = need if need else (MIN_FREE, "")
+    checks = [lambda: space(minimum=minimum, why=why), network]
     if cloudflare:
         checks.insert(0, disk)
     if cloudflare_used:

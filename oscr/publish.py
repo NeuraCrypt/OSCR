@@ -229,6 +229,23 @@ def _run_once(step: list[str], website: Path, env: dict) -> subprocess.Completed
     return r
 
 
+_ANSI = re.compile(r"\x1b\[[0-9;]*m")
+
+
+def _text(out: str | bytes | None) -> str:
+    """A subprocess output as text (a timeout gives the partial output as bytes)."""
+    if out is None:
+        return ""
+    return out.decode("utf-8", "replace") if isinstance(out, bytes) else out
+
+
+def _tail(out: str | bytes | None, lines: int = 30) -> str:
+    """The last `lines` lines of an output, without colours, indented: why a try of wrangler failed,
+    in the nightly's log (until 2026-11-06 only the count and the duration were written)."""
+    kept = [ln for ln in _ANSI.sub("", _text(out)).strip().splitlines() if ln.strip()][-lines:]
+    return "\n".join(f"    {ln}" for ln in kept) or "    (no output)"
+
+
 def _deploy(step: list[str], website: Path, env: dict) -> subprocess.CompletedProcess:
     """`wrangler deploy`, run again (never rebuilt) when Cloudflare cuts the upload short: on
     "Upload took too long", and on an expired upload token as long as each run leaves fewer assets
@@ -236,12 +253,23 @@ def _deploy(step: list[str], website: Path, env: dict) -> subprocess.CompletedPr
     expired, left = 0, None
     for attempt in range(1, DEPLOY_ATTEMPTS + 1):
         started = time.monotonic()
-        r = subprocess.run(step, cwd=website, env=env, capture_output=True, text=True, timeout=5400)
+        try:
+            r = subprocess.run(step, cwd=website, env=env, capture_output=True, text=True, timeout=5400)
+        except subprocess.TimeoutExpired as e:
+            partial = f"{_text(e.stdout)}\n{_text(e.stderr)}"
+            count = _assets_left(partial)
+            print(f"wrangler deploy, try {attempt}: "
+                  f"{'no count given' if count is None else f'Found {count} new or modified static assets'}, "
+                  f"stopped after {(time.monotonic() - started) / 60:.1f} min (the 90-minute limit); its last lines:\n"
+                  f"{_tail(partial)}", flush=True)
+            raise
         seen = f"{r.stdout}\n{r.stderr}"
         count = _assets_left(seen)
         print(f"wrangler deploy, try {attempt}: "
               f"{'no count given' if count is None else f'Found {count} new or modified static assets'}, "
-              f"{(time.monotonic() - started) / 60:.1f} min", flush=True)
+              f"{(time.monotonic() - started) / 60:.1f} min"
+              + ("" if r.returncode == 0 else f", failed (exit {r.returncode}); its last lines:\n{_tail(r.stderr or r.stdout)}"),
+              flush=True)
         if r.returncode == 0:
             return r
         err = (r.stderr or r.stdout).strip()

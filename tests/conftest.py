@@ -33,7 +33,7 @@ REAL_PREFLIGHT = preflight.run
 
 @pytest.fixture(autouse=True)
 def nightly_stays_on_this_test(monkeypatch):
-    monkeypatch.setattr(preflight, "run", lambda cfg, dataset, cloudflare: [])
+    monkeypatch.setattr(preflight, "run", lambda cfg, dataset, cloudflare, **kw: [])
     monkeypatch.setattr(nightly, "stay_awake", lambda: None)
     monkeypatch.setattr(reconcile, "run", lambda cfg: "reconciled")
     monkeypatch.setattr(watchdog, "alert", lambda message: None)

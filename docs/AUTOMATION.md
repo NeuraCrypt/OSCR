@@ -190,7 +190,9 @@ here asks the owner for anything, except one command, once (the wake-up, below).
 | a passing network or Cloudflare error (401/403, `code: 10000`, 429, 5xx, timeout, cut connection) | that send is tried again after 30 s, 2 min, 10 min; never a definitive error (too large, quota, storage limit) | `oscr/retry.py` |
 | a step still fails, or the Mac stops in the middle | the watchdog resumes the steps left, on the export already made, up to 3 times a day, 1 h, 3 h then 6 h apart; no new export, no new build when `dist/` is up to date (`website/.oscr-built`) | `oscr/nightly.py`, `oscr/watchdog.py`, `oscr nightly --resume` |
 | the Mac was off or asleep at 04:17 | the night is due as soon as no success came since the last 04:17 | `watchdog.nightly_due` |
-| the disk Expansion is missing, less than 40 GB free, no network, a login refused | the night does not start, says why in `cycles.db`, and the watchdog tries again every 30 minutes | `oscr/preflight.py` |
+| the disk Expansion is missing, less free space than the night writes, no network, a login refused | the night does not start, says why in `cycles.db` (the space asked and how it was counted), and the watchdog tries again every 30 minutes | `oscr/preflight.py` |
+| a dead export left its build of the public database (`data/public/oscr_public.tmp`, about 14 GB) | it is deleted at the very start of the next run, before the space is counted, and the log says how much was freed | `catalog.remove_public_db_leftovers`, `oscr/nightly.py` |
+| a run still going at 04:17 (begun the evening before) | launchd does not start the 04:17 run; the watchdog writes a `skipped` cycle in `cycles.db` ("skipped: previous cycle running") and, when the long run ends, starts that night: a run begun before a night's 04:17 is not that night's (`success_begun` in `nightly.json`) | `cycles.skip_if_overrun`, `watchdog.night_done` |
 | a row recorded as sent never reached D1 | every night the keys of `papers`, `paper_fts`, `paper_orcid`, `paper_repo`, `repo_owner` are read back; what is missing is forgotten and sent again within the budget. A failed read forgets nothing | `oscr/reconcile.py` |
 | a night stays failed after all that (3 resumptions, or 3 whole runs) | one macOS notification and a red line on the dashboard, with the step and its exact message. Otherwise, silence | `watchdog.failure`, `watchdog.alert`, `/api/night` |
 
@@ -206,6 +208,19 @@ here asks the owner for anything, except one command, once (the wake-up, below).
 - **Fewer files sent**: the catalogue's date left the shared footer (it changed about 10,000 HTML pages
   every night); it is on the home page only. What still changes each night is real: the sharded
   records, the lookup, the scripts' lots and the lists, when papers arrive.
+- **The disk (2026-11-05, the night lost)**: `data/` is on the Mac's own disk. The public database
+  used to be a full copy of `oscr.db` (32 GB on 2026-11-05), stripped by DELETEs, then compacted by
+  a VACUUM, next to the previous public database: about 32 + 14 GB and a VACUUM's own copy and
+  journal at once. It filled the disk twice that day (`database or disk is full` at the VACUUM),
+  though the fixed 40 GB check had let the second run start. Since 2026-11-07 the public database is
+  built row by row into an empty database (`catalog.public_db`: the source attached read-only, each
+  public table created from its own schema and filled with `INSERT ... SELECT` of what may leave,
+  then its indexes; no copy, no VACUUM), so the disk only holds the new public database next to the
+  previous one. Same tables, indexes and rows as before (`tests/test_public_db.py` runs both ways).
+  The space asked (`preflight.needed`) is 1.2 times the previous public database (half of `oscr.db`
+  the first time; nothing on a resumption after the export), 0.2 times `website/dist`, and 10 GB.
+- **Why a deploy try failed** is in `nightly.log`: each failed or stopped try of `wrangler deploy`
+  writes the last 30 lines wrangler wrote (until 2026-11-06, only the count and the duration).
 - **The wake-up**, the only manual step, once: `tools/install_mac.sh --wake` (that is
   `sudo pmset repeat wakeorpoweron MTWRFSU 04:05:00`), checked with `pmset -g sched`. A Mac fully shut
   down may not start by itself, depending on its model; the watchdog then catches up at the next start.

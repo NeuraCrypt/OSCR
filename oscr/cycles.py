@@ -72,6 +72,27 @@ def finish_cycle(cycle_id: int, ok: bool = True, detail: str = "") -> None:
         )
 
 
+def skip_if_overrun(night_start: float, now: float | None = None) -> str:
+    """When the cycle still running began before `night_start` (today's 04:17), that night's own run
+    was not started (launchd does not start a job that is running): say it once, as a `skipped`
+    cycle, so that it shows; the watchdog starts the night when the running cycle ends. Returns what
+    was recorded, or ""."""
+    now = time.time() if now is None else now
+    with _db() as con:
+        running = con.execute("SELECT id, started FROM cycle WHERE status = 'running' AND kind != 'test' "
+                              "ORDER BY id DESC LIMIT 1").fetchone()
+        if not running or running["started"] >= night_start or now < night_start:
+            return ""
+        if con.execute("SELECT 1 FROM cycle WHERE kind = 'skipped' AND started >= ?", (night_start,)).fetchone():
+            return ""
+        detail = (f"skipped: previous cycle running (cycle {running['id']}, begun "
+                  f"{time.strftime('%Y-%m-%d %H:%M', time.localtime(running['started']))}); the watchdog starts "
+                  "this night when it ends")
+        con.execute("INSERT INTO cycle(kind, started, finished, status, pid, detail) VALUES ('skipped', ?, ?, 'skipped', ?, ?)",
+                    (now, now, os.getpid(), detail))
+        return detail
+
+
 def plan_steps(cycle_id: int, names: list[str]) -> None:
     """The steps this cycle means to run: what a crash leaves `pending` is known, and resumed."""
     with _db() as con:
@@ -142,7 +163,7 @@ def current() -> dict | None:
     """The latest cycle with its steps (crashes reaped first), or None if none yet."""
     reap()
     with _db() as con:
-        c = con.execute("SELECT * FROM cycle WHERE kind != 'test' ORDER BY id DESC LIMIT 1").fetchone()
+        c = con.execute("SELECT * FROM cycle WHERE kind NOT IN ('test', 'skipped') ORDER BY id DESC LIMIT 1").fetchone()
         if not c:
             return None
         steps = con.execute("SELECT * FROM step WHERE cycle_id = ? ORDER BY id", (c["id"],)).fetchall()

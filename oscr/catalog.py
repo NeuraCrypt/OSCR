@@ -786,122 +786,228 @@ def _drop_unnamed_institutions(target: sqlite3.Connection) -> None:
 MASK_BATCH = 2000
 
 
+#: Tables that never leave the Mac: dropped from the public database (the raw records, the history,
+#: who corrected a record, the authors' contacts and who asked not to be kept).
+PUBLIC_DB_DROPPED = frozenset({"epmc_record", "openalex_record", "version", "link_edit", "contact", "contact_suppressed"})
+
+
+def remove_public_db_leftovers(folder: Path) -> int:
+    """Delete what a dead build of the public database left in `folder` (oscr_public.tmp and its
+    -journal, -wal, -shm): the bytes freed. A run that dies keeps about the size of the public
+    database there, which counted as used space in the next night's preflight (2026-11-05)."""
+    tmp = Path(folder) / "oscr_public.tmp"
+    freed = 0
+    for leftover in (tmp, Path(f"{tmp}-journal"), Path(f"{tmp}-wal"), Path(f"{tmp}-shm")):
+        try:
+            size = leftover.stat().st_size
+            leftover.unlink()
+            freed += size
+        except FileNotFoundError:
+            pass
+    return freed
+
+
 def public_db(con: sqlite3.Connection, path: Path, report=lambda m: print(m, flush=True)) -> None:
     """A copy of the database without the excerpts of the papers' text, and without the
     text of scripts whose license forbids republishing. The log (dates, requests,
     counts) stays: it quotes no paper. `report` gets one timestamped line per sub-step, so the
-    nightly's log says where the time goes."""
+    nightly's log says where the time goes.
+
+    Built row by row into an EMPTY database (2026-11-07): the source is attached read-only, each
+    public table is created from its own schema and filled with `INSERT ... SELECT` of the rows
+    that may leave, then its indexes. Until 2026-11-06 it was a full copy of oscr.db (32 GB on
+    2026-11-05) stripped by DELETEs then compacted by a VACUUM: two extra copies of the database on
+    the Mac's disk at once, which filled it on 2026-11-05 ("database or disk is full", the night
+    lost). Now the disk only ever holds the public database itself (about 14 GB) next to the
+    previous one. Same tables, same indexes, same rows as the old way gave (tests/test_public_db.py compares the
+    two ways on the same database)."""
     started = time.monotonic()
 
     def step(what: str) -> None:
         report(f"{time.strftime('%Y-%m-%d %H:%M:%S')} public db (+{(time.monotonic() - started) / 60:.1f} min): {what}")
 
-    tmp = path.with_suffix(".tmp")
-    if tmp.exists():
-        tmp.unlink()
-    target = sqlite3.connect(tmp)
     con.commit()
-    step("backup")
-    con.backup(target)
-    # This .tmp is disposable: it is rebuilt from scratch on every run and only moved into place
-    # at the very end, so durability WHILE building it does not matter. Turning the rollback journal
-    # and the fsyncs off makes the strip below (tens of DELETEs over a multi-GB copy) take minutes
-    # instead of hours; a crash just means the next run rebuilds the .tmp. The single-file journal
-    # mode sql.js / Datasette Lite expect is restored at the end, before the VACUUM.
-    target.execute("PRAGMA synchronous = OFF")
-    target.execute("PRAGMA journal_mode = OFF")
-    step("excerpts")
-    target.execute("UPDATE link SET excerpt = ''")
+    source = next((r[2] for r in con.execute("PRAGMA database_list") if r[1] == "main"), "")
+    if not source:
+        raise ValueError("public_db needs a database on disk (an in-memory one cannot be attached)")
+    tmp = path.with_suffix(".tmp")
+    for leftover in (tmp, Path(f"{tmp}-journal"), Path(f"{tmp}-wal"), Path(f"{tmp}-shm")):
+        if leftover.exists():
+            leftover.unlink()
+    # uri=True: the source is attached by a read-only URI (file:...?mode=ro), never written.
+    target = sqlite3.connect(tmp.resolve().as_uri(), uri=True, isolation_level=None)
+    try:
+        _fill_public_db(target, con, source, step)
+    finally:
+        target.close()
+    shutil.move(tmp, path)
+    step("done")
+
+
+def _fill_public_db(target: sqlite3.Connection, con: sqlite3.Connection, source: str, step) -> None:
+    try:
+        target.execute("ATTACH DATABASE ? AS src", (Path(source).resolve().as_uri() + "?mode=ro",))
+    except sqlite3.OperationalError:
+        target.execute("ATTACH DATABASE ? AS src", (source,))
+    # The same page size and header numbers as the copy had (a backup kept them).
+    target.execute(f"PRAGMA main.page_size = {int(target.execute('PRAGMA src.page_size').fetchone()[0])}")
+    target.execute(f"PRAGMA main.auto_vacuum = {int(target.execute('PRAGMA src.auto_vacuum').fetchone()[0])}")
+    # The build is disposable: rebuilt from scratch on every run, only moved into place at the very end.
+    target.execute("PRAGMA main.synchronous = OFF")
+    target.execute("PRAGMA main.journal_mode = OFF")
+    target.create_function("oscr_mask_emails", 1, lambda t: mask_emails(t) if isinstance(t, str) else t,
+                           deterministic=True)
+    # One read of the source from the first row to the last: the harvester keeps writing (WAL), the
+    # public database is one consistent moment of it, as the backup was.
+    target.execute("BEGIN")
+    tables = [(n, sql) for n, sql in target.execute(
+        "SELECT name, sql FROM src.sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY rowid")
+        if n not in PUBLIC_DB_DROPPED]
+    step("schema")
+    for _, sql in tables:
+        target.execute(sql)
+    names = {n for n, _ in tables}
+
+    def columns(table: str) -> list[str]:
+        return [r[1] for r in target.execute(f"PRAGMA src.table_xinfo({_q(table)})") if r[6] == 0]
+
+    def has_rowid(table: str) -> bool:
+        """A rowid of its own, not an INTEGER PRIMARY KEY column (copied as a column) nor WITHOUT ROWID."""
+        listed = target.execute("SELECT wr FROM pragma_table_list WHERE schema = 'src' AND name = ?", (table,)).fetchone()
+        if listed is not None and listed[0]:
+            return False
+        pk = [r for r in target.execute(f"PRAGMA src.table_info({_q(table)})") if r[5]]
+        return not (len(pk) == 1 and (pk[0][2] or "").strip().upper() == "INTEGER")
+
+    def copy(table: str, keep: list[str] = (), values: dict[str, str] | None = None) -> None:
+        """The rows of `table` for which no removal condition of `keep` holds (each one: a row is
+        removed when it is TRUE, as the DELETE ... WHERE it replaces; NULL keeps the row), with
+        `values` replacing some columns' values."""
+        if table not in names:
+            return
+        step(f"copy {table}")
+        cols = columns(table)
+        values = values or {}
+        # Each row keeps its rowid (the VACUUM of the old way kept some and renumbered others).
+        rowid = ["rowid"] if has_rowid(table) else []
+        out = rowid + [_q(c) for c in cols]
+        selected = rowid + [values.get(c, _q(c)) for c in cols]
+        where = " AND ".join(f"({k}) IS NOT 1" for k in keep) or "1"
+        target.execute(f"INSERT INTO main.{_q(table)} ({', '.join(out)}) SELECT {', '.join(selected)} "
+                       f"FROM src.{_q(table)} WHERE {where}")
+
+    def has_column(table: str, column: str) -> bool:
+        return table in names and column in columns(table)
+
     # Off-topic papers stay on the Mac (D7), with everything attached to them; so do the records
     # withdrawn at someone's request (Phase 6, `oscr reports accept`).
-    off = "SELECT id FROM article WHERE on_topic = 'no' OR withdrawn != ''"
-    for (table,) in target.execute("SELECT m.name FROM sqlite_master m WHERE m.type = 'table' AND EXISTS "
-                                   "(SELECT 1 FROM pragma_table_info(m.name) WHERE name = 'article_id')").fetchall():
-        step(f"off-topic rows of {table}")
-        target.execute(f"DELETE FROM {table} WHERE article_id IN ({off})")
-    step("off-topic provenance, log and papers")
-    target.execute(f"DELETE FROM field_provenance WHERE entity = 'article' AND entity_id IN ({off})")
-    target.execute(f"DELETE FROM log WHERE json_valid(details) AND json_extract(details, '$.article') IN ({off})")
-    target.execute(f"DELETE FROM article WHERE id IN ({off})")
+    target.execute("CREATE TEMP TABLE _pub_off AS SELECT id FROM src.article WHERE on_topic = 'no' OR withdrawn != ''")
+    off = "article_id IN (SELECT id FROM temp._pub_off)"
+    done: set[str] = set()
+
+    def copy_once(table: str, keep: list[str] = (), values: dict[str, str] | None = None) -> None:
+        keep = list(keep)
+        if has_column(table, "article_id"):
+            keep.insert(0, off)
+        copy(table, keep, values)
+        done.add(table)
+
+    # No text of a paper leaves: abstracts; the excerpts of the links.
+    copy_once("article", ["id IN (SELECT id FROM temp._pub_off)"], {"abstract": "''"})
+    copy_once("link", [], {"excerpt": "''"})
     # What accepted removal requests withhold while the record stays (0008): the copies of a
     # paper's scripts, of a repository or of a file (their text, as an unlicensed one), and a
     # paper's tracing map (its matches, its validations, its DOI). The table itself stays on the Mac.
+    copy_once("withheld")
     step("withheld")
     held = withheld(target)
-    target.executemany("UPDATE file SET text = NULL, note = ? WHERE repo = ?", [(NOTE_WITHHELD, r) for r in held.repos])
-    target.executemany("UPDATE file SET text = NULL, note = ? WHERE repo = ? AND path = ?",
-                       [(NOTE_WITHHELD, r, p) for r, p in held.files])
-    for table in ("alignment", "validation", "card_doi"):
-        target.executemany(f"DELETE FROM {table} WHERE article_id = ?", [(a,) for a in held.maps])
-    target.execute("DROP TABLE IF EXISTS withheld")
+    target.execute("CREATE TEMP TABLE _pub_held_repo (repo TEXT)")
+    target.executemany("INSERT INTO temp._pub_held_repo VALUES (?)", [(r,) for r in held.repos])
+    target.execute("CREATE TEMP TABLE _pub_held_file (repo TEXT, path TEXT)")
+    target.executemany("INSERT INTO temp._pub_held_file VALUES (?, ?)", list(held.files))
+    target.execute("CREATE TEMP TABLE _pub_held_map (article_id TEXT)")
+    target.executemany("INSERT INTO temp._pub_held_map VALUES (?)", [(a,) for a in held.maps])
+    held_map = "article_id IN (SELECT article_id FROM temp._pub_held_map)"
+    # Development tests (test validations, sandbox DOIs) never leave.
+    copy_once("alignment", [held_map])
+    copy_once("validation", [held_map, "proof != 'orcid'"])
+    copy_once("card_doi", [held_map, "instance != 'zenodo'"])
+    # Availability statements only under an open license (D1).
+    step("closed statements")
+    closed = [r[0] for r in target.execute("SELECT id, license FROM main.article") if not statement_is_publishable(r[1])]
+    target.execute("CREATE TEMP TABLE _pub_closed (id TEXT)")
+    target.executemany("INSERT INTO temp._pub_closed VALUES (?)", [(i,) for i in closed])
+    copy_once("statement", [], {"text": "CASE WHEN article_id IN (SELECT id FROM temp._pub_closed) THEN '' ELSE text END"})
+    # Who corrected a record (Phase 6) stays on the Mac: the pages say "a correction by a verified
+    # author", never who.
+    copy_once("field_provenance", ["entity = 'article' AND entity_id IN (SELECT id FROM temp._pub_off)"],
+              {"source_ref": "CASE WHEN source IN ('author', 'maintainer', 'submitter') THEN '' ELSE source_ref END"})
+    copy_once("log", ["json_valid(details) AND json_extract(details, '$.article') IN (SELECT id FROM temp._pub_off)"])
+    for table in [n for n, _ in tables if n not in done and has_column(n, "article_id")]:
+        copy_once(table)
     # What only off-topic papers (or nothing) pointed at goes too: repositories, their files
     # and facts, datasets, people and funders no paper in scope names.
-    step("orphan repositories")
-    target.execute("DELETE FROM repository WHERE repo NOT IN (SELECT repo FROM link)")
-    for table in ("file", "alive_check", "repo_feature", "repo_tool", "script_manifest"):
-        if target.execute("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?", (table,)).fetchone():
-            step(f"orphan rows of {table}")
-            target.execute(f"DELETE FROM {table} WHERE repo NOT IN (SELECT repo FROM repository)")
-    step("orphan datasets, authors, funders, journals")
-    target.execute("DELETE FROM dataset WHERE id NOT IN (SELECT dataset_id FROM paper_dataset)")
-    target.execute("DELETE FROM author WHERE orcid NOT IN (SELECT orcid FROM paper_author)")
-    target.execute("DELETE FROM funder WHERE id NOT IN (SELECT funder_id FROM grant_award)")
-    target.execute("DELETE FROM journal WHERE id NOT IN (SELECT journal_id FROM article)")
-    # OpenAlex's institutions and topics that no paper in scope names (paper_author.ror holds ROR
-    # ids, or {"id": …} objects: both are found by the id's text).
-    step("orphan institutions")
-    _drop_unnamed_institutions(target)
-    step("orphan topics, abstracts, raw records")
-    target.execute("DELETE FROM topic WHERE id NOT IN (SELECT topic_id FROM paper_topic)")
-    # No text of a paper leaves: abstracts, the raw Europe PMC records, the history of the
-    # enriched records; availability statements only under an open license (D1).
-    target.execute("UPDATE article SET abstract = ''")
-    target.execute("DROP TABLE IF EXISTS epmc_record")
-    # The OpenAlex records as kept (their raw affiliation strings are the publishers' text): what
-    # may leave of them is in `article`, `paper_author`, `institution`, `paper_topic`, `paper_work`.
-    target.execute("DROP TABLE IF EXISTS openalex_record")
-    target.execute("DROP TABLE IF EXISTS version")
-    step("closed statements, test validations, provenance")
-    closed = [r[0] for r in target.execute("SELECT id, license FROM article").fetchall()
-              if not statement_is_publishable(r[1])]
-    target.executemany("UPDATE statement SET text = '' WHERE article_id = ?", [(i,) for i in closed])
-    # Development tests (test validations, sandbox DOIs) never leave.
-    target.execute("DELETE FROM validation WHERE proof != 'orcid'")
-    target.execute("DELETE FROM card_doi WHERE instance != 'zenodo'")
-    # Who corrected a record (Phase 6) stays on the Mac: the corrections themselves are the links,
-    # and the pages say "a correction by a verified author", never who.
-    target.execute("DROP TABLE IF EXISTS link_edit")
-    target.execute("UPDATE field_provenance SET source_ref = '' WHERE source IN ('author', 'maintainer', 'submitter')")
-    # The licence audit's rule (`copyable`): a license that allows redistribution, verified by the
-    # repository's own license file or its record.
-    step("unlicensed file text")
-    target.execute(
-        "UPDATE file SET text = NULL, note = ? WHERE repo IN "
-        "(SELECT repo FROM repository WHERE redistributable NOT IN ('yes', 'with_conditions'))",
-        (NOTE_LICENSE,))
+    copy_once("repository", ["repo NOT IN (SELECT repo FROM main.link)"])
+    orphan = "repo NOT IN (SELECT repo FROM main.repository)"
     step("unverified licences")
     unverified = [r["repo"] for r in con.execute("SELECT * FROM repository WHERE redistributable IN ('yes', 'with_conditions')")
                   if not copyable(con, r)]
-    target.executemany("UPDATE file SET text = NULL, note = ? WHERE repo = ? AND text IS NOT NULL",
-                       [(NOTE_UNVERIFIED, r) for r in unverified])
-    # The authors' contact details are private: they go to the private dataset only
-    # (oscr/contacts.py), never into a public output. Email addresses in the scripts' text
-    # are hidden, as on the site.
-    target.execute("DROP TABLE IF EXISTS contact")
-    # Nor who asked not to be kept (their ORCID iD, their addresses' digests: oscr/contacts.py, migration 9).
-    target.execute("DROP TABLE IF EXISTS contact_suppressed")
+    target.execute("CREATE TEMP TABLE _pub_unverified (repo TEXT)")
+    target.executemany("INSERT INTO temp._pub_unverified VALUES (?)", [(r,) for r in unverified])
+    # The licence audit's rule (`copyable`): a license that allows redistribution, verified by the
+    # repository's own license file or its record; email addresses in the scripts' text hidden, as on
+    # the site.
+    unlicensed = "repo IN (SELECT repo FROM main.repository WHERE redistributable NOT IN ('yes', 'with_conditions'))"
+    held_text = ("(repo IN (SELECT repo FROM temp._pub_held_repo) OR "
+                 "(repo, path) IN (SELECT repo, path FROM temp._pub_held_file))")
+    not_verified = "repo IN (SELECT repo FROM temp._pub_unverified)"
+    notes = {"lic": _lit(NOTE_LICENSE), "held": _lit(NOTE_WITHHELD), "unv": _lit(NOTE_UNVERIFIED)}
     step("email masking")
-    last = 0
-    while batch := target.execute("SELECT rowid, text FROM file WHERE rowid > ? AND text LIKE '%@%' ORDER BY rowid LIMIT ?",
-                                  (last, MASK_BATCH)).fetchall():
-        target.executemany("UPDATE file SET text = ? WHERE rowid = ?", [(mask_emails(t), rid) for rid, t in batch])
-        last = batch[-1][0]
-    target.commit()
-    # Back to a single-file database (no -wal) for sql.js / Datasette Lite, then compact it (the
-    # strip removed most rows). synchronous stays OFF: this is still the disposable build copy.
+    copy_once("file", [orphan], {
+        "text": f"CASE WHEN {unlicensed} OR {held_text} OR {not_verified} THEN NULL "
+                "WHEN text LIKE '%@%' THEN oscr_mask_emails(text) ELSE text END",
+        "note": f"CASE WHEN {unlicensed} THEN {notes['lic']} WHEN {held_text} THEN {notes['held']} "
+                f"WHEN {not_verified} AND text IS NOT NULL THEN {notes['unv']} ELSE note END"})
+    for table in ("alive_check", "repo_feature", "repo_tool", "script_manifest"):
+        copy_once(table, [orphan])
+    step("orphan datasets, authors, funders, journals, topics")
+    copy_once("dataset", ["id NOT IN (SELECT dataset_id FROM main.paper_dataset)"])
+    copy_once("author", ["orcid NOT IN (SELECT orcid FROM main.paper_author)"])
+    copy_once("funder", ["id NOT IN (SELECT funder_id FROM main.grant_award)"])
+    copy_once("journal", ["id NOT IN (SELECT journal_id FROM main.article)"])
+    copy_once("topic", ["id NOT IN (SELECT topic_id FROM main.paper_topic)"])
+    copy_once("institution")
+    for table in [n for n, _ in tables if n not in done]:
+        copy_once(table)
+    # OpenAlex's institutions that no paper in scope names (paper_author.ror holds ROR ids, or
+    # {"id": …} objects: both are found by the id's text).
+    step("orphan institutions")
+    if "institution" in names and "paper_author" in names:
+        _drop_unnamed_institutions(target)
+    target.execute("DROP TABLE IF EXISTS main.withheld")
+    names.discard("withheld")
+    step("indexes")
+    for sql in [s for t, s in target.execute(
+            "SELECT tbl_name, sql FROM src.sqlite_master WHERE type = 'index' AND sql IS NOT NULL ORDER BY rowid")
+            if t in names]:
+        target.execute(sql)
+    if "sqlite_sequence" in {r[0] for r in target.execute("SELECT name FROM main.sqlite_master")}:
+        target.execute("DELETE FROM main.sqlite_sequence")
+        target.execute("INSERT INTO main.sqlite_sequence SELECT * FROM src.sqlite_sequence WHERE name IN "
+                       f"({','.join(_lit(n) for n in sorted(names))})")
+    target.execute(f"PRAGMA main.user_version = {int(target.execute('PRAGMA src.user_version').fetchone()[0])}")
+    target.execute(f"PRAGMA main.application_id = {int(target.execute('PRAGMA src.application_id').fetchone()[0])}")
+    target.execute("COMMIT")
+    target.execute("DETACH DATABASE src")
+    # A single-file database (no -wal) for sql.js / Datasette Lite.
     target.execute("PRAGMA journal_mode = DELETE")
-    step("vacuum")
-    target.execute("VACUUM")
-    target.close()
-    shutil.move(tmp, path)
-    step("done")
+    free = target.execute("PRAGMA freelist_count").fetchone()[0] * target.execute("PRAGMA page_size").fetchone()[0]
+    step(f"built, {free / 1e6:.0f} MB of free pages left inside (no VACUUM)")
+
+
+def _q(name: str) -> str:
+    return '"' + name.replace('"', '""') + '"'
+
+
+def _lit(text: str) -> str:
+    return "'" + text.replace("'", "''") + "'"

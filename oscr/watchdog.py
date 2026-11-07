@@ -122,8 +122,21 @@ def last_deadline(now: float) -> float:
     return deadline if deadline <= now else last_start(last_start(now) - 1) + NIGHTLY_GRACE_S
 
 
+def night_done(state: dict[str, float], now: float) -> bool:
+    """The last night is published: a success after its deadline, by a run that began at or after its
+    04:17. A run still going at 04:17 (begun the evening before, 2026-11-05 at 20:32, ended 10:23) does
+    not count as that night's: launchd does not start a job that is still running, so that night's
+    04:17 run never happens, and the watchdog starts it as soon as the long one ends. A success
+    recorded before `success_begun` existed counts as before."""
+    deadline = last_deadline(now)
+    if state.get("success", 0) < deadline:
+        return False
+    begun = state.get("success_begun")
+    return begun is None or begun >= deadline - NIGHTLY_GRACE_S
+
+
 def nightly_due(state: dict[str, float], now: float) -> bool:
-    if state.get("success", 0) >= last_deadline(now):
+    if night_done(state, now):
         return False
     if now - state.get("blocked", 0) < BLOCKED_RETRY_S:
         return False
@@ -200,6 +213,8 @@ def run(now: float | None = None, *, logs: Path = LOGS, state_path: Path | None 
     exported, left = cycles.pending(start)
     if locked():
         said.append("nightly running")
+        if (skipped := cycles.skip_if_overrun(start, now)):
+            said.append(skipped)
     elif exported and left and resume_due(state, now):
         said.append(f"nightly resumes {', '.join(left)}: {kickstart('org.oscr.nightly', kill=False)}")
     elif not (exported and left) and nightly_due(state, now):
