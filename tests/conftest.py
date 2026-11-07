@@ -39,6 +39,60 @@ def nightly_stays_on_this_test(monkeypatch):
     monkeypatch.setattr(watchdog, "alert", lambda message: None)
 
 
+#: The Mac's real output folders that only `oscr nightly` writes, through paths relative to the
+#: working directory (Path("data/outreach"), ...). On 2026-11-07 at 00:33 a run of the suite from the
+#: repository rewrote data/outreach and data/linkfeeds with a test's empty files. Every test now runs
+#: in its own working directory, and the session fails if one of these changed anyway.
+ROOT = Path(__file__).resolve().parents[1]
+REAL_OUTPUTS = [ROOT / "data" / d for d in ("outreach", "linkfeeds", "public", "d1", "community", "scripts", "contacts")]
+
+
+def outputs_fingerprint() -> list[tuple[str, int, int]]:
+    seen = []
+    for folder in REAL_OUTPUTS:
+        if not folder.is_dir() or folder.is_symlink():
+            continue
+        for p in sorted(folder.rglob("*")):
+            if p.is_file() and not p.is_symlink():
+                st = p.stat()
+                seen.append((str(p), st.st_mtime_ns, st.st_size))
+    return seen
+
+
+def real_nightly_running() -> bool:
+    """The Mac's own publication holds its lock: it may write these folders itself meanwhile."""
+    import fcntl
+    lock = ROOT / watchdog.LOCK
+    if not lock.exists():
+        return False
+    with open(lock) as f:
+        try:
+            fcntl.flock(f, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            return True
+        fcntl.flock(f, fcntl.LOCK_UN)
+    return False
+
+
+@pytest.fixture(autouse=True, scope="session")
+def real_outputs_untouched():
+    """Fails the run when a test wrote the Mac's real nightly outputs under data/ (unless the Mac's
+    own publication was running, which writes them itself)."""
+    before = outputs_fingerprint()
+    yield
+    if real_nightly_running():
+        return
+    changed = sorted({a for a, *_ in set(before) ^ set(outputs_fingerprint())})
+    assert not changed, f"a test wrote the Mac's real outputs: {changed[:10]}"
+
+
+@pytest.fixture(autouse=True)
+def own_working_directory(tmp_path_factory, monkeypatch):
+    """Each test runs in an empty working directory of its own: a relative path the code writes
+    (Path("data/outreach"), Path("data/linkfeeds"), ...) lands there, never in the repository's data/."""
+    monkeypatch.chdir(tmp_path_factory.mktemp("cwd"))
+
+
 @pytest.fixture(autouse=True)
 def isolated_run_state(tmp_path_factory, monkeypatch):
     """Every test records its cycles, attempts and lock in its own folder (beside its tmp_path, which
