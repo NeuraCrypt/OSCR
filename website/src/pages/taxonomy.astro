@@ -55,24 +55,24 @@ const toc = [
   </p>
 
   <h2 id="scope">Scope</h2>
-  <p>The registry's field is neuroscience, defined so: {SCOPE.definition}</p>
+  <p>The registry's field is neuroscience, defined as follows: {SCOPE.definition}</p>
   <dl class="terms">
     {yes && (<><dt>In scope</dt><dd>{yes.definition} For example: {(yes.examples ?? []).join("; ")}.</dd></>)}
     {no && (<><dt>Out of scope</dt><dd>{no.definition} For example: {(no.examples ?? []).join("; ")}.</dd></>)}
   </dl>
   <p>
-    <strong>How papers come in.</strong> The harvester asks Europe PMC for the open-access papers whose full text it holds
-    and whose title or abstract names a neuroscience term, EEG, MEG, fMRI, intracranial recordings, spike sorting,
-    calcium imaging, electrophysiology, brain–computer interfaces, neuroimaging, fNIRS, transcranial magnetic or deep
-    brain stimulation, neural oscillations, the connectome, diffusion MRI, neurons, neural, cortex, cortical,
-    hippocampus, brain. The query is broad on purpose, and catches papers that are not neuroscience ("neural network",
-    "cortical bone"): the classification then decides.
+    The harvester asks Europe PMC for the open-access papers whose full text it holds and whose title or abstract names a
+    neuroscience term (EEG, MEG, fMRI, intracranial recordings, spike sorting, calcium imaging, electrophysiology,
+    brain-computer interfaces, neuroimaging, fNIRS, transcranial magnetic or deep brain stimulation, neural oscillations,
+    the connectome, diffusion MRI, neurons, neural, cortex, cortical, hippocampus, brain). The query is broad on purpose,
+    so it also returns papers from other fields (for example on a "neural network" or "cortical bone"). The
+    classification then decides which papers are in scope.
   </p>
   <p>
-    <strong>Why off-topic papers stay out.</strong> A paper judged out of scope stays on the operator's computer: it has
-    no page, is in no list, search, lookup or dataset, and counts in no figure. Harvesting broadly and filtering after
-    keeps the registry complete for its field without letting unrelated papers dilute its rates, a decision of 27
-    September 2026. {number(f.articles)} papers read are in scope today.
+    A paper judged out of scope stays on the operator's computer. It has no page, it is in no list, search, lookup or
+    dataset, and it counts in no figure. We decided on 27 September 2026 to harvest broadly and filter afterwards: the
+    registry stays complete for its field, and unrelated papers do not change its rates. {number(f.articles)} papers
+    read are in scope today.
   </p>
 
   <h2 id="pages">Which papers have a page</h2>
@@ -82,7 +82,7 @@ const toc = [
       <thead><tr><th>Status</th><th>Page</th><th class="n">Papers</th></tr></thead>
       <tbody>
         {Object.entries(STATUSES).map(([k, s]) => (
-          <tr><td>{s.tone ? <span class={s.tone}>{s.label}</span> : s.label}</td><td>{PAGE.includes(k) ? "yes" : "no: the lookup"}</td><td class="n">{number(statuses[k] ?? 0)}</td></tr>
+          <tr><td>{s.tone ? <span class={s.tone}>{s.label}</span> : s.label}</td><td>{PAGE.includes(k) ? "yes" : "no (DOI lookup only)"}</td><td class="n">{number(statuses[k] ?? 0)}</td></tr>
         ))}
       </tbody>
     </table>
@@ -127,25 +127,25 @@ const toc = [
 
   <h2 id="method">How a paper gets its categories</h2>
   <ol class="steps">
-    <li><strong>Rules first.</strong> Weighted patterns run over the paper's title (strongest), keywords, MeSH terms,
+    <li>Rules run first. Weighted patterns run over the paper's title (the strongest signal), keywords, MeSH terms,
       subjects, abstract and journal; its type and methods add weak hints. Every value comes with its confidence and the
-      reasons that fired ("title: 'EEG'"). When the rules find nothing, or two values compete closely, the facet is
-      marked ambiguous rather than guessed.</li>
-    <li><strong>The operator's labels win.</strong> Where the operator has labelled a paper by hand, the label overrides
-      the rules; a sample of such labels serves to measure them.</li>
-    <li><strong>A local model for the ambiguous cases</strong>: once one has been compared with the operator's labels
-      and chosen. It runs on the operator's computer, and uses its graphics processor only between 01:00 and 07:00. None
-      is in use yet.</li>
-    <li><strong>What is shown.</strong> A category appears on the site when the operator or a model set it, or the rules
-      did with a confidence of at least {threshold}% and no ambiguity. Otherwise the paper is simply not in that
-      category: an unclassified paper is still in <a href="/list/">the list</a> and the search.</li>
+      reasons that fired ("title: 'EEG'"). When the rules find nothing, or two values are close, the facet is marked
+      ambiguous and the rules choose no value for it.</li>
+    <li>Where the operator has labelled a paper by hand, the label overrides the rules. A sample of these labels is used
+      to measure how well the rules work.</li>
+    <li>A local model will decide the ambiguous cases, once a model has been compared with the operator's labels and
+      chosen. It will run on the operator's computer and use its graphics processor only between 01:00 and 07:00. No
+      model is in use yet.</li>
+    <li>A category appears on the site when the operator or a model set it, or when the rules set it with a confidence of
+      at least {threshold}% and no ambiguity. Otherwise the paper has no value in that facet. A paper without a category
+      is still in <a href="/list/">the list</a> and the search.</li>
   </ol>
 
   <h2 id="openalex">OpenAlex's topics</h2>
   <p>
-    OpenAlex, an open index of research, gives each paper a primary topic within its own hierarchy, domain, field,
-    subfield, topic. {SITE_NAME} shows it on each paper's page as OpenAlex gives it; it is not the registry's
-    classification. {topics > 0
+    OpenAlex, an open index of research, gives each paper a primary topic within its own hierarchy (domain, field,
+    subfield, topic). {SITE_NAME} shows this topic on each paper's page as OpenAlex gives it. It is separate from the
+    registry's own classification. {topics > 0
       ? `Among the papers with a page, ${number(topics)} have one:`
       : "No paper of this catalogue has one yet."}
   </p>
@@ -168,10 +168,10 @@ const toc = [
 
   <h2 id="types">Types of papers</h2>
   <p>
-    The papers read in scope, by their type as the publisher declares it. The registry's rates, the share of papers
-    with their authors' code, are computed on research articles only (research articles, brief reports, methods
-    articles, data papers, rapid communications, short reports): reviews, conference abstracts, case reports and notices
-    rarely have code of their own.
+    The papers read in scope, by their type as the publisher declares it. The registry's rates (the share of papers
+    with their authors' code) count research articles only: research articles, brief reports, methods articles, data
+    papers, rapid communications and short reports. They leave out reviews, conference abstracts, case reports and
+    notices, which rarely have code of their own.
   </p>
   <div class="table-wrap">
     <table class="facts">

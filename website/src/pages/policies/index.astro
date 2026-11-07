@@ -14,9 +14,9 @@ import { REVIEW_DAYS } from "../../lib/moderation";
   path="/policies/"
 >
   <p class="lead" slot="lead">
-    The rules {SITE_NAME} holds itself to, each in its own page: what it shows and copies, what it never does, how it
-    decides what people ask of it, and what it asks of them. They describe how the registry's code actually behaves;
-    when one changes, its page says so.
+    These are the rules {SITE_NAME} follows, one page per subject: what it shows and copies, what it does not do, how it
+    decides on requests, and what it asks of the people who use it. Each page describes what the registry's code does,
+    and says so when its rule changes.
   </p>
 
   <dl class="index">
@@ -30,15 +30,15 @@ import { REVIEW_DAYS } from "../../lib/moderation";
 
   <h2 id="principles">The principles behind them</h2>
   <ul>
-    <li><strong>The source prevails.</strong> The registry records and links; the paper and the repository are the
-      reference.</li>
-    <li><strong>Licences first.</strong> Nothing is copied or reproduced beyond what its licence allows: code whose
-      licence allows no copy is shown from its source by the reader's browser, never from a copy.</li>
-    <li><strong>No email address</strong> is asked for, shown or needed to use any part of the registry.</li>
-    <li><strong>Published rules decide</strong> what people ask, in the safe direction: hiding is automatic when in
-      doubt, publishing needs a verified identity or checks that pass. The operator reviews what the rules cannot
-      decide, can reverse what they did, and nothing waits more than {REVIEW_DAYS} days, except a request about personal
-      data, which the operator answers within one month, and which is never closed unanswered.</li>
-    <li><strong>Zero cost</strong>, for readers and for the registry: no fee, no advertising, no tracking.</li>
+    <li>The paper and the repository are the reference. The registry records facts about them and links to them.</li>
+    <li>Nothing is copied or reproduced beyond what its licence allows. When the licence of some code allows no copy, the
+      reader's browser shows the file from its source, and the registry keeps no copy of it.</li>
+    <li>No part of the registry asks for, shows or needs an email address.</li>
+    <li>Published rules decide what people ask, and when in doubt they choose the safer outcome: hiding is automatic,
+      and publishing needs a verified identity or checks that pass. The operator reviews what the rules cannot decide
+      and can reverse what they did. No request waits more than {REVIEW_DAYS} days, except a request about personal
+      data, which the operator answers within one month and does not close without an answer.</li>
+    <li>Reading the registry is free, and the registry runs at no cost. It has no fees, no advertising and no
+      tracking.</li>
   </ul>
 </Info>

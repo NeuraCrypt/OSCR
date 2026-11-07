@@ -27,8 +27,8 @@ const choice = (group: string, value: string) => `${group}-${value.replace(/_/g,
   <h1>Request a removal</h1>
   <p class="summary">
     Ask {SITE_NAME} to remove a paper's record, the copies it keeps of the authors' scripts (or their display from their
-    source), or the paper's tracing map. Published rules decide every request, and the operator reviews what they cannot
-    decide: there is no human moderator on duty at the moment (<a href="/policies/moderation/">how requests are decided</a>).
+    source), or the paper's tracing map. Published rules decide each request, and the operator reviews what they cannot
+    decide. At the moment no human moderator is on duty (<a href="/policies/moderation/">how requests are decided</a>).
   </p>
   <noscript><p class="warning">This page runs in your browser: it needs JavaScript.</p></noscript>
   <p id="removal-message" role="status" aria-live="polite"></p>
@@ -47,8 +47,8 @@ const choice = (group: string, value: string) => `${group}-${value.replace(/_/g,
   <section id="removal-signed-out" aria-labelledby="removal-sign-in-title" hidden>
     <h2 id="removal-sign-in-title">Sign in to request its removal</h2>
     <p>
-      A removal request is made signed in: the decision comes back to this page and to your account page, with no email
-      address asked for or sent. Signed in with the ORCID iD the paper lists, you are recognized as its author, and your
+      You must be signed in to make a removal request. The decision is shown on this page and on your account page; no
+      email address is asked for or sent. Signed in with the ORCID iD the paper lists, you are recognized as its author, and your
       request is applied without waiting.
     </p>
     <ul id="removal-sign-in">
@@ -127,11 +127,11 @@ const choice = (group: string, value: string) => `${group}-${value.replace(/_/g,
         <p id="removal-personal" class="summary" hidden>
           For your own data (your contact details the registry keeps privately, or your account) use{" "}
           <a href="/data-rights/">your data and your rights</a>: access, erasure and objection are answered at once there
-          when you sign in with your ORCID iD, and nothing of the record is removed. This form removes what the record
+          when you sign in with your ORCID iD, and that page removes nothing from the record. This form removes what the record
           publishes.
         </p>
         <p id="removal-incorrect" class="warning" hidden>
-          A wrong link, or a link given the wrong role, can be corrected rather than removed: the paper's verified authors and
+          A wrong link, or a link given the wrong role, can be corrected, which keeps the record: the paper's verified authors and
           the maintainers of its code <a id="removal-correct" href="/lookup/">correct its record</a> from its page, and the
           correction becomes a new version of the record. You may still ask for its removal here.
         </p>
@@ -161,9 +161,9 @@ const choice = (group: string, value: string) => `${group}-${value.replace(/_/g,
             <input type="checkbox" id="removal-confirm-review" name="confirm_review" />
             <label for="removal-confirm-review">
               I understand how requests are decided (<a href="/policies/moderation/">the moderation policy</a>) and what can
-              follow: the rules may apply the request at once, hide copies at once pending review, or leave it to the
-              operator, who may accept it, in whole or in part, refuse it or reverse what the rules did, with their words;
-              accepted, the removal takes effect at the next nightly publication.
+              follow: the rules may apply the request at once, hide copies at once until the operator reviews them, or
+              leave it to the operator, who may accept it in whole or in part, refuse it or reverse what the rules did,
+              with their words. If the request is accepted, the removal takes effect at the next nightly publication.
             </label>
           </li>
         </ul>
@@ -197,17 +197,17 @@ const choice = (group: string, value: string) => `${group}-${value.replace(/_/g,
       (<a href="/policies/moderation/">the moderation policy</a>): a request from a verified author of the paper (your ORCID
       iD among its authors), or from a maintainer of the code it names (its owner, or a public member of its organization, on
       GitHub), is applied without waiting; the copies of the
-      authors' code are hidden at once for copyright or personal data, pending review; any other request waits for the
-      operator, and nothing is removed meanwhile. There is no human moderator on duty at the moment: a request no one
-      decided in 30 days is closed without removal, and may be asked again in a way the rules decide, except a request
-      made for personal data, which the operator answers within one month, as the GDPR requires, and which is never
-      closed unanswered.
+      authors' code are hidden at once for copyright or personal data, until the operator reviews them; any other request
+      waits for the operator, and nothing is removed meanwhile. At the moment no human moderator is on duty. A request no
+      one decided in 30 days is closed without removal, and may be asked again in a way the rules decide. A request made
+      for personal data is the exception: the operator answers it within one month, as the GDPR requires, and it is not
+      closed without an answer.
     </li>
-    <li>Accepted, what it names leaves {SITE_NAME} at the next nightly publication, at {NIGHTLY} (the registry's local time):
+    <li>If the request is accepted, what it names leaves {SITE_NAME} at the next nightly publication, at {NIGHTLY} (the registry's local time):
       its pages, its search, its DOI lookup and its open data. A whole record leaves every page; the copies of the authors'
       scripts leave, and are no longer shown from their source, and their links to the source stay; a tracing map leaves
       with its matches and its validation.</li>
-    <li>Refused, the decision says why. Either way it shows on this page and on{" "}
+    <li>If it is refused, the decision says why. Either way it shows on this page and on{" "}
       <a href="/account/#removals">your account page</a>: no email is sent.</li>
   </ol>
 
@@ -216,8 +216,8 @@ const choice = (group: string, value: string) => `${group}-${value.replace(/_/g,
     <li>Your request, with your account: who you are, what you ask to remove and why, your justification and your evidence
       link, the decision and the rule that made it.</li>
     <li>No email address: a justification that holds one is refused.</li>
-    <li>One request per account and record, which you may complete while it is open, and ask again once refused only in a way
-      the rules decide at once; ten requests a day at most.</li>
+    <li>One request per account and record. You may complete it while it is open; once it is refused, you can ask again
+      only in a way the rules decide at once. Ten requests a day at most.</li>
   </ul>
 
   <script>

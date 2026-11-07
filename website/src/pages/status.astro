@@ -18,15 +18,14 @@ const view = summarize(data as any);
   <h1>Service status</h1>
   <p class="summary">{view.summary}</p>
   <p class="muted">
-    This page is static: it changes only when the site is next built. Built {view.builtAt}. The
-    availability is measured by {SITE_NAME} from the outside (one check every five minutes); nothing
-    on the site checks itself.
+    This page is static and changes only when the site is next built. It was built {view.builtAt}.
+    {SITE_NAME} measures the availability from outside the site, with one check every five minutes.
   </p>
 
   {view.enabled ? (
     <section>
       <h2>Availability, last {view.windowDays} days</h2>
-      <p>Overall: {view.overall} of the checks succeeded.</p>
+      <p>{view.overall} of the checks succeeded in this window.</p>
       <ul class="status-grid" aria-label={`Daily availability over the last ${view.windowDays} days`}>
         {view.days.map((d) => (
           <li class={`status-day state-${d.state}`} title={dayLabel(d)} aria-label={dayLabel(d)}></li>

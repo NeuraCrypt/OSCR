@@ -21,7 +21,7 @@ const sorted = [...institutions].sort((x, y) => x.name.localeCompare(y.name));
     identifier.
   </p>
   {institutions.length === 0 ? (
-    <p>No institution yet: no paper with a page has a ROR identifier in its affiliations.</p>
+    <p>No institution yet, because no paper with a page has a ROR identifier in its affiliations.</p>
   ) : (
     <ul>
       {sorted.map((i) => (

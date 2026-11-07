@@ -367,7 +367,7 @@ export const releaseCreateSpec: ActionSpec<CreateParsed, ReleaseDone> = {
     // The tag, when it exists, must name the commit the page showed.
     const existing = await tagCommit(ctx as ActionContext<unknown>, info.ref, p.tag);
     if (existing && existing !== p.target) {
-      throw new ForgeProblem(409, "tag_moved", `The tag ${p.tag} names commit ${short(existing)}, not ${short(p.target)} as the page showed: reload the page. Nothing was done.`);
+      throw new ForgeProblem(409, "tag_moved", `The tag ${p.tag} names commit ${short(existing)}, and the page showed ${short(p.target)}: reload the page. Nothing was done.`);
     }
     const plan = await researchPlan(ctx as ActionContext<unknown>, info, p);
     let made: Release;
@@ -542,7 +542,7 @@ export const releaseEditSpec: ActionSpec<EditParsed, ReleaseDone> = {
       const target = p.target ?? current.target;
       const existing = await tagCommit(ctx as ActionContext<unknown>, info.ref, tag);
       if (existing && OBJECT_ID.test(target) && existing !== target) {
-        throw new ForgeProblem(409, "tag_moved", `The tag ${tag} names commit ${short(existing)}, not the draft's ${short(target)}: set the draft's commit again. Nothing was done.`);
+        throw new ForgeProblem(409, "tag_moved", `The tag ${tag} names commit ${short(existing)}, and the draft names ${short(target)}: set the draft's commit again. Nothing was done.`);
       }
     }
     let made: Release;

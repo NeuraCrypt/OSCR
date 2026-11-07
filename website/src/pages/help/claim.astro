@@ -8,7 +8,7 @@ import { REVIEW_DAYS } from "../../lib/moderation";
 
 const toc = [
   { id: "automatic", text: "When your ORCID iD is on the paper" },
-  { id: "claim", text: "When it is not: a claim" },
+  { id: "claim", text: "Otherwise, a claim" },
   { id: "decided", text: "How a claim is decided" },
   { id: "maintainer", text: "Maintainers of the code" },
 ];
@@ -31,14 +31,14 @@ const toc = [
     Sign in with ORCID (or link your ORCID identity to your account). Every paper whose published metadata lists your
     ORCID iD among its authors is then yours at once, and appears under "Your papers" on your{" "}
     <a href="/account/">account page</a>. The check runs at each sign-in; "Check my papers again" runs it on request,
-    after {SITE_NAME} has read a new paper of yours, for instance. It relies on the iDs publishers deposit: an iD is
-    trusted only when it is on the paper itself, never guessed from a name.
+    after {SITE_NAME} has read a new paper of yours, for instance. It relies on the iDs that publishers deposit. An iD
+    counts only when it is in the paper's own metadata; the site does not guess an iD from a name.
   </p>
 
-  <h2 id="claim">When it is not: a claim</h2>
+  <h2 id="claim">Otherwise, a claim</h2>
   <p>
-    If you are an author but the paper's metadata does not carry your iD, many papers list only some of them, open the
-    paper's page, signed in, and use "Claim this paper" in its Contribute section: say why you are one of its authors
+    Many papers list the iDs of only some of their authors. If you are an author and the paper's metadata does not have
+    your iD, open the paper's page, signed in, and use "Claim this paper" in its Contribute section: say why you are one of its authors
     (1,000 characters at most, no email address) and, if you can, give a page that shows it (your lab's page, your ORCID
     record listing the paper). Your account page shows the claim and its answer.
   </p>
@@ -53,19 +53,20 @@ const toc = [
     the paper in that iD's record.
   </p>
   <ul>
-    <li>A work you added to your ORCID record yourself, or through a search tool, proves nothing: anyone can add any
-      paper. Nor does a statement or a web page, which the operator alone reads.</li>
-    <li>Otherwise the claim waits for the operator, who may accept it. There is no human moderator on duty at the moment:
-      a claim not verified within {REVIEW_DAYS} days is closed, with how to claim again; claimed again, it is checked
-      again. What the operator decided stays decided.</li>
+    <li>The rules do not count a work you added to your ORCID record yourself, or through a search tool, because anyone
+      can add any paper to their record. They also do not count a statement or a web page; only the operator reads
+      those.</li>
+    <li>In the other cases the claim waits for the operator, who may accept it. At the moment no human moderator is on
+      duty, so a claim not verified within {REVIEW_DAYS} days is closed, with how to claim again. A new claim is checked
+      again. A decision of the operator stays in force.</li>
     <li>The operator may also take back a role the rules granted by mistake.</li>
   </ul>
   <p>At most 20 claims may wait at once for an account, and 10 author claims may be sent a day.</p>
 
   <h2 id="maintainer">Maintainers of the code</h2>
   <p>
-    Maintaining a paper's code is a different role, proven with the forge rather than the paper: see{" "}
+    Maintaining a paper's code is a different role. It is proven on the forge that hosts the code, such as GitHub: see{" "}
     <a href="/help/accounts/#roles">roles</a>. A maintainer who owns the repository, or is a public member of its
-    organization, may correct what the record says of it; a contributor may not.
+    organization, may correct what the record says of it. A contributor cannot.
   </p>
 </Info>

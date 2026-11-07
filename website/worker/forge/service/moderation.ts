@@ -6,7 +6,7 @@
 //   GET  /api/forge/moderation         the owner the queue: open reports, open appeals, open data-rights
 //                                                requests; ?target= one thing's moderation row
 //   POST /api/forge/moderation         the owner a decision: dismiss a report, hide, restore, answer an
-//                                                appeal (2–6 rows, and a suspended account's tokens and hooks)
+//                                                appeal (2 to 6 rows, and a suspended account's tokens and hooks)
 //   POST /api/forge/appeal             signed in the person whose thing was hidden appeals, or answers a
 //                                                copyright takedown with a counter-notice (Turnstile; 3 rows)
 //   GET  /api/forge/moderation/mine    signed in what of theirs is hidden, and their data-rights requests

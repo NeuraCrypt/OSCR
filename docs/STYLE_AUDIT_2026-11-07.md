@@ -1,0 +1,525 @@
+# Style audit of the site text, 2026-11-07
+
+Why: on 2026-11-04 a Wikidata reviewer of the property proposal "OSCR paper ID" wrote that the site "appears to be vibe-coded, with a lot of 'this not that' language" and that it was not clear how a link between a paper and its code is established.
+
+What was checked: the signs listed by Wikipedia's "Signs of AI writing" (read 2026-11-07), in the site's own text (website/src, website/worker). The detector is website/scripts/style-signs.mjs; website/tests/style.test.ts fails on any sign. It reads the source, because the built HTML also holds the catalogue (paper titles), which is not our text.
+
+Signs the detector finds: negative parallelisms ("X, not Y", "not just", "rather than"), a list of overused words, avoided copulas ("serves as"), hollow phrases, long and short dashes, curly quotes. Signs found by reading each page (the detector cannot see them): multi-line contrasts, slogans ("the source always prevails"), groups of three, bold "Term:" lists, sentences that mainly say what the site is not, rhetorical questions, outdated facts.
+
+## Totals (lines with a sign)
+
+- Before (main at 0599890): 242 lines: {"negative parallelism":71,"long or short dash":16,"curly quote":148,"overused word":7}
+- After (branch site-plain-text): 132 lines: {"curly quote":132}
+- The curly quotes left are inside strings of the GitHub side's libraries and the Worker, which their tests read word for word; the test checks curly quotes on the pages and components only, where none is left.
+- Files rewritten, including signs found only by reading: 142 (plus the new page src/pages/help/verification.astro).
+
+## Before and after, by file (detector)
+
+- src/components/paper/Code.astro: before negative parallelism 3; after 0
+- src/components/paper/Later.astro: before long or short dash 1; after 0
+- src/components/paper/Reader.astro: before negative parallelism 2, long or short dash 1; after 0
+- src/lib/codeowners.ts: before curly quote 2; after curly quote 2
+- src/lib/editor.ts: before curly quote 1; after curly quote 1
+- src/lib/environments.ts: before negative parallelism 2, curly quote 1; after curly quote 1
+- src/lib/forge-templates.ts: before negative parallelism 1; after 0
+- src/lib/issue-forms.ts: before curly quote 7, long or short dash 1; after curly quote 7
+- src/lib/issue-page.ts: before curly quote 2; after curly quote 2
+- src/lib/issues.ts: before curly quote 9; after curly quote 9
+- src/lib/preferences.ts: before negative parallelism 2; after 0
+- src/lib/pull-page.ts: before curly quote 1; after curly quote 1
+- src/lib/query.ts: before curly quote 2; after curly quote 2
+- src/lib/reader.ts: before negative parallelism 1; after 0
+- src/lib/release-view.ts: before long or short dash 1, negative parallelism 1; after 0
+- src/lib/releases.ts: before curly quote 2; after curly quote 2
+- src/lib/render.ts: before negative parallelism 1, curly quote 1; after 0
+- src/lib/repo-settings-view.ts: before curly quote 1; after curly quote 1
+- src/lib/repo-view.ts: before negative parallelism 1; after 0
+- src/lib/security-view.ts: before negative parallelism 1; after 0
+- src/lib/status.ts: before negative parallelism 1; after 0
+- src/lib/templates.ts: before curly quote 1; after curly quote 1
+- src/lib/traced.ts: before negative parallelism 1; after 0
+- src/lib/upload.ts: before curly quote 1; after curly quote 1
+- src/pages/about.astro: before negative parallelism 4; after 0
+- src/pages/accessibility.astro: before negative parallelism 2; after 0
+- src/pages/api/index.astro: before negative parallelism 1; after 0
+- src/pages/brand.astro: before negative parallelism 2; after 0
+- src/pages/browse/[facet]/[value].astro: before curly quote 1; after 0
+- src/pages/copyright.astro: before curly quote 6; after 0
+- src/pages/guidelines.astro: before negative parallelism 1, curly quote 1; after 0
+- src/pages/help/accounts.astro: before negative parallelism 2; after 0
+- src/pages/help/api.astro: before negative parallelism 1; after 0
+- src/pages/help/claim.astro: before negative parallelism 1; after 0
+- src/pages/help/cli.astro: before negative parallelism 2; after 0
+- src/pages/help/data.astro: before negative parallelism 1; after 0
+- src/pages/help/faq.astro: before negative parallelism 1; after 0
+- src/pages/help/paper.astro: before negative parallelism 3; after 0
+- src/pages/help/reader.astro: before negative parallelism 1; after 0
+- src/pages/hosting/history.astro: before negative parallelism 1; after 0
+- src/pages/hosting/import.astro: before negative parallelism 1; after 0
+- src/pages/hosting/large-files.astro: before overused word 3; after 0
+- src/pages/hosting/leave.astro: before negative parallelism 1; after 0
+- src/pages/labs.astro: before long or short dash 1; after 0
+- src/pages/new/import.astro: before negative parallelism 1; after 0
+- src/pages/new/index.astro: before curly quote 2; after 0
+- src/pages/organizations.astro: before negative parallelism 1; after 0
+- src/pages/paper/[slug]/index.astro: before curly quote 1; after 0
+- src/pages/policies/accessibility.astro: before negative parallelism 1; after 0
+- src/pages/policies/code.astro: before negative parallelism 1; after 0
+- src/pages/policies/conduct.astro: before negative parallelism 2; after 0
+- src/pages/policies/full-text.astro: before negative parallelism 1; after 0
+- src/pages/policies/terms.astro: before negative parallelism 3; after 0
+- src/pages/privacy.astro: before negative parallelism 1; after 0
+- src/pages/removal.astro: before negative parallelism 1; after 0
+- src/pages/report.astro: before curly quote 1; after 0
+- src/pages/research/index.astro: before long or short dash 2; after 0
+- src/pages/settings/blocked.astro: before curly quote 2; after 0
+- src/pages/taxonomy.astro: before long or short dash 1, negative parallelism 1; after 0
+- src/pages/terms.astro: before curly quote 1; after 0
+- src/pages/tools/index.astro: before negative parallelism 1; after 0
+- src/scripts/code-view.ts: before long or short dash 2, negative parallelism 1; after 0
+- src/scripts/data-rights.ts: before curly quote 1; after curly quote 1
+- src/scripts/file-tree.ts: before negative parallelism 1; after 0
+- src/scripts/issue-links.ts: before long or short dash 1; after 0
+- src/scripts/lookup.ts: before curly quote 1; after curly quote 1
+- src/scripts/new-repo.ts: before curly quote 1, negative parallelism 1; after curly quote 1
+- src/scripts/paper-research.ts: before long or short dash 1; after 0
+- src/scripts/reader.ts: before negative parallelism 1; after 0
+- src/scripts/removal.ts: before curly quote 1; after curly quote 1
+- src/scripts/repo-code-panel.ts: before negative parallelism 1; after 0
+- src/scripts/repo-code.ts: before negative parallelism 1; after 0
+- src/scripts/repo-edit.ts: before curly quote 1; after curly quote 1
+- src/scripts/repo-issue.ts: before curly quote 1, overused word 1; after curly quote 1
+- src/scripts/repo-issues.ts: before curly quote 3, long or short dash 1; after curly quote 3
+- src/scripts/repo-pull-files.ts: before curly quote 1; after curly quote 1
+- src/scripts/repo-pull.ts: before negative parallelism 1, curly quote 1; after curly quote 1
+- src/scripts/repo-pulls.ts: before curly quote 3, negative parallelism 1; after curly quote 3
+- src/scripts/repo-release-assets.ts: before curly quote 1; after curly quote 1
+- src/scripts/repo-templates.ts: before curly quote 1; after curly quote 1
+- src/scripts/report.ts: before curly quote 1; after curly quote 1
+- src/scripts/research.ts: before long or short dash 1, overused word 1; after 0
+- src/scripts/snippets.ts: before curly quote 2; after curly quote 2
+- src/scripts/tokens.ts: before curly quote 2; after curly quote 2
+- worker/forge-search.ts: before curly quote 1; after curly quote 1
+- worker/forge/checks-core.ts: before curly quote 1; after curly quote 1
+- worker/forge/service/act-autolinks.ts: before curly quote 1; after curly quote 1
+- worker/forge/service/act-commit.ts: before curly quote 1; after curly quote 1
+- worker/forge/service/act-create.ts: before curly quote 5; after curly quote 5
+- worker/forge/service/act-delete.ts: before curly quote 2; after curly quote 2
+- worker/forge/service/act-issues.ts: before curly quote 11, overused word 2, negative parallelism 1; after curly quote 11
+- worker/forge/service/act-pulls.ts: before curly quote 2, negative parallelism 1; after curly quote 2
+- worker/forge/service/act-releases.ts: before curly quote 10; after curly quote 10
+- worker/forge/service/act-research.ts: before curly quote 1; after curly quote 1
+- worker/forge/service/act-settings.ts: before curly quote 3; after curly quote 3
+- worker/forge/service/act-snippet.ts: before curly quote 2; after curly quote 2
+- worker/forge/service/act-wiki.ts: before negative parallelism 1, curly quote 2; after curly quote 2
+- worker/forge/service/api.ts: before curly quote 1; after curly quote 1
+- worker/forge/service/bearer.ts: before curly quote 1; after curly quote 1
+- worker/forge/service/device-core.ts: before curly quote 1; after curly quote 1
+- worker/forge/service/discussions-core.ts: before curly quote 1; after curly quote 1
+- worker/forge/service/discussions.ts: before curly quote 4; after curly quote 4
+- worker/forge/service/hidden.ts: before curly quote 1; after curly quote 1
+- worker/forge/service/hooks-core.ts: before curly quote 1; after curly quote 1
+- worker/forge/service/inbox.ts: before curly quote 2; after curly quote 2
+- worker/forge/service/members.ts: before negative parallelism 1; after 0
+- worker/forge/service/projects-core.ts: before curly quote 7; after curly quote 7
+- worker/forge/service/projects.ts: before curly quote 2; after curly quote 2
+- worker/forge/service/research-core.ts: before curly quote 2, long or short dash 2, negative parallelism 2; after curly quote 2
+- worker/forge/service/research.ts: before curly quote 3; after curly quote 3
+- worker/forge/service/rights.ts: before curly quote 1; after curly quote 1
+- worker/forge/service/snippets-core.ts: before curly quote 2, negative parallelism 1; after curly quote 2
+- worker/forge/service/social-core.ts: before curly quote 1; after curly quote 1
+- worker/forge/service/social.ts: before curly quote 2; after curly quote 2
+- worker/forge/service/start.ts: before curly quote 1; after curly quote 1
+- worker/forge/service/statuses.ts: before curly quote 1; after curly quote 1
+- worker/forge/service/tokens-core.ts: before curly quote 1; after curly quote 1
+- worker/search.ts: before curly quote 4; after curly quote 4
+
+## Every line found before the rewrite
+
+- src/components/paper/Code.astro:38 [negative parallelism] data_only: "The paper links to its data, not to its authors' code: see the Data section.",
+- src/components/paper/Code.astro:117 [negative parallelism] <summary>{plural(readable.length, "file")}{e && !e.published && (fromSource ? ", not copied: shown from their source" : ", to read at the source")}</summary>
+- src/components/paper/Code.astro:136 [negative parallelism] {x.text === null && (fetchable(x) ? ", shown from its source" : ", not shown here")}
+- src/components/paper/Later.astro:29 [long or short dash] <p class="summary"><strong>Discussion</strong>: code errors and code[short dash]paper mismatches about this paper and its code, from readers and its authors, beside the pa
+- src/components/paper/Reader.astro:111 [negative parallelism] file, not to given lines: {wholes === 1 ? "a weak match" : "weak matches"}, whose lines are not tinted
+- src/components/paper/Reader.astro:119 [long or short dash] [{p.pair}] {p.label} ↔ {p.path}, {p.whole ? "the whole file" : `lines ${p.start}[short dash]${p.end}`}
+- src/components/paper/Reader.astro:137 [negative parallelism] Loaded from <span id="paper-source">Europe PMC</span> by your browser, not stored by {SITE_NAME}: <a href={doiUrl}>doi.org</a> ·{" "}
+- src/lib/codeowners.ts:68 [curly quote] if (p.startsWith("!")) return "“!” (negation) is not supported in CODEOWNERS.";
+- src/lib/codeowners.ts:69 [curly quote] if (/[[\]]/.test(p)) return "“[ ]” (a range of characters) is not supported in CODEOWNERS.";
+- src/lib/editor.ts:448 [curly quote] if (!isRefName(name) // name.startsWith("refs/")) return "This is not a branch name git takes (no spaces, “..”, “~”, “^”, “:”, “?”, “*”, “[” or “\\”).";
+- src/lib/environments.ts:124 [negative parallelism] if (source.length) out.push({ words: `Installed from a repository or an address, not a published version: ${source.slice(0, 5).map((r) => r.name // r.spec).join
+- src/lib/environments.ts:294 [curly quote] return { words: `${where} (${image}) has no version (“latest” is whatever it is on the day it is pulled).`, tone: "warning" };
+- src/lib/environments.ts:431 [negative parallelism] report.summary = `a script (${file.path.split("/").pop()}): read as text only, never run; what it installs is code, not a list`;
+- src/lib/forge-templates.ts:48 [negative parallelism] { key: "cc-by-4.0", spdx: "CC-BY-4.0", name: "Creative Commons Attribution 4.0", explain: "For text and data rather than code: reuse with credit.", open: true }
+- src/lib/issue-forms.ts:113 [curly quote] if (!name) problems.push("It has no name (the “name” key).");
+- src/lib/issue-forms.ts:114 [curly quote] if (!about) problems.push("It has no description (the “description” key).");
+- src/lib/issue-forms.ts:116 [curly quote] if (!Array.isArray(rawBody) // !rawBody.length) problems.push("It has no body (the “body” key, a list of elements).");
+- src/lib/issue-forms.ts:132 [curly quote] else if (ids.has(id)) problems.push(`The id “${id}” is used twice.`);
+- src/lib/issue-forms.ts:138 [curly quote] else if (labels.has(label.toLowerCase())) problems.push(`The label “${label}” is used twice.`);
+- src/lib/issue-forms.ts:185 [curly quote] if (!m && !path.toLowerCase().includes("issue_template.md")) return { path, problems: ["It has no front matter: GitHub lists a template by its “name” and “about
+- src/lib/issue-forms.ts:240 [curly quote] for (const o of e.options) if (o.required && !chosen.has(o.label)) out.push({ key, message: `“${o.label}” must be ticked.` });
+- src/lib/issue-forms.ts:344 [long or short dash] research("mismatch", "Code[short dash]paper mismatch", "The code does not do what the paper says, at one place of each: the paragraph, and the lines.", [
+- src/lib/issue-page.ts:130 [curly quote] if (f.mentions.length) dev.push(h("p", { class: "summary-line" }, `Mentioned in ${f.mentions.join(", ")}. A pull request that says “Fixes #${i.number}” closes i
+- src/lib/issue-page.ts:131 [curly quote] out.push(h("h3", null, "Development"), ...(dev.length ? dev : [h("p", { class: "summary-line" }, `No branch or pull request yet. A pull request that says “Fixes
+- src/lib/issues.ts:218 [curly quote] return `added the label “${s}”`;
+- src/lib/issues.ts:220 [curly quote] return `removed the label “${s}”`;
+- src/lib/issues.ts:226 [curly quote] return `added this to the milestone “${s}”`;
+- src/lib/issues.ts:228 [curly quote] return `removed this from the milestone “${s}”`;
+- src/lib/issues.ts:230 [curly quote] return `changed the title to “${s}”`;
+- src/lib/issues.ts:262 [curly quote] return `changed the title (it was “${s}”)`;
+- src/lib/issues.ts:266 [curly quote] return `added the label “${s}”`;
+- src/lib/issues.ts:268 [curly quote] return `removed the label “${s}”`;
+- src/lib/issues.ts:690 [curly quote] `${s.field === "type" ? `The type “${TYPE_WORDS[s.value as ResearchType] ?? s.value}”` : `The label “${s.value}”`}, set by rule: ${s.reason}.`;
+- src/lib/preferences.ts:68 [negative parallelism] help: "Underline every link, not only the one under the pointer.",
+- src/lib/preferences.ts:68 [negative parallelism] help: "Underline every link, not only the one under the pointer.",
+- src/lib/pull-page.ts:183 [curly quote] return `${actor} changed the title${e.subject ? ` to “${e.subject}”` : ""}.`;
+- src/lib/query.ts:247 [curly quote] this.notices.push(`A prefix needs ${LIMITS.prefixMin} letters at least: “${text}*” was searched as a whole word.`);
+- src/lib/query.ts:250 [curly quote] this.notices.push(`Only ${LIMITS.prefixes} prefixes (word*) are searched per query: “${text}*” was searched as a whole word.`);
+- src/lib/reader.ts:308 [negative parallelism] ? "This file is not shown here: a MATLAB live script is a binary file (a zip archive), not text."
+- src/lib/release-view.ts:115 [long or short dash] `, ${t.map.pairs} paragraph[short dash]line ${t.map.pairs === 1 ? "pair" : "pairs"} in this repository`,
+- src/lib/release-view.ts:131 [negative parallelism] if (waiting.length) out.push(h("p", { class: "explain" }, `Asked of the registry's Mac, not answered yet: ${waiting.map((k) => JOB_WAITING[k]).join(", ")}.`));
+- src/lib/releases.ts:320 [curly quote] if (!changelog // typeof changelog !== "object" // Array.isArray(changelog)) return { config: null, problems: ["It has no “changelog” section."] };
+- src/lib/releases.ts:336 [curly quote] problems.push(`The category “${o.title}” names no label: GitHub requires one (“*” for the rest).`);
+- src/lib/render.ts:455 [negative parallelism] data_only: "The paper links to its data, not to its authors' code: see the Data section.",
+- src/lib/render.ts:670 [curly quote] description: hasCode ? `The code published by the authors of “${p.title}”.` : `“${p.title}”: ${s.label}.`,
+- src/lib/repo-settings-view.ts:85 [curly quote] ": they will say “no longer at the source”, and keep the script copies its licence allowed and the Software Heritage archive when there is one.",
+- src/lib/repo-view.ts:442 [negative parallelism] h("ul", null, layer.papers.map((p) => h("li", null, paperLink(p), p.status === "proposed" ? " (proposed, not confirmed yet)" : null))),
+- src/lib/security-view.ts:166 [negative parallelism] h("p", { class: "muted" }, "Found in the files already read, after the push. The registry reports them and never blocks a push (pushes do not pass through it); 
+- src/lib/status.ts:8 [negative parallelism] code_found: { label: "code found, not verified yet", tone: "warning" },
+- src/lib/templates.ts:118 [curly quote] paper ? `It supports the paper ${paper.title ? `“${paper.title}”, ` : ""}doi:${paper.doi}.` : "It supports the paper doi:10.…",
+- src/lib/traced.ts:371 [negative parallelism] : h("p", null, `${what.subject} ${what.verb} ${touched.length === 1 ? "a file" : "files"} a tracing map links, not the linked lines${unknown.length ? " as far a
+- src/lib/upload.ts:90 [curly quote] row.problem = "This name is not one a repository may hold (“.git”, an empty part, or above the repository).";
+- src/pages/about.astro:70 [negative parallelism] <li><strong>Find</strong> the code the authors themselves point to, not code that merely resembles theirs.</li>
+- src/pages/about.astro:92 [negative parallelism] data rather than code. "Available on request" is a promise, not code. Only a visit to each link, and a look at
+- src/pages/about.astro:92 [negative parallelism] data rather than code. "Available on request" is a promise, not code. Only a visit to each link, and a look at
+- src/pages/about.astro:374 [negative parallelism] <li><strong>Matches</strong> are computed by a lexical method, not read by a person: proposals, with their evidence.</li>
+- src/pages/accessibility.astro:22 [negative parallelism] pages) version 2.2, level AA. This is a goal, not a certificate: we test as we build, and we fix
+- src/pages/accessibility.astro:72 [negative parallelism] the screen reader read natively, not as pictures. Diagrams carry a text description.
+- src/pages/api/index.astro:94 [negative parallelism] shown from their source rather than copied: see <a href="/policies/code/">the code policy</a>). Use of the API and
+- src/pages/brand.astro:75 [negative parallelism] It is a proper name: no article before it ("{SITE_NAME} records…", not "the {SITE_NAME}"), not translated, not
+- src/pages/brand.astro:143 [negative parallelism] The wordmark is drawn in a serif face; it is an image, not a font to reproduce. The site's text uses the reader's
+- src/pages/browse/[facet]/[value].astro:18 [curly quote] description={`The papers in the category “${c.name}” (${label.toLowerCase()}).`}
+- src/pages/copyright.astro:25 [curly quote] <dd>Ask on <a href="/removal/">the removal page</a>, from the paper's page (“Request removal”): say who you are (an author, the rights holder, a person named), 
+- src/pages/copyright.astro:27 [curly quote] <dd>Use the “Report” link beside it, and choose “a copyright or licence infringement” or “private information”. A copyright notice needs an account (so that you
+- src/pages/copyright.astro:35 [curly quote] “copyright”: while GitHub decides, the owner may hide it from {SITE_NAME}'s pages, and {SITE_NAME}'s own
+- src/pages/copyright.astro:43 [curly quote] record, use the removal page with the reason “personal data”.
+- src/pages/copyright.astro:48 [curly quote] When something of yours is hidden after a copyright notice, your page <a href="/account/moderation/">“What
+- src/pages/copyright.astro:49 [curly quote] of mine is hidden”</a> offers a counter-notice: say why the content is yours to publish, or was removed by
+- src/pages/guidelines.astro:21 [negative parallelism] <li><strong>Talk about the code and the paper, not the person.</strong> "Line 42 filters at order 4; §2.3 says 2" helps; a judgement of the authors does not.</l
+- src/pages/guidelines.astro:28 [curly quote] <li><strong>Report, do not retaliate.</strong> Use the “Report” link, or block someone; the owner reads every report.</li>
+- src/pages/help/accounts.astro:38 [negative parallelism] researchers already use, not with a password of its own.
+- src/pages/help/accounts.astro:51 [negative parallelism] <dd>For anyone else. {SITE_NAME} asks Google for the <code>openid</code> scope only: an opaque identifier, not even a
+- src/pages/help/api.astro:217 [negative parallelism] from their source rather than copied: <a href="/policies/code/">the code policy</a>). Use of the API and the data is
+- src/pages/help/claim.astro:67 [negative parallelism] Maintaining a paper's code is a different role, proven with the forge rather than the paper: see{" "}
+- src/pages/help/cli.astro:137 [negative parallelism] oscr cite --software             # the software itself, not the paper the file prefers
+- src/pages/help/cli.astro:299 [negative parallelism] <li><strong>It never keeps your token anywhere but the keychain</strong> (a plain file only when you ask, with a warning). A token is never printed, not even wi
+- src/pages/help/data.astro:129 [negative parallelism] Hugging Face hosts public datasets for free on a best-effort basis: download what you need, once, rather than the
+- src/pages/help/faq.astro:71 [negative parallelism] <dd>They are computed, not read by a person: a match is kept only when several rare technical terms agree on both
+- src/pages/help/paper.astro:15 [negative parallelism] on_request: "The paper cites no code repository, but says its code is available on request. That is a promise, not code.",
+- src/pages/help/paper.astro:18 [negative parallelism] no_fulltext: "Only the paper's metadata could be read, not its full text: nothing can be said about its code. No page.",
+- src/pages/help/paper.astro:153 [negative parallelism] scope, not neuroscience, has no page and is in no list or figure (<a href="/taxonomy/#scope">the scope</a>).
+- src/pages/help/reader.astro:77 [negative parallelism] rare terms agree on both sides. They are proposals, not statements by the authors; a wrong one can be reported from
+- src/pages/hosting/history.astro:49 [negative parallelism] The last commit, not yet pushed, is amended. Older ones are reworded, squashed or dropped with an interactive
+- src/pages/hosting/import.astro:233 [negative parallelism] An import brings the history, not the repository's settings: set its description, website and
+- src/pages/hosting/large-files.astro:23 [overused word] "git lfs unlock figures/figure-a.fig",
+- src/pages/hosting/large-files.astro:24 [overused word] "git lfs unlock figures/figure-a.fig --force",
+- src/pages/hosting/large-files.astro:135 [overused word] file someone else has locked; an administrator can force an unlock.
+- src/pages/hosting/leave.astro:110 [negative parallelism] A DOI for a release of the code itself comes from an archive, not from a host:
+- src/pages/labs.astro:169 [long or short dash] <code>size</code> (1[short dash]50), <code>format</code>. The answer is JSON: the results, the total (exact up to 500), the
+- src/pages/new/import.astro:178 [negative parallelism] A mirror copies a repository, not the repositories it names as submodules: those still point to their own
+- src/pages/new/index.astro:127 [curly quote] On GitHub, a template's page also offers <a href={LINKS.fromTemplate}>“Use this template”</a> and “Open in a
+- src/pages/new/index.astro:128 [curly quote] codespace”: a ready environment from the template's own dev container file, on your GitHub quota (a compendium's
+- src/pages/organizations.astro:21 [negative parallelism] an audit log. A lab's GitHub organization is linked, not replaced: git rights on its repositories stay
+- src/pages/paper/[slug]/index.astro:88 [curly quote] description={hasCode ? `The code published by the authors of “${a.title}”.` : `“${a.title}”: ${s.label}.`}
+- src/pages/policies/accessibility.astro:31 [negative parallelism] tables and words, rather than widgets and colours.
+- src/pages/policies/code.astro:90 [negative parallelism] not on this site, not in its open data, not in its dataset of scripts. Its reader still shows them: <strong>your
+- src/pages/policies/conduct.astro:60 [negative parallelism] A missing or dead link is a fact to record, not a fault to denounce. The registry says what it found in neutral words,
+- src/pages/policies/conduct.astro:61 [negative parallelism] and asks the same of those who use it: a correction or a note states what is wrong, not who is to blame.
+- src/pages/policies/full-text.astro:42 [negative parallelism] paper's text, those two. If they are down, the reader shows links to the paper, not a copy.
+- src/pages/policies/terms.astro:57 [negative parallelism] every reader. For bulk use, take the <a href="/help/data/">open datasets</a> rather than crawling pages.</li>
+- src/pages/policies/terms.astro:97 [negative parallelism] Records are made by a harvester, and matches by a method, not by people: they can be wrong or incomplete, and every
+- src/pages/policies/terms.astro:99 [negative parallelism] source disagree, the source prevails. A copy is a convenience, not an archive of record; for that, see Software
+- src/pages/privacy.astro:286 [negative parallelism] submitted DOI and links exist. They receive identifiers of papers and repositories, not data about visitors, except
+- src/pages/removal.astro:134 [negative parallelism] A wrong link, or a link given the wrong role, can be corrected rather than removed: the paper's verified authors and
+- src/pages/report.astro:52 [curly quote] <label for="report-details">In your words (required for “another breach” and for a copyright report)</label><br />
+- src/pages/research/index.astro:16 [long or short dash] description="An issue about a paper's code: a code error, a code[short dash]paper mismatch, or a reproduction failure, beside the paper and its tracing map."
+- src/pages/research/index.astro:26 [long or short dash] Research issues are {SITE_NAME}'s own: a code error, a code[short dash]paper mismatch (one link of a
+- src/pages/settings/blocked.astro:27 [curly quote] <li>It does not hide what they already wrote from others: to have content removed, report it from the “Report” link beside it (<a href="/acceptable-use/">what b
+- src/pages/settings/blocked.astro:31 [curly quote] <p>You block someone from their profile, or from one of their comments (“Block its author”).</p>
+- src/pages/taxonomy.astro:66 [long or short dash] calcium imaging, electrophysiology, brain[short dash]computer interfaces, neuroimaging, fNIRS, transcranial magnetic or deep
+- src/pages/taxonomy.astro:133 [negative parallelism] marked ambiguous rather than guessed.</li>
+- src/pages/terms.astro:61 [curly quote] something from the “Report” link beside it. The owner reads every report and may hide a comment, an
+- src/pages/tools/index.astro:15 [negative parallelism] is found in the scripts of the authors' repositories (what they import), not in the text of the paper.
+- src/scripts/code-view.ts:323 [long or short dash] link(pr.source // at, pr.whole ? "the whole file" : `lines ${pr.start}[short dash]${pr.end}`),
+- src/scripts/code-view.ts:347 [long or short dash] linkBtn.textContent = selection.end > selection.start ? `Link to lines ${selection.start}[short dash]${selection.end}` : `Link to line ${selection.start}`;
+- src/scripts/code-view.ts:416 [negative parallelism] ? [`Match ${p.pair} covers the whole file: a weak match, which ties its paragraph to this file rather than to given lines.`]
+- src/scripts/data-rights.ts:161 [curly quote] rows.push(["Name", [s.user?.display_name ? `“${s.user.display_name}”, as your provider gave it` : "none (Google gives none)"]]);
+- src/scripts/file-tree.ts:38 [negative parallelism] a.title = f.text ? f.path : away ? `${f.path}: not shown here, at the source` : `${f.path}: shown from its source, not copied here`;
+- src/scripts/issue-links.ts:25 [long or short dash] papers.length ? [" · ", h("a", { href: research("mismatch") }, "Report a code[short dash]paper mismatch on these lines"), " · ", h("a", { href: research("code_error") }, "
+- src/scripts/lookup.ts:64 [curly quote] say("warning", `“${typed.trim()}” is not a DOI: a DOI starts with “10.”, as in 10.1234/abcd.`);
+- src/scripts/new-repo.ts:86 [curly quote] if (/[^A-Za-z0-9._-]/.test(name)) return "Letters, digits, “.”, “-” and “_” only: GitHub turns other characters into “-”.";
+- src/scripts/new-repo.ts:87 [negative parallelism] if (/^\.+$/.test(name)) return "Not only dots.";
+- src/scripts/paper-research.ts:86 [long or short dash] tie.map ? `; its tracing map versioned with it (${tie.map.pairs} paragraph[short dash]line ${tie.map.pairs === 1 ? "pair" : "pairs"})` : "",
+- src/scripts/reader.ts:279 [negative parallelism] if (getSelection()?.toString()) return; // text is being selected, not clicked
+- src/scripts/removal.ts:181 [curly quote] write(out, "", "Name the paper: its DOI below, or open this page from the paper's own page (“Request removal”, in its sidebar).");
+- src/scripts/repo-code-panel.ts:83 [negative parallelism] h("h3", null, "Pushing: GitHub's credentials, not your account here"),
+- src/scripts/repo-code.ts:509 [negative parallelism] body.push(h("p", { class: "draft-note" }, "A change of yours to this file is kept in this browser, not committed yet: ", h("a", { href: repoPath(env.repo, "edit
+- src/scripts/repo-edit.ts:401 [curly quote] if (!p) return "This name is not one a repository may hold (an empty part, “..” above the repository, or “.git”).";
+- src/scripts/repo-issue.ts:367 [curly quote] el("p", {}, "A “+1” says more as a reaction: it counts, and nobody gets a message. ",
+- src/scripts/repo-issue.ts:450 [overused word] ? el("p", {}, button("Unlock the conversation", () => act(f, said, "issue_lock", { number: n, locked: false })))
+- src/scripts/repo-issues.ts:232 [curly quote] slot.append(signInLine("“@me” is your GitHub account: sign in with GitHub to filter by it."));
+- src/scripts/repo-issues.ts:298 [curly quote] h("p", { class: "status-line" }, kept.length ? `${kept.length} ${kept.length === 1 ? "issue matches" : "issues match"} “${q}”.` : `No issue matches “${q}”.`, no
+- src/scripts/repo-issues.ts:303 [long or short dash] !env.layer?.papers.length ? h("p", { class: "explain" }, "Research issues (code[short dash]paper mismatches, reproduction failures, code errors) belong to a paper: this re
+- src/scripts/repo-issues.ts:533 [curly quote] show(slot, h("p", { class: "warning" }, "Research issues belong to a paper, and this repository is attached to none yet: attach it to its paper first (the home 
+- src/scripts/repo-pull-files.ts:103 [curly quote] show(f.main, selector, h("p", { class: "status-line" }, `The changes of one commit, ${only.slice(0, 7)}: “${c.message.split("\n")[0]}”. Comments are written on 
+- src/scripts/repo-pull.ts:357 [negative parallelism] if (b.sha !== f.pr.head.sha) return; // the branch moved on: it is someone's work, not this pull request's
+- src/scripts/repo-pull.ts:408 [curly quote] if (!note && !researchNote) parts.push(el("p", {}, "No issue named with a closing keyword (“Fixes #12”, “Fixes research#3”)."));
+- src/scripts/repo-pulls.ts:118 [curly quote] slot.append(signInLine("“@me” is your GitHub account: sign in with GitHub to filter by it."));
+- src/scripts/repo-pulls.ts:159 [curly quote] h("p", { class: "status-line" }, rows.length ? `${rows.length} ${rows.length === 1 ? "pull request matches" : "pull requests match"} “${q}”.` : `No pull request
+- src/scripts/repo-pulls.ts:332 [curly quote] el("p", { class: "explain" }, "Closing keywords (“Fixes #12”) close those issues when it merges into the default branch. Markdown and math are shown as in the r
+- src/scripts/repo-pulls.ts:342 [negative parallelism] : el("li", {}, maskEmails(`${s.owner ? ownerInWords(s.owner) : "An owner"}: ${s.reasons.join("; ")} (the registry asks people, not teams or addresses)`)),
+- src/scripts/repo-release-assets.ts:46 [curly quote] const label = el("input", { type: "text", id: "asset-label", maxlength: "255", placeholder: "what it is: “Source data of Figure 2”" });
+- src/scripts/repo-templates.ts:130 [curly quote] el("p", {}, el("strong", {}, citation ? "A CITATION.cff" : "A README for research code"), citation ? ", GitHub and the registry offer “Cite this repository” fro
+- src/scripts/report.ts:36 [curly quote] what.textContent = "This page reports one thing the registry shows: open it from the “Report” link beside that thing.";
+- src/scripts/research.ts:119 [long or short dash] return h("p", { class: "summary-line" }, "Hosted elsewhere: ", i.code_url ? h("a", { href: i.code_url, rel: "noopener noreferrer" }, host // i.code_url) : "not 
+- src/scripts/research.ts:340 [overused word] parts.push(el("p", {}, i.locked ? button("Unlock the conversation", () => void send(said, "/api/forge/research/edit", { id: i.id, locked: false })) : button("Lo
+- src/scripts/snippets.ts:189 [curly quote] fork.addEventListener("click", () => void confirmAction(forkBox, { input: { kind: "snippet_fork", repo: null, payload: { id: s.id }, back: location.pathname }, 
+- src/scripts/snippets.ts:276 [curly quote] void confirmAction(confirm, { input: { kind: "snippet_create", repo: null, payload, back: "/snippets/" }, sentence: `Create the ${vis.value} snippet “${title.va
+- src/scripts/tokens.ts:60 [curly quote] if (!confirm(`Revoke “${name}”? Whatever uses it stops at once.`)) return;
+- src/scripts/tokens.ts:68 [curly quote] made.replaceChildren(toDom(h("p", { class: "ok" }, `“${name}” is revoked: it opens nothing any more.`)));
+- worker/forge/checks-core.ts:220 [curly quote] return { id: "citation", level: "notice", words: `CITATION.cff cites “${maskEmails(cff.work.title).slice(0, 120)}”, without a DOI.`, fix: "Add the paper's DOI (
+- worker/forge/service/act-autolinks.ts:39 [curly quote] describe: (p) => `Link every “${p.keyPrefix}…” in the repository's issues and commits to ${p.urlTemplate}`,
+- worker/forge/service/act-commit.ts:177 [curly quote] return bad(/twice/.test(e.message) ? "The same file appears twice in the commit." : "A file's path is not one a repository may hold (an empty part, “.”, “..” or
+- worker/forge/service/act-create.ts:94 [curly quote] v === undefined // v === null ? fallback : typeof v === "boolean" ? v : bad(`“${what}” is not true or false.`);
+- worker/forge/service/act-create.ts:107 [curly quote] return bad("The name may hold letters, digits, “.”, “-” and “_” only, at most 100, and may not end in .git.");
+- worker/forge/service/act-create.ts:139 [curly quote] if (k !== "issues" && k !== "wiki") return bad(`“${k.slice(0, 40)}” is not a feature this page sets.`);
+- worker/forge/service/act-create.ts:140 [curly quote] if (typeof v !== "boolean") return bad(`“${k}” is not true or false.`);
+- worker/forge/service/act-create.ts:157 [curly quote] return bad("The name may hold letters, digits, “.”, “-” and “_” only, at most 100, and may not end in .git.");
+- worker/forge/service/act-delete.ts:86 [curly quote] `Archived on GitHub and hidden from the registry's pages. Until ${new Date(deleteAfter * 1000).toISOString().slice(0, 10)} (UTC), “Your repositories” can restor
+- worker/forge/service/act-delete.ts:147 [curly quote] "Its tracing maps say “no longer at the source”, and keep the script copies its licence allowed and the Software Heritage archive when there is one.",
+- worker/forge/service/act-issues.ts:125 [curly quote] if (out.some((y) => y.toLowerCase() === (x as string).toLowerCase())) return bad(`“${x}” is named twice.`);
+- worker/forge/service/act-issues.ts:216 [curly quote] return `Open the issue “${p.title}”${also.length ? ` (${also.join("; ")})` : ""}`;
+- worker/forge/service/act-issues.ts:322 [curly quote] if (out.reason !== "duplicate") return bad("“Duplicate of” goes with closing the issue as a duplicate.");
+- worker/forge/service/act-issues.ts:428 [curly quote] notes.push(`It is closed as a duplicate, but GitHub did not take the comment “Duplicate of #${p.duplicateOf}”: add it from its page.`);
+- worker/forge/service/act-issues.ts:525 [curly quote] `${p.remove ? "Take back your" : "React with"} “${REACTION_WORDS[p.reaction]}”${p.remove ? " reaction" : ""} on ${p.comment ? "a comment of " : ""}the issue #${
+- worker/forge/service/act-issues.ts:570 [overused word] p.locked ? `Lock the conversation of the issue #${p.number}${p.reason ? ` as ${p.reason}` : ""}: only collaborators may comment or react then` : `Unlock the con
+- worker/forge/service/act-issues.ts:584 [overused word] else await ctx.session.issues.unlock(info.ref, p.number);
+- worker/forge/service/act-issues.ts:709 [negative parallelism] : "GitHub did not change it: the dependency is already there, not there, or would make a loop. Nothing was done.");
+- worker/forge/service/act-issues.ts:741 [curly quote] if (!String(payload.name).startsWith(`${number}-`) && payload.name !== String(number)) return bad(`An issue's branch starts with its number, “${number}-”, as Gi
+- worker/forge/service/act-issues.ts:758 [curly quote] return done(info, page, `The branch ${p.name}`, [`Check it out: git fetch origin, then git switch ${p.name}. Its pull request, when it says “Fixes #${p.number}”
+- worker/forge/service/act-issues.ts:792 [curly quote] if (seen.has(name.toLowerCase())) return bad(`The label “${name}” is named twice.`);
+- worker/forge/service/act-issues.ts:812 [curly quote] if (l.newName === undefined && l.color === undefined && d === null) return bad(`Nothing to change on the label “${l.name}”.`);
+- worker/forge/service/act-issues.ts:926 [curly quote] if (p.number === null) return `Create the milestone “${p.title}”${p.dueOn ? `, due on ${p.dueOn.slice(0, 10)}` : ""}`;
+- worker/forge/service/act-issues.ts:927 [curly quote] const parts = [p.title !== null ? `rename it “${p.title}”` : "", p.description !== null ? "change its description" : "", p.dueOn !== undefined ? (p.dueOn ? `mak
+- worker/forge/service/act-pulls.ts:185 [curly quote] return `Open the pull request “${p.title}” from ${p.head} into ${p.base}${also.length ? ` (${also.join("; ")})` : ""}`;
+- worker/forge/service/act-pulls.ts:540 [negative parallelism] if (pr.state !== "open" && p.event !== "COMMENT") throw new ForgeProblem(409, "closed", "The pull request is closed: it can still be commented, not approved or 
+- worker/forge/service/act-pulls.ts:773 [curly quote] else if (!named.has(id)) notes.push(`research#${id} stays open: the pull request does not say it fixes it (“Fixes research#${id}”).`);
+- worker/forge/service/act-releases.ts:296 [curly quote] if (!(LATEST as readonly unknown[]).includes(v)) return bad("“Latest” is yes, no, or GitHub's own choice.");
+- worker/forge/service/act-releases.ts:303 [curly quote] if (!isTagName(p.tag)) return bad("A tag name follows git's rules: letters, digits, “.”, “-”, “_” and “/”, no space, no “..”, at most 255 bytes.");
+- worker/forge/service/act-releases.ts:310 [curly quote] if (p[k] !== undefined && !isBool(p[k])) return bad(`“${k}” is yes or no.`);
+- worker/forge/service/act-releases.ts:473 [curly quote] if (!isTagName(p.tag)) return bad("A tag name follows git's rules: letters, digits, “.”, “-”, “_” and “/”, no space, no “..”.");
+- worker/forge/service/act-releases.ts:488 [curly quote] if (!isBool(p[k])) return bad(`“${k}” is yes or no.`);
+- worker/forge/service/act-releases.ts:504 [curly quote] if (p.name !== undefined) parts.push(p.name ? `its title to “${p.name}”` : "no title");
+- worker/forge/service/act-releases.ts:727 [curly quote] if (p.archive !== undefined && !isBool(p.archive)) return bad("“archive” is yes or no.");
+- worker/forge/service/act-releases.ts:897 [curly quote] if (!isObject(payload) // !isTagName(payload.name)) return bad("A tag name follows git's rules: letters, digits, “.”, “-”, “_” and “/”, no space, no “..”.");
+- worker/forge/service/act-releases.ts:1005 [curly quote] if (!isAssetName(p.name)) return bad("A file's name is 1 to 255 characters, without “/”, “\\” or control characters.");
+- worker/forge/service/act-releases.ts:1027 [curly quote] describe: (p) => `Attach the file ${p.name} (${sizeWords(p.size)}, SHA-256 ${p.sha256.slice(0, 12)}…)${p.label ? `, labelled “${p.label}”,` : ""} to the release
+- worker/forge/service/act-research.ts:85 [curly quote] const notes = made.labels.length ? [] : [`GitHub opened it without the label “${TYPE_LABEL[issue.type]}”: only people who triage the repository's issues set lab
+- worker/forge/service/act-settings.ts:112 [curly quote] return bad("The new name may hold letters, digits, “.”, “-” and “_” only, at most 100, and may not end in .git.");
+- worker/forge/service/act-settings.ts:210 [curly quote] if (!(FEATURES as readonly string[]).includes(k)) return bad(`“${k.slice(0, 40)}” is not a feature this page sets.`);
+- worker/forge/service/act-settings.ts:211 [curly quote] if (typeof v !== "boolean") return bad(`“${k}” is not true or false.`);
+- worker/forge/service/act-snippet.ts:148 [curly quote] describe: (p) => `Create the ${p.visibility} snippet “${p.title}” in your snippets repository (${p.files.length} ${p.files.length === 1 ? "file" : "files"})`,
+- worker/forge/service/act-snippet.ts:234 [curly quote] if (e instanceof GitBackendError) throw new ForgeProblem(502, "source_gone", `The snippet's file “${f.path}” could not be read from GitHub: nothing was done.`);
+- worker/forge/service/act-wiki.ts:74 [negative parallelism] return bad("A wiki page's name is a short title (letters, numbers, spaces, - _ .), not a path, and not one starting with “_”.");
+- worker/forge/service/act-wiki.ts:74 [curly quote] return bad("A wiki page's name is a short title (letters, numbers, spaces, - _ .), not a path, and not one starting with “_”.");
+- worker/forge/service/act-wiki.ts:150 [curly quote] return `Commit “${p.message}” to the wiki (${parts.join("; ")}) ${where}`;
+- worker/forge/service/api.ts:378 [curly quote] context: "The service and its check, as “lab-ci/tests” (default: default).",
+- worker/forge/service/bearer.ts:42 [curly quote] return new ForgeProblem(401, "bad_credentials", "This is not a token of the registry: it reads “Authorization: Bearer oscr_pat_…”.");
+- worker/forge/service/device-core.ts:85 [curly quote] if (!isScope(s)) return bad(`“${String(s).slice(0, 40)}” is not a scope of the registry's tokens.`);
+- worker/forge/service/discussions-core.ts:160 [curly quote] if (out.some((x) => x.slug === cat.slug)) return bad(`The category “${cat.slug}” is named twice.`);
+- worker/forge/service/discussions.ts:283 [curly quote] if (!category) return say(bad(`This space has no category “${parsed.category}”.`));
+- worker/forge/service/discussions.ts:309 [curly quote] return json({ id, page: `/discussions/${id}`, sentence: `Open the discussion “${parsed.title}”` }, 201, s.cookies);
+- worker/forge/service/discussions.ts:472 [curly quote] if (!cat) return say(bad(`This space has no category “${p.category}”.`));
+- worker/forge/service/discussions.ts:519 [curly quote] return say(bad("The other space has no “general” category of this discussion's format."));
+- worker/forge/service/hidden.ts:96 [curly quote] `Your account is suspended (${REASON_WORDS[row.reason]}): it cannot write in the registry. Your page “What of mine is hidden” (/account/moderation/) says why, a
+- worker/forge/service/hooks-core.ts:131 [curly quote] return bad(`“${String(e).slice(0, 40)}” is not an event of a ${subject.startsWith("paper:") ? "paper" : "repository"}.`);
+- worker/forge/service/inbox.ts:326 [curly quote] if (typeof v[k] !== "boolean") return bad(`“${k}” is yes or no.`);
+- worker/forge/service/inbox.ts:362 [curly quote] if (!key) return bad("A thread is named “<subject>#<thread>”, as the inbox gives it.");
+- worker/forge/service/members.ts:89 [negative parallelism] "Your validated tracing maps and their DOIs stay yours: they belong to you and the paper, not to the organization.",
+- worker/forge/service/projects-core.ts:190 [curly quote] return typeof value === "string" && ISSUE_REF.test(value) ? value : bad("An issue or pull request is named by “<forge>:<id>#<number>”.");
+- worker/forge/service/projects-core.ts:197 [curly quote] return typeof value === "string" && RESEARCH_REF.test(value) ? value : bad("A reproduction report is named by “research#<id>”.");
+- worker/forge/service/projects-core.ts:260 [curly quote] return typeof value === "number" && Number.isFinite(value) ? value : bad(`“${field.name}” takes a number.`);
+- worker/forge/service/projects-core.ts:262 [curly quote] return typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(Date.parse(value)) ? value : bad(`“${field.name}” takes a date (2026-12-0
+- worker/forge/service/projects-core.ts:265 [curly quote] return typeof value === "string" && field.options.some((o) => o.id === value) ? value : bad(`“${field.name}” takes one of its options.`);
+- worker/forge/service/projects-core.ts:269 [curly quote] return typeof value === "string" && (MAP_STATES as readonly string[]).includes(value) ? value : bad(`“${field.name}” is draft, proposed, validated or deposited.
+- worker/forge/service/projects-core.ts:271 [curly quote] return typeof value === "string" && (REPRO_OUTCOMES as readonly string[]).includes(value) ? value : bad(`“${field.name}” is reproduced, partially, failed or pen
+- worker/forge/service/projects.ts:185 [curly quote] return json({ id, page: `/projects/${id}`, sentence: `Create the project “${parsed.title}”` }, 201, s.cookies);
+- worker/forge/service/projects.ts:276 [curly quote] if (!f) return bad(`The project has no field “${fid}”.`);
+- worker/forge/service/research-core.ts:256 [curly quote] if (!key) return bad(`“${String(d).slice(0, 80)}” is not a DOI or a data repository the registry knows.`);
+- worker/forge/service/research-core.ts:278 [long or short dash] if (!RESEARCH_TYPES.includes(p.type as ResearchType)) return bad("A research issue is a code error, a code[short dash]paper mismatch or a reproduction failure.");
+- worker/forge/service/research-core.ts:300 [long or short dash] return bad("A code[short dash]paper mismatch names its tracing-map link: the paper's paragraph, and the file and lines of the code.");
+- worker/forge/service/research-core.ts:663 [negative parallelism] if (!RESOLUTIONS.includes(p.resolution as Resolution)) return bad("A resolution is fixed in the code, the paper corrected, not a mismatch, not reproduced, or th
+- worker/forge/service/research-core.ts:668 [negative parallelism] if (!CLOSE_REASONS.includes(p.reason as CloseReason)) return bad("An issue is closed as completed, not planned, or a duplicate.");
+- worker/forge/service/research-core.ts:682 [curly quote] if (out.reason !== "duplicate") return bad("“Duplicate of” goes with closing the issue as a duplicate.");
+- worker/forge/service/research.ts:274 [curly quote] return say(new ForgeProblem(404, "unknown_code", "The registry does not know this repository as the code of this paper: link them first (the repository's page, 
+- worker/forge/service/research.ts:305 [curly quote] return json({ id, page: `/research/${id}`, sentence: `Open the research issue “${parsed.title}” (${TYPE_WORDS[parsed.type].toLowerCase()})` }, 201, s.cookies);
+- worker/forge/service/research.ts:387 [curly quote] return say(bad(`A ${TYPE_WORDS[issue.type].toLowerCase()} is not resolved as “${RESOLUTION_WORDS[p.resolution]}”.`));
+- worker/forge/service/rights.ts:64 [curly quote] return json({ id, sentence: `Your request for ${RIGHT_WORDS[p.right]} is sent. The owner answers on your page “What of mine is hidden”, within one month.` }, 20
+- worker/forge/service/snippets-core.ts:164 [curly quote] if (e instanceof GitBackendError) return bad(`The file path “${f.path.slice(0, 120)}” is not one a repository may hold.`);
+- worker/forge/service/snippets-core.ts:167 [negative parallelism] if (path.includes("/")) return bad("A snippet's files are flat: a name, not a path with folders.");
+- worker/forge/service/snippets-core.ts:171 [curly quote] if (content.byteLength > SNIPPET_FILE_BYTES) return bad(`The file “${path}” is larger than ${(SNIPPET_FILE_BYTES / 1024).toFixed(0)} KiB: make a repository for 
+- worker/forge/service/social-core.ts:298 [curly quote] if (!u) return bad(`“${String(l).slice(0, 60)}” is not an https address without a user name.`);
+- worker/forge/service/social.ts:328 [curly quote] if (lists.some((l) => l.name.toLowerCase() === p.name.toLowerCase())) return say(new ForgeProblem(409, "name_taken", `You already have a list named “${p.name}”.
+- worker/forge/service/social.ts:337 [curly quote] if (lists.some((l) => l.list_id !== p.id && l.name.toLowerCase() === p.name!.toLowerCase())) return say(new ForgeProblem(409, "name_taken", `You already have a 
+- worker/forge/service/start.ts:60 [curly quote] new ForgeProblem(404, "unknown_repository", "The registry does not know this repository: link it first, from the page “Link a repository”.");
+- worker/forge/service/statuses.ts:67 [curly quote] if (!context) return bad("A context names the service and its check (“lab-ci/tests”).");
+- worker/forge/service/tokens-core.ts:95 [curly quote] if (!isScope(s)) return bad(`“${String(s).slice(0, 40)}” is not a scope of the registry's tokens.`);
+- worker/forge-search.ts:128 [curly quote] if (!(FORGE_TYPES as readonly string[]).includes(type)) throw new ForgeSearchError(`“type” is papers or one of: ${FORGE_TYPES.join(", ")}.`);
+- worker/search.ts:123 [curly quote] if (!Number.isInteger(n) // n < min // n > max) throw new BadRequest(`“${name}” must be a whole number from ${min} to ${max}.`);
+- worker/search.ts:147 [curly quote] if (long) throw new BadRequest(`A “${f.param}” value is longer than ${MAX_VALUE_CHARS} characters.`);
+- worker/search.ts:157 [curly quote] throw new BadRequest(`“sort” must be one of: ${SORTS.join(", ")}.`);
+- worker/search.ts:161 [curly quote] throw new BadRequest(`“format” must be one of: ${FORMATS.join(", ")}.`);
+
+## Files rewritten by reading (no detector sign, or more than the detector saw)
+
+- src/components/BadgeBox.astro
+- src/components/EntityShell.astro
+- src/components/paper/Code.astro
+- src/components/paper/Later.astro
+- src/components/paper/Overview.astro
+- src/components/paper/Reader.astro
+- src/lib/badge.ts
+- src/lib/code-nav.ts
+- src/lib/environments.ts
+- src/lib/forge-templates.ts
+- src/lib/info.ts
+- src/lib/issue-forms.ts
+- src/lib/issue-view.ts
+- src/lib/markdown.ts
+- src/lib/preferences.ts
+- src/lib/pull-view.ts
+- src/lib/reader.ts
+- src/lib/release-view.ts
+- src/lib/releases.ts
+- src/lib/render.ts
+- src/lib/repo-view.ts
+- src/lib/security-view.ts
+- src/lib/shards.ts
+- src/lib/social.ts
+- src/lib/status.ts
+- src/lib/table.ts
+- src/lib/traced.ts
+- src/pages/404.astro
+- src/pages/about.astro
+- src/pages/acceptable-use.astro
+- src/pages/accessibility.astro
+- src/pages/account.astro
+- src/pages/account/moderation.astro
+- src/pages/account/security.astro
+- src/pages/api/index.astro
+- src/pages/authors/index.astro
+- src/pages/badge/index.astro
+- src/pages/brand.astro
+- src/pages/browse/[facet]/[value].astro
+- src/pages/browse/index.astro
+- src/pages/copyright.astro
+- src/pages/data-rights.astro
+- src/pages/developers/index.astro
+- src/pages/device.astro
+- src/pages/guidelines.astro
+- src/pages/help/accounts.astro
+- src/pages/help/api.astro
+- src/pages/help/badge.astro
+- src/pages/help/claim.astro
+- src/pages/help/cli.astro
+- src/pages/help/correct.astro
+- src/pages/help/data.astro
+- src/pages/help/faq.astro
+- src/pages/help/index.astro
+- src/pages/help/maps.astro
+- src/pages/help/paper.astro
+- src/pages/help/reader.astro
+- src/pages/help/removal.astro
+- src/pages/help/search.astro
+- src/pages/help/submit.astro
+- src/pages/help/validate.astro
+- src/pages/hosting/history.astro
+- src/pages/hosting/import.astro
+- src/pages/hosting/index.astro
+- src/pages/hosting/large-files.astro
+- src/pages/hosting/leave.astro
+- src/pages/index.astro
+- src/pages/institutions/index.astro
+- src/pages/labs.astro
+- src/pages/limits.astro
+- src/pages/lookup.astro
+- src/pages/new/import.astro
+- src/pages/new/index.astro
+- src/pages/notices.astro
+- src/pages/notifications.astro
+- src/pages/organizations.astro
+- src/pages/paper/[slug]/index.astro
+- src/pages/policies/accessibility.astro
+- src/pages/policies/citation.astro
+- src/pages/policies/code.astro
+- src/pages/policies/conduct.astro
+- src/pages/policies/doi.astro
+- src/pages/policies/full-text.astro
+- src/pages/policies/index.astro
+- src/pages/policies/licences.astro
+- src/pages/policies/moderation.astro
+- src/pages/policies/removal.astro
+- src/pages/policies/terms.astro
+- src/pages/privacy.astro
+- src/pages/removal.astro
+- src/pages/report.astro
+- src/pages/repositories.astro
+- src/pages/research/index.astro
+- src/pages/scientific-tools/index.astro
+- src/pages/search.astro
+- src/pages/settings/blocked.astro
+- src/pages/status.astro
+- src/pages/submit.astro
+- src/pages/taxonomy.astro
+- src/pages/terms.astro
+- src/pages/tools/index.astro
+- src/scripts/code-view.ts
+- src/scripts/data-rights.ts
+- src/scripts/file-tree.ts
+- src/scripts/forge-client.ts
+- src/scripts/issue-links.ts
+- src/scripts/new-repo.ts
+- src/scripts/paper-research.ts
+- src/scripts/reader.ts
+- src/scripts/repo-checks.ts
+- src/scripts/repo-code-panel.ts
+- src/scripts/repo-code.ts
+- src/scripts/repo-issue.ts
+- src/scripts/repo-issues.ts
+- src/scripts/repo-pull.ts
+- src/scripts/repo-pulls.ts
+- src/scripts/research.ts
+- tests/forge-pages/issue-forms.test.ts
+- tests/forge-pages/issue-view.test.ts
+- tests/forge-pages/issues.test.ts
+- tests/forge-pages/pull-view.test.ts
+- tests/forge-pages/release-view.test.ts
+- tests/forge-pages/releases.test.ts
+- tests/forge-pages/repo-view.test.ts
+- tests/forge-pages/table.test.ts
+- tests/forge-pages/traced.test.ts
+- tests/forge-service/hooks.test.ts
+- tests/forge-service/research.test.ts
+- worker/forge/gitbackend.ts
+- worker/forge/github/git.ts
+- worker/forge/service/act-issues.ts
+- worker/forge/service/act-pulls.ts
+- worker/forge/service/act-releases.ts
+- worker/forge/service/act-research.ts
+- worker/forge/service/act-wiki.ts
+- worker/forge/service/act.ts
+- worker/forge/service/hooks.ts
+- worker/forge/service/members.ts
+- worker/forge/service/moderation.ts
+- worker/forge/service/research-core.ts
+- worker/forge/service/snippets-core.ts
+- worker/forge/service/start.ts

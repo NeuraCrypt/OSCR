@@ -114,7 +114,7 @@ async function sendOnce(s: Sender, url: string, body: string, headers: Record<st
     const ms = Math.max(0, s.now() - start);
     const st = res.status;
     if (st >= 200 && st < 300) return { ok: true, status: st, ms, words: "delivered", retry: false };
-    if (st >= 300 && st < 400) return { ok: false, status: st, ms, words: "a redirection, not followed", retry: false };
+    if (st >= 300 && st < 400) return { ok: false, status: st, ms, words: "a redirection, which is never followed", retry: false };
     return { ok: false, status: st, ms, words: `the receiver answered ${st}`, retry: st >= 500 || st === 408 || st === 429 };
   } catch (e) {
     const name = (e as Error)?.name ?? "";

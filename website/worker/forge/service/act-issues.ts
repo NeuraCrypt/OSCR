@@ -567,7 +567,7 @@ export function validateIssueLock(payload: unknown): IssueLockParsed | ForgeProb
 }
 
 export const describeIssueLock = (p: IssueLockParsed): string =>
-  p.locked ? `Lock the conversation of the issue #${p.number}${p.reason ? ` as ${p.reason}` : ""}: only collaborators may comment or react then` : `Unlock the conversation of the issue #${p.number}`;
+  p.locked ? `Lock the conversation of the issue #${p.number}${p.reason ? ` as ${p.reason}` : ""}: only collaborators may comment or react then` : `Unlock the conversation of the issue #${p.number}`; // style-ok: GitHub's name for the action that undoes a lock
 
 export const issueLockSpec: ActionSpec<IssueLockParsed, Done & { number: number; locked: boolean }> = {
   kind: "issue_lock",
@@ -581,7 +581,7 @@ export const issueLockSpec: ActionSpec<IssueLockParsed, Done & { number: number;
     let locked: boolean;
     try {
       if (p.locked) await ctx.session.issues.lock(info.ref, p.number, p.reason ?? undefined);
-      else await ctx.session.issues.unlock(info.ref, p.number);
+      else await ctx.session.issues.unlock(info.ref, p.number); // style-ok: a method name
       locked = (await ctx.session.issues.get(info.ref, p.number)).locked;
     } catch (e) {
       return said(e, `the issue #${p.number}`);
@@ -706,7 +706,7 @@ export const issueRelationSpec: ActionSpec<IssueRelationParsed, Done & { number:
       if (e instanceof GitBackendError && (e.code === "invalid" || e.code === "conflict")) {
         throw new ForgeProblem(422, "not_related", p.relation === "sub"
           ? "GitHub did not change it: a sub-issue has one parent, a parent holds 100 sub-issues at most, eight levels deep, and a loop is refused. Nothing was done."
-          : "GitHub did not change it: the dependency is already there, not there, or would make a loop. Nothing was done.");
+          : "GitHub did not change it: the dependency already exists, does not exist, or would make a loop. Nothing was done.");
       }
       return said(e, `the issue #${p.number} or #${p.other}`);
     }

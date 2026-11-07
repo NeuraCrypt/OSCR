@@ -339,7 +339,7 @@ async function buildForm(into: HTMLElement, env: CodeEnv, c: CompareContext, sid
       ? el("ul", { class: "pull-suggested" }, ...suggested.map((s) =>
           s.login
             ? el("li", {}, el("button", { type: "button", class: "link", "data-login": s.login }, `Ask ${s.login}`), maskEmails(`: ${s.reasons.join("; ")}`))
-            : el("li", {}, maskEmails(`${s.owner ? ownerInWords(s.owner) : "An owner"}: ${s.reasons.join("; ")} (the registry asks people, not teams or addresses)`)),
+            : el("li", {}, maskEmails(`${s.owner ? ownerInWords(s.owner) : "An owner"}: ${s.reasons.join("; ")} (the registry asks people only: it does not ask teams or addresses)`)),
         ))
       : null,
     el("div", { class: "pull-summary" }, el("p", { class: "traced-title" }, "The change, in numbers"), ...summary.map((s) => el("p", {}, s))),

@@ -7,14 +7,14 @@ import { SITE_NAME } from "../config";
 ---
 <Base
   title="Notifications"
-  description="Your notifications: the repositories and papers you watch, the conversations you take part in, where you are mentioned. In the site only: no email is ever sent."
+  description="Your notifications: the repositories and papers you watch, the conversations you take part in, where you are mentioned. They appear in the site only, and no email is ever sent."
   breadcrumb={[{ text: "Notifications" }]}
 >
   <div id="notifications-shell" data-site={SITE_NAME}>
     <h1>Notifications</h1>
     <p class="summary" aria-live="polite">Reading your notifications…</p>
     <noscript><p class="warning">This page reads your notifications in your browser, which needs JavaScript.</p></noscript>
-    <p>{SITE_NAME}'s notifications stay in this site: no email is ever sent, and no email address is asked for.</p>
+    <p>{SITE_NAME}'s notifications appear only in this site. {SITE_NAME} never sends an email and never asks for an email address.</p>
   </div>
   <script>
     import "../scripts/notifications";

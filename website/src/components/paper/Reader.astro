@@ -108,7 +108,7 @@ const json = JSON.stringify(data).replace(/</g, "\\u003c");
         The {plural(pairs.length, "match", "matches")}{wholes > 0 && (
           <span class="muted">
             {" "}· {wholes === pairs.length ? (wholes === 1 ? "it ties" : "all tie") : `${wholes} of them tie`} a paragraph to a whole
-            file, not to given lines: {wholes === 1 ? "a weak match" : "weak matches"}, whose lines are not tinted
+            file without given lines: {wholes === 1 ? "a weak match" : "weak matches"}, whose lines are not tinted
           </span>
         )}
       </summary>
@@ -116,7 +116,7 @@ const json = JSON.stringify(data).replace(/</g, "\\u003c");
         {pairs.map((p) => (
           <li>
             <a class={pairClass(p.pair)} href={`#pair-${p.pair}`} data-pair={p.pair}>
-              [{p.pair}] {p.label} ↔ {p.path}, {p.whole ? "the whole file" : `lines ${p.start}–${p.end}`}
+              [{p.pair}] {p.label} ↔ {p.path}, {p.whole ? "the whole file" : `lines ${p.start} to ${p.end}`}
             </a>
             {p.whole && <span class="muted"> · a weak match</span>}
             {typeof p.score === "number" && <span class="muted"> · score {p.score.toFixed(2)}</span>}
@@ -134,7 +134,7 @@ const json = JSON.stringify(data).replace(/</g, "\\u003c");
       <header>
         <h3 id="paper-title">Paper</h3>
         <p>
-          Loaded from <span id="paper-source">Europe PMC</span> by your browser, not stored by {SITE_NAME}: <a href={doiUrl}>doi.org</a> ·{" "}
+          Loaded from <span id="paper-source">Europe PMC</span> by your browser; {SITE_NAME} does not store it: <a href={doiUrl}>doi.org</a> ·{" "}
           <a href={epmcUrl}>Europe PMC</a>
         </p>
       </header>

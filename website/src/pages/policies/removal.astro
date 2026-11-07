@@ -27,21 +27,23 @@ const toc = [
   toc={toc}
 >
   <p class="lead" slot="lead">
-    {SITE_NAME} publishes records of papers and copies of code that their licences allow. Anyone may still ask for a
-    record, or part of it, to be removed: published rules decide every request, in the safe direction, and the answer
-    comes back in words. There is no human moderator on duty at the moment: what the rules cannot decide waits for the
-    operator, {REVIEW_DAYS} days at most, or, asked for personal data, until the operator answers, within one month.
+    {SITE_NAME} publishes records of papers, and copies of code when their licences allow it. Anyone may ask for a
+    record, or part of it, to be removed. Published rules decide each request, and choose the safer outcome when in
+    doubt; the answer is given in words. At the moment no human moderator is on duty: a request the rules cannot decide
+    waits for the operator, {REVIEW_DAYS} days at most. A request about personal data waits until the operator answers
+    it, within one month.
   </p>
 
   <h2 id="scope">What may be removed</h2>
   <ul>
     <li>a paper's whole record;</li>
-    <li>the copies of its authors' scripts, all of them, one repository's, or one file's, or, for code {SITE_NAME} does
+    <li>the copies of its authors' scripts (all of them, one repository's or one file's) or, for code {SITE_NAME} does
       not copy, their display from their source (the files stay listed with their links to the source);</li>
     <li>its tracing map, with its matches, validations and DOI on the site.</li>
   </ul>
   <p>
-    A record's links are better corrected than removed, by its authors (<a href="/help/correct/">how</a>). Data about
+    If a record's links are wrong, its authors can correct them (<a href="/help/correct/">how</a>), which keeps the rest
+    of the record. Data about
     you, including the contact details kept privately, follow the <a href="/privacy/#rights">privacy page</a>, through
     the same form.
   </p>
@@ -50,32 +52,33 @@ const toc = [
   <p>
     Anyone signed in: an author of the paper (marked verified when their ORCID iD is on the paper), the holder of the
     rights, a person named in the record, or someone else. Signing in is required until the site has its own bot
-    check; it asks for no email address, it lets the answer reach you, and it tells the rules who asks.
+    check. It asks for no email address. It lets the answer reach you and tells the rules who asks.
   </p>
 
   <h2 id="how">How to ask</h2>
   <p>
-    From the paper's page, "Request removal", or <a href="/removal/">the removal page</a>: who you are, what to remove,
-    why (copyright or licence, personal data, wrongly attributed or not your work, a retracted paper, an incorrect
-    record, another reason), a justification of 30 to 2,000 characters, an optional evidence link, and two
-    confirmations; then a review before sending (<a href="/help/removal/">the guide</a>).
+    Use "Request removal" on the paper's page, or <a href="/removal/">the removal page</a>. The form asks who you are,
+    what to remove, why (copyright or licence, personal data, wrongly attributed or not your work, a retracted paper, an
+    incorrect record, another reason), a justification of 30 to 2,000 characters, an optional evidence link, and two
+    confirmations. You then review the request before sending it (<a href="/help/removal/">the guide</a>).
   </p>
 
   <h2 id="decisions">How requests are decided</h2>
   <p>
     {SITE_NAME}'s machine applies published rules to each request within minutes; the{" "}
-    <PageLink href="/policies/moderation/">moderation policy</PageLink> gives them in full. In short:
+    <PageLink href="/policies/moderation/">moderation policy</PageLink> gives them in full. Here is a summary:
   </p>
   <ul>
     <li>from a verified author of the paper: applied at once, whatever it names;</li>
     <li>for the copies of code its requester maintains as the repository's owner or a public member of its organization
-      on GitHub, or as a maintainer the operator made (not as a contributor): applied at once;</li>
+      on GitHub, or as a maintainer the operator made (a contributor does not qualify): applied at once;</li>
     <li>for copies of the authors' code, for copyright or personal data, from anyone: hidden at once, within daily
       limits, pending the operator's review;</li>
-    <li>anything else, a whole record, a tracing map, another reason: nothing is removed; the request waits for the
-      operator, {REVIEW_DAYS} days at most, to be read with the record it names, the requester's role and the evidence
-      given. Unreviewed, it is closed without removal, with how to ask again, except a request made for personal data,
-      which the operator answers within one month, as the GDPR requires, and which is never closed unanswered.</li>
+    <li>any other request (a whole record, a tracing map, another reason): nothing is removed, and the request waits for
+      the operator, {REVIEW_DAYS} days at most, who reads it with the record it names, the requester's role and the
+      evidence given. If no one reviews it, it is closed without removal, with how to ask again. A request made for
+      personal data is the exception: the operator answers it within one month, as the GDPR requires, and it is not
+      closed without an answer.</li>
   </ul>
   <p>
     Every decision comes with a few words the requester reads on the request's page and on their account page. The rule
@@ -84,8 +87,7 @@ const toc = [
 
   <h2 id="effect">What an accepted request does</h2>
   <p>
-    What it names leaves every public output at the <strong>next nightly publication</strong> (04:17, the operator's local
-    time): the site, the DOI lookup, the search, the facts the sign-in uses, and the open data.
+    What it names leaves every public output at the next nightly publication (04:17, the operator's local time): the site, the DOI lookup, the search, the facts the sign-in uses, and the open data.
   </p>
   <ul>
     <li>A whole record: the paper leaves as an off-topic paper does, everywhere; the operator's computer keeps it, marked
@@ -93,16 +95,16 @@ const toc = [
     <li>Copies: their text leaves the site's files, the public database and the scripts' dataset (its manifests), and the
       files {SITE_NAME} does not copy are no longer fetched from their source; the files stay listed, with their links,
       and the reader says "withheld at a removal request".</li>
-    <li>A map: its section says it is withheld, with neither digest (nothing left to validate), matches, validations nor
-      DOI, on the site, in the open data and in the search.</li>
+    <li>A map: its section says it is withheld, and the site, the open data and the search show no digest (so there is
+      nothing left to validate), matches, validations or DOI for it.</li>
   </ul>
 
   <h2 id="permanent">What cannot be undone elsewhere</h2>
   <ul>
     <li>A copy already in a published Parquet block on Hugging Face stays in that block, since a published block never
-      changes: the manifest that points to it is withdrawn, so no reader of the dataset finds it.</li>
+      changes: the manifest that points to it is withdrawn, so readers of the dataset cannot find it.</li>
     <li>A DOI given to a validated map stays on Zenodo, since a DOI is permanent; the site no longer shows it.</li>
-    <li>Copies others made while it was public are beyond the registry's reach.</li>
+    <li>The registry cannot remove copies that other people made while it was public.</li>
   </ul>
 
   <h2 id="rejected">A rejected request</h2>
@@ -116,7 +118,7 @@ const toc = [
 
   <h2 id="back">Coming back</h2>
   <p>
-    A record withdrawn or a copy withheld comes back only by the operator's hand: when the operator reverses what the
+    A record withdrawn or a copy withheld can come back only through the operator: when the operator reverses what the
     rules did (copies hidden without reason, for instance), or at the request of the person who asked for its removal.
   </p>
 </Info>

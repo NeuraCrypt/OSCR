@@ -140,7 +140,7 @@ describe("Markdown templates and config.yml", () => {
 
 describe("the research forms", () => {
   test("three, in order, their typed fields named", () => {
-    assert.deepEqual(RESEARCH_FORMS.map((f) => [f.research, f.name]), [["mismatch", "Code–paper mismatch"], ["reproduction", "Reproduction failure"], ["code_error", "Code error"]]);
+    assert.deepEqual(RESEARCH_FORMS.map((f) => [f.research, f.name]), [["mismatch", "Code-paper mismatch"], ["reproduction", "Reproduction failure"], ["code_error", "Code error"]]);
     assert.ok(researchForm("mismatch").elements.some((e) => e.research === "paragraph" && e.required));
     assert.deepEqual(readLines("L12-L18"), { start: 12, end: 18 });
     assert.deepEqual(readLines("7"), { start: 7, end: 7 });

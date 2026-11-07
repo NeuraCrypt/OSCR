@@ -7,7 +7,7 @@ import { HELP } from "../../lib/info";
 
 const by = (hrefs: string[]) => hrefs.map((h) => HELP.find((l) => l.href === h)!).filter(Boolean);
 const groups = [
-  { id: "finding", title: "Finding and reading", links: by(["/help/search/", "/help/paper/", "/help/reader/", "/help/maps/"]) },
+  { id: "finding", title: "Finding and reading", links: by(["/help/verification/", "/help/search/", "/help/paper/", "/help/reader/", "/help/maps/"]) },
   { id: "account", title: "Your account", links: by(["/help/accounts/"]) },
   {
     id: "contributing",

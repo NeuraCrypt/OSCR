@@ -1,5 +1,5 @@
 // POST /api/forge/start: the first half of one authorized action (D00-4; the design's §10.2 steps
-// 1–3; docs/FORGE.md "One authorized action").
+// 1 to 3; docs/FORGE.md "One authorized action").
 //
 // Signed in (account/guard.ts `signedIn`: the site's Origin and the session's CSRF token), a JSON
 // body of at most START_BODY_BYTES: {kind, repo, branch, expectedHead, digest, back, install?}, the

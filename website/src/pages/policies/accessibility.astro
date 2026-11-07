@@ -20,37 +20,37 @@ const toc = [
   toc={toc}
 >
   <p class="lead" slot="lead">
-    Research code should be readable by everyone who reads research. {SITE_NAME} aims at the Web Content Accessibility
-    Guidelines (WCAG) 2.2, level AA. It has not been audited against them, and does not claim to conform: this page says
-    what it does and what is known not to work well yet.
+    We want everyone who reads research to be able to read its code on {SITE_NAME}. The site aims at the Web Content
+    Accessibility Guidelines (WCAG) 2.2, level AA. It has not been audited against them and does not claim to conform.
+    This page says what it does and what is known not to work well yet.
   </p>
 
   <h2 id="aim">The aim</h2>
   <p>
-    Plain pages, built ahead of time, in one stylesheet, with the structure of a scientific archive: headings, lists,
-    tables and words, rather than widgets and colours.
+    The site is made of plain pages, built ahead of time, with one stylesheet and the structure of a scientific archive:
+    headings, lists, tables and words. It keeps widgets to a minimum and does not rely on colour.
   </p>
 
   <h2 id="does">What the site does</h2>
   <ul>
-    <li><strong>Structure</strong>: the language of each page is declared; each page has one main heading, then headings
+    <li>The language of each page is declared; each page has one main heading, then headings
       in order; the masthead, the breadcrumb, the main content and the footer are landmarks; lists are lists and tables
       have headers.</li>
-    <li><strong>Words before colours</strong>: a paper's status is said in words, never by a colour or a badge alone; the
-      Code ↔ Paper reader lists every match in words, beside its colours.</li>
-    <li><strong>Keyboard</strong>: every link, button and field can be reached and used with the keyboard, with a visible
+    <li>A paper's status is said in words, and not by a colour or a badge alone. The Code ↔ Paper reader lists every
+      match in words, beside its colours.</li>
+    <li>Every link, button and field can be reached and used with the keyboard, with a visible
       focus outline; the reader's panes can be focused and scrolled.</li>
-    <li><strong>Forms</strong>: every field has a label; results and errors are announced to screen readers
-      (<code>role="status"</code>, <code>role="alert"</code>); nothing is sent before a review, for the removal request.</li>
-    <li><strong>Zoom and small screens</strong>: the pages reflow down to a phone's width without scrolling sideways,
+    <li>Every form field has a label; results and errors are announced to screen readers
+      (<code>role="status"</code>, <code>role="alert"</code>); the removal request is sent only after you review it.</li>
+    <li>The pages reflow down to a phone's width without scrolling sideways,
       and the browser's zoom enlarges everything; long names, addresses and titles wrap.</li>
-    <li><strong>Contrast</strong>: text on the default ground meets a contrast of 4.5:1; the code's syntax colours keep
+    <li>Text on the default ground meets a contrast of 4.5:1; the code's syntax colours keep
       4.5:1 on every shade of the reader's matches.</li>
-    <li><strong>Motion</strong>: the only animation, a loading bar, stops when your system asks for reduced motion.</li>
-    <li><strong>Images</strong>: the logo and the badge have text alternatives; the site has no image that carries
+    <li>The only animation, a loading bar, stops when your system asks for reduced motion.</li>
+    <li>The logo and the badge have text alternatives; the site has no image that carries
       information without words.</li>
-    <li><strong>Without JavaScript</strong>: every static page, a paper's record, the lists, the categories, the
-      information pages, reads whole.</li>
+    <li>Every static page (a paper's record, the lists, the categories, the information pages) can be read whole without
+      JavaScript.</li>
   </ul>
 
   <h2 id="limits">Known limits</h2>

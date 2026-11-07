@@ -439,7 +439,7 @@ export function papersBlock(layer: ShellLayer | null, siteIn?: string | null): E
     out.push(h("p", null, "Not attached to any paper yet."));
   } else {
     out.push(
-      h("ul", null, layer.papers.map((p) => h("li", null, paperLink(p), p.status === "proposed" ? " (proposed, not confirmed yet)" : null))),
+      h("ul", null, layer.papers.map((p) => h("li", null, paperLink(p), p.status === "proposed" ? " (proposed, waiting for confirmation)" : null))),
     );
   }
   if (layer && layer.maps > 0) {

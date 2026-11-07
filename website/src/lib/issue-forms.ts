@@ -2,7 +2,7 @@
 // what they say (Markdown templates with their front matter; issue forms, a YAML subset read by
 // citation.ts's reader; config.yml's blank-issue switch and contact links), GitHub's validation of a
 // form, the answers turned into the issue's text as GitHub writes it, and the registry's three
-// research forms ("Code error", "Code–paper mismatch", "Reproduction failure"), offered by default
+// research forms ("Code error", "Code-paper mismatch", "Reproduction failure"), offered by default
 // when a repository has none of its own for them. Pure, no DOM, testable in Node
 // (tests/forge-pages/issue-forms.test.ts). Nothing here ever runs: a form is data, rendered as view
 // trees by the pages.
@@ -341,7 +341,7 @@ const research = (type: ResearchType, name: string, about: string, elements: For
 /** The three research forms, in this order. They are the registry's own objects (research issues,
  *  D00-6): answered, they open a research issue, not a GitHub issue. */
 export const RESEARCH_FORMS: readonly IssueTemplate[] = [
-  research("mismatch", "Code–paper mismatch", "The code does not do what the paper says, at one place of each: the paragraph, and the lines.", [
+  research("mismatch", "Code-paper mismatch", "The code does not do what the paper says, at one place of each: the paragraph, and the lines.", [
     intro("Name the paper's paragraph and the lines of the code that disagree. The tracing map links them; the paper's authors and the code's maintainers read this."),
     field("paragraph", "input", "The paper's paragraph", "Its number, as the tracing map and the reader number it.", true),
     field("section", "input", "Its section", "The heading, when you know it (2.3 Filtering)."),
@@ -374,9 +374,9 @@ export const RESEARCH_FORMS: readonly IssueTemplate[] = [
 
 export const researchForm = (type: ResearchType): IssueTemplate => RESEARCH_FORMS.find((f) => f.research === type) as IssueTemplate;
 
-/** "12", "12-18", "L12-L18", "12–18": {start, end}, or null. */
+/** "12", "12-18", "L12-L18", "12–18": {start, end}, or null. style-ok: a reader may type an en dash */
 export function readLines(text: string): { start: number; end: number } | null {
-  const m = /^\s*L?(\d{1,7})\s*(?:[-–:]\s*L?(\d{1,7}))?\s*$/i.exec(text);
+  const m = /^\s*L?(\d{1,7})\s*(?:[-–:]\s*L?(\d{1,7}))?\s*$/i.exec(text); // style-ok: accepts an en dash typed by a reader
   if (!m) return null;
   const start = Number(m[1]);
   const end = m[2] ? Number(m[2]) : start;

@@ -5,7 +5,7 @@
 /** The status, in words; `tone` is `ok`, `warning` or nothing (science.css). */
 export const STATUSES: Record<string, { label: string; tone: "ok" | "warning" | "" }> = {
   code_verified: { label: "code verified", tone: "ok" },
-  code_found: { label: "code found, not verified yet", tone: "warning" },
+  code_found: { label: "code found, still to be checked", tone: "warning" },
   code_empty: { label: "empty repository", tone: "warning" },
   code_dead: { label: "dead link", tone: "warning" },
   on_request: { label: "code on request", tone: "" },

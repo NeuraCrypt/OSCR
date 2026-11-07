@@ -34,7 +34,7 @@ export const PREFERENCES: readonly Preference[] = [
     key: "pref.theme",
     attr: "data-theme",
     label: "Theme",
-    help: "Light is the default. A dark theme is here if you want it; it is never forced on you.",
+    help: "Light is the default. You can choose a dark theme here; the site switches to it only when you choose it.",
     options: [
       { value: "light", label: "Light (default)" },
       { value: "dark", label: "Dark" },
@@ -54,7 +54,7 @@ export const PREFERENCES: readonly Preference[] = [
     key: "pref.vision",
     attr: "data-vision",
     label: "Colour-vision palette",
-    help: "Changes the colours of the charts and the coloured marks so each one stays distinct. It does not change anything else.",
+    help: "Changes the colours of the charts and the coloured marks so each one stays distinct. Nothing else changes.",
     options: [
       { value: "default", label: "Default palette" },
       { value: "deuteranopia", label: "Deuteranopia and protanopia (red and green)" },
@@ -65,7 +65,7 @@ export const PREFERENCES: readonly Preference[] = [
     key: "pref.underline",
     attr: "data-underline",
     label: "Link underlines",
-    help: "Underline every link, not only the one under the pointer.",
+    help: "Choose whether links are underlined only under the pointer, or at all times.",
     options: [
       { value: "hover", label: "On hover (default)" },
       { value: "always", label: "Always" },
@@ -75,7 +75,7 @@ export const PREFERENCES: readonly Preference[] = [
     key: "pref.motion",
     attr: "data-motion",
     label: "Motion",
-    help: "Stop the few transitions. Your system's reduced-motion setting is honoured on its own; this forces it.",
+    help: "Stops the site's few transitions. The site already follows your system's reduced-motion setting; this choice stops them even when that setting is off.",
     options: [
       { value: "system", label: "Follow the system (default)" },
       { value: "reduced", label: "Reduce motion" },

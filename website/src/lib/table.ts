@@ -101,7 +101,7 @@ export function tableView(parsed: Parsed): El {
   const numericCol = Array.from({ length: width }, (_, c) => body.length > 0 && body.every((r) => r[c] === undefined || r[c] === "" || numeric(r[c])));
   const cls = (c: number) => (numericCol[c] ? "num" : null);
   const notes: El[] = [];
-  if (parsed.ragged) notes.push(h("p", { class: "warning" }, `Row ${parsed.ragged.row} has ${parsed.ragged.columns} ${parsed.ragged.columns === 1 ? "column" : "columns"}, not ${parsed.ragged.expected} as the header: the table may read wrongly, the source is exact.`));
+  if (parsed.ragged) notes.push(h("p", { class: "warning" }, `Row ${parsed.ragged.row} has ${parsed.ragged.columns} ${parsed.ragged.columns === 1 ? "column" : "columns"} and the header has ${parsed.ragged.expected}: the table may read wrongly, the source is exact.`));
   if (parsed.unclosed) notes.push(h("p", { class: "warning" }, "A quoted field never closes: the table may read wrongly, the source is exact."));
   const shown = body.length;
   const all = shown + parsed.more;

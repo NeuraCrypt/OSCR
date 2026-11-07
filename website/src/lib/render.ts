@@ -452,7 +452,7 @@ const STATES: Record<string, string> = {
 };
 const WITHOUT: Record<string, string> = {
   on_request: "The paper says that its authors' code is available on request: it was not published with the paper, so there is nothing to verify.",
-  data_only: "The paper links to its data, not to its authors' code: see the Data section.",
+  data_only: "The paper links to its data and to no code of its authors: see the Data section.",
 };
 /** A consortium paper lists hundreds of authors: the first ones, then folded. */
 const SHOWN = 20;
@@ -603,7 +603,7 @@ export function paperView(p: PaperRecord, origin = "", name = ""): View {
     line("Journal", p.journal.text ? a(p.journal.text, p.journal.href) : "n/a"),
     p.published ? line("Published", esc(/^\d{4}-\d{2}-\d{2}$/.test(p.published) ? dateInWords(p.published) : dayInWords(p.published))) : "",
     p.type ? line("Type", esc(p.type)) : "",
-    line("Status", statusWords(p.status)),
+    line("Status", `${statusWords(p.status)} (<a href="/help/verification/">how the code is found and verified</a>)`),
     line("DOI", a(p.doi, doiUrl(p.doi))),
     p.license ? line("License", esc(p.license)) : "",
     p.institutions.length ? line("Institutions", links(p.institutions)) : "",
@@ -667,7 +667,7 @@ export function paperView(p: PaperRecord, origin = "", name = ""): View {
   const s = status(p.status);
   return {
     title: p.title,
-    description: hasCode ? `The code published by the authors of “${p.title}”.` : `“${p.title}”: ${s.label}.`,
+    description: hasCode ? `The code published by the authors of "${p.title}".` : `"${p.title}": ${s.label}.`,
     crumb: `doi:${p.doi}`,
     html: `<div class="record"><div class="body">${body}</div>${sidebar}</div>`,
   };

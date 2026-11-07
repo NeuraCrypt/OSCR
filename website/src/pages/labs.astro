@@ -79,7 +79,7 @@ const toc = [
       with its evidence and score.</dd>
     <dt>The paper from two sources</dt>
     <dd>When Europe PMC does not answer, the reader reads PubMed Central's copy, whose paragraphs may be numbered
-      otherwise, and places each match by its section and evidence terms.</dd>
+      differently, and places each match by its section and evidence terms.</dd>
     <dt>The classification</dt>
     <dd>Rules over a paper's title, keywords, MeSH terms, subjects, abstract and journal, with their reasons; a local
       model will settle the ambiguous cases once compared with hand labels (<a href="/taxonomy/#method">how</a>).</dd>
@@ -107,8 +107,8 @@ const toc = [
   </p>
   <pre>{hyparquet}</pre>
   <p>
-    Check the file's <code>sha256</code> against the manifest's, and keep the licence the manifest names. A block, once
-    published, never changes: its rows can be cached for good.
+    Check the file's <code>sha256</code> against the manifest's, and keep the licence the manifest names. A published
+    block never changes, so its rows can be cached permanently.
   </p>
 
   <h2 id="maps">The tracing maps' format</h2>
@@ -134,7 +134,7 @@ const toc = [
   </p>
 
   <h2 id="site-files">The site's own files</h2>
-  <p>Every record the pages show is a public, static JSON file, rebuilt every night. They serve the pages first; their layout may change.</p>
+  <p>Every record the pages show is a public, static JSON file, rebuilt every night. The files are made for the pages, and their layout may change.</p>
   <dl class="terms">
     <dt><code>/lookup/NN.json</code></dt>
     <dd>The DOI lookup: {number(16 ** LOOKUP_HEX)} shards; <code>NN</code> is the first {LOOKUP_HEX} hex characters of the
@@ -155,8 +155,8 @@ const toc = [
 
   <h2 id="search-api">The search's API</h2>
   <p>
-    The search page asks <code>GET /api/search</code>, which anyone may call, each call counts against the site's daily
-    free quota, so call it sparingly:
+    The search page calls <code>GET /api/search</code>. Anyone may call it. Each call counts against the site's daily
+    free quota, so please call it sparingly.
   </p>
   <pre>{`${site}api/search?q=eeg&modality=eeg&sort=newest&page=1&size=20
 ${site}api/search?q=tool:mne&format=csv        (the first 500 results, CSV or JSON)`}</pre>
@@ -166,7 +166,7 @@ ${site}api/search?q=tool:mne&format=csv        (the first 500 results, CSV or JS
     <code>tool</code>, <code>language</code>, <code>journal</code>, <code>data</code>, <code>host</code>,{" "}
     <code>code_license</code>, <code>type</code>, <code>license</code>, <code>matches</code>, <code>oa</code>, repeated
     for OR), <code>from</code>, <code>to</code>, <code>sort</code> (relevance, newest, oldest, cited), <code>page</code>,{" "}
-    <code>size</code> (1–50), <code>format</code>. The answer is JSON: the results, the total (exact up to 500), the
+    <code>size</code> (1 to 50), <code>format</code>. The answer is JSON: the results, the total (exact up to 500), the
     facets' counts, and what the search cost in database rows. When the quota is spent it answers{" "}
     <code>503</code> with the code <code>quota</code>.
   </p>
@@ -177,34 +177,36 @@ ${site}api/search?q=tool:mne&format=csv        (the first 500 results, CSV or JS
   </p>
 
   <h2 id="badge">The badge</h2>
-  <p>One static image for every paper, linked to the paper's page from its code's README: <a href="/help/badge/">how</a>, and <a href="/brand/#badge">its rules</a>.</p>
+  <p>Each paper and each repository has its own badge, drawn from the registry's records, for a README to link to the paper's page. <a href="/help/badge/">The badge's guide</a> explains how to add it, and <a href="/brand/#badge">the brand page</a> gives its rules.</p>
 
   <h2 id="development">In development</h2>
   <p class="note">
-    <strong>Not available on this site.</strong> What follows is being built on branches of the{" "}
-    <a href={SOURCE_URL}>project's repository</a> that are not merged or deployed. It may change, or not ship.
+    What follows is being built on branches of the{" "}
+    <a href={SOURCE_URL}>project's repository</a> that are not merged or deployed. It is not available on this site, and
+    it may change or never be released.
   </p>
   <dl class="terms">
     <dt>A research layer over GitHub</dt>
     <dd>Researchers' repositories would stay in their own GitHub accounts, operated through a GitHub App with their
       consent, one authorization at a time, and read in {SITE_NAME}'s own viewer: the code with its tracing maps' lines in
-      colour, editing in the browser, pull requests and releases linked to the paper's versions, and research issues,
-      an error in the code, a mismatch between code and paper, a failed reproduction, attached to a paper and its map.
+      colour, editing in the browser, pull requests and releases linked to the paper's versions, and research issues
+      attached to a paper and its map (for example an error in the code, a mismatch between code and paper, or a failed
+      reproduction).
       GitHub would be the storage, and the last resort for what the registry cannot show.</dd>
     <dt>The <code>oscr</code> command line for researchers</dt>
     <dd>A program for the terminal, standard-library Python only, that links a repository to its paper, checks it as the
       registry does, traces its lines to the paragraphs of the Methods, produces a citation, and works with the GitHub
-      repository, never running the code it reads. Not published yet.</dd>
+      repository. It does not run the code it reads. It is not published yet.</dd>
     <dt>A token layer over the API, with write routes</dt>
     <dd>On top of the keyless read API (which is live: see <a href="/api/">the API page</a>), authenticated write routes
       under <code>/api/forge/v1/</code> (kept off <code>/api/v1/</code>, which the keyless read API owns), by personal
-      tokens only, shown once, stored as a digest, each with its rights and an expiry, with limits per token. A token
-      would never be required to read.</dd>
-    <dt>Checks that never run the code</dt>
+      tokens only. Each token would be shown once, stored as a digest, and have its own rights, expiry and limits. Reading
+      would never need a token.</dd>
+    <dt>Checks that read the code as text</dt>
     <dd>On a repository's pull requests and at any commit: its licence, an environment file saying how the code runs
       again, its link to the paper's DOI, a usable CITATION.cff, the files its tracing maps point to, file sizes, a README
-      that says how to run it, read as text, nothing built, installed or executed; a change fails only when it breaks
-      what a paper relies on.</dd>
+      that says how to run it. The checks read the files as text and do not build, install or run anything. A change fails
+      only when it breaks what a paper relies on.</dd>
   </dl>
 
   <h2 id="feedback">Feedback</h2>

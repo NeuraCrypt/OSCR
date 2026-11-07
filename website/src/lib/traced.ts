@@ -368,7 +368,7 @@ export function commitTouches(touched: readonly Touched[], what: { subject: stri
     h("p", { class: "traced-title" }, "Tracing maps"),
     changed.length
       ? h("p", null, `${what.subject} ${what.verb} lines that ${changed.length === 1 ? "a tracing map links" : "tracing maps link"} to a paper:`)
-      : h("p", null, `${what.subject} ${what.verb} ${touched.length === 1 ? "a file" : "files"} a tracing map links, not the linked lines${unknown.length ? " as far as they can be found" : ""}.`),
+      : h("p", null, `${what.subject} ${what.verb} ${touched.length === 1 ? "a file" : "files"} a tracing map links, outside the linked lines${unknown.length ? " as far as they can be found" : ""}.`),
     changed.length ? h("ul", null, ...changed.map(item)) : null,
     unknown.length ? h("p", null, `${unknown.length === 1 ? "One link" : `${unknown.length} links`} could not be found in the ${what.subject === "This commit" ? "commit's parent" : "version it starts from"} (the file changed too much since the map's commit):`) : null,
     unknown.length ? h("ul", null, ...unknown.map(item)) : null,

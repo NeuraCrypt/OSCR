@@ -169,7 +169,7 @@ describe("the query over both kinds", () => {
     assert.ok(match(items[4], 'outcome:"not reproduced"'));
     assert.ok(!match(items[0], "doi:10.1234/eeg.2026"));
     assert.ok(match(items[4], "has:label") === false);
-    assert.equal(typeInWords(items[3]), "Code–paper mismatch");
+    assert.equal(typeInWords(items[3]), "Code-paper mismatch");
     assert.equal(typeInWords(items[2]), "Bug");
   });
 

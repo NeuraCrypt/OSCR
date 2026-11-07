@@ -44,11 +44,10 @@ const toc = [
 
   <h2 id="paper">Where the paper comes from</h2>
   <p>
-    The paper is not stored by {SITE_NAME}, nor sent by it: when the pane is shown, <strong>your browser</strong> fetches
-    the paper's full text from Europe PMC (the open-access XML) and shows it as plain text, its paragraphs numbered in
-    the XML's order. Europe PMC often takes a few seconds; the pane says it is loading, and when it is slow. A try waits
+    When the pane is shown, your browser fetches the paper's full text from Europe PMC (the open-access XML) and shows
+    it as plain text, its paragraphs numbered in the XML's order. {SITE_NAME} does not store or send the paper. Europe PMC often takes a few seconds; the pane says it is loading, and when it is slow. A try waits
     20 seconds and is made once more. If Europe PMC still does not answer, a paper in PubMed Central is read from NCBI's
-    copy instead, and the pane says so; its paragraphs may be numbered otherwise, so each match is placed by its section
+    copy instead, and the pane says so; its paragraphs may be numbered differently, so each match is placed by its section
     and its evidence terms. When neither answers, the pane keeps links to the paper at doi.org and on Europe PMC, and a
     button to try again. Without JavaScript, only those links are there.
   </p>
@@ -70,12 +69,12 @@ const toc = [
     <li>Click coloured lines: their paragraph comes into view, in the paper pane.</li>
     <li>"The matches", above the panes, unfolds the list of every match: the paragraph's section, the file and its
       lines, the score, and the evidence, a few short technical terms that both sides share (identifiers, constants,
-      tool names), never a sentence of the paper. Each entry opens its match on both sides.</li>
+      tool names); the list does not quote sentences of the paper. Each entry opens its match on both sides.</li>
   </ul>
   <p>
     Matches are computed by the harvester beforehand (method <code>lexical-v1</code>): a pair is kept only when several
-    rare terms agree on both sides. They are proposals, not statements by the authors; a wrong one can be reported from
-    the paper's Contribute section. A paper without matches yet still shows its paper and its code side by side.
+    rare terms agree on both sides. They are proposals computed by the machine; the authors did not make them. A wrong
+    one can be reported from the paper's Contribute section. A paper without matches yet still shows its paper and its code side by side.
   </p>
 
   <h2 id="weak">Weak matches</h2>
@@ -100,16 +99,15 @@ const toc = [
 
   <h2 id="files">The files, and the tools of a file</h2>
   <ul>
-    <li><strong>Files</strong> opens or closes the list of the code's files: the matched files first, then the
-      repository's folders, with a filter. A file that cannot be shown here, neither copied nor shown from its source,
-      is in italics.</li>
-    <li><strong>Wrap</strong> wraps long lines instead of scrolling sideways.</li>
-    <li><strong>Copy</strong> copies the whole file; line numbers are never part of what you copy.</li>
-    <li><strong>Link</strong> copies a link to the file, or to the lines you selected: click a line number, and
-      Shift-click another for a range.</li>
-    <li><strong>Raw</strong> downloads the file as it is shown: {SITE_NAME}'s copy, or what your browser fetched from its
-      source.</li>
-    <li><strong>⋯</strong> links to the file and to its repository at the source, at the verified commit, and says why.</li>
+    <li>"Files" opens or closes the list of the code's files: the matched files first, then the repository's folders,
+      with a filter. A file that cannot be shown here (it is not copied and cannot be shown from its source) is in
+      italics.</li>
+    <li>"Wrap" wraps long lines, so that you do not scroll sideways.</li>
+    <li>"Copy" copies the whole file; the copy does not include line numbers.</li>
+    <li>"Link" copies a link to the file, or to the lines you selected: click a line number, and Shift-click another for
+      a range.</li>
+    <li>"Raw" downloads the file as it is shown: {SITE_NAME}'s copy, or what your browser fetched from its source.</li>
+    <li>"⋯" links to the file and to its repository at the source, at the verified commit, and says why.</li>
   </ul>
   <p>
     Notebooks show their cells, their Markdown as text; the syntax is coloured by language. Email addresses written in
@@ -119,7 +117,7 @@ const toc = [
   <h2 id="source">A copy, or the source</h2>
   <p>
     A file's text is shown from {SITE_NAME}'s copy only when its repository's licence allows it. Otherwise{" "}
-    {SITE_NAME} keeps no copy, and <strong>your browser</strong> fetches the file from where its authors published it, at the
+    {SITE_NAME} keeps no copy, and your browser fetches the file from where its authors published it, at the
     verified commit or record, GitHub, GitLab.com, Bitbucket, Codeberg, Hugging Face or Zenodo, or Software Heritage for
     the other forges and for a file inside a Zenodo archive. It checks that the file's SHA-256 fingerprint is the one{" "}
     {SITE_NAME} computed, hides its email addresses, and only then shows it and draws its matches, under a notice that
@@ -138,13 +136,13 @@ const toc = [
   <h2 id="phone">On a phone</h2>
   <p>
     On a narrow screen the panes are stacked, the code first; the list of files, when open, sits above the code. Long
-    lines scroll inside the code pane, never the page.
+    lines scroll inside the code pane; the page itself does not scroll sideways.
   </p>
 
   <h2 id="keyboard">Keyboard and screen readers</h2>
   <p>
     Each pane can be focused and scrolled with the keyboard; every button is a real button with a label, and the
-    paper's loading state is announced. Colours are never the only sign of a match: the list of matches names each one
+    paper's loading state is announced. Colour is not the only sign of a match: the list of matches also names each one
     in words. <a href="/policies/accessibility/">The accessibility statement</a> lists what is known not to work well
     yet.
   </p>

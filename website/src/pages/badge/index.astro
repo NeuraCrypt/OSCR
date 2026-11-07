@@ -49,10 +49,11 @@ const TARGET_WORDS: Record<string, string> = {
 >
   <h1>Badges</h1>
   <p class="summary">
-    The {SITE_NAME} badge, in the README of a paper's code, on its Hugging Face card or on a lab's page, says what the
-    registry knows of the paper and takes its readers to it: the paper beside the code, its tracing map, its citation.
-    Give a DOI or a repository's address; the badge stays true by itself, since the registry draws it from its own
-    records every night. The <a href="/help/badge/">guide</a> explains every option.
+    The {SITE_NAME} badge goes in the README of a paper's code, on its Hugging Face card or on a lab's page. It says what
+    the registry knows of the paper, and it links to the paper's page, where readers find the paper beside the code, its
+    tracing map and its citation. Give a DOI or a repository's address below. The registry draws the badge from its own
+    records, which it updates every night, so the badge stays up to date without any change on your side. The{" "}
+    <a href="/help/badge/">guide</a> explains every option.
   </p>
 
   <form id="badge-form" class="badge-form" action="/badge/" method="get" data-origin={origin} data-name={SITE_NAME}>
@@ -95,7 +96,7 @@ const TARGET_WORDS: Record<string, string> = {
       </p>
     </details>
   </form>
-  <noscript><p class="warning">The generator runs in your browser: it needs JavaScript. The <a href="/help/badge/">guide</a> gives the addresses to write by hand.</p></noscript>
+  <noscript><p class="warning">The generator runs in your browser and needs JavaScript. The <a href="/help/badge/">guide</a> gives the addresses to write by hand.</p></noscript>
   <p id="badge-status" role="status" aria-live="polite"></p>
 
   <section id="badge-choose" hidden aria-labelledby="badge-choose-title">
@@ -117,10 +118,10 @@ const TARGET_WORDS: Record<string, string> = {
   <section id="badge-repos-block" hidden aria-labelledby="badge-repos-title">
     <h2 id="badge-repos-title">The paper's code</h2>
     <p class="summary">
-      Each repository the registry links to the paper, and whether its README carries the badge already, read now from
-      the forge by your browser. A link opens the README in the forge's own editor: paste the snippet under the title,
-      and the forge offers to commit it, or to open a pull request when you cannot write to the repository. {SITE_NAME}{" "}
-      never writes to a repository and never asks for that permission.
+      This list shows each repository the registry links to the paper, and whether its README already has the badge. Your
+      browser reads this from the forge now. A link opens the README in the forge's own editor. Paste the snippet under
+      the title, and the forge offers to commit it, or to open a pull request when you cannot write to the repository.{" "}
+      {SITE_NAME} does not write to any repository and does not ask for that permission.
     </p>
     <ul id="badge-repos" class="badge-repos"></ul>
   </section>
@@ -128,28 +129,28 @@ const TARGET_WORDS: Record<string, string> = {
   <h2 id="everywhere">Every repository at once</h2>
   <ul>
     <li>
-      <strong>A GitLab group</strong> (or a whole instance): one group badge reaches every project of the group. In the
-      group's Settings, General, Badges, add a badge with these two addresses; GitLab fills in each project's path, and a
-      project the registry does not know shows nothing.
+      On GitLab, one group badge appears on every project of the group (or of a whole instance). In the group's Settings,
+      General, Badges, add a badge with these two addresses. GitLab fills in each project's path, and a project the
+      registry does not know shows no badge.
       <dl class="settings">
         <dt>Link</dt><dd><code>{gitlab.link}</code></dd>
         <dt>Badge image URL</dt><dd><code>{gitlab.image}</code></dd>
       </dl>
     </li>
     <li>
-      <strong>Your own clones</strong>: the researchers' command line writes the badge into a README and keeps it up to
-      date, between two marks, without adding it twice: <code>oscr badge --write</code> in the clone (the{" "}
+      In your own clones, run <code>oscr badge --write</code>. The researchers' command line writes the badge into the
+      README between two marks, keeps it up to date and does not add it twice (see the{" "}
       <a href="/help/badge/#cli">guide</a>).
     </li>
     <li>
-      <strong>All your papers</strong>: signed in with your ORCID iD, <a href="/account/#badges">your account page</a>{" "}
-      lists the papers you are a verified author of, each with its badge and the repositories that still lack it.
+      When you are signed in with your ORCID iD, <a href="/account/#badges">your account page</a> lists the papers you
+      are a verified author of, each with its badge and the repositories that do not have it yet.
     </li>
   </ul>
 
   <h2 id="static">Without the registry's server</h2>
   <p>
-    Where an SVG drawn on demand cannot go, the static images never change and need nothing from the server:{" "}
+    Where an SVG drawn on demand cannot be used, use the static images. They never change and do not need the server:{" "}
     <a href="/badge.svg"><code>/badge.svg</code></a> and, for LaTeX, a word processor or an email,{" "}
     <a href="/badge.png"><code>/badge.png</code></a>. Link them to the paper's page yourself.
   </p>

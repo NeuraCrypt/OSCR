@@ -153,7 +153,7 @@ export function safeLocation(value: unknown): string | null {
 
 export type Started = { ok: true; location: string } | { ok: false; message: string; code: string; signIn?: boolean };
 
-/** Steps 1–2: keep the payload, POST start, and send the tab to GitHub. The payload never goes to
+/** Steps 1 to 2: keep the payload, POST start, and send the tab to GitHub. The payload never goes to
  *  start: only its SHA-256 does. `keep.drafts`: the editor's drafts to drop once it is done. */
 export async function startAction(input: StartInput, sentence: string, deps: ClientDeps = {}, keep: { drafts?: string[] } = {}): Promise<Started> {
   const storage = deps.storage === undefined ? sessionStore() : deps.storage;

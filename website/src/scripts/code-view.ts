@@ -320,7 +320,7 @@ export function codeView(data: ReaderData, hooks: { url(file: number, range: Ran
         li.append(
           pairLink(k, `[${k}]`, "paragraph"),
           " ",
-          link(pr.source || at, pr.whole ? "the whole file" : `lines ${pr.start}–${pr.end}`),
+          link(pr.source || at, pr.whole ? "the whole file" : `lines ${pr.start} to ${pr.end}`),
           ` ↔ ${pr.label}${pr.whole ? " · a weak match" : ""}`,
         );
         ul.append(li);
@@ -344,7 +344,7 @@ export function codeView(data: ReaderData, hooks: { url(file: number, range: Ran
     selection = r ? clampRange(r, lines.length) : null;
     if (selection) {
       for (let n = selection.start; n <= selection.end; n++) ol.children[n - 1].classList.add("is-selected");
-      linkBtn.textContent = selection.end > selection.start ? `Link to lines ${selection.start}–${selection.end}` : `Link to line ${selection.start}`;
+      linkBtn.textContent = selection.end > selection.start ? `Link to lines ${selection.start} to ${selection.end}` : `Link to line ${selection.start}`;
       if (scroll) scrollInto(viewer, ol.children[selection.start - 1] as HTMLElement, "center");
     } else linkBtn.textContent = "Link";
     return selection;
@@ -413,7 +413,7 @@ export function codeView(data: ReaderData, hooks: { url(file: number, range: Ran
     if (p.file !== current || p.file < 0) return null;
     if (!ol.hidden && lines.length) {
       pairNote = p.whole
-        ? [`Match ${p.pair} covers the whole file: a weak match, which ties its paragraph to this file rather than to given lines.`]
+        ? [`Match ${p.pair} covers the whole file: a weak match, which ties its paragraph to the file as a whole and to no given lines.`]
         : [];
       notes();
       // Its lines take its color while it is read (a line of two pairs has the narrower's).

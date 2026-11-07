@@ -151,11 +151,11 @@ export function labelsLine(names: readonly string[], colors: ReadonlyMap<string,
 }
 
 /** Where a research issue points: "the paper's paragraph 14 (2.3 Filtering) · src/filter.py, lines
- *  12–18". */
+ *  12 to 18". */
 export function whereInWords(i: Pick<IssueItem, "paragraph" | "path" | "lines"> & { section?: string }): string {
   const parts: string[] = [];
   if (i.paragraph !== null) parts.push(`the paper's paragraph ${i.paragraph}${i.section ? ` (${i.section})` : ""}`);
-  if (i.path) parts.push(`${i.path}${i.lines ? (i.lines.end !== i.lines.start ? `, lines ${i.lines.start}–${i.lines.end}` : `, line ${i.lines.start}`) : ""}`);
+  if (i.path) parts.push(`${i.path}${i.lines ? (i.lines.end !== i.lines.start ? `, lines ${i.lines.start} to ${i.lines.end}` : `, line ${i.lines.start}`) : ""}`);
   return parts.join(" · ");
 }
 

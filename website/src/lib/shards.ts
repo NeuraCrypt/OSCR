@@ -78,7 +78,7 @@ export type EntityType = (typeof ENTITY_TYPES)[number];
 export type RecordType = EntityType | "paper";
 
 /** Shards per type, a power of two: fixed, so that the number of files is the same for 4,000
- *  papers with a page as for the 50–90k of the full neuro stock; only their size grows. Chosen
+ *  papers with a page as for the 50 to 90k of the full neuro stock; only their size grows. Chosen
  *  for ~300 KB at most a shard at the full stock (~20 KB today), from the sizes measured on the
  *  real catalogue on 2026-09-28 (docs/PLATFORM_PLAN.md §6): ~1.2 KB of record and rows per
  *  author, ~2.5 KB per institution (OpenAlex places each author), ~1.2 KB per paper past

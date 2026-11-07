@@ -94,8 +94,8 @@ describe("rows and labels", () => {
   test("a research issue's row: its type, where it points, the copy, as of last night; no box to choose it", () => {
     const row = issueRow(REPO, fromResearch(parseSummary(summary)!), { select: true, asOfLastNight: true });
     const t = textOf(row);
-    assert.match(t, /Closed: not a mismatch · Code–paper mismatch Order 4, not 2/);
-    assert.match(t, /research#7 opened .* by cy · the paper's paragraph 14 · src\/filter\.py, lines 12–18 · 2 comments · copied to GitHub as #3 · as of last night/);
+    assert.match(t, /Closed: not a mismatch · Code-paper mismatch Order 4, not 2/);
+    assert.match(t, /research#7 opened .* by cy · the paper's paragraph 14 · src\/filter\.py, lines 12 to 18 · 2 comments · copied to GitHub as #3 · as of last night/);
     assert.equal(find(row, (x) => x.tag === "a")[0].attrs.href, "/research/7");
     assert.equal(find(row, (x) => x.tag === "input").length, 0);
     assert.equal(whereInWords({ paragraph: null, path: "a.py", lines: { start: 3, end: 3 } }), "a.py, line 3");

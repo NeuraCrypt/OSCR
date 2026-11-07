@@ -84,7 +84,7 @@ export function nameProblem(name: string): string | null {
   if (!name) return "A name is needed.";
   if (name.length > 100) return "At most 100 characters.";
   if (/[^A-Za-z0-9._-]/.test(name)) return "Letters, digits, “.”, “-” and “_” only: GitHub turns other characters into “-”.";
-  if (/^\.+$/.test(name)) return "Not only dots.";
+  if (/^\.+$/.test(name)) return "A name made only of dots is refused.";
   if (/\.git$/i.test(name)) return "It may not end in .git.";
   return null;
 }

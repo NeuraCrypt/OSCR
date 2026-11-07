@@ -1,4 +1,4 @@
-// Refs, trees, files and commits on GitHub (phases 01–03, 06).
+// Refs, trees, files and commits on GitHub (phases 01 to 03, 06).
 //
 //   listBranches / getBranch   GET …/branches, …/branches/{b}
 //   createBranch               POST …/git/refs {ref: "refs/heads/…", sha}

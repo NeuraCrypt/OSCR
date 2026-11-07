@@ -244,7 +244,7 @@ export interface LineRange {
   end: number;
 }
 
-/** "#L12" → 12–12, "#L20-L12" → 12–20, "#L3C5-L4C2" → 3–4; null otherwise. */
+/** "#L12" → 12 to 12, "#L20-L12" → 12 to 20, "#L3C5-L4C2" → 3 to 4; null otherwise. */
 export function parseLineHash(hash: string): LineRange | null {
   const m = /^#?L(\d{1,7})(?:C\d{1,6})?(?:-L(\d{1,7})(?:C\d{1,6})?)?$/.exec(hash ?? "");
   if (!m) return null;

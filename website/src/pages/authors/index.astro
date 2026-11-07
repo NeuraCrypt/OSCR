@@ -15,10 +15,11 @@ import { authorLetters, authors } from "../../lib/entities";
   <h1>Authors</h1>
   <p class="summary">
     {plural(authors.length, "author")} with an ORCID iD, on the papers with a page, by family name. An author without an
-    ORCID iD stays a name on the pages of their papers: names alone cannot be merged reliably from one paper to another.
+    ORCID iD appears as a name on the pages of their papers only, because names alone cannot be matched reliably from
+    one paper to another.
   </p>
   {authors.length === 0 ? (
-    <p>No author with an ORCID iD yet: they come with the enrichment of the papers.</p>
+    <p>No author with an ORCID iD yet. Authors are added when the papers are enriched.</p>
   ) : (
     <ul>
       {authorLetters.map((g) => (

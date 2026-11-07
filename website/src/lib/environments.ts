@@ -121,7 +121,7 @@ function pinChecks(reqs: readonly Requirement[]): Check[] {
   if (exact === reqs.length) out.push({ words: `Every package is pinned to an exact version (${reqs.length}).`, tone: "ok" });
   else out.push({ words: `${pinWord(exact, reqs.length)} pinned to an exact version; the others may resolve to newer versions than the paper's.`, tone: "warning" });
   if (none.length) out.push({ words: `No version at all for ${none.slice(0, 8).map((r) => r.name).join(", ")}${none.length > 8 ? "…" : ""}.`, tone: "warning" });
-  if (source.length) out.push({ words: `Installed from a repository or an address, not a published version: ${source.slice(0, 5).map((r) => r.name || r.spec).join(", ")}.`, tone: "warning" });
+  if (source.length) out.push({ words: `Installed from a repository or an address instead of a published version: ${source.slice(0, 5).map((r) => r.name || r.spec).join(", ")}.`, tone: "warning" });
   return out;
 }
 
@@ -428,7 +428,7 @@ export function readEnvironment(file: EnvFile, textIn: string): EnvReport {
       break;
     }
     case "script":
-      report.summary = `a script (${file.path.split("/").pop()}): read as text only, never run; what it installs is code, not a list`;
+      report.summary = `a script (${file.path.split("/").pop()}): read as text only, never run; it installs packages with code, and gives no list of them`;
       report.checks = [{ words: "The registry does not read a script's dependencies: they would be what the script does when run.", tone: "" }];
       break;
     case "npm": {

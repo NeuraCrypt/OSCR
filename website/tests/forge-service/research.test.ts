@@ -338,7 +338,7 @@ describe("the research issue on GitHub and in a merge", () => {
   test("copied to GitHub by its author, once: an ordinary issue with the type's label; 2 rows", async () => {
     const b = await signIn(w);
     const repoId = await linkedRepo();
-    await ada().issues.createLabel(REF, { name: "code–paper mismatch", color: "fbca04", description: "" });
+    await ada().issues.createLabel(REF, { name: "code-paper mismatch", color: "fbca04", description: "" });
     await open(b, mismatch(repoId));
     w.forge.reset();
     const run = await authorize(w, b, on("research_copy", repoId, { id: 1 }));
@@ -346,7 +346,7 @@ describe("the research issue on GitHub and in a merge", () => {
     const n = run.actBody!.result.number;
     const issue = await ada().issues.get(REF, n);
     assert.equal(issue.title, "The filter's order is 4, the paper says 2");
-    assert.deepEqual(issue.labels, ["code–paper mismatch"]);
+    assert.deepEqual(issue.labels, ["code-paper mismatch"]);
     assert.match(issue.body, /research#1/);
     assert.match(issue.body, /https:\/\/doi\.org\/10\.1234\/eeg\.2026/);
     assert.match(issue.body, /blob\/a{40}\/src\/filter\.py#L12-L18/);

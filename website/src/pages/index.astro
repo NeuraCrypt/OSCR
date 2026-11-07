@@ -24,14 +24,13 @@ const w = (n: number, one: string, many: string) => (n === 1 ? one : many);
 <Base breadcrumb={[{ text: "Catalogue" }]}>
   <h1>{SITE_TAGLINE}</h1>
   <p class="lead">
-    {SITE_NAME} finds the code that the authors of open-access neuroscience papers published with their work. It reads
-    each paper's own text for links to that code, checks at the source that every link answers, records the exact
-    commit and its licence, and puts the code beside the paper in the Code&nbsp;↔&nbsp;Paper reader, which shows the
-    lines of code that match each paragraph. It is free, it asks nobody for an email address, and the source always
-    prevails.
+    {SITE_NAME} lists the code that the authors of open-access neuroscience papers published with their work. A
+    program reads each paper for links to that code, visits each repository where it is hosted, and records the commit
+    it found and its licence. Each paper's page shows the code beside the paper in the Code&nbsp;↔&nbsp;Paper reader,
+    which marks the lines of code that match each paragraph. The site is free and needs no account to read.
   </p>
   <p class="lead">
-    <a href="/about/#how">How it works</a> · <a href="/about/#why">Why it is built this way</a> ·{" "}
+    <a href="/help/verification/">How {SITE_NAME} finds and verifies the code</a> · <a href="/about/">About</a> ·{" "}
     <a href="/taxonomy/">What it covers</a> · <a href="/help/">Help</a> · <a href="/policies/">Policies</a> ·{" "}
     <a href="/about/#cite">How to cite</a>
   </p>

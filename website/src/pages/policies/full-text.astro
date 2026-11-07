@@ -6,7 +6,7 @@ import PageLink from "../../components/PageLink.astro";
 import { SITE_NAME } from "../../config";
 
 const toc = [
-  { id: "never", text: "Never stored on the site, never served" },
+  { id: "never", text: "Not stored or served by the site" },
   { id: "reader", text: "How the reader shows a paper" },
   { id: "evidence", text: "Evidence without sentences" },
   { id: "harvester", text: "What the harvester keeps, and why" },
@@ -15,18 +15,18 @@ const toc = [
 ---
 <Info
   title="The paper's full text"
-  description={`${SITE_NAME} never stores, serves or republishes a paper's full text or PDF: the reader's browser fetches it from Europe PMC.`}
+  description={`${SITE_NAME} does not store, serve or republish a paper's full text or PDF: the reader's browser fetches it from Europe PMC.`}
   group="policies"
   path="/policies/full-text/"
   parents={[{ text: "Policies", href: "/policies/" }]}
   toc={toc}
 >
   <p class="lead" slot="lead">
-    Neither the full text nor the PDF of a paper ever leaves the operator's computer. {SITE_NAME} links to the paper by
+    The full text and the PDF of a paper stay on the operator's computer and are not published. {SITE_NAME} links to the paper by
     its DOI, and the Code ↔ Paper reader shows its text by having your browser fetch it from Europe PMC.
   </p>
 
-  <h2 id="never">Never stored on the site, never served</h2>
+  <h2 id="never">Not stored or served by the site</h2>
   <p>
     The site, its search, its files, its open data and its tracing maps hold no paper's body text and no PDF. A paper's
     page shows its bibliographic record and, under an open licence only, its abstract and availability statements
@@ -38,23 +38,23 @@ const toc = [
   <p>
     When you open a paper's reader, your browser asks Europe PMC for the paper's open-access XML, and, if Europe PMC fails,
     NCBI for PubMed Central's copy. The text goes from their servers to your screen; it does not pass through{" "}
-    {SITE_NAME}, which never sees it. The page's security policy names the services the browser may contact; for the
-    paper's text, those two. If they are down, the reader shows links to the paper, not a copy.
+    {SITE_NAME}, and {SITE_NAME} does not see it. The page's security policy names the services the browser may contact; for the
+    paper's text, those two. If they are down, the reader shows links to the paper; the site has no copy to show.
   </p>
 
   <h2 id="evidence">Evidence without sentences</h2>
   <p>
     A match between a paragraph and lines of code refers to the paragraph by its number (its position among the
-    paragraphs of the paper's XML) and its section's title, and gives as evidence a few short technical terms, no term
-    longer than 60 characters is kept, so no sentence can pass. Where a link was found is said by its place ("the
-    availability statement", "the references"), never by the sentence.
+    paragraphs of the paper's XML) and its section's title, and gives as evidence a few short technical terms. No term
+    longer than 60 characters is kept, so a sentence cannot get through. Where a link was found is said by its place
+    ("the availability statement", "the references"), without quoting the sentence.
   </p>
 
   <h2 id="harvester">What the harvester keeps, and why</h2>
   <p>
     To find the code, the harvester must read the paper. On the operator's computer it keeps the full texts it read, in
     its cache (to read them again without asking Europe PMC twice), and, in its private database, the sentences that
-    decided each verdict (so that a verdict can be checked and explained to an author who asks). They never leave that
+    decided each verdict (so that a verdict can be checked and explained to an author who asks). They do not leave that
     computer: the public export removes them, and the site's build drops, again, any evidence term long enough to be a
     sentence.
   </p>

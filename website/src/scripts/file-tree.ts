@@ -35,7 +35,7 @@ export function fileTree(nav: HTMLElement, data: ReaderData, base: string, pick:
     a.href = fileHref(base, r.repo, f.path, multi, "code");
     a.dataset.file = String(i);
     const away = !f.text && !fromSource(data.repos, f);
-    a.title = f.text ? f.path : away ? `${f.path}: not shown here, at the source` : `${f.path}: shown from its source, not copied here`;
+    a.title = f.text ? f.path : away ? `${f.path}: shown only at the source` : `${f.path}: shown from its source, with no copy here`;
     if (away) a.classList.add("elsewhere");
     a.append(el("span", "name", label));
     if (f.pairs.length) {

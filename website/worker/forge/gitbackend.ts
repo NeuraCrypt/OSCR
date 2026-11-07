@@ -105,7 +105,7 @@ export interface RepoOps {
   deleteAutolink(repo: T.RepoRef, id: string): Promise<void>;
 }
 
-/** Refs, trees, files and commits (phases 01–03, 06). */
+/** Refs, trees, files and commits (phases 01 to 03, 06). */
 export interface GitOps {
   listBranches(repo: T.RepoRef, page?: T.PageRequest): Promise<T.Page<T.Branch>>;
   getBranch(repo: T.RepoRef, name: string): Promise<T.Branch>;
@@ -185,7 +185,7 @@ export interface PullOps {
 
 export type IssueTarget = { issue: number } | { comment: string };
 
-/** Issues (phase 05). OSCR's scientific issue types ("code error", "code–paper mismatch",
+/** Issues (phase 05). OSCR's scientific issue types ("code error", "code-paper mismatch",
  *  "reproduction failure") are OSCR-native and live in D1 (D00-6); saved replies have no API. */
 export interface IssueOps {
   list(repo: T.RepoRef, filter?: T.IssueFilter, page?: T.PageRequest): Promise<T.Page<T.Issue>>;

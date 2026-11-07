@@ -112,7 +112,7 @@ export function tieBlock(ties: readonly ReleaseTie[], answered: readonly { kind:
           null,
           `Its tracing map is versioned with it: digest `,
           h("code", { class: "digest" }, t.map.digest.slice(0, 12)),
-          `, ${t.map.pairs} paragraph–line ${t.map.pairs === 1 ? "pair" : "pairs"} in this repository`,
+          `, ${t.map.pairs} paragraph-line ${t.map.pairs === 1 ? "pair" : "pairs"} in this repository`,
           t.map.commit && t.commit && t.map.commit !== t.commit ? `; the map's lines are at commit ${short(t.map.commit)}, the release at ${short(t.commit)}` : "",
           ".",
         ),
@@ -128,7 +128,7 @@ export function tieBlock(ties: readonly ReleaseTie[], answered: readonly { kind:
     out.push(h("div", { class: "tie" }, ...items));
   }
   const waiting = [...new Set(pending.map((j) => j.kind).filter((k) => k in JOB_WAITING))];
-  if (waiting.length) out.push(h("p", { class: "explain" }, `Asked of the registry's Mac, not answered yet: ${waiting.map((k) => JOB_WAITING[k]).join(", ")}.`));
+  if (waiting.length) out.push(h("p", { class: "explain" }, `Asked of the registry's Mac and waiting for its answer: ${waiting.map((k) => JOB_WAITING[k]).join(", ")}.`));
   return out;
 }
 

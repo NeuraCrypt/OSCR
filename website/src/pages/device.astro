@@ -20,14 +20,14 @@ import { SITE_NAME } from "../config";
     <div id="device-said" aria-live="polite"></div>
     <h2>What this is</h2>
     <p>
-      The <code>oscr</code> command line signs in to {SITE_NAME} this way: it asks for a token, you approve it
-      here, signed in, and the token goes to your terminal, which keeps it in your system's keychain.{" "}
-      {SITE_NAME} keeps only its fingerprint (SHA-256). The command line's GitHub sign-in is GitHub's own,
-      on GitHub's page: that token never reaches {SITE_NAME}.
+      This is how the <code>oscr</code> command line signs in to {SITE_NAME}. It asks for a token, you approve it
+      here while signed in, and the token goes to your terminal, which keeps it in your system's keychain.{" "}
+      {SITE_NAME} keeps only its fingerprint (SHA-256). The command line signs in to GitHub separately, on GitHub's
+      own page, and that GitHub token never reaches {SITE_NAME}.
     </p>
     <p>
-      Your tokens, and how to revoke one: <a href="/settings/tokens/">personal tokens</a>. The API the
-      command line calls:{" "}<a href="/developers/">the developers' reference</a>.
+      To see your tokens or revoke one, go to <a href="/settings/tokens/">personal tokens</a>. The API the
+      command line calls is described in{" "}<a href="/developers/">the developers' reference</a>.
     </p>
   </div>
   <script>

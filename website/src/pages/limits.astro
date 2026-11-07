@@ -29,10 +29,10 @@ const caps = Object.entries(PER_ACCOUNT_DAY) as [Cap, number][];
     <h1>Limits</h1>
     <PolicyDraft drafted="2026-09-29" />
     <p class="summary">
-      {SITE_NAME} runs for free, within the free plans of the services that host it. So every account has daily
-      limits, and so has the whole service; when one is reached, {SITE_NAME} says so in words, and the static
-      pages stay up. The limits of Git hosting (file sizes, pushes) are GitHub's: <a href="/hosting/limits/">the
-      hosting limits</a>.
+      {SITE_NAME} runs for free, within the free plans of the services that host it. For this reason, each account and
+      the whole service have daily limits. When a limit is reached, {SITE_NAME} shows a message that says so, and the
+      static pages stay up. The limits of Git hosting (file sizes, pushes) are set by GitHub and listed on{" "}
+      <a href="/hosting/limits/">the hosting limits page</a>.
     </p>
 
     <h2 id="account">What one account may do in 24 hours</h2>
@@ -75,8 +75,8 @@ const caps = Object.entries(PER_ACCOUNT_DAY) as [Cap, number][];
     <h2 id="service">What the whole service may do in a day</h2>
     <p>
       The GitHub side writes at most {n(FORGE_ROWS_PER_DAY)} rows to its database a day, every account together.
-      The server answers about 100,000 requests a day in all; past it, its routes answer an error until
-      midnight UTC, and every static page stays up.
+      The server answers about 100,000 requests a day in all. Beyond that number, its routes answer with an error
+      until midnight UTC, and every static page stays up.
     </p>
 
     <h2 id="words">What it says</h2>

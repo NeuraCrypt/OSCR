@@ -230,9 +230,10 @@ const after = [
 
   <h2 id="after">After the import</h2>
   <p>
-    An import brings the history, not the repository's settings: set its description, website and
+    An import brings the history. The repository's settings stay behind: set its description, website and
     <a href={MIGRATIONS.topics}>topics</a> on GitHub (or with GitHub's command-line tool, gh), and check that it has a
-    <a href={MIGRATIONS.licence}>licence</a>: without one, {SITE_NAME} keeps no copy of its scripts. Then
+    <a href={MIGRATIONS.licence}>licence</a>: without one, {SITE_NAME} still shows its scripts but leaves them out of the
+    copies it publishes in bulk (its Hugging Face dataset and its public database). Then
     <a href="/new/link/">link it</a> to its papers.
   </p>
   <pre class="commands" data-copy="the settings commands">{commandText(after)}</pre>

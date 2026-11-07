@@ -286,7 +286,7 @@ export interface Day {
 export const levelOf = (n: number): Day["level"] => (n <= 0 ? 0 : n < 2 ? 1 : n < 4 ? 2 : n < 8 ? 3 : 4);
 
 /** A year of days in weeks (Sunday first, GitHub's), the newest week last: each day its count, its
- *  level (0–4) and its publications (the catalogue's papers of the person, by their date). */
+ *  level (0 to 4) and its publications (the catalogue's papers of the person, by their date). */
 export function calendar(counts: Record<string, number>, publications: string[], today: string, days = 365): { weeks: (Day | null)[][]; total: number; published: number } {
   const end = Date.parse(`${today}T00:00:00Z`);
   const pubs = new Map<string, number>();

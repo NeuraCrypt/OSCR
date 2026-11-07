@@ -1,0 +1,114 @@
+---
+// Help: how a paper's code links are found, classified and checked (2026-11-07). Every sentence
+// is what the harvester does: the links and where they are found (oscr/find.py, oscr/jats.py), their
+// role (oscr/role.py, then oscr/harvest.py `_adjust`), the visit at the source (oscr/repos.py, checked
+// again after 30 days), the repository's state, the paper's status (oscr/harvest.py `conclude`), and
+// a person's correction (oscr/db.py `edited_role`, /help/correct/).
+import Info from "../../components/Info.astro";
+import { SITE_NAME } from "../../config";
+
+const toc = [
+  { id: "where", text: "Where the links come from" },
+  { id: "role", text: "Code, data or a tool" },
+  { id: "visit", text: "The visit at the source" },
+  { id: "status", text: "What a status means" },
+  { id: "errors", text: "Errors and corrections" },
+];
+---
+<Info
+  title={`How ${SITE_NAME} finds and verifies the code`}
+  description={`How ${SITE_NAME} finds the code links in a paper, decides whether each one is the authors' code, their data or a tool, checks it at its source, and what a "code verified" status means.`}
+  group="help"
+  path="/help/verification/"
+  parents={[{ text: "Help", href: "/help/" }]}
+  toc={toc}
+>
+  <p class="lead" slot="lead">
+    {SITE_NAME} is automated. A program reads each open-access paper, keeps the links the paper gives to code and
+    data, decides what each link is with written rules, and then visits each repository where it is hosted. This page
+    describes each step and what the result means.
+  </p>
+
+  <h2 id="where">Where the links come from</h2>
+  <p>
+    We read the full text of each paper as Europe PMC publishes it (the publisher's JATS XML), and the paper's records
+    at DataCite and Crossref. We keep every link to a code or data repository, with the place it was found:
+  </p>
+  <ul>
+    <li>the data or code availability statement, where most links are;</li>
+    <li>the body of the paper, its tables (such as a key resources table), the acknowledgements, the notes, the
+      appendix and the supplementary material;</li>
+    <li>the reference list;</li>
+    <li>the paper's metadata: related records at DataCite (software, datasets, notebooks, models, workflows) and
+      Crossref relations;</li>
+    <li>for a Zenodo or Dryad record the paper cites, the code repository that record names as its source.</li>
+  </ul>
+  <p>
+    A sentence that says the code is available on request is recorded as well. We keep the sentence that contained
+    each link in our private database. A paper's page shows where in the paper each link was found and does not show
+    the paper's own words.
+  </p>
+
+  <h2 id="role">Code, data or a tool</h2>
+  <p>
+    Each mention of a link is classified as the authors' code, their data, or a third-party tool they used. The
+    classification uses written rules, and the clues that decided it are recorded with the verdict:
+  </p>
+  <ul>
+    <li>the host (GitHub or GitLab suggest code, OpenNeuro suggests data, PyPI suggests a published tool);</li>
+    <li>the words around the link (a word such as "code" or "scripts" with a word such as "available" or "deposited";
+      "our" or "this study"; "using", "implemented in" or a version number for a tool), and the name of a known
+      toolbox written just before the link;</li>
+    <li>the place in the paper (a code availability section, the "this paper" row of a key resources table, a
+      reference written by the paper's own authors).</li>
+  </ul>
+  <p>
+    The visit to the repository can then change the verdict. A forge repository classified as data or as unknown is
+    counted as code when it holds enough scripts. An archive record that describes itself as software is counted as
+    code. An archive classified as code that is a dataset without a single script is counted as data, and so is a BIDS
+    dataset with fewer than 20 scripts. A repository with at least 500 stars, created more than a year before the
+    paper and without a mention of the paper, is counted as a third-party tool. A correction made by a person is kept
+    and is not changed by these rules.
+  </p>
+
+  <h2 id="visit">The visit at the source</h2>
+  <p>
+    Each repository that may hold code is visited where it is hosted. For a git repository (GitHub, GitLab, Codeberg,
+    Bitbucket, GIN and others) we ask for its current commit, then make a copy without its history to list its files
+    and read its scripts, and we record the commit and its date. A Zenodo, OSF, figshare or Dryad record is read
+    through the service's own interface. Each repository is checked again after 30 days, and every check is kept on
+    the paper's page.
+  </p>
+  <p>The result of the last visit is the repository's state:</p>
+  <ul>
+    <li><strong>the link answers</strong>: the repository exists and could be read;</li>
+    <li><strong>empty</strong>: the repository answers but holds no recognized script yet (for example a README
+      only);</li>
+    <li><strong>dead</strong>: the link answers with an error, or the repository is missing or private;</li>
+    <li><strong>unreachable</strong>: the host did not answer at the last attempt;</li>
+    <li><strong>cannot be verified</strong>: the host does not allow automated visits (Code Ocean, for example);</li>
+    <li><strong>not checked yet</strong>: the repository is waiting for its first visit.</li>
+  </ul>
+
+  <h2 id="status">What a status means</h2>
+  <p>
+    A paper's status sums up the states of the repositories it cites as its code. <strong>Code verified</strong> means
+    that at least one of them answered at its last check and holds code. It means that the link works and points to
+    code. It does not mean that the code was run, that it reproduces the paper's results, or that the authors
+    confirmed the link: we never run the code, and an author's confirmation is shown separately, as a validated
+    tracing map. The other statuses are described on <a href="/help/paper/#status">Reading a paper's page</a>.
+  </p>
+
+  <h2 id="errors">Errors and corrections</h2>
+  <p>
+    The rules make mistakes. A link can be missed, given the wrong role (a tool counted as the authors' code, for
+    example), or read wrongly from a badly formatted address. The figures we measured are on{" "}
+    <a href="/about/#limits">the About page</a>. Each paper's page shows where each link was found, so that a reader
+    can check it against the paper.
+  </p>
+  <p>
+    An author of the paper, signed in with the ORCID iD the paper lists, and a maintainer of its code can add a link,
+    remove one, or change its role (<a href="/help/correct/">correcting a record's links</a>). The correction is kept
+    in the record's history and stays in place at every later visit.
+  </p>
+</Info>

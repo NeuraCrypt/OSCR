@@ -31,6 +31,7 @@ export const ABOUT: InfoLink[] = [
 
 export const HELP: InfoLink[] = [
   { href: "/help/search/", text: "Searching and the DOI lookup", summary: "The search form, its fields and filters, the query language, exports, the daily quota; and the DOI lookup." },
+  { href: "/help/verification/", text: "How the code is found and verified", summary: "Where a paper's code links come from, how each is classified as code, data or a tool, the visit at the source, and what \"code verified\" means." },
   { href: "/help/paper/", text: "Reading a paper's page", summary: "Its sections, the statuses and verdicts in words, the levels of evidence, and what an older paper's page leaves out." },
   { href: "/help/reader/", text: "The Code ↔ Paper reader", summary: "The paper and its authors' code side by side: matches, colours, weak matches, hiding the paper, the file tools." },
   { href: "/help/maps/", text: "Tracing maps", summary: "What a map holds, how it is proposed, and what changes once an author validates it." },

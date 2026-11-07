@@ -45,7 +45,7 @@ export const LICENCES: readonly Licence[] = [
   { key: "bsl-1.0", spdx: "BSL-1.0", name: "Boost Software License 1.0", explain: "Permissive; no notice needed in compiled programs.", open: true },
   { key: "cc0-1.0", spdx: "CC0-1.0", name: "Creative Commons Zero v1.0 Universal", explain: "Public domain dedication: no condition at all.", open: true },
   { key: "unlicense", spdx: "Unlicense", name: "The Unlicense", explain: "Public domain dedication, written for software.", open: true },
-  { key: "cc-by-4.0", spdx: "CC-BY-4.0", name: "Creative Commons Attribution 4.0", explain: "For text and data rather than code: reuse with credit.", open: true },
+  { key: "cc-by-4.0", spdx: "CC-BY-4.0", name: "Creative Commons Attribution 4.0", explain: "Made for text and data (code has its own licences): reuse with credit.", open: true },
 ];
 
 export const licenceOf = (key: unknown): Licence | null => LICENCES.find((l) => l.key === key) ?? null;

@@ -47,7 +47,7 @@ describe("tableView", () => {
 
   test("a ragged row and a cut are said", () => {
     const text = textOf(tableView({ ...parseDelimited("a,b\n1,2,3\n", ","), more: 10 }));
-    assert.match(text, /Row 2 has 3 columns, not 2 as the header/);
+    assert.match(text, /Row 2 has 3 columns and the header has 2/);
     assert.match(text, /The first 1 rows of 11 are shown/);
   });
 });

@@ -305,7 +305,7 @@ export function whyNotShown(
   }
   if (f.why === "binary") {
     return /\.mlx$/i.test(f.path)
-      ? "This file is not shown here: a MATLAB live script is a binary file (a zip archive), not text."
+      ? "This file is not shown here: a MATLAB live script is a binary file (a zip archive)."
       : "This file is not shown here: it is not a text file.";
   }
   if (/too large a repository/i.test(f.note)) {

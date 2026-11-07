@@ -1,4 +1,4 @@
-// The pull request pages' view trees (night phase 04, E3–E4): pure, no DOM, testable in Node
+// The pull request pages' view trees (night phase 04, E3 to E4): pure, no DOM, testable in Node
 // (tests/forge-pages/pull-view.test.ts). The scripts (src/scripts/repo-pulls.ts, repo-pull.ts,
 // repo-forks.ts) show them through src/scripts/dom.ts: allowed elements only, text masked for email
 // addresses (every title, body and comment is someone's text: it never becomes markup).
@@ -109,7 +109,7 @@ export function closingNotice(refs: readonly IssueRef[], closes: boolean, base: 
     { class: "closing" },
     closes
       ? `Merging it closes ${names.join(", ")} (its text says ${refs.length === 1 ? "so" : "so for each"}, with a closing keyword).`
-      : `Its text names ${names.join(", ")} with a closing keyword, but GitHub closes issues only when a pull request merges into the default branch, not ${base}.`,
+      : `Its text names ${names.join(", ")} with a closing keyword, but GitHub closes issues only when a pull request merges into the default branch, and ${base} is another branch.`,
   );
 }
 
@@ -122,7 +122,7 @@ export function researchClosingNotice(ids: readonly number[], closes: boolean, b
     { class: "closing" },
     closes
       ? ["Merging it in the registry closes the research ", ids.length === 1 ? "issue " : "issues ", ...links, ": fixed in the code, at the merge commit."]
-      : ["Its text names the research ", ids.length === 1 ? "issue " : "issues ", ...links, ` with a closing keyword, but a merge closes issues only into the default branch, not ${base}.`],
+      : ["Its text names the research ", ids.length === 1 ? "issue " : "issues ", ...links, ` with a closing keyword, but a merge closes issues only into the default branch, and ${base} is another branch.`],
   );
 }
 

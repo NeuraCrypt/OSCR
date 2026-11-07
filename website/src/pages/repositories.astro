@@ -42,12 +42,12 @@ const graceDays = Math.round(GRACE_SECONDS / 86_400);
     </section>
   )}
   <p id="repos-message" role="status" aria-live="polite"></p>
-  <noscript><p class="warning">This page runs in your browser: it needs JavaScript.</p></noscript>
+  <noscript><p class="warning">This page runs in your browser and needs JavaScript.</p></noscript>
 
   <div id="repos-signed-out">
     <p>
-      Sign in to see your repositories:
-      <a href="/api/auth/github/start?return=/repositories/">sign in with GitHub</a>, or with ORCID or Google from
+      To see your repositories,
+      <a href="/api/auth/github/start?return=/repositories/">sign in with GitHub</a>, or sign in with ORCID or Google from
       <a href="/account/">your account page</a> and link your GitHub account there. Your repositories are the ones in
       your own GitHub account; {SITE_NAME} keeps only its layer over them (their papers, the maps that point to them).
     </p>
@@ -61,26 +61,26 @@ const graceDays = Math.round(GRACE_SECONDS / 86_400);
     <p>Your GitHub account: <span id="repos-login"></span>.</p>
     <ul>
       <li><a href="/new/">Create a repository</a> in your GitHub account, attached to your paper.</li>
-      <li><a href="/new/link/">Link a repository you already have</a>: the mirror mode.</li>
+      <li><a href="/new/link/">Link a repository you already have</a> (mirror mode).</li>
       <li><a href="/new/import/">Import one</a> from another place, on your own computer.</li>
     </ul>
 
     <p id="repos-no-github" hidden>
-      Your account has no GitHub account linked yet: link one from <a href="/account/">your account page</a>, and your
+      Your account has no GitHub account linked yet. Link one from <a href="/account/">your account page</a>, and your
       repositories will be listed here.
     </p>
 
     <p id="repos-closed" class="warning" hidden>
-      The GitHub side opens to the public with its content rules; until then, only the owner of the registry can create,
-      link or change repositories here. You can already read your list.
+      The GitHub side will open to the public together with its content rules. Until then, only the owner of the registry
+      can create, link or change repositories here. You can already read your list.
     </p>
 
     <section id="repos-pending" class="danger" hidden>
       <h2>Waiting for deletion</h2>
       <p>
-        These repositories were asked for deletion: archived and hidden from the registry, they leave it at the end of
-        their {graceDays} days of grace. Until then, each one can be restored. Deleting one on GitHub stays your own act, from
-        GitHub's settings.
+        A deletion was asked for these repositories. They are archived and hidden from the registry, and they leave it at
+        the end of their {graceDays} days of grace. Until then, you can restore each one. The registry does not delete
+        them on GitHub: to do that, use GitHub's settings yourself.
       </p>
       <ul id="repos-pending-list"></ul>
     </section>
@@ -107,7 +107,7 @@ const graceDays = Math.round(GRACE_SECONDS / 86_400);
 
     <dl id="repos-list" class="listing"></dl>
     <p id="repos-empty" hidden>
-      No repository here yet: <a href="/new/">create one</a> or <a href="/new/link/">link one you have</a>.
+      You have no repository here yet. You can <a href="/new/">create one</a> or <a href="/new/link/">link one you have</a>.
     </p>
     <p><button id="repos-more" type="button" hidden>More repositories</button></p>
 

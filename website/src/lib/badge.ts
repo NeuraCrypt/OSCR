@@ -183,7 +183,7 @@ export function badgeMessage(f: BadgeFacts, show: BadgeShow = "status"): { text:
 const VERDANA: Record<string, number> = {
   " ": 720, "!": 823, '"': 1033, "#": 1882, "$": 1430, "%": 2477, "&": 1638, "'": 563, "(": 1047, ")": 1047, "*": 1430,
   "+": 1882, ",": 745, "-": 1069, ".": 745, "/": 1251, ":": 1003, ";": 1003, "<": 1882, "=": 1882, ">": 1882, "?": 1251,
-  "@": 2252, "[": 1047, "\\": 1251, "]": 1047, "_": 1430, "|": 1047, "·": 745, "↔": 2048, "–": 1430,
+  "@": 2252, "[": 1047, "\\": 1251, "]": 1047, "_": 1430, "|": 1047, "·": 745, "↔": 2048, "\u2013": 1430,
   A: 1401, B: 1405, C: 1430, D: 1577, E: 1294, F: 1178, G: 1587, H: 1540, I: 865, J: 1032, K: 1423, L: 1145, M: 1739,
   N: 1530, O: 1615, P: 1238, Q: 1615, R: 1426, S: 1401, T: 1243, U: 1500, V: 1401, W: 2025, X: 1403, Y: 1243, Z: 1405,
   a: 1229, b: 1271, c: 1066, d: 1271, e: 1219, f: 719, g: 1271, h: 1296, i: 562, j: 683, k: 1186, l: 562, m: 1996,
@@ -499,7 +499,7 @@ export const SNIPPET_FORMATS = [
   { id: "rst", label: "reStructuredText", where: "README.rst, PyPI, Sphinx and Read the Docs" },
   { id: "asciidoc", label: "AsciiDoc", where: "README.adoc on GitHub or GitLab, Antora" },
   { id: "org", label: "Org", where: "README.org on GitHub or GitLab, Emacs" },
-  { id: "latex", label: "LaTeX", where: "a poster, slides or a thesis (with the hyperref package; the PNG mark, LaTeX reads no SVG)" },
+  { id: "latex", label: "LaTeX", where: "a poster, slides or a thesis (with the hyperref package, and the PNG mark because LaTeX cannot read SVG)" },
 ] as const;
 export type SnippetFormat = (typeof SNIPPET_FORMATS)[number]["id"];
 

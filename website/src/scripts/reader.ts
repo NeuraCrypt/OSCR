@@ -276,7 +276,7 @@ function start(data: ReaderData) {
       return;
     }
     if (target.closest("a, select, button, summary, label, input")) return;
-    if (getSelection()?.toString()) return; // text is being selected, not clicked
+    if (getSelection()?.toString()) return; // the reader is selecting text: the click is part of a selection
     const holder = target.closest<HTMLElement>("#paper [data-pairs], #code-view [data-pairs]");
     if (!holder) return;
     // Several pairs on the same paragraph or line: each click shows the next one.

@@ -10,7 +10,7 @@ const B = `${SITE}${API_BASE}`;
 const DATASET = "https://huggingface.co/datasets/OpenScientificCodeRegistry/Database";
 const toc = [
   { id: "quickstart", text: "Quickstart" },
-  { id: "auth", text: "Authentication (none)" },
+  { id: "auth", text: "Authentication" },
   { id: "shape", text: "The shape of an answer" },
   { id: "endpoints", text: "The endpoints" },
   { id: "doi", text: "Giving a DOI" },
@@ -31,13 +31,13 @@ const toc = [
   toc={toc}
 >
   <p class="lead" slot="lead">
-    {SITE_NAME} offers a free, keyless, read-only API over its catalogue. No account, no token: every route answers a
-    plain <code>GET</code> (and <code>HEAD</code>) and returns JSON, with CORS open to any origin. It returns only facts:
-    no PDF, no paper full text, and no email address. The overview is at <a href="/api/">the API page</a>.
+    {SITE_NAME} has a free, read-only API over its catalogue. It needs no account and no key. Every route answers a
+    plain <code>GET</code> (and <code>HEAD</code>) and returns JSON, with CORS open to any origin. The answers hold the
+    catalogue's facts. They do not include PDFs, the full text of papers or email addresses. The overview is at <a href="/api/">the API page</a>.
   </p>
 
   <h2 id="quickstart">Quickstart</h2>
-  <p>Every route hangs off <code>{API_BASE}</code>. Fetch the index, which links to every endpoint:</p>
+  <p>Every route starts with <code>{API_BASE}</code>. Fetch the index, which links to every endpoint:</p>
   <pre>{`# curl
 curl ${B}/`}</pre>
   <pre>{`# Python (standard library only)
@@ -56,11 +56,11 @@ str(index$endpoints$id)`}</pre>
     <code>jsonlite::fromJSON(url)</code> reads a URL directly.
   </p>
 
-  <h2 id="auth">Authentication (none)</h2>
+  <h2 id="auth">Authentication</h2>
   <p>
     There is no authentication. Do not send a key, a token or a cookie: the API ignores them. Because it is keyless and
-    CORS is open, you can call it from a browser page too. (A separate token-based layer, with write routes, is in
-    development and is not part of this API: see <a href="/labs/">Labs</a>.)
+    CORS is open, you can call it from a browser page too. (A separate layer with tokens and write routes is in
+    development: see <a href="/labs/">Labs</a>.)
   </p>
 
   <h2 id="shape">The shape of an answer</h2>
@@ -90,7 +90,7 @@ str(index$endpoints$id)`}</pre>
   <h3 id="e-paper"><code>GET {API_BASE}/paper/&#123;doi&#125;</code></h3>
   <p>
     One paper's record by its DOI: its code links and repositories, data links, status, tools, categories, and a matches
-    summary. No PDF and no full text (the paper is linked by its DOI). See <a href="#doi">Giving a DOI</a> for the
+    summary. The answer links to the paper by its DOI and does not include its PDF or full text. See <a href="#doi">Giving a DOI</a> for the
     slashes.
   </p>
   <pre>{`curl ${B}/paper/10.5555%2Foscr.fixture.1
@@ -129,8 +129,8 @@ curl ${B}/tool/matplotlib`}</pre>
   <h3 id="e-repository"><code>GET {API_BASE}/repository/&#123;host&#125;/&#123;owner&#125;/&#123;name&#125;</code></h3>
   <p>
     A repository the registry knows: its licence, state, pinned commit, file and script counts, languages, and the papers
-    that cite it. The code text is never here (read it in the Code to Paper reader on a paper's page, or in the scripts
-    dataset).
+    that cite it. The answer does not include the code's text: read it in the Code to Paper reader on a paper's page, or
+    in the scripts dataset.
   </p>
   <pre>{`curl ${B}/repository/github.com/oscr-fixture/eeg-analysis`}</pre>
 
@@ -164,7 +164,7 @@ curl ${B}/tool/matplotlib`}</pre>
     <dt><a href={`${DATA_BASE}/articles.csv.gz`}><code>{DATA_BASE}/articles.csv.gz</code></a>, <a href={`${DATA_BASE}/repositories.csv`}><code>repositories.csv</code></a></dt>
     <dd>One row per paper (gzipped: the plain file is over the hosting's 25 MiB limit), and per repository.</dd>
     <dt><a href={`${DATA_BASE}/alignments.jsonl.gz`}><code>{DATA_BASE}/alignments.jsonl.gz</code></a></dt>
-    <dd>One JSON object per aligned paper (paragraph numbers to code lines, never the paper's text), gzipped.</dd>
+    <dd>One JSON object per aligned paper (paragraph numbers matched to code lines; the paper's text is not included), gzipped.</dd>
     <dt><code>{DATA_BASE}/entities/&lt;type&gt;.json</code>, <code>{DATA_BASE}/papers/NN.json</code>, <code>{DATA_BASE}/repos/NN.json</code></dt>
     <dd>The full entity lists, and every paper's and repository's record (sharded).</dd>
   </dl>
@@ -183,8 +183,8 @@ nrow(papers); length(authors$orcid)`}</pre>
   <p>
     The authors' scripts (their text) are a separate public dataset on Hugging Face,{" "}
     <a href={DATASET}>OpenScientificCodeRegistry/Database</a>, read with pandas or DuckDB (see the{" "}
-    <a href="/help/data/">data guide</a>). A single full catalogue dump in one file is not served here: it is too large
-    for the hosting.
+    <a href="/help/data/">data guide</a>). The site does not serve the whole catalogue as a single file, because that
+    file would be too large for the hosting.
   </p>
 
   <h2 id="errors">Errors</h2>
@@ -205,7 +205,7 @@ nrow(papers); length(authors$orcid)`}</pre>
 
   <h2 id="versioning">Versioning and stability</h2>
   <p>
-    The API is versioned in its path (<code>{API_BASE}</code>). Within a version, fields are only added, never removed or
+    The API is versioned in its path (<code>{API_BASE}</code>). Within a version, fields may be added but are not removed or
     renamed, so a reader that ignores unknown fields keeps working. A breaking change would come as a new version
     (<code>/api/v2/</code>), announced before the old one is retired. The record layout may gain fields as the catalogue
     grows.
@@ -214,7 +214,7 @@ nrow(papers); length(authors$orcid)`}</pre>
   <h2 id="licence">Licence and citation</h2>
   <p>
     The catalogue's facts are open data; the authors' code stays under its own licence (that is why some files are shown
-    from their source rather than copied: <a href="/policies/code/">the code policy</a>). Use of the API and the data is
+    by loading them from their source: <a href="/policies/code/">the code policy</a>). Use of the API and the data is
     covered by <a href="/policies/terms/">the terms of use</a>. To cite {SITE_NAME} and a record, see{" "}
     <a href="/policies/citation/">Citation</a>.
   </p>

@@ -16,9 +16,9 @@ import { dateInWords, number, plural } from "../../lib/format";
 >
   <h1>Scientific tools</h1>
   <p class="summary">
-    {plural(sciTools.length, "tool")}: research software added to {SITE_NAME} by hand from its repository, each
-    shown at the commit it was added at. Its code is read in the page from where its authors published it, and
-    checked against the digest {SITE_NAME} recorded. The libraries found in the papers' code are on{" "}
+    {plural(sciTools.length, "tool")} of research software, added to {SITE_NAME} by hand from their repositories. Each
+    tool is shown at the commit it was added at. The page reads its code from where its authors published it, and checks
+    it against the digest {SITE_NAME} recorded. The libraries found in the papers' code are on{" "}
     <a href="/tools/">Tools</a>.
   </p>
   {sciTools.length === 0 ? (

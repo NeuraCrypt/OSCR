@@ -22,14 +22,14 @@ const choice = (value: string) => `rights-kind-${value}`;
 ---
 <Base
   title="Your data and your rights"
-  description="See what the registry holds about you, and ask for access, erasure, objection, rectification or the deletion of your account: signed in, answered on the page, never by email."
+  description="See what the registry holds about you, and ask for access, erasure, objection, rectification or the deletion of your account: signed in, answered on the page, with no email."
   breadcrumb={[{ text: "Privacy", href: "/privacy/" }, { text: "Your data and your rights" }]}
 >
   <h1>Your data and your rights</h1>
   <p class="summary">
     See what {SITE_NAME} holds about you, and use your rights under the EU's General Data Protection Regulation
-    (GDPR): access, erasure, objection, rectification, the deletion of your account. You ask signed in, and the answer
-    comes to this page: {SITE_NAME} has no email address, and asks for none. The <a href="/privacy/">privacy page</a>{" "}
+    (GDPR): access, erasure, objection, rectification, the deletion of your account. You ask while signed in, and the
+    answer appears on this page. {SITE_NAME} has no email address and does not ask for yours. The <a href="/privacy/">privacy page</a>{" "}
     lists everything the registry holds, why, and for how long.
   </p>
   <noscript><p class="warning">This page runs in your browser: it needs JavaScript.</p></noscript>
@@ -38,7 +38,8 @@ const choice = (value: string) => `rights-kind-${value}`;
   <section id="rights-signed-out" aria-labelledby="rights-sign-in-title" hidden>
     <h2 id="rights-sign-in-title">Sign in to ask</h2>
     <p>
-      A request is made signed in: it is how the registry knows that the data is yours, and where its answer comes back.
+      You must be signed in to make a request: signing in tells the registry that the data is yours, and gives the answer
+      a place to appear.
       No email address is asked for or sent.
     </p>
     <ul id="rights-sign-in">
@@ -106,8 +107,8 @@ const choice = (value: string) => `rights-kind-${value}`;
       <dl class="review" id="rights-held"></dl>
       <p>
         <button type="button" id="rights-download">Download a copy</button>{" "}
-        <span class="muted">, a JSON file of what this page shows, the answers to your requests included, made in your
-          browser</span>
+        <span class="muted">(a JSON file of what this page shows, the answers to your requests included, made in your
+          browser)</span>
       </p>
     </section>
   </div>
@@ -116,7 +117,7 @@ const choice = (value: string) => `rights-kind-${value}`;
   <dl class="terms">
     <dt>Your account, if you signed in</dt>
     <dd>The name your provider gave, your ORCID iD and GitHub login once linked, the identifiers of your linked
-      identities, your sessions (a short description of the browser, never an IP address), your roles. Shown on this
+      identities, your sessions (a short description of the browser; the IP address is not stored), your roles. Shown on this
       page once you are signed in.</dd>
     <dt>Your requests</dt>
     <dd>What you submitted, claimed, corrected, validated or asked to remove, with the decisions; and, on the operator's
@@ -124,8 +125,8 @@ const choice = (value: string) => `rights-kind-${value}`;
     <dt>Your contact details, if you are an author of a paper the registry read</dt>
     <dd>What the paper publishes about how to reach you: email address, given and family names, ORCID iD, organisation,
       postal address and affiliation, kept privately, to cite the authors of the code and to reach you about your own
-      work; never shown, never published, never used for mass email. The registry recognizes them as yours by your
-      ORCID iD only: a name, a GitHub login or a Google account proves nothing.</dd>
+      work. They are not shown or published, and they are not used for mass email. The registry recognizes them as yours by your
+      ORCID iD only: a name, a GitHub login or a Google account is not enough.</dd>
     <dt>Your name in the published records</dt>
     <dd>Your name, ORCID iD and affiliations as a paper and its public metadata publish them: that is the public record
       of the paper, which this page does not change. To have part of a record removed, use its{" "}
@@ -143,8 +144,8 @@ const choice = (value: string) => `rights-kind-${value}`;
     <li>
       What it cannot prove (a rectification, or contact details asked for by an account without an ORCID iD) waits for
       the operator, who answers on this page <strong>within one month</strong>, as the GDPR requires (article 12(3)).
-      There is no human moderator on duty at the moment, but a request about your data is never closed unanswered: it
-      stays open until the operator answers it.
+      At the moment no human moderator is on duty. Even so, a request about your data is not closed without an answer:
+      it stays open until the operator answers it.
     </li>
     <li>
       An erasure reaches the private copy of the contact details on Hugging Face at the next nightly publication
@@ -160,8 +161,8 @@ const choice = (value: string) => `rights-kind-${value}`;
     <li>The right you asked for, your words (without any email address: a text that holds one is refused), the ORCID iD of
       your account and which ORCID proved it, the answer, the dates, and the legal deadline, with your account, like
       your other requests.</li>
-    <li>After an erasure or an objection: your ORCID iD and a fingerprint (SHA-256) of each address found with it, never
-      the address, on the list of people whose contact details the registry never collects again.</li>
+    <li>After an erasure or an objection: your ORCID iD and a fingerprint (SHA-256) of each address found with it, but not
+      the address, on the list of people whose contact details the registry does not collect again.</li>
     <li>{RIGHTS_PER_DAY} requests a day at most, one open request per right. A deleted account takes its requests with it.</li>
   </ul>
 

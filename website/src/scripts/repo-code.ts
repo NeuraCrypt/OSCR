@@ -506,7 +506,7 @@ export async function mountBlob(slot: HTMLElement, env: CodeEnv, segments: reado
     const warnings = unicodeWarnings(text);
     // A change of the reader's own to this file, kept in this browser by the editor (phase 03).
     if (onBranch && keptDraft(env, opened.ref.ref, path)) {
-      body.push(h("p", { class: "draft-note" }, "A change of yours to this file is kept in this browser, not committed yet: ", h("a", { href: repoPath(env.repo, "edit", refSegments(opened.ref.ref, path)) }, "continue editing"), "."));
+      body.push(h("p", { class: "draft-note" }, "A change of yours to this file is kept in this browser and is not committed yet: ", h("a", { href: repoPath(env.repo, "edit", refSegments(opened.ref.ref, path)) }, "continue editing"), "."));
     }
     body.push(fileInfo({ lines: lineCounts(shown.lines), size, language, kind, executable: entry?.mode === "100755" }));
     if (claimed && !raw) {

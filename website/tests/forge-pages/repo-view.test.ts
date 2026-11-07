@@ -320,7 +320,7 @@ describe("what the shell shows beside: papers, Pages site, archive, a gone repos
     const block = papersBlock(l, SITE);
     const text = block.map(textOf).join("\n");
     assert.match(text, /EEG at rest/);
-    assert.match(text, /10\.1234\/meg \(proposed, not confirmed yet\)/);
+    assert.match(text, /10\.1234\/meg \(proposed, waiting for confirmation\)/);
     assert.match(text, /2 tracing maps point to its commits\. If the source rewrites its history or disappears, OSCR keeps showing the cited commits/);
     assert.deepEqual(block.flatMap(hrefs), ["/paper/eeg-2026/", "https://doi.org/10.1234/meg"]);
     assert.match(papersBlock(null, SITE).map(textOf).join(""), /Not attached to any paper yet/);
