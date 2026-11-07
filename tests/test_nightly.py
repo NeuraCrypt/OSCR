@@ -258,3 +258,49 @@ def test_a_resumption_does_not_start_when_the_0417_run_is_near(night, monkeypatc
     sent.clear()
     monkeypatch.setattr(nightly, "night_end", lambda now: now + 60)
     assert cli.main(args) == 0 and sent == [] and "the 04:17 run is near" in capsys.readouterr().out
+
+
+def test_success_is_written_only_when_every_step_succeeded(night):
+    """Until 2026-11-07 `success` was written by a night with failed steps too ("ran to its end")."""
+    sent, broken, args = night
+    broken.add("deploy")
+    with pytest.raises(SystemExit):
+        cli.main(args)
+    state = watchdog.read_state()
+    assert "ended" in state and "success" not in state
+    broken.clear()
+    assert cli.main(args) == 0 and "success" in watchdog.read_state()
+
+
+def test_a_failed_step_of_a_cycle_begun_the_evening_before_is_resumed(night, monkeypatch):
+    """2026-11-05 20:32 to 11-06 10:23: a cycle going on at 04:17. Its failed step is resumed on its
+    own export, which is the export the resumption publishes (begun before 04:17: the night still
+    has to run, watchdog.night_done)."""
+    sent, broken, args = night
+    start = time.time() - 3600
+    monkeypatch.setattr(watchdog, "last_start", lambda now: start)
+    cid = cycles.start_cycle("nightly")
+    cycles.plan_steps(cid, ["export", "dataset", "deploy", "search"])
+    for name, ok in (("export", True), ("dataset", True), ("deploy", False), ("search", True)):
+        cycles.finish_step(cycles.start_step(cid, name), ok=ok, detail="" if ok else "Upload took too long")
+    cycles.finish_cycle(cid, ok=False)
+    con = sqlite3.connect(cycles.DB)
+    con.execute("UPDATE cycle SET started = ?", (start - 8 * 3600,))
+    con.execute("UPDATE step SET started = ? WHERE name = 'export'", (start - 8 * 3600,))
+    con.commit()
+    assert cycles.pending(start) == (True, ["deploy"])
+    assert cli.main(args) == 0 and sent == ["deploy"]
+    state = watchdog.read_state()
+    assert state["success_begun"] == pytest.approx(start - 8 * 3600)
+    assert not watchdog.night_done(state, time.time())
+
+
+def test_the_external_disks_space_is_checked_too(tmp_path, monkeypatch):
+    website = tmp_path / "website"
+    website.mkdir()
+    (website / "public").symlink_to(tmp_path)
+    monkeypatch.setattr(preflight.shutil, "disk_usage", lambda p: type("U", (), {"free": 5 * 10**9})())
+    two_disks = lambda p: 1 if str(p).endswith("data") or str(p) == "." else 2   # noqa: E731
+    assert preflight.external_space(website, tmp_path / "data", device=two_disks) == \
+        f"5 GB free on the external disk ({os.path.realpath(tmp_path)}), 20 GB are needed"
+    assert preflight.external_space(website, tmp_path / "data", device=lambda p: 1) == ""     # one disk

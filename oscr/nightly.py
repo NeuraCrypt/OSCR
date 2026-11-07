@@ -188,10 +188,10 @@ def run(con: Any, client: Any, cfg: dict[str, str], *, out: Path, dataset: str, 
     if resuming:
         watchdog.count_resume(start)
         say(f"resuming today's publication: {', '.join(todo)}")
-    # When the data being published was exported: a resumption publishes today's export (its day began
-    # at `start`); otherwise this run's. A run that began before today's 04:17 does not count as
+    # When the data being published was exported: a resumption publishes the export it resumes (that
+    # export's start, which may be the evening before when a night ran over 04:17); otherwise this run's. A run that began before today's 04:17 does not count as
     # today's night (watchdog.nightly_due).
-    begun = start if resuming else time.time()
+    begun = (cycles.export_begun(start) or start) if resuming else time.time()
     cid = cycles.start_cycle("resume" if resuming else "nightly")
     cycles.plan_steps(cid, todo)
     # Night phase 16: a file known as malware loses its text before anything is exported, and the
@@ -310,11 +310,13 @@ def run(con: Any, client: Any, cfg: dict[str, str], *, out: Path, dataset: str, 
     step("community", "Community (D1)", facts)
     step("scripts", "Scripts on Hugging Face", scripts)
     step("contacts", "Contacts on Hugging Face", contacts)
-    # It ran to its end: an upload that failed is said below and the watchdog resumes it.
-    watchdog.mark("success")
-    watchdog.mark("success_begun", begun)
+    # It ran to its end (`ended`); it SUCCEEDED (`success`) only when every step did (until 2026-11-07
+    # `success` was written either way). A step that failed is said below and the watchdog resumes it.
+    watchdog.mark("ended")
     watchdog.mark("published", articles)
     cycles.finish_cycle(cid, ok=not errors, detail="\n".join(errors))
     if errors:
         raise SystemExit("\n".join(errors))
+    watchdog.mark("success")
+    watchdog.mark("success_begun", begun)
     return 0

@@ -78,3 +78,48 @@ def test_a_round_leaves_a_live_harvester_and_a_fresh_publication_alone(tmp_path)
                         kickstart=lambda label, kill: started.append(label) or "started")
     assert started == []
     assert said.startswith("harvester alive") and "nightly done 5 h ago" in said
+
+
+def _round(tmp_path, now, **kw):
+    log = tmp_path / "harvester.log"
+    log.write_text("pass")
+    os.utime(log, (now - 600, now - 600))
+    notes = []
+    said = watchdog.run(now, logs=tmp_path, state_path=tmp_path / "state.json",
+                        kickstart=lambda label, kill: "started", notify=notes.append)
+    return said, notes
+
+
+def test_a_night_is_said_failed_from_its_first_failure(tmp_path, monkeypatch):
+    """2026-11-05 08:19: "nightly done 14 h ago" was said after two failed cycles; now "failed"."""
+    from oscr import cycles
+    now = at(5, 8, 20)
+    monkeypatch.setattr(watchdog, "locked", lambda: False)
+    watchdog.mark("success", at(4, 18), tmp_path / "state.json")
+    watchdog.mark("attempt", at(5, 8, 10), tmp_path / "state.json")
+    cid = cycles.start_cycle("nightly")
+    cycles.finish_step(cycles.start_step(cid, "export"), ok=False, detail="OperationalError('database or disk is full')")
+    cycles.finish_cycle(cid, ok=False)
+    import sqlite3
+    sqlite3.connect(cycles.DB).execute("UPDATE cycle SET started = ?", (at(5, 4, 17),)).connection.commit()
+    said, notes = _round(tmp_path, now)
+    assert "nightly failed, to be tried again: export: OperationalError('database or disk is full')" in said
+    assert "nightly done" not in said
+
+
+def test_a_night_with_no_publication_begun_is_noted_once_and_notified(tmp_path, monkeypatch):
+    """2026-11-06: the night before ran from 20:32 to 10:23, past 04:17; nothing began for the 6th."""
+    import sqlite3
+
+    from oscr import cycles
+    monkeypatch.setattr(watchdog, "locked", lambda: False)
+    cid = cycles.start_cycle("nightly")
+    cycles.finish_cycle(cid, ok=True)
+    sqlite3.connect(cycles.DB).execute("UPDATE cycle SET started = ?, finished = ?",
+                                       (at(5, 20, 32), at(6, 10, 23))).connection.commit()
+    watchdog.mark("success", at(6, 10, 23), tmp_path / "state.json")
+    said, notes = _round(tmp_path, at(7, 4, 25))
+    assert notes == ["missed: no publication began for the night of 2026-11-06 (04:17 to 04:17)"]
+    assert notes[0] in said
+    said, notes = _round(tmp_path, at(7, 4, 35))
+    assert notes == [] and "missed" not in said

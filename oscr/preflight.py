@@ -71,6 +71,31 @@ def space(path: Path = Path("data"), minimum: int = MIN_FREE, why: str = "") -> 
     return f"{free / 1e9:.0f} GB free on the disk, {minimum / 1e9:.0f} GB are needed" + (f" ({why})" if why else "")
 
 
+#: Free space kept on the external disk Expansion, where what grows is written (the scripts' lots, the
+#: script copies, scripts.jsonl): about 8 GB are written there a night (2026-11-07).
+EXPANSION_FREE = 20 * 10**9
+
+
+def _device(path: Path) -> int:
+    return os.stat(path).st_dev
+
+
+def external_space(website: Path = WEBSITE, data: Path = Path("data"), minimum: int = EXPANSION_FREE,
+                   device=_device) -> str:
+    """The free space on the disk website/public points to, when it is not the data's own disk."""
+    public = website / "public"
+    if not public.is_symlink() or not public.exists():
+        return ""
+    target = Path(os.path.realpath(public))
+    here = data if data.exists() else Path(".")
+    if device(target) == device(here):
+        return ""
+    free = shutil.disk_usage(target).free
+    if free >= minimum:
+        return ""
+    return f"{free / 1e9:.0f} GB free on the external disk ({target}), {minimum / 1e9:.0f} GB are needed"
+
+
 def network(hosts: tuple[str, ...] = HOSTS) -> str:
     down = []
     for host in hosts:
@@ -117,6 +142,7 @@ def run(cfg: dict[str, str], dataset: str, cloudflare: str, need: tuple[int, str
     checks = [lambda: space(minimum=minimum, why=why), network]
     if cloudflare:
         checks.insert(0, disk)
+        checks.insert(1, external_space)
     if cloudflare_used:
         checks.append(wrangler)
     if huggingface_used:

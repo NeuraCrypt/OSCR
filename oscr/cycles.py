@@ -163,7 +163,7 @@ def current() -> dict | None:
     """The latest cycle with its steps (crashes reaped first), or None if none yet."""
     reap()
     with _db() as con:
-        c = con.execute("SELECT * FROM cycle WHERE kind NOT IN ('test', 'skipped') ORDER BY id DESC LIMIT 1").fetchone()
+        c = con.execute("SELECT * FROM cycle WHERE kind NOT IN ('test', 'skipped', 'missed') ORDER BY id DESC LIMIT 1").fetchone()
         if not c:
             return None
         steps = con.execute("SELECT * FROM step WHERE cycle_id = ? ORDER BY id", (c["id"],)).fetchall()
@@ -178,26 +178,61 @@ def history(limit: int = 30) -> list[dict]:
             "SELECT * FROM cycle WHERE kind != 'test' ORDER BY id DESC LIMIT ?", (int(limit),)).fetchall()]
 
 
+#: The cycles a night's resumption looks at: those begun since its 04:17, and the one still going then
+#: (begun the evening before, 2026-11-05 20:32 to 2026-11-06 10:23): its failed step is resumed unless a
+#: later cycle did it again (the steps are read in order, the latest state wins).
+_WINDOW = "(c.started >= ? OR c.finished >= ? OR c.status = 'running') AND c.kind NOT IN ('test', 'skipped', 'missed')"
+
+
 def pending(since: float) -> tuple[bool, list[str]]:
     """Since `since`: whether the export succeeded, and the steps whose last state is not `ok`, in order."""
     reap()
     with _db() as con:
-        rows = con.execute("SELECT s.name, s.status FROM step s JOIN cycle c ON c.id = s.cycle_id "
-                           "WHERE c.started >= ? AND c.kind != 'test' ORDER BY s.id", (since,)).fetchall()
+        rows = con.execute(f"SELECT s.name, s.status FROM step s JOIN cycle c ON c.id = s.cycle_id "
+                           f"WHERE {_WINDOW} ORDER BY s.id", (since, since)).fetchall()
     last = {r["name"]: r["status"] for r in rows}
     return last.get("export") == "ok", [n for n, status in last.items() if status != "ok" and n != "preflight"]
+
+
+def export_begun(since: float) -> float | None:
+    """When the export that `pending(since)` counts began: what a resumption publishes."""
+    with _db() as con:
+        row = con.execute(f"SELECT s.started FROM step s JOIN cycle c ON c.id = s.cycle_id WHERE {_WINDOW} "
+                          "AND s.name = 'export' AND s.status = 'ok' ORDER BY s.id DESC LIMIT 1", (since, since)).fetchone()
+    return float(row["started"]) if row else None
 
 
 def failures(since: float) -> list[str]:
     """Since `since`: each step whose last state is not `ok`, with its exact message."""
     reap()
     with _db() as con:
-        rows = con.execute("SELECT s.name, s.status, s.detail FROM step s JOIN cycle c ON c.id = s.cycle_id "
-                           "WHERE c.started >= ? AND c.kind != 'test' ORDER BY s.id", (since,)).fetchall()
+        rows = con.execute(f"SELECT s.name, s.status, s.detail FROM step s JOIN cycle c ON c.id = s.cycle_id "
+                           f"WHERE {_WINDOW} ORDER BY s.id", (since, since)).fetchall()
     last = {r["name"]: r for r in rows}
     exported = "export" in last and last["export"]["status"] == "ok"
     return [f"{n}: {r['detail'] or r['status']}" for n, r in last.items()
             if r["status"] != "ok" and not (exported and n == "preflight")]
+
+
+def note_missed(night_start: float, next_start: float, now: float | None = None) -> str:
+    """The night from `night_start` to `next_start` began no publication at all (2026-11-06: the night
+    before ran over 04:17 and nothing started after it): recorded once as a `missed` cycle, and said.
+    Returns what was recorded, or "". Nothing is said before this file knows an earlier night."""
+    now = time.time() if now is None else now
+    with _db() as con:
+        if not con.execute("SELECT 1 FROM cycle WHERE started < ? AND kind NOT IN ('test', 'skipped', 'missed')",
+                           (night_start,)).fetchone():
+            return ""
+        if con.execute("SELECT 1 FROM cycle WHERE started >= ? AND started < ? AND kind IN ('nightly', 'resume')",
+                       (night_start, next_start)).fetchone():
+            return ""
+        if con.execute("SELECT 1 FROM cycle WHERE kind = 'missed' AND started = ?", (night_start,)).fetchone():
+            return ""
+        detail = (f"missed: no publication began for the night of "
+                  f"{time.strftime('%Y-%m-%d', time.localtime(night_start))} (04:17 to 04:17)")
+        con.execute("INSERT INTO cycle(kind, started, finished, status, pid, detail) VALUES ('missed', ?, ?, 'skipped', ?, ?)",
+                    (night_start, now, os.getpid(), detail))
+        return detail
 
 
 def failed_cycles(since: float) -> int:

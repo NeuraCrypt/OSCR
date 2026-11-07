@@ -210,6 +210,10 @@ def run(now: float | None = None, *, logs: Path = LOGS, state_path: Path | None 
         said.append("harvester alive")
     state = read_state(state_path)
     start = last_start(now)
+    # A whole night with no publication begun (the one before ran over 04:17): said once, and notified.
+    if (missed := cycles.note_missed(last_start(start - 1), start, now)):
+        notify(missed)
+        said.append(missed)
     exported, left = cycles.pending(start)
     if locked():
         said.append("nightly running")
@@ -225,6 +229,10 @@ def run(now: float | None = None, *, logs: Path = LOGS, state_path: Path | None 
             notify(failed)
             mark("alerted", start, state_path)
         said.append(f"nightly failed: {failed}")
+    elif (failing := cycles.failures(start)) and not night_done(state, now):
+        # Failed from the first failure on (until 2026-11-07 "nightly done" was said until the third),
+        # while the relaunches are still to come.
+        said.append(f"nightly failed, to be tried again: {'; '.join(failing)}")
     else:
         said.append(f"nightly done {_ago(state.get('success'), now)}")
     return "; ".join(said)
