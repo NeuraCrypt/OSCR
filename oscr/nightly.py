@@ -11,13 +11,65 @@ Before anything, `oscr/preflight.py` says what would make the night fail, in wor
 from __future__ import annotations
 
 import os
+import signal
 import subprocess
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 
 from . import catalog, cycles, preflight, watchdog
+
+#: The night must be over this long before the next 04:17 (watchdog.NIGHTLY_AT), when the next one
+#: starts: launchd does not start a job that is still running, so a night that runs over swallows the
+#: next (2026-11-06). Every step stops at that hour, whatever its own limit.
+NIGHT_MARGIN_S = 30 * 60
+#: Each step's own limit, in seconds (the longest seen on 2026-11-06: export 5 h, deploy with its
+#: build 7 h 11, when the 1,024 lots were all sent again every night). Any other step: STEP_LIMIT_S.
+STEP_LIMITS_S: dict[str, float] = {"export": 6 * 3600, "forge": 3600, "dataset": 3 * 3600, "deploy": 6 * 3600}
+STEP_LIMIT_S = 3600
+#: A resumption with less time than this before the night's end does not start: the 04:17 run is near.
+MIN_START_S = 20 * 60
+
+
+class NightTooLong(Exception):
+    """A step went past its limit or the night's end: the night stops there, its cycle failed."""
+
+
+def night_end(now: float) -> float:
+    """The hour this run must be over: the next 04:17 after `now`, less NIGHT_MARGIN_S."""
+    at = datetime.fromtimestamp(now).replace(hour=watchdog.NIGHTLY_AT[0], minute=watchdog.NIGHTLY_AT[1],
+                                             second=0, microsecond=0)
+    if at.timestamp() <= now:
+        at += timedelta(days=1)
+    return at.timestamp() - NIGHT_MARGIN_S
+
+
+@contextmanager
+def limited(name: str, until: float) -> Iterator[None]:
+    """Run the block for at most its step's limit and never past `until`: past it, NightTooLong is
+    raised in the block (a SIGALRM: a subprocess under way is killed by subprocess.run as the error
+    goes through; a long SQLite call is stopped when it returns)."""
+    started = time.time()
+    own = STEP_LIMITS_S.get(name, STEP_LIMIT_S)
+    limit = min(own, until - started)
+    why = (f"its limit is {own / 60:.0f} min" if own <= until - started
+           else f"the night must end by {time.strftime('%H:%M', time.localtime(until))}, before the next 04:17")
+    if limit <= 0:
+        raise NightTooLong(f"night too long: no time left for step {name} ({why})")
+
+    def ring(signum: int, frame: Any) -> None:
+        raise NightTooLong(f"night too long: step {name} stopped after {(time.time() - started) / 60:.0f} min ({why})")
+
+    previous = signal.signal(signal.SIGALRM, ring)
+    signal.setitimer(signal.ITIMER_REAL, limit)
+    try:
+        yield
+    finally:
+        signal.setitimer(signal.ITIMER_REAL, 0)
+        signal.signal(signal.SIGALRM, previous)
 
 
 def stay_awake() -> None:
@@ -128,6 +180,10 @@ def run(con: Any, client: Any, cfg: dict[str, str], *, out: Path, dataset: str, 
         watchdog.mark("blocked")
         raise SystemExit(f"preflight: {said}")
 
+    until = night_end(time.time())
+    if resuming and until - time.time() < MIN_START_S:
+        say(f"nothing resumed: the night ends at {time.strftime('%H:%M', time.localtime(until))}, the 04:17 run is near")
+        return 0
     watchdog.mark("attempt")
     if resuming:
         watchdog.count_resume(start)
@@ -152,11 +208,21 @@ def run(con: Any, client: Any, cfg: dict[str, str], *, out: Path, dataset: str, 
     # first time, the lots online (website/public/scripts) are taken in as they are, frozen.
     from . import publish, scriptlots
     lots = scriptlots.site_store(publish.WEBSITE, cfg)
+
+    def too_long(e: NightTooLong) -> SystemExit:
+        # The night stops cleanly: its cycle failed with the reason, what was not run stays pending.
+        cycles.finish_cycle(cid, ok=False, detail=str(e))
+        return SystemExit(f"{time.strftime('%Y-%m-%d %H:%M')} {e}")
+
     if "export" in todo:
-        with cycles.step(cid, "export"):
-            if (adopted := lots.adopt(publish.WEBSITE / "public" / "scripts")):
-                say(f"script lots: the {adopted} lots online are kept as they are, in {lots.lots}")
-            say(f"public catalogue → {catalog.generate(con, out, public=True, lots=lots, heavy=scriptlots.heavy_folder(publish.WEBSITE, cfg))}")
+        try:
+            with cycles.step(cid, "export"), limited("export", until):
+                if (adopted := lots.adopt(publish.WEBSITE / "public" / "scripts")):
+                    say(f"script lots: the {adopted} lots online are kept as they are, in {lots.lots}")
+                heavy = scriptlots.heavy_folder(publish.WEBSITE, cfg)
+                say(f"public catalogue → {catalog.generate(con, out, public=True, lots=lots, heavy=heavy)}")
+        except NightTooLong as e:
+            raise too_long(e) from e
     # Nothing leaves when the catalogue is empty or shrank by half: every upload below replaces
     # what is online (the site, D1's deletions, Hugging Face's history).
     articles = con.execute(f"SELECT COUNT(*) FROM article WHERE {catalog.IN_SCOPE}").fetchone()[0]
@@ -173,7 +239,11 @@ def run(con: Any, client: Any, cfg: dict[str, str], *, out: Path, dataset: str, 
             return
         sid = cycles.start_step(cid, name)
         try:
-            failed = send() or []
+            with limited(name, until):
+                failed = send() or []
+        except NightTooLong as e:
+            cycles.finish_step(sid, ok=False, detail=str(e))
+            raise too_long(e) from e
         except (Exception, SystemExit) as e:  # noqa: BLE001, recorded, and the others still run
             failed = [f"{label}: {e}"]
         cycles.finish_step(sid, ok=not failed, detail="\n".join(failed))
@@ -181,7 +251,7 @@ def run(con: Any, client: Any, cfg: dict[str, str], *, out: Path, dataset: str, 
 
     step("forge", "Forge", lambda: _forge(con, client, cfg, out, say))
     step("dataset", "Hugging Face", lambda: say(publish.publish_hf(out, dataset)))
-    step("deploy", "Cloudflare", lambda: say(publish.deploy_cloudflare(out, cloudflare, lots=lots)))
+    step("deploy", "Cloudflare", lambda: say(publish.deploy_cloudflare(out, cloudflare, lots=lots, until=until)))
 
     def linkfeeds() -> None:
         # One link per paper with a page, on Europe PMC and PubMed (docs/BADGE.md); nothing is sent

@@ -29,12 +29,16 @@ def no_wait_between_retries(monkeypatch):
 
 #: The real checks, for tests/test_nightly.py: the others have no disk, network or login to look at.
 REAL_PREFLIGHT = preflight.run
+#: The real end of the night (the next 04:17, less the margin), for its own test: the others get twelve
+#: hours, whatever the hour they run at.
+REAL_NIGHT_END = nightly.night_end
 
 
 @pytest.fixture(autouse=True)
 def nightly_stays_on_this_test(monkeypatch):
     monkeypatch.setattr(preflight, "run", lambda cfg, dataset, cloudflare, **kw: [])
     monkeypatch.setattr(nightly, "stay_awake", lambda: None)
+    monkeypatch.setattr(nightly, "night_end", lambda now: now + 12 * 3600)
     monkeypatch.setattr(reconcile, "run", lambda cfg: "reconciled")
     monkeypatch.setattr(watchdog, "alert", lambda message: None)
 

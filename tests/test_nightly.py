@@ -218,3 +218,43 @@ def test_the_shared_layout_carries_no_date_of_the_catalogue():
     """Every page uses it: a date there changed all 10,000 pages every night, and each was sent again."""
     layout = (Path(__file__).resolve().parents[1] / "website" / "src" / "layouts" / "Base.astro").read_text()
     assert "generated_at" not in layout and "generatedInWords" not in layout
+
+
+def test_the_night_ends_half_an_hour_before_the_next_0417():
+    end = conftest.REAL_NIGHT_END(today(4, 17) + 1)
+    assert datetime.fromtimestamp(end).strftime("%H:%M") == "03:47" and end - today(4, 17) > 23 * 3600
+    assert conftest.REAL_NIGHT_END(today(20, 32)) - today(20, 32) < 8 * 3600     # a late start: 7 h 15
+
+
+def test_a_step_past_its_limit_stops_the_night_cleanly(night, monkeypatch):
+    """2026-11-02: no limit for the whole night; a step that runs over now stops the night, its cycle
+    failed with the reason in words, what was not run left pending for a resumption."""
+    sent, broken, args = night
+    monkeypatch.setattr(nightly, "STEP_LIMITS_S", {**nightly.STEP_LIMITS_S, "dataset": 0.2})
+    monkeypatch.setattr(publish, "publish_hf", lambda *a, **k: (sent.append("dataset"), time.sleep(5)))
+    started = time.monotonic()
+    with pytest.raises(SystemExit, match="night too long: step dataset stopped after 0 min"):
+        cli.main(args)
+    assert time.monotonic() - started < 4 and sent == ["export", "dataset"]
+    last = cycles.history(1)[0]
+    assert last["status"] == "failed" and "night too long: step dataset" in last["detail"]
+    exported, left = cycles.pending(0)
+    assert exported and left[:2] == ["dataset", "deploy"] and "search" in left
+
+
+def test_the_night_never_goes_past_its_end(night, monkeypatch):
+    sent, broken, args = night
+    monkeypatch.setattr(nightly, "night_end", lambda now: now + 0.3)
+    monkeypatch.setattr(publish, "publish_hf", lambda *a, **k: time.sleep(5))
+    with pytest.raises(SystemExit, match="the night must end by"):
+        cli.main(args)
+
+
+def test_a_resumption_does_not_start_when_the_0417_run_is_near(night, monkeypatch, capsys):
+    sent, broken, args = night
+    broken.add("search")
+    with pytest.raises(SystemExit):
+        cli.main(args)
+    sent.clear()
+    monkeypatch.setattr(nightly, "night_end", lambda now: now + 60)
+    assert cli.main(args) == 0 and sent == [] and "the 04:17 run is near" in capsys.readouterr().out

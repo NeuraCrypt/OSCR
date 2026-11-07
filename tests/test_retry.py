@@ -1,5 +1,6 @@
 """A passing network error is sent again (30 s, 2 min, 10 min); a definitive one never."""
 import subprocess
+import time
 
 import pytest
 
@@ -80,13 +81,12 @@ def test_a_community_read_through_wrangler_is_sent_again(monkeypatch, tmp_path, 
 def test_wrangler_deploy_is_sent_again_but_not_an_asset_too_large(monkeypatch, tmp_path, waits):
     calls = []
     monkeypatch.setattr(subprocess, "run", fake_run([(1, "", "fetch failed")], calls))
-    monkeypatch.setattr(publish, "DEPLOY_ATTEMPTS", 1)
     env = {}
-    assert retry.call(lambda: publish._deploy(["npx", "wrangler", "deploy"], tmp_path, env), "deploy").returncode == 0
-    assert waits == [30]
+    assert publish._deploy(["npx", "wrangler", "deploy"], tmp_path, env).returncode == 0
+    assert waits == [30] and len(calls) == 2
     monkeypatch.setattr(subprocess, "run", fake_run([(1, "", "Asset too large")], calls := []))
     with pytest.raises(RuntimeError):
-        retry.call(lambda: publish._deploy(["npx", "wrangler", "deploy"], tmp_path, env), "deploy")
+        publish._deploy(["npx", "wrangler", "deploy"], tmp_path, env)
     assert len(calls) == 1
 
 
@@ -125,7 +125,41 @@ def test_a_deploy_try_stopped_at_the_limit_says_its_last_lines(monkeypatch, tmp_
         raise subprocess.TimeoutExpired(a[0], 5400, output=b"Found 750 new or modified static assets to upload\nUploading 700/750",
                                         stderr=b"")
     monkeypatch.setattr(subprocess, "run", stopped)
+    monkeypatch.setattr(publish, "DEPLOY_ATTEMPTS", 1)
     with pytest.raises(subprocess.TimeoutExpired):
         publish._deploy(["npx", "wrangler", "deploy"], tmp_path, {})
     out = capsys.readouterr().out
     assert "try 1: Found 750 new or modified static assets, stopped after" in out and "Uploading 700/750" in out
+
+
+def test_the_deploy_has_one_set_of_tries_and_a_run_at_its_limit_resumes(monkeypatch, tmp_path, capsys):
+    """2026-11-06: retry.call around the deploy's own loop made up to 24 runs (36 hours). Now the loop
+    is the only one: a run stopped at its limit is followed by another (Cloudflare kept what it got),
+    a passing error too, DEPLOY_ATTEMPTS at most."""
+    def stopped(left):
+        def run(*a, **k):
+            raise subprocess.TimeoutExpired(a[0], 5400, output=f"Found {left} new or modified static assets to upload".encode())
+        return run
+    answers = iter([stopped(7887), stopped(750), (1, "", "fetch failed"), (0, "Found 41 new or modified static assets to upload", "")])
+
+    def run(cmd, **k):
+        a = next(answers)
+        if callable(a):
+            return a(cmd, **k)
+        return subprocess.CompletedProcess(cmd, a[0], a[1], a[2])
+    monkeypatch.setattr(subprocess, "run", run)
+    assert publish._deploy(["npx", "wrangler", "deploy"], tmp_path, {}).returncode == 0
+    monkeypatch.setattr(subprocess, "run", stopped(100))
+    with pytest.raises(subprocess.TimeoutExpired):
+        publish._deploy(["npx", "wrangler", "deploy"], tmp_path, {})        # no progress: stops at try 2
+    monkeypatch.setattr(subprocess, "run", lambda cmd, **k: subprocess.CompletedProcess(cmd, 1, "", "fetch failed"))
+    with pytest.raises(RuntimeError, match="fetch failed"):
+        publish._deploy(["npx", "wrangler", "deploy"], tmp_path, {})
+    out = capsys.readouterr().out
+    assert out.count("try 6:") == 1 and "try 7:" not in out
+
+
+def test_the_deploy_starts_no_run_past_the_nights_end(monkeypatch, tmp_path):
+    monkeypatch.setattr(subprocess, "run", lambda cmd, **k: pytest.fail("a run started"))
+    with pytest.raises(RuntimeError, match="no time left"):
+        publish._deploy(["npx", "wrangler", "deploy"], tmp_path, {}, until=time.time() + 30)

@@ -200,7 +200,7 @@ def _built(website: Path) -> str:
         return ""
 
 
-#: How many times `wrangler deploy` runs at most when Cloudflare cuts the upload short.
+#: How many times `wrangler deploy` runs at most, every cause together (no other try around it).
 DEPLOY_ATTEMPTS = 6
 #: Of those, how many may follow an expired upload token: wrangler's upload session lasts about an
 #: hour, after which every bucket is answered "401 Unauthorized" and the deploy fails. A new run
@@ -221,11 +221,15 @@ def _assets_left(text: str) -> int | None:
 BUILD_TIMEOUT_S = 3 * 3600
 
 
-def _run_once(step: list[str], website: Path, env: dict) -> subprocess.CompletedProcess:
+def _run_once(step: list[str], website: Path, env: dict, *, until: float | None = None) -> subprocess.CompletedProcess:
     # The site is large (the scripts' copies, the public API's static data): the build and the
     # upload of the day's changes can take well over half an hour, so allow 90 minutes a step,
-    # and BUILD_TIMEOUT_S for the build.
+    # and BUILD_TIMEOUT_S for the build; never past `until` (the night's end).
     timeout = BUILD_TIMEOUT_S if step[:3] == ["npm", "run", "build"] else 5400
+    if until is not None:
+        timeout = min(timeout, until - time.time())
+        if timeout < 60:
+            raise RuntimeError(f"{' '.join(step[:4])}: no time left in the night")
     r = subprocess.run(step, cwd=website, env=env, capture_output=True, text=True, timeout=timeout)
     if r.returncode != 0:
         raise RuntimeError(f"{' '.join(step[:4])} failed: " + (r.stderr or r.stdout).strip()[-600:])
@@ -249,23 +253,32 @@ def _tail(out: str | bytes | None, lines: int = 30) -> str:
     return "\n".join(f"    {ln}" for ln in kept) or "    (no output)"
 
 
-def _deploy(step: list[str], website: Path, env: dict) -> subprocess.CompletedProcess:
-    """`wrangler deploy`, run again (never rebuilt) when Cloudflare cuts the upload short: on
-    "Upload took too long", and on an expired upload token as long as each run leaves fewer assets
-    to send than the one before. Cloudflare keeps what was already sent, so each run resumes."""
+def _deploy(step: list[str], website: Path, env: dict, *, until: float | None = None) -> subprocess.CompletedProcess:
+    """`wrangler deploy`, run again (never rebuilt) when Cloudflare cuts the upload short or a passing
+    error stops it: Cloudflare keeps what was already sent, so each run resumes. DEPLOY_ATTEMPTS runs
+    in all, the only tries (until 2026-11-07 `retry.call` wrapped this loop: up to 24 runs, 36 hours):
+    "Upload took too long", a run stopped at its limit, a passing error (retry.passing), and an expired
+    upload token as long as each run leaves fewer assets to send than the one before. `until` (a
+    `time.time()`): no run starts, and none goes on, past it."""
     expired, left = 0, None
     for attempt in range(1, DEPLOY_ATTEMPTS + 1):
         started = time.monotonic()
+        limit = 5400.0 if until is None else min(5400.0, until - time.time())
+        if limit < 60:
+            raise RuntimeError(f"{' '.join(step[:4])}: no time left in the night for try {attempt}")
         try:
-            r = subprocess.run(step, cwd=website, env=env, capture_output=True, text=True, timeout=5400)
+            r = subprocess.run(step, cwd=website, env=env, capture_output=True, text=True, timeout=limit)
         except subprocess.TimeoutExpired as e:
             partial = f"{_text(e.stdout)}\n{_text(e.stderr)}"
             count = _assets_left(partial)
             print(f"wrangler deploy, try {attempt}: "
                   f"{'no count given' if count is None else f'Found {count} new or modified static assets'}, "
-                  f"stopped after {(time.monotonic() - started) / 60:.1f} min (the 90-minute limit); its last lines:\n"
+                  f"stopped after {(time.monotonic() - started) / 60:.1f} min (its {limit / 60:.0f}-minute limit); its last lines:\n"
                   f"{_tail(partial)}", flush=True)
-            raise
+            if attempt == DEPLOY_ATTEMPTS or (left is not None and count is not None and count >= left):
+                raise
+            left = count if count is not None else left
+            continue        # Cloudflare kept what was sent: the next run resumes from there
         seen = f"{r.stdout}\n{r.stderr}"
         count = _assets_left(seen)
         print(f"wrangler deploy, try {attempt}: "
@@ -276,20 +289,26 @@ def _deploy(step: list[str], website: Path, env: dict) -> subprocess.CompletedPr
         if r.returncode == 0:
             return r
         err = (r.stderr or r.stdout).strip()
-        if attempt < DEPLOY_ATTEMPTS:
-            if "Upload took too long" in err:
-                continue  # Cloudflare kept the uploaded assets; the next attempt resumes from there.
-            now = _assets_left(seen)
-            if _EXPIRED.search(err) and expired < EXPIRED_RETRIES and (left is None or now is None or now < left):
-                expired, left = expired + 1, now
-                continue
         error = RuntimeError(f"{' '.join(step[:4])} failed: " + err[-600:])
-        error.final = bool(_EXPIRED.search(err))  # the runs above already tried: the watchdog resumes it later
+        if attempt == DEPLOY_ATTEMPTS:
+            raise error
+        if "Upload took too long" in err:
+            left = count if count is not None else left
+            continue        # Cloudflare kept the uploaded assets; the next attempt resumes from there.
+        if _EXPIRED.search(err):
+            if expired < EXPIRED_RETRIES and (left is None or count is None or count < left):
+                expired, left = expired + 1, count
+                continue
+            raise error
+        if retry.passing(error):
+            retry.sleep(retry.DELAYS[0])
+            continue
         raise error
-    return r
+    raise RuntimeError(f"{' '.join(step[:4])}: {DEPLOY_ATTEMPTS} tries")
 
 
-def deploy_cloudflare(catalog: Path, project: str, website: Path = WEBSITE, lots: Any = None) -> str:
+def deploy_cloudflare(catalog: Path, project: str, website: Path = WEBSITE, lots: Any = None,
+                      until: float | None = None) -> str:
     """Rebuild the website from the public catalogue (`catalog`, generated in public
     mode) and put it online as the static assets of a Cloudflare Worker (`project` is the
     Worker's name): no git repository and no build at Cloudflare, and only the files that
@@ -322,9 +341,9 @@ def deploy_cloudflare(catalog: Path, project: str, website: Path = WEBSITE, lots
             from . import scriptlots
             scriptlots.link_into(lots, website / "dist" / "scripts")
         if step[:2] == ["npx", "wrangler"]:
-            r = retry.call(lambda s=step: _deploy(s, website, env), "wrangler deploy")
+            r = _deploy(step, website, env, until=until)
         else:
-            r = _run_once(step, website, env)
+            r = _run_once(step, website, env, until=until)
         output = r.stdout
         if step[:2] == ["npm", "ci"]:
             (website / "node_modules" / INSTALLED_LOCK).write_text(lock)
