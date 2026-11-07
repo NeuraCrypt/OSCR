@@ -20,15 +20,15 @@ const locking = [
   'git lfs track "*.fig" --lockable',
   "git lfs lock figures/figure-a.fig",
   "git lfs locks",
-  "git lfs unlock figures/figure-a.fig",
-  "git lfs unlock figures/figure-a.fig --force",
+  "git lfs unlock figures/figure-a.fig", // style-ok: the git lfs command
+  "git lfs unlock figures/figure-a.fig --force", // style-ok: the git lfs command
 ];
 const moveIn = ['git lfs migrate import --include="*.h5" --everything', "git push --force-with-lease --all origin"];
 const moveOut = [
   'git lfs untrack "*.h5"',
   "git rm --cached data/results.h5",
   "git add data/results.h5 .gitattributes",
-  'git commit -m "Keep results.h5 in git, not LFS"',
+  'git commit -m "Store results.h5 directly in git"',
 ];
 const attributes = [
   "# .gitattributes",
@@ -132,7 +132,7 @@ const attributes = [
   <p>
     A binary file cannot be merged, so two people editing it at once lose one person's work. Git LFS can lock it: a
     pattern marked lockable is read-only in each clone until you lock the file; GitHub refuses a push that changes a
-    file someone else has locked; an administrator can force an unlock.
+    file someone else has locked; an administrator can remove someone else's lock with <code>--force</code>.
   </p>
   <pre class="commands">{locking.join("\n")}</pre>
   <p>Source: <a href={SOURCES.lfsLocking}>Git LFS's locking</a>.</p>

@@ -52,57 +52,45 @@ const toc = [
     <img class="wordmark" src="/brand/logo-wordmark-600.png" width="600" height="174" alt={SITE_NAME} />
     <p class="lead">
       {SITE_FULL_NAME} is a registry of the code that the authors of open-access neuroscience papers publish with their
-      work. It finds that code from the paper's own text, checks it where it lives, records exactly what was found
-      and under which licence, and shows it beside the paper, paragraph by paragraph. It is free, it asks nobody for an
-      email address, and it never claims more than it has verified: the source always prevails.
+      work. A program finds the links to that code in each paper, visits each repository where it is hosted, records
+      the commit and the licence it found, and shows the code beside the paper. The site is free. Each page says what
+      was checked and when, and links to the original repository.
+      <a href="/help/verification/">How {SITE_NAME} finds and verifies the code</a> describes each step.
     </p>
   </Fragment>
 
   <h2 id="mission">The mission</h2>
   <p>
-    A paper's results come from code as much as from its methods section. {SITE_NAME} exists so that anyone who reads
-    a neuroscience paper can find the code its authors used, know whether that code is really there, read it next to
-    the text it implements, and cite both. It does that at a scale no reader can: every open-access neuroscience paper
-    it can read, every day.
+    Many results in neuroscience papers depend on the code their authors wrote. We want a reader of a paper to be able
+    to find that code, see whether it is still online, read it next to the methods, and cite both. {SITE_NAME} does
+    this for every open-access neuroscience paper it can read, and adds new papers every day.
   </p>
-  <p>Three commitments follow from that aim, and every other choice on this page serves them:</p>
-  <ul>
-    <li><strong>Find</strong> the code the authors themselves point to, not code that merely resembles theirs.</li>
-    <li><strong>Verify</strong> it at the source, and say in words what was verified, when, and what was not.</li>
-    <li><strong>Respect</strong> the authors, their licences and the readers: copy only what a licence allows, collect
-      no reader's email address, and never republish a paper's text.</li>
-  </ul>
+  <p>
+    We only list code that the paper itself links to. We say in words what was checked and when. We copy a script
+    only when its licence allows it, we do not ask readers for an email address, and we do not republish the text of
+    papers.
+  </p>
 
   <h2 id="problem">The problem</h2>
   <p>
-    Code behind papers is hard to find, hard to verify and hard to trust. The reasons are practical, and each one
-    shaped the registry:
+    A paper can give the address of its code in many places: a data and code availability statement, the methods, a
+    table of resources, a reference to a software record, a supplementary archive or a footnote. Search engines for
+    papers mostly index metadata, and the link to the code is often only in the full text.
   </p>
-  <dl class="terms">
-    <dt>It is hard to find.</dt>
-    <dd>
-      A paper says where its code is in many places: a data and code availability statement, the methods, a table of
-      resources, a reference to a software record, a supplementary archive, a footnote. Some of those places are not in
-      any search index. A search engine for papers sees a paper's metadata; the link to the code is often only in its
-      full text.
-    </dd>
-    <dt>It is hard to verify.</dt>
-    <dd>
-      A link can be dead, point to an empty repository, to a lab's home page, to a tool the authors merely used, or to
-      data rather than code. "Available on request" is a promise, not code. Only a visit to each link, and a look at
-      what it holds, tells these cases apart.
-    </dd>
-    <dt>It is hard to trust.</dt>
-    <dd>
-      A repository changes after publication. Without the commit that was there, its licence and the list of its files,
-      nobody can say later what the paper's code was. And without the authors' own word, a link found by a machine
-      stays a proposal.
-    </dd>
-    <dt>It is hard to read.</dt>
-    <dd>
-      Even when the code is there, the reader has to guess which function implements which paragraph of the methods.
-    </dd>
-  </dl>
+  <p>
+    A link can also be dead, or lead to an empty repository, a lab's home page, a tool the authors used, or a dataset.
+    Some papers say that their code is available on request. A visit to each link, and a look at what it holds, is
+    the only way to tell these cases apart.
+  </p>
+  <p>
+    A repository can change after publication. The commit that was there, its licence and the list of its files are
+    needed to know later what the paper's code was. A link found by a program remains a proposal until an author
+    confirms it.
+  </p>
+  <p>
+    When the code is there, the reader still has to work out which function implements which paragraph of the
+    methods. The Code ↔ Paper reader proposes these matches.
+  </p>
 
   <h2 id="how">How it works, step by step</h2>
   <p>
@@ -144,8 +132,9 @@ const toc = [
         table, the references, the supplementary material, the notes. Each mention is judged on its own, the authors'
         code, their data, or a third-party tool they used, with the reasons for the verdict, and the verdicts for the
         same repository are merged. A sentence saying the code is "available on request" is recorded as such. The
-        sentences that decided a verdict stay in the private database: the site shows where a link was found, never the
-        paper's words.
+        sentences that decided a verdict stay in the private database; the site shows where a link was found and does
+        not quote the paper. <a href="/help/verification/">How {SITE_NAME} finds and verifies the code</a> gives the
+        rules in detail.
       </p>
     </li>
     <li>
@@ -191,11 +180,10 @@ const toc = [
         For a paper whose code was read, the harvester pairs paragraphs of the paper with lines of the code (method{" "}
         <code>lexical-v1</code>): both are reduced to technical terms, word stems, identifiers, constants, tool names,
         figure numbers, and a pair is kept only when several rare terms agree, so that a shared common word counts for
-        nothing. A wrong highlight costs the reader more than a missing one. The <a href="/help/reader/">reader</a> puts
+        nothing. We prefer to miss a match than to show a wrong one. The <a href="/help/reader/">reader</a> puts
         the paper and the code side by side, each pair in one colour on both sides. The paper's text is fetched by your
-        browser from Europe PMC (or PubMed Central's copy) when you open the reader; {SITE_NAME} never stores it. All of it
-       , where the code is, the commit, the licence, the files and their digests, how the links were found, the
-        matches, makes the paper's <a href="/help/maps/">tracing map</a>.
+        browser from Europe PMC (or PubMed Central's copy) when you open the reader; {SITE_NAME} does not store it. Where the code is, the commit, the licence, the files and their digests, how
+        the links were found and the matches together make the paper's <a href="/help/maps/">tracing map</a>.
       </p>
     </li>
     <li>
@@ -221,14 +209,13 @@ const toc = [
 
   <h2 id="why">Why it is built this way</h2>
   <dl class="terms">
-    <dt>Zero cost.</dt>
+    <dt>Free services only</dt>
     <dd>
-      A registry that depends on a budget disappears with it. {SITE_NAME} uses only free services and free plans, and
-      is designed around their limits: the site is static files, which Cloudflare serves without limit; the few
+      {SITE_NAME} has no budget, so it uses only free services and free plans, and is designed around their limits: the site is static files, which Cloudflare serves without limit; the few
       dynamic answers (the search, sign-in, requests) share a daily quota; the heavy work runs on the operator's
-      computer. When a feature does not fit a free plan, it waits or takes another form.
+      computer. A feature that does not fit a free plan waits.
     </dd>
-    <dt>No email address.</dt>
+    <dt>Sign-in without an email address</dt>
     <dd>
       Sign-in asks ORCID, GitHub or Google for an identity, never for an address. No form accepts one: the texts you
       type lose any address before they are stored. Notifications stay in the site. The site shows no author's email
@@ -237,7 +224,7 @@ const toc = [
       that papers themselves publish for their authors: <a href="/privacy/#contacts">the privacy page</a> says what,
       where and why.)
     </dd>
-    <dt>Licences respected.</dt>
+    <dt>Licences</dt>
     <dd>
       A script's text is copied only when its licence allows it and the repository's own licence file confirms it.
       Everything else is never copied: the reader's browser fetches it from where its authors published it, at the
@@ -246,13 +233,13 @@ const toc = [
       policy</PageLink>). Abstracts and availability statements are shown in full only under the licences that allow it
       (<a href="/policies/licences/">the licence policy</a>).
     </dd>
-    <dt>The paper's full text is never redistributed.</dt>
+    <dt>The paper's full text</dt>
     <dd>
       Neither the text nor the PDF of a paper leaves the operator's computer: the site links to the paper by its DOI,
       and the reader's browser fetches the text from Europe PMC itself. Evidence for a match is a handful of short
       technical terms, never a sentence (<a href="/policies/full-text/">the full-text policy</a>).
     </dd>
-    <dt>GitHub only as a last resort.</dt>
+    <dt>Reading the code on the site</dt>
     <dd>
       The code is read here, beside the paper: a paper's page opens on the reader, and the listing's code links lead
       to it. The forge is the source of truth and is always linked, but last, for what the reader cannot show, and to
@@ -260,16 +247,16 @@ const toc = [
       same way. And the registry asks GitHub for no permission: sign-in with GitHub requests no scope, and the badge is
       added by the author in GitHub's own editor.
     </dd>
-    <dt>The machine proposes; the authors decide.</dt>
+    <dt>Corrections and validations by authors</dt>
     <dd>
       Every verdict is labelled with how it was reached. Matches are proposals with their evidence and score. A
       correction by an author becomes a new version of the record and survives every later scan. Only an author's
       validation earns a DOI.
     </dd>
-    <dt>Static first, the source prevails.</dt>
+    <dt>Static pages</dt>
     <dd>
       Pages are built ahead of time, so the site works without JavaScript for reading records, costs nothing to visit,
-      and cannot be overloaded by readers. When the registry and the source disagree, the source is right.
+      and holds up under many readers. When the registry and the source disagree, the source is right.
     </dd>
   </dl>
 
@@ -313,8 +300,8 @@ const toc = [
 
   <h2 id="funding">How it is paid for</h2>
   <p>
-    It is not: {SITE_NAME} costs nothing to run beyond the operator's own computer and connection, has no advertising,
-    no tracker and no paid service. It lives on free plans:
+    {SITE_NAME} has no budget. It runs on the operator's own computer and connection and on free plans. It has no
+    advertising, no tracker and no paid service. The free plans are:
   </p>
   <ul>
     <li>Cloudflare Workers, free plan: the site's files, served without limit, and 100,000 dynamic requests a day for
@@ -363,30 +350,28 @@ const toc = [
   </p>
 
   <h2 id="limits">Limits</h2>
-  <p>What {SITE_NAME} does not do, or not yet, said plainly, since a registry is only as useful as its honesty:</p>
+  <p>What {SITE_NAME} does not do, or does not do yet:</p>
   <ul>
-    <li><strong>Coverage.</strong> Only open-access papers whose full text Europe PMC holds, matched by its neuroscience
+    <li>Coverage: Only open-access papers whose full text Europe PMC holds, matched by its neuroscience
       query; papers without a full text there are read from their metadata only. The harvest goes back in time month
       by month: older years are still being read.</li>
-    <li><strong>Accuracy.</strong> Measured on 25 September 2026: 10 of 11 "authors' code" verdicts right on papers
+    <li>Accuracy: Measured on 25 September 2026: 10 of 11 "authors' code" verdicts right on papers
       never seen while tuning; the text alone finds the authors' exact repository for 72% of the papers of an
       independent benchmark (73 of 102). Some links are missed, a few misjudged: authors can correct them.</li>
-    <li><strong>Matches</strong> are computed by a lexical method, not read by a person: proposals, with their evidence.</li>
-    <li><strong>Classification</strong> is by rules; the model meant for the ambiguous cases is not chosen yet.</li>
-    <li><strong>Quotas.</strong> The search and the other dynamic answers share Cloudflare's daily free quota; when it is
+    <li>Matches are computed by a lexical method and are not checked by a person. They are proposals, shown with their evidence.</li>
+    <li>Classification uses rules; the model meant for the ambiguous cases is not chosen yet.</li>
+    <li>Quotas: The search and the other dynamic answers share Cloudflare's daily free quota; when it is
       spent, they say so until midnight UTC, while every static page keeps working.</li>
-    <li><strong>Test services.</strong> While the platform is built, sign-in with ORCID may use ORCID's sandbox and map
+    <li>Test services: While the platform is built, sign-in with ORCID may use ORCID's sandbox and map
       deposits go to Zenodo's sandbox, whose DOIs are not real; such validations are recorded as tests and never
       published.</li>
-    <li><strong>Moderation.</strong> There is no human moderator on duty: published rules decide removal requests,
+    <li>Moderation: There is no human moderator on duty: published rules decide removal requests,
       submissions and claims, on the operator's computer. What they cannot decide waits for the operator,{" "}
       {REVIEW_DAYS} days at most, and is then closed (<PageLink href="/policies/moderation/">how requests are
       decided</PageLink>), except a request about personal data, which the operator answers within one month, as the
       GDPR requires, and which is never closed unanswered (<a href="/data-rights/">your data and your rights</a>).</li>
-    <li><strong>Not built yet:</strong> unlinking an identity from an account, signing out of every browser at once,
+    <li>Not built yet: unlinking an identity from an account, signing out of every browser at once,
       discussions, reproduction reports, and notifications beyond the account page.</li>
-    <li><strong>Address.</strong> The site lives at its free <code>workers.dev</code> address until a domain of its own,
-      before the public launch.</li>
   </ul>
 
   <h2 id="history">History</h2>
@@ -414,7 +399,7 @@ const toc = [
   </dl>
 
   <h2 id="contact">Feedback and contact</h2>
-  <p>{SITE_NAME} has no email address, on purpose. To reach the operator:</p>
+  <p>The site does not publish an email address. To reach the operator:</p>
   <ul>
     <li>about a paper's record (a missing or wrong link, authorship, a map) use the paper's{" "}
       <a href="/help/correct/">Contribute section</a>, signed in;</li>

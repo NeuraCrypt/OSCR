@@ -63,7 +63,7 @@
     title: "title", author: "author", journal: "journal", doi: "id", repo: "repo", tool: "tool",
   };
   const FAILURES: Record<string, string> = {
-    quota: "The search has used its daily quota: it runs on a free plan, with a fixed number of searches a day. Please try again tomorrow.",
+    quota: "The search has used its daily quota. It runs on a free plan, which allows a fixed number of searches a day. Please try again tomorrow.",
     unavailable: "The search is unavailable at the moment. Please try again later.",
     not_configured: "The search is not available yet.",
   };
@@ -240,9 +240,9 @@
 
   function summaryInWords(a: Answer): string {
     const count = a.complete ? plural(a.total, "result") : `More than ${number(a.window)} results`;
-    const what = a.query.q ? ` for “${a.query.q}”` : "";
+    const what = a.query.q ? ` for "${a.query.q}"` : "";
     const first = (a.query.page - 1) * a.query.size + 1;
-    const shown = a.results.length ? `; ${number(first)}–${number(first + a.results.length - 1)} shown` : "";
+    const shown = a.results.length ? `; ${number(first)} to ${number(first + a.results.length - 1)} shown` : "";
     return `${count}${what}${shown}, ${ORDERS[a.query.sort] ?? a.query.sort}.`;
   }
 
@@ -326,11 +326,11 @@
     <p class="line"><button type="submit">Search</button> {#if built()}The query: <code>{built()}</code>{/if}</p>
   </form>
   <p class="line">
-    The query language, in the main field: words (all of them are searched), <code>"a phrase"</code>, <code>OR</code>,
+    In the main field, the query language accepts words (all of them are searched), <code>"a phrase"</code>, <code>OR</code>,
     <code>NOT</code> or <code>-word</code>, parentheses, <code>neuro*</code> for a prefix, and a field before a word, a phrase
-    or a group: <code>title:</code>, <code>author:</code>, <code>journal:</code>, <code>keyword:</code>, <code>mesh:</code>,
-    <code>tool:</code>, <code>repo:</code>, <code>id:</code>, <code>abstract:</code>. Abstracts are searched only when the
-    paper's license is open; they are never shown.
+    or a group (<code>title:</code>, <code>author:</code>, <code>journal:</code>, <code>keyword:</code>, <code>mesh:</code>,
+    <code>tool:</code>, <code>repo:</code>, <code>id:</code>, <code>abstract:</code>). Abstracts are searched only when the
+    paper's license is open, and they are never shown.
   </p>
 </details>
 
@@ -364,7 +364,7 @@
         </p>
       {/if}
       {#if answer.results.length === 0 && answer.query.page > 1}
-        <p>No result on this page: <a href={pageUrl({ ...current, page: 1 })} onclick={(e) => follow(e, { ...current, page: 1 })}>back to the first page</a>.</p>
+        <p>No result on this page. <a href={pageUrl({ ...current, page: 1 })} onclick={(e) => follow(e, { ...current, page: 1 })}>Back to the first page</a>.</p>
       {:else if answer.results.length === 0}
         <p>No paper matches. Try fewer words, <code>OR</code> between them, or fewer filters.</p>
       {:else}
@@ -418,14 +418,15 @@
           <a href={apiUrl({ ...current, page: 1 }, { format: "csv" })} download="search-results.csv">CSV</a>,
           <a href={apiUrl({ ...current, page: 1 }, { format: "json" })} download="search-results.json">JSON</a>
           ({answer.complete ? plural(answer.total, "result") : `the first ${number(answer.window)} results`}; one line per paper,
-          with its page, its code and their licenses, never an abstract)
+          with its page, its code and their licenses; abstracts are not included)
         </p>
       {/if}
     {:else}
       <p class="line">
-        Type words and press Search: nothing is searched before. Filters by modality, organism, tool, journal, year and
-        status appear next to the results; <a href={pageUrl({ q: "", filters: [], from: "", to: "", sort: "newest", page: 1 })} onclick={(e) => follow(e, { q: "", filters: [], from: "", to: "", sort: "newest", page: 1 })}>all
-        the papers</a>, the newest first, show them for the whole catalogue.
+        Type words and press Search. The search runs only when you press it. Filters by modality, organism, tool, journal,
+        year and status appear next to the results. To see them for the whole catalogue, open{" "}
+        <a href={pageUrl({ q: "", filters: [], from: "", to: "", sort: "newest", page: 1 })} onclick={(e) => follow(e, { q: "", filters: [], from: "", to: "", sort: "newest", page: 1 })}>all
+        the papers</a>, the newest first.
       </p>
     {/if}
   </div>

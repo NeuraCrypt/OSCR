@@ -11,10 +11,10 @@ import { tools, toolUrl } from "../../lib/entities";
 >
   <h1>Tools</h1>
   <p class="summary">
-    {plural(tools.length, "tool")} found in the authors' code of the papers with a page, the most used first. A tool
-    is found in the scripts of the authors' repositories (what they import), not in the text of the paper.
+    {plural(tools.length, "tool")} found in the authors' code of the papers with a page, the most used first. The tools
+    are read from the scripts of the authors' repositories (what the scripts import).
   </p>
-  {tools.length === 0 && <p>No tool yet: they are found when the repositories are described.</p>}
+  {tools.length === 0 && <p>No tool yet. Tools are found when the repositories are described.</p>}
   <ul>
     {tools.map((t) => (
       <li>

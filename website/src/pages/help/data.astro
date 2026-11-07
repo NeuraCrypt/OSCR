@@ -7,7 +7,7 @@ import { SITE_NAME, SOURCE_URL } from "../../config";
 
 const DATASET = "https://huggingface.co/datasets/OpenScientificCodeRegistry/Database";
 const toc = [
-  { id: "overview", text: "What is open, what is not" },
+  { id: "overview", text: "Overview" },
   { id: "scripts", text: "The scripts' dataset" },
   { id: "python", text: "With Python or DuckDB" },
   { id: "browser", text: "In a browser, one script at a time" },
@@ -31,7 +31,7 @@ const toc = [
     This guide says what is where, and how to read it.
   </p>
 
-  <h2 id="overview">What is open, what is not</h2>
+  <h2 id="overview">Overview</h2>
   <div class="table-wrap">
     <table class="facts">
       <thead><tr><th>What</th><th>Where</th><th>Access</th></tr></thead>
@@ -92,13 +92,12 @@ WHERE language = 'Python' ORDER BY lines DESC LIMIT 10;`}</pre>
 
   <h2 id="licences">Licences of the data</h2>
   <ul>
-    <li><strong>The scripts</strong> keep the licence of their repository, given in its manifest. The dataset itself adds
-      none. A file under a non-commercial licence (CC BY-NC and its variants) may be reused only non-commercially;
+    <li>The scripts keep the licence of their repository, given in its manifest. The dataset itself adds no licence. A file under a non-commercial licence (CC BY-NC and its variants) may be reused only non-commercially;
       attribution goes to the authors, as their licence says.</li>
-    <li><strong>The catalogue's metadata</strong> (the records), when released, is under CC0-1.0.</li>
-    <li><strong>Tracing maps</strong> deposited on Zenodo are under CC0-1.0.</li>
-    <li><strong>A paper's abstract and statements</strong>, shown only under CC BY, CC0, CC BY-SA or CC BY-NC, keep the
-      paper's licence.</li>
+    <li>The catalogue's metadata (the records), when released, is under CC0-1.0.</li>
+    <li>Tracing maps deposited on Zenodo are under CC0-1.0.</li>
+    <li>A paper's abstract and statements, shown only under CC BY, CC0, CC BY-SA or CC BY-NC, keep the paper's
+      licence.</li>
   </ul>
 
   <h2 id="site">The site's own files</h2>
@@ -126,8 +125,8 @@ WHERE language = 'Python' ORDER BY lines DESC LIMIT 10;`}</pre>
 
   <h2 id="polite">Using the data politely</h2>
   <p>
-    Hugging Face hosts public datasets for free on a best-effort basis: download what you need, once, rather than the
-    same blocks again and again. The site's JSON files are served by Cloudflare's free plan; please do not crawl them
+    Hugging Face hosts public datasets for free on a best-effort basis: please download each block you need once, and
+    keep your copy. The site's JSON files are served by Cloudflare's free plan; please do not crawl them
     faster than a person would read.
   </p>
 </Info>

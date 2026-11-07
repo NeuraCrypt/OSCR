@@ -2,7 +2,7 @@
 // The paper's Discussion, Reproductions and Activity sections (Phases 5 and 7; night phase 05).
 //
 // Discussion and Reproductions hold the paper's research issues (the registry's own, D00-6): code
-// errors and code–paper mismatches in Discussion, reproduction failures (with their reports) in
+// errors and mismatches between the code and the paper in Discussion, reproduction failures (with their reports) in
 // Reproductions. Static here: what they hold and the ways to report one (/research/new, prefilled
 // with the DOI and the code). The page's script (src/scripts/paper-research.ts) lists them: signed
 // out, from the nightly layer shards of the paper's GitHub repositories ("as of last night", 0 Worker
@@ -26,10 +26,10 @@ const hasCode = a.code.length > 0;
 ---
 <h2>Discussion, reproductions, activity</h2>
 <section id="discussion" data-doi={a.doi} data-repos={github.join(",")}>
-  <p class="summary"><strong>Discussion</strong>: code errors and code–paper mismatches about this paper and its code, from readers and its authors, beside the paper and its tracing map.</p>
+  <p class="summary"><strong>Discussion</strong>: code errors and mismatches between the code and the paper about this paper and its code, from readers and its authors, beside the paper and its tracing map.</p>
   <div class="research-list" data-kind="discussion" aria-live="polite"></div>
   {hasCode && (
-    <p class="line"><a href={report("mismatch")}>Report a code–paper mismatch</a> · <a href={report("code_error")}>Report a code error</a> (signed in)</p>
+    <p class="line"><a href={report("mismatch")}>Report a mismatch between the code and the paper</a> · <a href={report("code_error")}>Report a code error</a> (signed in)</p>
   )}
 </section>
 <section id="reproductions">

@@ -86,7 +86,7 @@ function leavingChecklist(role: string): string[] {
     role === "owner" ? "You lose the owner role of this organization." : role === "moderator" ? "You lose the moderator role." : "You lose your membership.",
     "Your research permissions in this organization are removed.",
     "Teams of this organization no longer list you, and a private member list stops showing you.",
-    "Your validated tracing maps and their DOIs stay yours: they belong to you and the paper, not to the organization.",
+    "Your validated tracing maps and their DOIs stay yours: they belong to you and the paper, and the organization has no claim on them.",
     "Repositories stay where they are on GitHub: git rights there are GitHub's, untouched.",
   ];
 }

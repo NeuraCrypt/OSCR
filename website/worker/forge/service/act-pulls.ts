@@ -537,7 +537,7 @@ export const pullReviewSpec: ActionSpec<PullReviewParsed, PullReviewDone> = {
     if (p.event !== "COMMENT" && pr.author.id !== null && pr.author.id === ctx.github.id) {
       throw new ForgeProblem(422, "own_pull", "You opened this pull request: its author cannot approve it or request changes on it. Comment instead.");
     }
-    if (pr.state !== "open" && p.event !== "COMMENT") throw new ForgeProblem(409, "closed", "The pull request is closed: it can still be commented, not approved or refused.");
+    if (pr.state !== "open" && p.event !== "COMMENT") throw new ForgeProblem(409, "closed", "The pull request is closed: you can still comment on it, but you cannot approve it or refuse it.");
     const notes: string[] = [];
     if (pr.head.sha !== p.commit) notes.push(`The pull request moved since you read it (its head is now ${pr.head.sha.slice(0, 7)}): your review is on the version you read, ${p.commit.slice(0, 7)}.`);
     let review;

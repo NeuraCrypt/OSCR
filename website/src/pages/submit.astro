@@ -15,8 +15,8 @@ import { SITE_NAME } from "../config";
 >
   <h1>Submit a paper</h1>
   <p class="summary">
-    A paper whose authors published their code, and that {SITE_NAME} has not found yet, or not with all its code: give its
-    DOI and the links to the code.
+    If {SITE_NAME} has not found a paper whose authors published their code, or has found only part of its code, give the
+    paper's DOI and the links to the code here.
   </p>
   <p id="submit-message" role="status" aria-live="polite"></p>
   <noscript><p class="warning">The form runs in your browser: it needs JavaScript.</p></noscript>
@@ -29,11 +29,11 @@ import { SITE_NAME } from "../config";
       commit, its license, its scripts) and matches it with the paper's paragraphs.</li>
     <li>A draft of the record comes back to <a href="/account/">your account page</a>: review it, correct the links if need
       be, then publish it.</li>
-    <li>When your ORCID iD is among the paper's authors, the record is published at once; otherwise the registry's rules
-      publish it when each code link is proven the paper's, cited by the paper itself, or its owner proven one of its
-      authors, and otherwise leave it to the operator, 30 days at most, saying why; a README citing the paper proves
-      nothing (<a href="/policies/moderation/">how submissions are decided</a>). Papers outside neuroscience stay out of
-      {" "}{SITE_NAME}.</li>
+    <li>When your ORCID iD is among the paper's authors, the record is published at once. Otherwise the registry's rules
+      publish it when each code link is proven to belong to the paper: the paper itself cites it, or its owner is proven
+      to be one of its authors. If not, the rules leave it to the operator, 30 days at most, and say why. A README that
+      cites the paper does not count as proof (<a href="/policies/moderation/">how submissions are decided</a>). Papers
+      outside neuroscience stay out of{" "}{SITE_NAME}.</li>
   </ol>
 
   <div id="submit-signed-out">

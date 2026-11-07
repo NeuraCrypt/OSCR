@@ -118,7 +118,8 @@ const pmcid = (a.fulltext_id || a.pmcid || "").toUpperCase();
     <div class="line"><span class="label">Preprint:</span> <a href={o.preprint.url}>{o.preprint.id}</a></div>
   )}
   <div class="line">
-    <span class="label">Status:</span> {s.tone ? <span class={s.tone}>{s.label}</span> : s.label}
+    <span class="label">Status:</span> {s.tone ? <span class={s.tone}>{s.label}</span> : s.label}{" "}
+    (<a href="/help/verification/">how the code is found and verified</a>)
   </div>
   {categories.length > 0 && (
     <div class="line">

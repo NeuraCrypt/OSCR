@@ -1,5 +1,5 @@
 // POST /api/forge/act: the second half of one authorized action (D00-4; the design's §10.2 steps
-// 4–6 and §17; docs/FORGE.md "One authorized action").
+// 4 to 6 and §17; docs/FORGE.md "One authorized action").
 //
 // Signed in (Origin, CSRF). The body is JSON {code, state, payload}: `payload` is the exact text the
 // page kept, of at most ACTION_PAYLOAD_BYTES (1 MiB, else 413). The body is read once, capped as it
@@ -280,7 +280,7 @@ async function asThePerson(r: ForgeRequest, a: Acting): Promise<Response> {
   try {
     await r.db.batch([action.stmt, ...statements(writes)]);
   } catch (err) {
-    console.error(`forge ${r.path}: ${a.flow.act.kind} done on GitHub, not recorded: ${redact(String((err as Error)?.message ?? err)).slice(0, 300)}`);
+    console.error(`forge ${r.path}: ${a.flow.act.kind} done on GitHub but left unrecorded: ${redact(String((err as Error)?.message ?? err)).slice(0, 300)}`);
     return say(
       new ForgeProblem(
         503,

@@ -41,12 +41,12 @@ const limit = `${SOURCE_MAX_BYTES / 1_000_000} MB`;
     address and the commit it was read at, for anyone to reuse under that license.
   </p>
   <ul>
-    <li>A copy is the text of the file as its authors published it, at the commit or version that was verified. Three
-      things only differ: the email addresses are hidden (<a href="#emails">below</a>); a Jupyter notebook is kept as the
+    <li>A copy is the text of the file as its authors published it, at the commit or version that was verified. Only
+      three things differ: the email addresses are hidden (<a href="#emails">below</a>); a Jupyter notebook is kept as the
       text of its cells, without their outputs; and a text longer than 200,000 characters is cut, which the reader says,
       with a link to the whole file at its source.</li>
-    <li>Each unique file is stored once, however many repositories hold it, and never changed once published: a new
-      version of a file is a new file.</li>
+    <li>Each unique file is stored once, however many repositories hold it, and is not changed once published; a new
+      version of a file is stored as a new file.</li>
     <li>The license travels with the copy: the reader and the dataset name it, and link to the source.</li>
   </ul>
 
@@ -65,18 +65,18 @@ const limit = `${SOURCE_MAX_BYTES / 1_000_000} MB`;
   <h2 id="verified">What "verified" means</h2>
   <ul>
     <li>
-      <strong>A repository on a forge</strong> (GitHub, GitLab, Codeberg, Bitbucket…): its license is read from its own
+      For a repository on a forge (GitHub, GitLab, Codeberg, Bitbucket…), the license is read from its own
       license file, at its root (<code>LICENSE</code>, <code>COPYING</code>…), at the commit that was read. The file's text
       is recognized as one of the licenses above; when a license names others in passing (the GPL names the LGPL), the one
       the text starts with counts.
     </li>
     <li>
-      <strong>An archive</strong> (a Zenodo record, figshare…): its own license file, at its root or one folder down (a
-      release's <code>name-v1.0/LICENSE</code>), else the license of its record.
+      For an archive (a Zenodo record, figshare…), the license comes from its own license file, at its root or one folder
+      down (a release's <code>name-v1.0/LICENSE</code>), or else from the license of its record.
     </li>
     <li>
-      <strong>Never</strong> a license inferred from a sentence of a README, nor "some open license" without a license
-      file, nor a guess. A repository whose license cannot be verified this way is treated as one without a license.
+      A license is not inferred from a sentence of a README, from "some open license" without a license file, or from a
+      guess. A repository whose license cannot be verified this way is treated as one without a license.
     </li>
   </ul>
   <p>
@@ -86,25 +86,24 @@ const limit = `${SOURCE_MAX_BYTES / 1_000_000} MB`;
 
   <h2 id="source">The files {SITE_NAME} shows from their source</h2>
   <p>
-    When a repository's license does not allow redistribution, {SITE_NAME} keeps <strong>no copy</strong> of its files,
-    not on this site, not in its open data, not in its dataset of scripts. Its reader still shows them: <strong>your
-    browser</strong> fetches the file itself, from where its authors published it, at the version {SITE_NAME} verified,
+    When a repository's license does not allow redistribution, {SITE_NAME} keeps no copy of its files: none on this site,
+    in its open data or in its dataset of scripts. Its reader still shows them: your browser fetches the file itself, from where its authors published it, at the version {SITE_NAME} verified,
     and shows it with its line numbers, its colors and its matches with the paper. A notice above the file says where it
     comes from, at which commit or record, that no copy is kept, and that its rights remain with its authors.
   </p>
-  <h3>Why this is not a copy</h3>
+  <h3>Why no copy is made</h3>
   <ul>
     <li>
-      The file travels from its host to your browser, as when you open it there. {SITE_NAME}'s servers never receive it,
-      keep it or serve it; the page holds no line of it.
+      The file travels from its host to your browser, as when you open it there. {SITE_NAME}'s servers do not receive,
+      keep or serve it, and the page holds no line of it.
     </li>
     <li>
       {SITE_NAME} publishes only facts about the file: its path, language, size, number of lines, the fingerprint (SHA-256)
       of its bytes, the commit or record it was verified at, and the line numbers of its matches with the paper.
     </li>
     <li>
-      The authors stay in control: a file they delete, a repository they make private or move, cannot be fetched any more,
-      and the reader says so. {SITE_NAME} never shows it from elsewhere.
+      The authors keep control: when they delete a file, or make a repository private or move it, the file can no longer
+      be fetched, and the reader says so. {SITE_NAME} does not show it from another place.
     </li>
   </ul>
   <h3>Where your browser fetches a file</h3>
@@ -117,8 +116,8 @@ const limit = `${SOURCE_MAX_BYTES / 1_000_000} MB`;
     <dt>Software Heritage</dt>
     <dd>
       for the other forges (a university's own GitLab, Framagit…), which do not let another site's page read them, and for
-      a file inside an archive of a Zenodo record: Software Heritage's archive of all public code, which gives a file by
-      its fingerprint, the same bytes, or nothing. It is not used for a repository that {SITE_NAME}'s last check found
+      a file inside an archive of a Zenodo record: Software Heritage's archive of all public code, which returns a file by
+      its fingerprint: the exact same bytes, or nothing. It is not used for a repository that {SITE_NAME}'s last check found
       gone from its source.
     </dd>
   </dl>
@@ -139,17 +138,17 @@ const limit = `${SOURCE_MAX_BYTES / 1_000_000} MB`;
     (<code>crypto.subtle</code>), before it shows anything.
   </p>
   <ul>
-    <li><strong>The same fingerprint</strong>: the file is the one {SITE_NAME} verified, byte for byte. It is shown, and
-      its matches with the paper are drawn.</li>
-    <li><strong>A different fingerprint</strong>: the host sent another file. Nothing of it is shown, no match is drawn,
-      and the reader says so in words, with a link to the file at its source.</li>
-    <li><strong>No answer, an error, a file larger than {limit}, or a file that is not text</strong>: the reader says which,
-      and links to the source. Nothing is shown from elsewhere.</li>
+    <li>If the fingerprint is the same, the file is the one {SITE_NAME} verified, byte for byte. It is shown, and its
+      matches with the paper are drawn.</li>
+    <li>If the fingerprint differs, the host sent another file. Nothing of it is shown, no match is drawn, and the reader
+      says so in words, with a link to the file at its source.</li>
+    <li>If there is no answer, an error, a file larger than {limit} or a file that is not text, the reader says which and
+      links to the source. Nothing is shown from another place.</li>
   </ul>
 
   <h2 id="emails">Email addresses</h2>
   <p>
-    {SITE_NAME} never displays an email address. In the authors' code, each address is replaced by{" "}
+    {SITE_NAME} does not display any email address. In the authors' code, each address is replaced by{" "}
     <code>[email hidden]</code>, on the same line, so that the line numbers and the matches with the paper still hold:
     in the copies before they leave {SITE_NAME}'s machine, and in a file shown from its source by your browser, with the
     same rule, once the file is checked. The SSH address of a git repository (which starts with <code>git@</code>), a
@@ -159,19 +158,19 @@ const limit = `${SOURCE_MAX_BYTES / 1_000_000} MB`;
   <h2 id="authors">For the authors: remove your code, or change its license</h2>
   <ul>
     <li>
-      <strong>To remove it from {SITE_NAME}</strong>, use the removal request page, linked from every paper's page ("Request
+      To remove it from {SITE_NAME}, use the removal request page, linked from every paper's page ("Request
       removal"): ask for the copies of one repository, of one file, or of all the paper's scripts. A request applies to the
-      display from the source too: what it names is neither copied nor fetched any more, from the next nightly publication.
+      display from the source too: from the next nightly publication, what it names is no longer copied or fetched.
       Signed in with the ORCID iD the paper lists, or as the repository's owner (or a public member of its organization) on
       GitHub, your request is applied
       without waiting; <a href="/policies/moderation/">the moderation policy</a> says how every request is decided.
     </li>
     <li>
-      <strong>To allow copies</strong>, add a license file at the root of the repository (for example the MIT license, or
+      To allow copies, add a license file at the root of the repository (for example the MIT license, or
       CC BY for an archive's record). {SITE_NAME} reads it at its next verification of the repository.
     </li>
     <li>
-      <strong>To stop the display from the source</strong> without a request, delete the file or make the repository
+      To stop the display from the source without a request, delete the file or make the repository
       private: the fetch then fails, and nothing is shown.
     </li>
     <li>

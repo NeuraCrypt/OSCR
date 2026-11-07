@@ -2,7 +2,7 @@
 // pull requests' check run links here (its details page), and so do the papers' cited commits:
 // "checks at the paper's commit".
 //
-// Read in the reader's browser, on the reader's own quota: the ref (0–1 request), the tree (1), the
+// Read in the reader's browser, on the reader's own quota: the ref (0 to 1 request), the tree (1), the
 // licence, CITATION.cff, the README and the workflow files raw (not counted), the researcher's CI as
 // GitHub reports it (check runs and the combined status: 2 requests); the papers' maps from the static
 // shard (a file of this site). Signed in, the statuses outside services posted to the registry (GET

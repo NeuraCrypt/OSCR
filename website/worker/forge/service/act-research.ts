@@ -5,7 +5,7 @@
 //   research_copy  {id}: GitHub opens an issue as the person, in the repository the research issue is
 //                  about (the page declares it; it must be that one), titled like it, its text followed
 //                  by the paper's DOI, the file and lines at the commit, and the registry's reference
-//                  ("research#12"); the label of its type ("code–paper mismatch"…) when the person may
+//                  ("research#12"); the label of its type ("code-paper mismatch"…) when the person may
 //                  label. The research issue then names the copy (2 rows: its row, the action row).
 //
 // A second copy is refused (the research issue names the first); a research issue about code
@@ -19,10 +19,10 @@ import { issueById, TYPE_WORDS, updateIssue, type IssueRow, type ResearchType } 
 import { first } from "./store.ts";
 import { ForgeProblem, type ActionContext, type ActionSpec, type AnyActionSpec } from "./types.ts";
 
-/** The label a copy carries: the type's name, in lower case ("code–paper mismatch"). */
+/** The label a copy carries: the type's name, in lower case ("code-paper mismatch"). */
 export const TYPE_LABEL: Readonly<Record<ResearchType, string>> = {
   code_error: "code error",
-  mismatch: "code–paper mismatch",
+  mismatch: "code-paper mismatch",
   reproduction: "reproduction failure",
 };
 
@@ -35,7 +35,7 @@ export function copyBody(i: Pick<IssueRow, "id" | "type" | "body" | "paper_id" |
   const about = [`**${TYPE_WORDS[i.type]}**, about the paper https://doi.org/${i.paper_id.replace(/^doi:/, "")}.`];
   if (i.paragraph) about.push(`The paper: paragraph ${i.paragraph}${i.section ? ` (${i.section})` : ""}.`);
   if (i.path) {
-    const lines = i.start_line ? (i.end_line && i.end_line !== i.start_line ? `lines ${i.start_line}–${i.end_line}` : `line ${i.start_line}`) : "";
+    const lines = i.start_line ? (i.end_line && i.end_line !== i.start_line ? `lines ${i.start_line} to ${i.end_line}` : `line ${i.start_line}`) : "";
     about.push(`The code: ${i.commit_sha && i.repo_path ? permalink(i.repo_path, i.commit_sha, i.path, i.start_line, i.end_line) : `\`${i.path}\``}${lines ? ` (${lines})` : ""}.`);
   }
   about.push(`Reported in the registry as research#${i.id}.`);

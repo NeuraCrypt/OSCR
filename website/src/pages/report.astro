@@ -17,9 +17,9 @@ import { REASON_HELP, REASON_WORDS, REPORT_REASONS } from "../lib/moderation";
   <p class="summary" id="report-what" aria-live="polite">Reading what you report…</p>
   <noscript><p class="warning">This form needs JavaScript (the human check, then the report, are sent by your browser).</p></noscript>
   <p>
-    {SITE_NAME}'s owner reads every report. The person you report is never told who reported them. With an
+    {SITE_NAME}'s owner reads every report. The person you report is not told who reported them. With an
     account, the owner sees only that you had one; without an account, nothing about you is kept. No
-    email address is asked, and none is kept: an address in your words is removed.
+    email address is asked for or kept: an address in your words is removed.
   </p>
   <p>
     A paper's record in the catalogue, the copies of its authors' scripts or its tracing map: ask for their
@@ -49,7 +49,7 @@ import { REASON_HELP, REASON_WORDS, REPORT_REASONS } from "../lib/moderation";
       A report of private information may be sent without an account; it is hidden as soon as the owner reads it.
     </p>
     <p>
-      <label for="report-details">In your words (required for “another breach” and for a copyright report)</label><br />
+      <label for="report-details">In your words (required for "another breach" and for a copyright report)</label><br />
       <textarea id="report-details" name="details" rows="6" maxlength="2000"></textarea>
     </p>
     <div class="human-check" id="report-check" data-sitekey={TURNSTILE_SITE_KEY}></div>

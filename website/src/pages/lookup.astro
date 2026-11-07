@@ -8,13 +8,13 @@ import { catalog, number } from "../lib/catalog";
 ---
 <Base
   title="DOI lookup"
-  description="Was this paper read, and was its authors' code found? Any paper read, with or without a page."
+  description="Look up any paper the registry has read by its DOI, with or without a page, and see whether its authors' code was found."
   breadcrumb={[{ text: "DOI lookup" }]}
 >
   <h1>DOI lookup</h1>
   <p class="summary">
-    Has {SITE_NAME} read a paper, and what did it find? Every open-access neuroscience paper it has read can be looked up
-    by its DOI, with or without a page ({number(catalog.figures.articles)} papers read in all).
+    Enter a DOI to see whether {SITE_NAME} has read the paper and what it found. Every open-access neuroscience paper it
+    has read can be looked up here, with or without a page ({number(catalog.figures.articles)} papers read in all).
   </p>
   <form id="lookup" action="/lookup/" method="get">
     <label for="doi">DOI</label>{" "}
@@ -23,10 +23,10 @@ import { catalog, number } from "../lib/catalog";
     <button type="submit">Look up</button>
   </form>
   <p id="lookup-result" role="status" aria-live="polite"></p>
-  <noscript><p class="warning">The lookup runs in your browser: it needs JavaScript.</p></noscript>
+  <noscript><p class="warning">The lookup runs in your browser and needs JavaScript.</p></noscript>
   <p class="line">
     A paper has a page when its authors published their code, when its code is available on request, or when it shares
-    its data only. Every other paper read is only found here.
+    its data only. Every other paper read can be found only here.
   </p>
 
   <script>

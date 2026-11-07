@@ -1,5 +1,5 @@
 // The research issues' shell (night phase 05, E6; docs/ISSUES.md): /research/<n>, /research/new and
-// /research/?paper=<doi>. Research issues are the registry's own (D00-6): a code error, a code–paper
+// /research/?paper=<doi>. Research issues are the registry's own (D00-6): a code error, a code-paper
 // mismatch (one tracing-map link: the paper's paragraph, the file's lines at a commit), a
 // reproduction failure (its report), about a paper's code, a GitHub repository the registry knows,
 // or code hosted elsewhere.
@@ -101,7 +101,7 @@ function codeLine(i: IssueSummary): El {
     const a = i.anchor;
     const lines = a?.start ? `#L${a.start}${a.end && a.end !== a.start ? `-L${a.end}` : ""}` : "";
     const file = a?.path ? (a.commit ? `${base}blob/${a.commit}/${a.path.split("/").map(encodeURIComponent).join("/")}${lines}` : null) : null;
-    const where = a?.path ? `${a.path}${a.start ? `, lines ${a.start}–${a.end ?? a.start}` : ""}` : "";
+    const where = a?.path ? `${a.path}${a.start ? `, lines ${a.start} to ${a.end ?? a.start}` : ""}` : "";
     return h(
       "p",
       { class: "summary-line" },
@@ -116,7 +116,7 @@ function codeLine(i: IssueSummary): El {
       return "";
     }
   })();
-  return h("p", { class: "summary-line" }, "Hosted elsewhere: ", i.code_url ? h("a", { href: i.code_url, rel: "noopener noreferrer" }, host || i.code_url) : "not named", i.anchor?.path ? ` · ${i.anchor.path}${i.anchor.start ? `, lines ${i.anchor.start}–${i.anchor.end ?? i.anchor.start}` : ""}` : "", ". Its authors may take issues there too; the registry keeps this one beside the paper.");
+  return h("p", { class: "summary-line" }, "Hosted elsewhere: ", i.code_url ? h("a", { href: i.code_url, rel: "noopener noreferrer" }, host || i.code_url) : "not named", i.anchor?.path ? ` · ${i.anchor.path}${i.anchor.start ? `, lines ${i.anchor.start} to ${i.anchor.end ?? i.anchor.start}` : ""}` : "", ". Its authors may take issues there too; the registry keeps this one beside the paper.");
 }
 
 /** Someone's Markdown, "#12" linked to the issue's repository (when it is on GitHub) and
@@ -337,7 +337,7 @@ function sideActions(into: HTMLElement, r: Read): void {
   if (r.can.triage) {
     const label = el("input", { type: "text", size: "14", maxlength: "50", placeholder: "a label", "aria-label": "A label" });
     parts.push(el("p", {}, "Label ", label, " ", button("Add", () => void send(said, "/api/forge/research/edit", { id: i.id, labels: { add: [label.value.trim()] } })), " ", button("Remove", () => void send(said, "/api/forge/research/edit", { id: i.id, labels: { remove: [label.value.trim()] } }))));
-    parts.push(el("p", {}, i.locked ? button("Unlock the conversation", () => void send(said, "/api/forge/research/edit", { id: i.id, locked: false })) : button("Lock the conversation", () => void send(said, "/api/forge/research/edit", { id: i.id, locked: true })), " ", button(i.pinned ? "Unpin it" : "Pin it on the paper", () => void send(said, "/api/forge/research/edit", { id: i.id, pinned: !i.pinned }))));
+    parts.push(el("p", {}, i.locked ? button("Unlock the conversation" /* style-ok: the action that undoes a lock */, () => void send(said, "/api/forge/research/edit", { id: i.id, locked: false })) : button("Lock the conversation", () => void send(said, "/api/forge/research/edit", { id: i.id, locked: true })), " ", button(i.pinned ? "Unpin it" : "Pin it on the paper", () => void send(said, "/api/forge/research/edit", { id: i.id, pinned: !i.pinned }))));
   }
   if (i.mine && i.repo && !i.github_number) {
     const [owner, name] = i.repo.path.split("/");

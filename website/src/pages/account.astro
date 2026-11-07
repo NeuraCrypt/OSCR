@@ -18,7 +18,7 @@ const providers = [
 >
   <h1>Account</h1>
   <p id="account-message" role="status" aria-live="polite"></p>
-  <noscript><p class="warning">The account page runs in your browser: it needs JavaScript.</p></noscript>
+  <noscript><p class="warning">The account page runs in your browser and needs JavaScript.</p></noscript>
 
   <div id="signed-out">
     <p class="summary">
@@ -32,26 +32,26 @@ const providers = [
       ))}
     </ul>
     <p>
-      One account can hold all three: once signed in, link the others from this page. The first sign-in creates the
-      account; there is nothing else to fill in.
+      One account can hold all three. Once you are signed in, link the others from this page. The first sign-in creates
+      the account, and there is nothing else to fill in.
     </p>
 
     <h2>What signing in keeps</h2>
     <ul>
       <li>The name your provider gives, and your public identifiers: your ORCID iD, your GitHub login.</li>
       <li>
-        No email address: ORCID and Google are asked for none, GitHub for no permission at all. Notifications, when they
-        come, stay in the site.
+        No email address. {SITE_NAME} asks ORCID and Google for no email address, and asks GitHub for no permission at
+        all. Notifications, when there are any, appear in the site only.
       </li>
       <li>
-        One cookie, for your session: a random number, of which {SITE_NAME} keeps only a fingerprint (its SHA-256).
-        Sessions last 30 days; signing out ends yours at once.
+        One cookie for your session. It holds a random number, and {SITE_NAME} keeps only a fingerprint of it (its
+        SHA-256). Sessions last 30 days, and signing out ends yours at once.
       </li>
-      <li>Nothing else from your provider: its access is used during the sign-in, then dropped.</li>
+      <li>Nothing else from your provider. Its access is used during the sign-in and then discarded.</li>
     </ul>
     <p>
-      What the registry holds about you, and your rights over it: <a href="/data-rights/">your data and your
-      rights</a>.
+      The page <a href="/data-rights/">your data and your rights</a> says what the registry holds about you and what your
+      rights over it are.
     </p>
   </div>
 
@@ -75,20 +75,20 @@ const providers = [
 
     <h2 id="badges">Your badges</h2>
     <p id="badges-intro">
-      Each paper you are a verified author of, and each repository you maintain, has its badge: one line for its README,
-      its Hugging Face card or your lab's page, which says what {SITE_NAME} knows and links to the paper. Its page shows
-      the snippets and which of the paper's repositories still lack it, with a link to each README in the forge's own
-      editor. {SITE_NAME} never adds it for you.
+      Each paper you are a verified author of, and each repository you maintain, has its own badge. The badge is one line
+      for a README, a Hugging Face card or your lab's page; it says what {SITE_NAME} knows and links to the paper. The
+      badge's page shows the snippets and which of the paper's repositories do not have the badge yet, with a link to
+      each README in the forge's own editor. {SITE_NAME} never adds the badge for you.
     </p>
     <ul id="badges-list"></ul>
 
     <h2>Claim maintainership of a repository</h2>
     <p>
-      The code repository of one of the papers {SITE_NAME} lists: on GitHub, you are its maintainer at once when you
-      own it, belong publicly to the organization that owns it, or contributed to it, though only an owner or an
+      You can claim the code repository of one of the papers {SITE_NAME} lists. On GitHub, you are its maintainer at once
+      when you own it, belong publicly to the organization that owns it, or contributed to it. Only an owner or an
       organization member may correct a paper's record as its maintainer. {SITE_NAME} asks GitHub, with your permission,
-      and keeps only the answer. Otherwise, and for other forges, your claim waits 30 days at most for the
-      operator's review; there is no human moderator on duty at the moment (<a href="/policies/moderation/">how claims are
+      and keeps only the answer. In the other cases, and for other forges, your claim waits at most 30 days for the
+      operator's review. There is no human moderator on duty at the moment (<a href="/policies/moderation/">how claims are
       decided</a>).
     </p>
     <form id="maintainer-form" method="post" action="/api/account/maintainer">
@@ -102,14 +102,14 @@ const providers = [
     <p id="claims-none">None yet.</p>
     <ul id="claims"></ul>
     <p>
-      An author of a paper whose metadata lacks your ORCID iD: claim it from the paper's own page, in its Contribute
-      section.
+      If you are an author of a paper whose metadata does not include your ORCID iD, claim the paper from its own page, in
+      its Contribute section.
     </p>
 
     <h2 id="submissions">Your submissions</h2>
     <p>
       <a href="/submit/">Submit a paper</a> and the links to its authors' code. {SITE_NAME} reads it and writes a draft of its
-      record here: review it, correct the links if need be, then publish it.
+      record here. Review the draft, correct the links if needed, and then publish it.
     </p>
     <p id="submissions-none">None yet.</p>
     <div id="submissions-list"></div>
@@ -123,16 +123,16 @@ const providers = [
     <p id="validations-none">None yet.</p>
     <ul id="validations"></ul>
     <h3 id="removals">Removal requests</h3>
-    <p>Each request has its page, where you follow it and may complete it while it is open. A removal is asked from the
-      record's own page: “Request removal”.</p>
+    <p>Each request has its own page, where you can follow it and add to it while it is open. To ask for a removal, use
+      "Request removal" on the record's own page.</p>
     <p id="reports-none">None yet.</p>
     <ul id="reports"></ul>
 
     <h2 id="data-rights">Your data and your rights</h2>
     <p>
       See what {SITE_NAME} holds about you, and ask for access to it, the erasure of your contact details, an objection,
-      a rectification or the deletion of your account, on <a href="/data-rights/">your data and your rights</a>: the
-      answer comes back there, with no email.
+      a rectification or the deletion of your account, on <a href="/data-rights/">your data and your rights</a>. The
+      answer appears on that page, and no email is sent.
     </p>
 
     <h2 id="automation">Automation</h2>
@@ -144,7 +144,7 @@ const providers = [
 
     <h2 id="safety">Safety</h2>
     <p>
-      <a href="/settings/blocked/">Blocked people and interaction limits</a> for your repositories;{" "}
+      Manage <a href="/settings/blocked/">blocked people and interaction limits</a> for your repositories, and see{" "}
       <a href="/account/moderation/">what of yours is hidden</a> by moderation, with your appeals.
     </p>
 

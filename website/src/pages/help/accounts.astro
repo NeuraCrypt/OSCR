@@ -8,13 +8,13 @@ import { REVIEW_DAYS } from "../../lib/moderation";
 const toc = [
   { id: "why", text: "Why sign in" },
   { id: "providers", text: "ORCID, GitHub or Google" },
-  { id: "kept", text: "What signing in keeps, and never" },
+  { id: "kept", text: "What signing in keeps" },
   { id: "link", text: "Linking several identities" },
-  { id: "roles", text: "Roles: verified author, maintainer" },
+  { id: "roles", text: "Roles" },
   { id: "page", text: "Your account page" },
   { id: "notifications", text: "Notifications" },
   { id: "sessions", text: "Sessions and signing out" },
-  { id: "limits", text: "What is not possible yet" },
+  { id: "limits", text: "Current limits" },
 ];
 ---
 <Info
@@ -26,16 +26,16 @@ const toc = [
   toc={toc}
 >
   <p class="lead" slot="lead">
-    Reading needs no account. Signing in is for contributing: submitting a paper, claiming it, correcting its links,
-    validating its map, adding the badge, asking for a removal. You sign in with an identity you already have, and{" "}
-    {SITE_NAME} never asks for your email address.
+    You can read the site without an account. You sign in to contribute: to submit a paper, claim it, correct its links,
+    validate its map, add the badge or ask for a removal. You sign in with an identity you already have.{" "}
+    {SITE_NAME} does not ask for your email address.
   </p>
 
   <h2 id="why">Why sign in</h2>
   <p>
-    A contribution changes a public record, so the registry needs to know who asks and in which role, an author of the
-    paper, a maintainer of its code, anyone else, and to answer them. It does that with the identity providers
-    researchers already use, not with a password of its own.
+    A contribution changes a public record. The registry therefore needs to know who asks, and in which role (an author
+    of the paper, a maintainer of its code, or someone else), so that it can answer them. For this it uses the identity
+    providers that researchers already use. The registry has no passwords of its own.
   </p>
 
   <h2 id="providers">ORCID, GitHub or Google</h2>
@@ -44,12 +44,12 @@ const toc = [
     <dd>The best choice for an author: when a paper's metadata lists your ORCID iD, you are recognized as its author at
       once. {SITE_NAME} asks ORCID for the <code>openid</code> scope only, your iD and your public name.</dd>
     <dt>GitHub</dt>
-    <dd>The way to be recognized as a maintainer of a repository on GitHub. {SITE_NAME} asks GitHub for no scope at all:
-      public information only, of which it reads your account's number, login and name, never an address, even a
-      public one.</dd>
+    <dd>The way to be recognized as a maintainer of a repository on GitHub. {SITE_NAME} asks GitHub for no scope, so it
+      gets public information only. It reads your account's number, login and name. It does not read your email
+      address, even a public one.</dd>
     <dt>Google</dt>
-    <dd>For anyone else. {SITE_NAME} asks Google for the <code>openid</code> scope only: an opaque identifier, not even a
-      name.</dd>
+    <dd>For anyone else. {SITE_NAME} asks Google for the <code>openid</code> scope only. Google then gives an opaque
+      identifier and no name.</dd>
   </dl>
   <p>
     Each sign-in goes to the provider's own page and comes back to the page you were on. It is protected against forged
@@ -58,14 +58,17 @@ const toc = [
     is recorded as a test.
   </p>
 
-  <h2 id="kept">What signing in keeps, and never</h2>
-  <ul>
-    <li><strong>Kept</strong>: the name the provider gives (ORCID's public name, GitHub's name or login; Google gives
-      none), your public handles (ORCID iD, GitHub login), each provider's identifier for you, your roles, your requests
-      and their answers, and for each session a short description of the browser ("Firefox on macOS").</li>
-    <li><strong>Never</strong>: an email address; a password; the provider's access token, used during the sign-in only
-      and then dropped; your session's identifier itself, the database keeps only its SHA-256.</li>
-  </ul>
+  <h2 id="kept">What signing in keeps</h2>
+  <p>
+    The registry keeps the name the provider gives (ORCID's public name, GitHub's name or login; Google gives none), your
+    public handles (ORCID iD, GitHub login), each provider's identifier for you, your roles, your requests and their
+    answers, and for each session a short description of the browser ("Firefox on macOS").
+  </p>
+  <p>
+    It does not keep an email address or a password. It uses the provider's access token during the sign-in only and
+    then drops it. It does not keep your session's identifier itself: the database keeps only its SHA-256 (a
+    fingerprint of the identifier from which the identifier cannot be read back).
+  </p>
   <p>The <a href="/privacy/#accounts">privacy page</a> lists every column of every table.</p>
 
   <h2 id="link">Linking several identities</h2>
@@ -75,7 +78,7 @@ const toc = [
     already linked to another account is refused.
   </p>
 
-  <h2 id="roles">Roles: verified author, maintainer</h2>
+  <h2 id="roles">Roles</h2>
   <dl class="terms">
     <dt>Member</dt>
     <dd>Everyone signed in: may submit a paper, claim authorship, and ask for a removal.</dd>
@@ -91,39 +94,39 @@ const toc = [
       (GitLab, Codeberg…), your claim waits for the operator, {REVIEW_DAYS} days at most, then is closed with how to be
       checked again. Only a maintainer who owns the repository or is a public member of its organization (or one the
       operator made) may correct the links of the papers whose code it is, for that repository, and have a removal of its
-      copies applied at once: a contributor or a commit's author may not
+      copies applied at once. A contributor or the author of a commit cannot do these two things
       (<a href="/policies/moderation/#claims">why</a>).</dd>
   </dl>
 
   <h2 id="page">Your account page</h2>
   <p>
     <a href="/account/">Your account page</a> shows who you are signed in as, your linked identities, your roles, the
-    papers that list your ORCID iD, the form to claim a repository, and every request you made, submissions,
-    corrections, validations, claims, removal requests, with its status and the answer.
+    papers that list your ORCID iD, the form to claim a repository, and every request you made (submissions,
+    corrections, validations, claims and removal requests) with its status and the answer.
   </p>
 
   <h2 id="notifications">Notifications</h2>
   <p>
-    Notifications stay in the site, by decision: {SITE_NAME} sends no email. Today, the answers to your requests appear
-    on your account page and on the pages concerned (a removal request's page shows its decision and its words).
-    Notifications of their own, new activity on your papers, will come later, still in the site only.
+    Notifications appear in the site only: we decided that {SITE_NAME} sends no email. Today, the answers to your
+    requests appear on your account page and on the pages concerned (a removal request's page shows its decision and its
+    words). Separate notifications about new activity on your papers will come later, also in the site only.
   </p>
 
   <h2 id="sessions">Sessions and signing out</h2>
   <p>
     A session lasts 30 days from your last visit (renewed at most once a day), in a cookie your browser sends to this
-    site only and that page scripts cannot read. A second, harmless cookie tells the pages that you are signed in, so
-    that a signed-out reader's visit never asks the site anything. "Sign out" on your account page ends the session and
-    deletes it. The <a href="/privacy/#cookies">privacy page</a> lists the cookies.
+    site only and that page scripts cannot read. A second cookie, which holds no secret, tells the pages that you are
+    signed in. Without it, the pages of a signed-out reader send no request to the site's server. "Sign out" on your
+    account page ends the session and deletes it. The <a href="/privacy/#cookies">privacy page</a> lists the cookies.
   </p>
 
-  <h2 id="limits">What is not possible yet</h2>
+  <h2 id="limits">Current limits</h2>
   <ul>
-    <li>Unlinking an identity from the site itself; signing out of every browser at once. Deleting your account is
-      possible: ask for it on <a href="/data-rights/">your data and your rights</a>, and it is deleted within about ten
-      minutes, with its sessions, identities, roles, claims and requests.</li>
-    <li>Maintainer checks outside GitHub cannot be made automatically: such a claim waits for the operator,{" "}
-      {REVIEW_DAYS} days at most, then is closed. Archives (Zenodo, OSF) have no owner in their address, so no maintainer
-      claim.</li>
+    <li>You cannot yet unlink an identity from the site itself, or sign out of every browser at once. You can delete
+      your account: ask for it on <a href="/data-rights/">your data and your rights</a>, and it is deleted within about
+      ten minutes, with its sessions, identities, roles, claims and requests.</li>
+    <li>Maintainer checks outside GitHub are not automatic: such a claim waits for the operator,{" "}
+      {REVIEW_DAYS} days at most, then is closed. Archives (Zenodo, OSF) have no owner in their address, so a
+      maintainer cannot claim them.</li>
   </ul>
 </Info>

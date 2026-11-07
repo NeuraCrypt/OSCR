@@ -23,23 +23,24 @@ const toc = [
   toc={toc}
 >
   <p class="lead" slot="lead">
-    A DOI is a promise of permanence. {SITE_NAME} makes that promise only for what an author has confirmed: a paper's
-    tracing map, validated by one of its authors, deposited on Zenodo.
+    A DOI is a permanent identifier. {SITE_NAME} assigns one only to what an author has confirmed: a paper's tracing
+    map, validated by one of its authors and deposited on Zenodo.
   </p>
 
   <h2 id="only">Only for maps an author validated</h2>
   <p>
-    A DOI is assigned <strong>only</strong> to a tracing map validated by an author of the paper, signed in with the ORCID
+    A DOI is assigned only to a tracing map validated by an author of the paper, signed in with the ORCID
     iD the paper lists (or whose claim of authorship was verified: <a href="/policies/moderation/#claims">how</a>). A map
-    the harvester proposed never receives one, nor does any record the machine generated: no DOI for a paper's page, a
-    repository, a script or a match.
+    the harvester proposed does not receive one, and neither does any other record the machine generated: a paper's
+    page, a repository, a script and a match have no DOI.
   </p>
 
   <h2 id="covers">What the DOI covers</h2>
   <p>
-    The map: its links and metadata, in one file, <code>tracing-map.json</code>{" "}
-    (<a href="/help/maps/#holds">what it holds</a>). Not the authors' code, which is never deposited again: it stays in
-    its repository, which the map references at the validated commit. Not the paper, which has its own DOI.
+    The DOI covers the map: its links and metadata, in one file, <code>tracing-map.json</code>{" "}
+    (<a href="/help/maps/#holds">what it holds</a>). It does not cover the authors' code, which is not deposited again
+    and stays in its repository; the map references that repository at the validated commit. It does not cover the
+    paper either, which has its own DOI.
   </p>
 
   <h2 id="record">The Zenodo record</h2>
@@ -70,8 +71,8 @@ const toc = [
   <h2 id="versions">Versions</h2>
   <p>
     A map validated again after a correction becomes a new version of the same record, under the same concept DOI; each
-    version keeps its own DOI. A map withheld at a removal request keeps its DOI on Zenodo, a DOI cannot be deleted,
-    but the site no longer shows it.
+    version keeps its own DOI. A map withheld at a removal request keeps its DOI on Zenodo, because a DOI cannot be
+    deleted; the site stops showing it.
   </p>
 
   <h2 id="sandbox">The sandbox, while building</h2>
@@ -82,5 +83,5 @@ const toc = [
   </p>
 
   <h2 id="cost">Cost</h2>
-  <p>None, for the author or the registry: Zenodo is free, and no paid service is involved.</p>
+  <p>There is no cost for the author or for the registry: Zenodo is free, and no paid service is involved.</p>
 </Info>

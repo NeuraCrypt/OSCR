@@ -71,7 +71,7 @@ export interface WikiDone {
 
 function readSlug(v: unknown): string | ForgeProblem {
   if (typeof v !== "string" || !SLUG.test(v.trim()) || /(^|[\\/])\.\.?($|[\\/])/.test(v) || v.trim().startsWith("_")) {
-    return bad("A wiki page's name is a short title (letters, numbers, spaces, - _ .), not a path, and not one starting with “_”.");
+    return bad("A wiki page's name is a short title of letters, numbers, spaces and - _ . characters. It has no slash and does not start with “_”.");
   }
   return v.trim();
 }

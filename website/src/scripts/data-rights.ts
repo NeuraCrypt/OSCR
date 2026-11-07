@@ -248,7 +248,7 @@ function renderAnswer(a: Answer): HTMLElement[] {
       rowsInto(dl, rows);
       out.push(dl);
     }
-    if (c.more) out.push(element("p", "muted", `And ${plural(c.more, "more row")}, not listed here for room: ask for a rectification to have the operator give them.`));
+    if (c.more) out.push(element("p", "muted", `And ${plural(c.more, "more row")}, left out of this list for room: ask for a rectification to have the operator give them.`));
     if (c.suppressed) out.push(element("p", "", "Your ORCID iD is on the list of people whose contact details the registry never collects again."));
   }
   if (a.authorship) {

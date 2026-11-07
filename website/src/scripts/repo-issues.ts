@@ -191,7 +191,7 @@ const QUICK: [string, string][] = [
   ["Yours", "is:issue is:open author:@me"],
   ["Assigned to you", "is:issue is:open assignee:@me"],
   ["Research issues", "is:issue is:open is:research"],
-  ["Code–paper mismatches", "is:issue is:open type:mismatch"],
+  ["Code-paper mismatches", "is:issue is:open type:mismatch"],
   ["Reproduction failures", "is:issue is:open type:reproduction"],
 ];
 
@@ -300,7 +300,7 @@ async function mountIssues(slot: HTMLElement, env: CodeEnv): Promise<void> {
     signedIn && githubRows && !plan.search ? bulkBar(labels, milestones) : null,
     h("div", { id: "issue-act", "aria-live": "polite" }),
     h("p", { class: "pager" }, pageNo > 1 ? h("a", { href: here(pageNo - 1) }, "Newer") : null, pageNo > 1 && next ? " · " : null, next ? h("a", { href: here(pageNo + 1) }, "Older") : null),
-    !env.layer?.papers.length ? h("p", { class: "explain" }, "Research issues (code–paper mismatches, reproduction failures, code errors) belong to a paper: this repository is attached to none yet.") : null,
+    !env.layer?.papers.length ? h("p", { class: "explain" }, "Research issues (code-paper mismatches, reproduction failures, code errors) belong to a paper: this repository is attached to none yet.") : null,
   );
   slot.querySelector<HTMLFormElement>("#issue-filter")?.addEventListener("submit", (ev) => {
     ev.preventDefault();

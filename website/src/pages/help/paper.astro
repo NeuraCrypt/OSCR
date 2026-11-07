@@ -12,10 +12,10 @@ const MEANING: Record<string, string> = {
   code_found: "The paper cites its code, but no repository could be confirmed yet: not checked yet, unreachable at the last attempt, or a service that refuses robots.",
   code_empty: "The repository answers, but holds no recognizable script yet (a README, a placeholder): the announced code is not there.",
   code_dead: "Every repository the paper cites as its code is gone: the link answers with an error, or the repository is missing or private.",
-  on_request: "The paper cites no code repository, but says its code is available on request. That is a promise, not code.",
+  on_request: "The paper cites no code repository, but says its code is available on request. No code was published with the paper.",
   data_only: "The paper links to its data (a dataset, a data repository), but not to code of its own.",
   none: "No code and no data link found in the paper. Such a paper has no page; the DOI lookup knows it.",
-  no_fulltext: "Only the paper's metadata could be read, not its full text: nothing can be said about its code. No page.",
+  no_fulltext: "Only the paper's metadata could be read, without its full text, so nothing can be said about its code. No page.",
 };
 const toc = [
   { id: "sections", text: "The sections" },
@@ -37,7 +37,9 @@ const toc = [
 >
   <p class="lead" slot="lead">
     Each paper with a page has one address, <code>/paper/&lt;its identifier&gt;/</code>, and one page in sections. A
-    status is always said in words, with what was verified and when; a link always says where it was found.
+    status is always said in words, with what was verified and when; a link always says where it was found.{" "}
+    <a href="/help/verification/">How {SITE_NAME} finds and verifies the code</a> describes how the links are found
+    and checked.
   </p>
 
   <h2 id="sections">The sections</h2>
@@ -150,6 +152,6 @@ const toc = [
   <p>
     Three kinds: those with their authors' code (whatever its state), those whose code is "on request", and those that
     share data only. Every other paper read is found by the <a href="/lookup/">DOI lookup</a>. A paper outside the
-    scope, not neuroscience, has no page and is in no list or figure (<a href="/taxonomy/#scope">the scope</a>).
+    scope (outside neuroscience) has no page and is in no list or figure (<a href="/taxonomy/#scope">the scope</a>).
   </p>
 </Info>

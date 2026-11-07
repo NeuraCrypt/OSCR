@@ -34,22 +34,22 @@ const toc = [
       new links.</li>
   </ul>
   <p>
-    A contributor of a repository is not enough, though GitHub shows one as a maintainer: one merged pull request makes
-    one. A contributor may ask the paper's authors, who can correct the record
+    Being a contributor of a repository does not give this right, even when GitHub shows the contributor as a
+    maintainer: a single merged pull request makes someone a contributor. A contributor may ask the paper's authors, who can correct the record
     (<a href="/policies/moderation/#verified-only">what only verified people can do</a>).
   </p>
 
   <h2 id="what">What can be corrected</h2>
-  <p>Links only, in well-defined changes, never free text or markup:</p>
+  <p>Only the links can be corrected, with these changes (free text and markup are not accepted):</p>
   <ul>
-    <li><strong>add</strong> a link, as the authors' code or as their data (checked like a submission's: a place the
-      registry knows, and answering);</li>
-    <li><strong>remove</strong> a link;</li>
-    <li><strong>say what a link is</strong>: the authors' code, their data, or a tool they used.</li>
+    <li>add a link, as the authors' code or as their data (it is checked like a submission's link: it must point to a
+      place the registry knows, and it must answer);</li>
+    <li>remove a link;</li>
+    <li>say what a link is: the authors' code, their data, or a tool they used.</li>
   </ul>
   <p>
-    The bibliographic record (title, authors, journal) comes from the paper's own published metadata and is not
-    edited here: a mistake in it is the publisher's to correct.
+    The bibliographic record (title, authors, journal) comes from the paper's own published metadata. The site does not
+    edit it; the publisher corrects a mistake in it.
   </p>
 
   <h2 id="how">How</h2>
@@ -62,10 +62,10 @@ const toc = [
   <h2 id="after">What happens next</h2>
   <p>
     {SITE_NAME}'s harvester applies the correction: it verifies the added repositories (commit, licence, scripts),
-    concludes the paper's status again, and stores a <strong>new version</strong> of the record. A correction outlives
-    every later scan of the paper: the machine's own reading never overrules a person's. The page's Versions section
-    lists it as "a correction by a verified author" or "by a maintainer of its code", never by name; who made it stays
-    on the operator's computer. Your account page shows its status (queued, applied or refused, with the reason).
+    concludes the paper's status again, and stores a <strong>new version</strong> of the record. A correction stays in
+    force after every later scan of the paper, because the harvester does not overwrite a person's correction. The
+    page's Versions section lists it as "a correction by a verified author" or "by a maintainer of its code", without
+    a name; the record of who made it stays on the operator's computer. Your account page shows its status (queued, applied or refused, with the reason).
   </p>
 
   <h2 id="else">Anything else wrong</h2>

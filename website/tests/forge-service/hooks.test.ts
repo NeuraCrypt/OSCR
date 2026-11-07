@@ -280,7 +280,7 @@ describe("delivering events", () => {
       [[500, "throw", 200], 3, true, "delivered"],
       [[503, 503, 503], 3, false, "the receiver answered 503"],
       [[404], 1, false, "the receiver answered 404"],
-      [[302], 1, false, "a redirection, not followed"],
+      [[302], 1, false, "a redirection, which is never followed"],
     ];
     for (const [i, [answers, attempts, ok, words]] of cases.entries()) {
       rx.answer(answers);

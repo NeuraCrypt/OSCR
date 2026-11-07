@@ -46,8 +46,8 @@ const afterRewrite = ["git fetch origin", "git reset --hard origin/main"];
 
   <h2 id="rewriting">Rewriting commits</h2>
   <p>
-    The last commit, not yet pushed, is amended. Older ones are reworded, squashed or dropped with an interactive
-    rebase. Once pushed, a rewrite needs a forced push; <code>--force-with-lease</code> refuses it when someone else has
+    You change the last commit with an amend, before you push it. You reword, squash or drop older commits with an
+    interactive rebase. Once pushed, a rewrite needs a forced push; <code>--force-with-lease</code> refuses it when someone else has
     pushed since you fetched. A ruleset or a branch protection may refuse forced pushes to the branch.
   </p>
   <pre class="commands">{amend.join("\n")}</pre>

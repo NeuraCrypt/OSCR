@@ -197,7 +197,7 @@ describe("a commit: the map links it changed", () => {
     assert.match(text, /analysis\.py lines 6 to 10 at 0123456: Paragraph 3 of Methods › Spectral analysis of A study/);
     assert.match(text, /One link could not be found/);
     const kept = commitTouches([{ map, pair: map.pairs[0], path: "analysis.py", state: "kept" }])!;
-    assert.match(textOf(kept), /changed a file a tracing map links, not the linked lines/);
+    assert.match(textOf(kept), /changed a file a tracing map links, outside the linked lines/);
     assert.equal(commitTouches([]), null);
     assert.ok([...walk(el as El)].every((e) => e.tag !== "a" || e.attrs.href.startsWith("/paper/")));
   });

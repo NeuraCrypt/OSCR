@@ -164,7 +164,7 @@ function readFiles(raw: unknown, mayBeEmpty = false): { files: FileInput[]; chan
       if (e instanceof GitBackendError) return bad(`The file path “${f.path.slice(0, 120)}” is not one a repository may hold.`);
       throw e;
     }
-    if (path.includes("/")) return bad("A snippet's files are flat: a name, not a path with folders.");
+    if (path.includes("/")) return bad("A snippet's files are flat: each has a name with no folder in it (no slash).");
     if (seen.has(path.toLowerCase())) return bad(`The file “${path}” appears twice.`);
     seen.add(path.toLowerCase());
     const content = utf8(f.content);

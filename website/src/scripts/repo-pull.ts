@@ -354,7 +354,7 @@ async function branchButtons(f: PullFrame, section: HTMLElement, said: HTMLEleme
   let exists: boolean;
   try {
     const b = await f.env.session.git.getBranch(where, f.pr.head.ref);
-    if (b.sha !== f.pr.head.sha) return; // the branch moved on: it is someone's work, not this pull request's
+    if (b.sha !== f.pr.head.sha) return; // the branch moved on: it now holds someone's later work, which this pull request does not own
     exists = true;
   } catch {
     exists = false;

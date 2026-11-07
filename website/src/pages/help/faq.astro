@@ -29,7 +29,8 @@ const toc = [
   <h2 id="readers">For readers</h2>
   <dl class="terms">
     <dt>Is {SITE_NAME} free? Do I need an account?</dt>
-    <dd>Free, with no account needed to read, search, browse or download anything. An account is only for contributing.</dd>
+    <dd>Yes, it is free. You need no account to read, search, browse or download anything. An account is needed only to
+      contribute.</dd>
 
     <dt>Which papers does it cover?</dt>
     <dd>Open-access neuroscience papers whose full text Europe PMC holds, read continuously, new ones every hour, older
@@ -48,8 +49,8 @@ const toc = [
 
     <dt>What does "code verified" guarantee?</dt>
     <dd>That a repository the paper cites as its authors' code answered at its last check and held code, at the commit
-      the page gives. Not that the code runs, nor that it reproduces the paper: that is for readers, and, one day, for
-      reproduction reports.</dd>
+      the page gives. It does not say that the code runs or that it reproduces the paper. Readers can check that, and
+      later reproduction reports will.</dd>
 
     <dt>Why is a file "shown from its source"?</dt>
     <dd>Because its repository's licence does not allow {SITE_NAME} to republish it (or it has no licence, which means all
@@ -65,11 +66,11 @@ const toc = [
 
     <dt>Where does the paper's text in the reader come from?</dt>
     <dd>From Europe PMC, fetched by your own browser when you open the reader; if Europe PMC fails, from PubMed Central's
-      copy. {SITE_NAME} never stores or serves it (<a href="/policies/full-text/">why</a>).</dd>
+      copy. {SITE_NAME} does not store or serve it (<a href="/policies/full-text/">why</a>).</dd>
 
     <dt>Are the matches between paragraphs and code reliable?</dt>
-    <dd>They are computed, not read by a person: a match is kept only when several rare technical terms agree on both
-      sides, and each shows its evidence and score. Treat them as pointers. Whole-file matches are marked weak.</dd>
+    <dd>They are computed by a program, and no person checks them. A match is kept only when several rare technical terms
+      agree on both sides, and each match shows its evidence and score. Treat them as pointers. Whole-file matches are marked weak.</dd>
 
     <dt>The search says its daily quota is spent.</dt>
     <dd>It runs on a free plan with a fixed number of requests a day for the whole site. Try again after midnight UTC;
@@ -96,12 +97,13 @@ const toc = [
 
     <dt>Why should I validate my paper's map?</dt>
     <dd>A validated map receives a DOI on Zenodo, with you as its creator, linking your paper to your code at a fixed
-      commit: a citable, permanent statement of where the code of your paper is. It costs nothing
+      commit. It is a permanent record, which others can cite, of where your paper's code is. It is free
       (<a href="/help/validate/">how</a>).</dd>
 
     <dt>Does {SITE_NAME} redeposit my code?</dt>
-    <dd>No. The DOI is on the map (links and metadata), never on your code. Copies of scripts are kept only when your
-      licence allows redistribution, each with its licence, and the source always prevails.</dd>
+    <dd>No. The DOI is on the map (links and metadata) and does not cover your code. Copies of scripts are kept only when
+      your licence allows redistribution, each with its licence. If a copy and your repository differ, your repository
+      is the one that counts.</dd>
 
     <dt>Can I stop {SITE_NAME} from copying or showing my scripts?</dt>
     <dd>Ask for the removal of the copies (all of a paper's, one repository's, or one file's): at the next nightly
@@ -130,25 +132,26 @@ const toc = [
       Apache-2.0.</dd>
 
     <dt>Is there an API?</dt>
-    <dd>The search answers in JSON and CSV (its export links), and the site's files are JSON. A public API with tokens is
-      in development (<a href="/labs/#development">Labs</a>).</dd>
+    <dd>Yes: a free read API that needs no key (<a href="/help/api/">the public API guide</a>). The search also exports
+      JSON and CSV, and the site's files are JSON. A separate layer with tokens and write routes is in development
+      (<a href="/labs/#development">Labs</a>).</dd>
   </dl>
 
   <h2 id="privacy">About privacy</h2>
   <dl class="terms">
     <dt>Why no email address?</dt>
-    <dd>Because the registry does not need one to work, and an address not collected cannot leak or be misused. Sign-in
+    <dd>The registry works without one, and an address that is not collected cannot leak or be misused. Sign-in
       uses your ORCID, GitHub or Google identity instead.</dd>
 
     <dt>Does the site track me?</dt>
-    <dd>No analytics, no advertising, no third-party tracker. Cookies only when you sign in; your browser remembers the
-      reader's display choices locally. The reader's browser contacts Europe PMC or NCBI to fetch a paper, and the host of
+    <dd>No. The site has no analytics, no advertising and no third-party tracker. It sets cookies only when you sign in,
+      and your browser keeps the reader's display choices locally. The reader's browser contacts Europe PMC or NCBI to fetch a paper, and the host of
       a file shown from its source to fetch that file (<a href="/privacy/#browser">the privacy page</a>).</dd>
 
     <dt>Does {SITE_NAME} hold my email address anyway?</dt>
     <dd>If you are an author, perhaps: when a paper publishes its authors' contact details, the operator keeps them
-      privately, never shows them and never uses them for mass email (<a href="/privacy/#contacts">what, where and
-      why</a>). Signed in with your ORCID iD, you see them, and have them erased at once, on{" "}
+      privately. They are not shown and are not used for mass email (<a href="/privacy/#contacts">what, where and
+      why</a>). Signed in with your ORCID iD, you can see them and have them erased at once, on{" "}
       <a href="/data-rights/">your data and your rights</a>.</dd>
   </dl>
 
@@ -161,8 +164,8 @@ const toc = [
     <dd>It runs on free plans, at no cost (<a href="/about/#funding">how</a>).</dd>
 
     <dt>Why only neuroscience?</dt>
-    <dd>A registry is useful when it is complete for a field. The method is not specific to neuroscience; the scope is a
-      choice, made so the harvest can be thorough.</dd>
+    <dd>A registry is most useful when it covers a field completely. The method works for other fields too. We chose one
+      field so that the harvest can be thorough.</dd>
 
     <dt>How do I report a bug or suggest something?</dt>
     <dd>An issue on the project's GitHub, or privately, for a security problem, GitHub's security advisories

@@ -22,10 +22,10 @@ const H = level === 2 ? "h2" : "h3";
   <p class="badge-preview"><img src={box.image} alt={`${SITE_NAME}: the badge of this ${what}`} /></p>
   <p>
     {what === "paper"
-      ? `Authors and maintainers of this paper's code: the badge says what ${SITE_NAME} knows of the paper (its code, its validated tracing map) and links the code to this page.`
-      : `Maintainers of this tool: the badge says it is a scientific tool in ${SITE_NAME} and links its repository to this page.`}{" "}
-    Paste one of these under the README's title. Keep the two marks around it: they let the badge be replaced in place,
-    never added twice. Nothing is changed for you.
+      ? `If you are an author or a maintainer of this paper's code, you can add this badge. It says what ${SITE_NAME} knows of the paper (its code, its validated tracing map) and links the code to this page.`
+      : `If you maintain this tool, you can add this badge. It says that the tool is a scientific tool in ${SITE_NAME} and links its repository to this page.`}{" "}
+    Paste one of these snippets under the README's title. Keep the two marks around it, so that the badge can be replaced
+    in place and is never added twice. {SITE_NAME} changes nothing in your repository.
   </p>
   {box.snippets.map((s) => (
     <details open={s.format === "markdown"}>
@@ -44,8 +44,8 @@ const H = level === 2 ? "h2" : "h3";
     </>
   )}
   <p>
-    Or let it be kept for you, once you choose it: <code>oscr badge --write</code> from{" "}
-    <a href="/help/cli/">the command line</a>, or <a href="/help/badge/#action">the GitHub Action</a> in your
+    If you choose to, you can have the badge kept up to date for you, with <code>oscr badge --write</code> from{" "}
+    <a href="/help/cli/">the command line</a> or with <a href="/help/badge/#action">the GitHub Action</a> in your
     repository's workflows. Every other form and option (a card, AsciiDoc, LaTeX, shields.io) is on{" "}
     <a href="/badge/">the badge page</a>.
   </p>

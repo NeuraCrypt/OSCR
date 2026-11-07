@@ -12,7 +12,7 @@ const toc = [
   { id: "who", text: "Who you are" },
   { id: "what", text: "What can be removed" },
   { id: "why", text: "Why" },
-  { id: "form", text: "The justification, the evidence, the confirmations" },
+  { id: "form", text: "What the form asks" },
   { id: "review", text: "Review, then send" },
   { id: "decision", text: "The decision, and when it takes effect" },
   { id: "limits", text: "Limits" },
@@ -28,8 +28,8 @@ const toc = [
 >
   <p class="lead" slot="lead">
     Anyone signed in may ask {SITE_NAME} to remove something from a paper's record: the whole record, or only part of
-    it. Published rules decide every request, and its answer comes back in words; what they cannot decide waits for the
-    operator. There is no human moderator on duty at the moment.
+    it. Published rules decide each request, and the answer is given in words. A request the rules cannot decide waits
+    for the operator. At the moment, no human moderator is on duty.
   </p>
 
   <h2 id="where">Where to ask</h2>
@@ -42,9 +42,9 @@ const toc = [
 
   <h2 id="who">Who you are</h2>
   <p>
-    One of: an author of the paper (marked <em>verified</em> when your account's ORCID iD is among its authors), the
-    holder of the rights, a person named in the record, or someone else. Anyone may ask; who asks decides what the rules
-    do (<a href="#decision">below</a>).
+    The form asks you to choose one: an author of the paper (marked <em>verified</em> when your account's ORCID iD is
+    among its authors), the holder of the rights, a person named in the record, or someone else. Anyone may ask. Who
+    asks decides what the rules do with the request (<a href="#decision">below</a>).
   </p>
 
   <h2 id="what">What can be removed</h2>
@@ -64,27 +64,27 @@ const toc = [
 
   <h2 id="why">Why</h2>
   <p>
-    Copyright or licence; personal data; wrongly attributed, or not your work; a retracted paper; an incorrect record, in
-    which case the page first suggests <a href="/help/correct/">correcting it</a>, which is faster, but lets you ask all
-    the same; or another reason. For your own data, the contact details the registry keeps privately, or your account
-   , use <a href="/data-rights/">your data and your rights</a> instead: nothing of the record is removed, and access,
-    erasure and objection are answered at once when you sign in with your ORCID iD.
+    The reasons are: copyright or licence; personal data; wrongly attributed, or not your work; a retracted paper; an
+    incorrect record (the page then first suggests <a href="/help/correct/">correcting it</a>, which is faster, and still
+    lets you ask); or another reason. For your own data (the contact details the registry keeps privately, or your
+    account), use <a href="/data-rights/">your data and your rights</a>. That page removes nothing from the record, and
+    it answers access, erasure and objection at once when you sign in with your ORCID iD.
   </p>
 
-  <h2 id="form">The justification, the evidence, the confirmations</h2>
+  <h2 id="form">What the form asks</h2>
   <ul>
-    <li>A <strong>justification</strong> of 30 to 2,000 characters, in your words. It may not hold an email address: the
-      request is answered in the site, never by email.</li>
-    <li>An optional <strong>evidence link</strong> (https only): a licence, a notice, a statement.</li>
-    <li>Two <strong>confirmations</strong>: that the information is accurate; and that you understand how requests are
-      decided and what can follow, the rules may apply the request at once, hide copies at once pending review, or leave
-      it to the operator, who may accept it, in whole or in part, refuse it, or reverse what the rules did.</li>
+    <li>A justification of 30 to 2,000 characters, in your words. It may not hold an email address, because the request
+      is answered in the site and not by email.</li>
+    <li>An optional evidence link (https only): a licence, a notice, a statement.</li>
+    <li>Two confirmations: that the information is accurate, and that you understand how requests are decided and what
+      can follow. The rules may apply the request at once, hide copies at once while the operator reviews them, or leave
+      it to the operator, who may accept it in whole or in part, refuse it, or reverse what the rules did.</li>
   </ul>
 
   <h2 id="review">Review, then send</h2>
   <p>
-    The page checks the request with the site's own rules, then shows a summary of everything; nothing is sent before
-    "Confirm and send". The receipt gives the request's number, its status (open) and what the rules will do with it.
+    The page checks the request with the site's own rules, then shows a summary of everything. The request is sent only
+    when you press "Confirm and send". The receipt gives the request's number, its status (open) and what the rules will do with it.
     Coming back to the page shows the request: while it is open you may complete it (it keeps its number); once decided,
     it shows the decision and its words, the rules' or the operator's. Your account page lists your requests.
   </p>
@@ -96,36 +96,35 @@ const toc = [
     <a href="/policies/removal/">the removal policy</a>):
   </p>
   <ul>
-    <li>from a <strong>verified author</strong> of the paper (your ORCID iD among its authors, or your claim verified):
-      applied at once, whatever it names;</li>
-    <li>for the copies of a repository you maintain as its <strong>owner</strong> or a public member of its
-      organization, on GitHub (or as a maintainer the operator made): applied at once, a contributor's request follows
-      the rules for anyone;</li>
-    <li>for copies of the authors' code, for <strong>copyright or personal data</strong>, from anyone: hidden at once,
-      pending the review of the operator, who may restore them, at most {HIDE_PER_ACCOUNT} such requests an account and{" "}
-      {HIDE_PER_DAY} in all a day; a justification sent with {CAMPAIGN} requests or more in {CAMPAIGN_DAYS} days, or a
-      request the operator already refused, waits instead;</li>
-    <li>anything else, a whole record, a tracing map, another reason: nothing is removed; the request waits for the
-      operator, {REVIEW_DAYS} days at most, and is then closed without removal, with how to ask again, except a request
-      made for personal data, which the operator answers within one month, as the GDPR requires, and which is never
-      closed unanswered.</li>
+    <li>from a verified author of the paper (your ORCID iD among its authors, or your claim verified): applied at once,
+      whatever it names;</li>
+    <li>for the copies of a repository you maintain as its owner or a public member of its organization, on GitHub (or
+      as a maintainer the operator made): applied at once (a contributor's request follows the rules for anyone);</li>
+    <li>for copies of the authors' code, for copyright or personal data, from anyone: hidden at once until the operator
+      reviews them, and the operator may restore them. At most {HIDE_PER_ACCOUNT} such requests per account and{" "}
+      {HIDE_PER_DAY} in all per day are applied this way. A justification sent with {CAMPAIGN} requests or more in{" "}
+      {CAMPAIGN_DAYS} days, or a request the operator already refused, waits for the operator;</li>
+    <li>any other request (a whole record, a tracing map, another reason): nothing is removed, and the request waits for
+      the operator, {REVIEW_DAYS} days at most. It is then closed without removal, with how to ask again. A request made
+      for personal data is the exception: the operator answers it within one month, as the GDPR requires, and it is not
+      closed without an answer.</li>
   </ul>
   <p>
-    Accepted, what the request names leaves every public output at the <strong>next nightly publication</strong> (at
-    04:17, the operator's local time): the site, the DOI lookup, the search, the community's facts and the open data.
+    When a request is accepted, what it names leaves every public output at the next nightly publication (at 04:17, the
+    operator's local time): the site, the DOI lookup, the search, the community's facts and the open data.
     The operator's computer keeps the record, marked withdrawn or withheld, so that the harvester does not bring it back.
   </p>
   <p class="note">
-    What cannot be undone elsewhere: a copy already published in a Parquet block on Hugging Face stays in that block (a
-    published block never changes), the manifest that points to it is withdrawn, so no reader finds it; a map's DOI
-    already given stays on Zenodo, a DOI is permanent, though the site no longer shows it.
+    Two things cannot be undone outside the site. A copy already published in a Parquet block on Hugging Face stays in
+    that block (a published block never changes); the manifest that points to it is withdrawn, so readers cannot find
+    it. A map's DOI already given stays on Zenodo, because a DOI is permanent; the site stops showing it.
   </p>
 
   <h2 id="limits">Limits</h2>
   <ul>
-    <li>One request per account and record, which you may complete while it is open. Accepted, it is not asked again;
-      refused or closed, it can be asked again only in a way the rules decide at once, as a verified author, as a
-      maintainer of the code it names, or for the copies only, for copyright or personal data.</li>
+    <li>One request per account and record, which you may complete while it is open. An accepted request is not asked
+      again. A refused or closed request can be asked again only in a way the rules decide at once: as a verified
+      author, as a maintainer of the code it names, or for the copies only, for copyright or personal data.</li>
     <li>A request names at most one repository or one file; for more, choose the paper's scripts or the whole record, or
       say it in the justification.</li>
     <li>At most 10 requests a day per account. Signing in is required until the site has a bot check of its own.</li>

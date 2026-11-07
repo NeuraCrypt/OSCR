@@ -33,8 +33,9 @@ for (const [facet, values] of Object.entries(categories.facets)) {
 >
   <h1>Search</h1>
   <p class="summary">
-    The {number(withPage.length)} papers {SITE_NAME} has a page for: their titles, keywords, MeSH terms, authors, journals, code
-    repositories, the tools found in their code, their identifiers, and their abstracts when the paper's license is open.
+    Search the {number(withPage.length)} papers {SITE_NAME} has a page for, by their titles, keywords, MeSH terms, authors,
+    journals, code repositories, the tools found in their code, their identifiers, and their abstracts when the paper's
+    license is open.
   </p>
   <section id="scitool-hits" data-tools={JSON.stringify(sciTools.map(toolCard))} hidden>
     <h2>Scientific tools</h2>
@@ -47,7 +48,7 @@ for (const [facet, values] of Object.entries(categories.facets)) {
   </div>
   <noscript>
     <p class="warning">
-      The search runs in your browser: it needs JavaScript. <a href="/browse/">Browse</a> and the{" "}
+      The search runs in your browser and needs JavaScript. <a href="/browse/">Browse</a> and the{" "}
       <a href="/lookup/">DOI lookup</a> work without it.
     </p>
   </noscript>

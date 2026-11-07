@@ -66,7 +66,7 @@ describe("the rows", () => {
   test("closing references in words; a fork's row and standing", () => {
     const refs = [{ owner: "ada", name: "eeg", number: 3, keyword: "fixes" }, { owner: "ada", name: "other", number: 4, keyword: "closes" }];
     assert.match(textOf(closingNotice(refs, true, "main", REPO)), /^Merging it closes #3, ada\/other#4/);
-    assert.match(textOf(closingNotice(refs, false, "dev", REPO)), /only when a pull request merges into the default branch, not dev/);
+    assert.match(textOf(closingNotice(refs, false, "dev", REPO)), /only when a pull request merges into the default branch, and dev is another branch/);
     assert.equal(closingNotice([], true, "main", REPO), null);
     const fork = { ref: { forge: "github", owner: "bob", name: "eeg" }, pushedAt: "2026-09-01T00:00:00Z", description: "Bob's copy" } as T.RepoInfo;
     assert.equal(textOf(forkRow(fork)), "bob/eeg · last pushed 2026-09-01, Bob's copy");

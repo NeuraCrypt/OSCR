@@ -20,14 +20,14 @@ const DATASET = "https://huggingface.co/datasets/OpenScientificCodeRegistry/Data
     <article class="info-body">
       <h1>API</h1>
       <p class="lead">
-        {SITE_FULL_NAME} offers a free, keyless, read-only API over its catalogue. No account, no token, no sign-up: every
-        route answers a plain <code>GET</code> and returns JSON. The data is the same the pages are built from (no PDF, no
-        paper full text, no email address). For a worked reference, with examples in curl, Python and R, read the{" "}
+        {SITE_FULL_NAME} has a free, keyless, read-only API over its catalogue. It needs no account, token or sign-up.
+        Every route answers a plain <code>GET</code> and returns JSON. The data is the data the pages are built from; it
+        holds no PDF, no full text of a paper and no email address. For a worked reference, with examples in curl, Python and R, read the{" "}
         <a href="/help/api/">API guide</a>.
       </p>
 
       <h2 id="start">Getting started</h2>
-      <p>Every route hangs off <code>{API_BASE}</code>. Try the index, which links to everything:</p>
+      <p>Every route starts with <code>{API_BASE}</code>. The index links to every route:</p>
       <pre>{`curl ${SITE}${API_BASE}/`}</pre>
       <p>
         The machine-readable description is an OpenAPI 3.1 document at{" "}
@@ -76,13 +76,13 @@ ${SITE}${API_BASE}/paper?doi=10.5555/oscr.fixture.1`}</pre>
       <p>
         The authors' scripts (their text) are a separate public dataset on Hugging Face,{" "}
         <a href={DATASET}>OpenScientificCodeRegistry/Database</a>, under their verified licences (see the{" "}
-        <a href="/help/data/">data guide</a>). A single full catalogue dump (the whole database in one file) is not served
-        here: it is too large for the hosting, and whether to publish one as a public dataset is the operator's decision.
+        <a href="/help/data/">data guide</a>). The site does not serve the whole catalogue as one file, because that file is
+        too large for the hosting. Whether to publish one as a public dataset is the operator's decision.
       </p>
 
       <h2 id="limits">Rate and caching</h2>
       <p>
-        The static files and the Hugging Face dataset are unlimited. The one exception is{" "}
+        The static files and the Hugging Face dataset have no rate limit. The one exception is{" "}
         <a href={`${API_BASE}/search`}><code>{API_BASE}/search</code></a>: it reads the search database, so each call counts
         against the site's shared daily free budget. Call it sparingly and cache its answers. Every answer carries a{" "}
         <code>Cache-Control</code> header, so a repeat call within ten minutes is served from the cache.
@@ -90,8 +90,9 @@ ${SITE}${API_BASE}/paper?doi=10.5555/oscr.fixture.1`}</pre>
 
       <h2 id="licence">Licence, terms and citation</h2>
       <p>
-        The catalogue's facts are open data; the authors' code stays under its own licence (that is why some files are
-        shown from their source rather than copied: see <a href="/policies/code/">the code policy</a>). Use of the API and
+        The catalogue's facts are open data. The authors' code stays under its own licence, so the bulk downloads hold a
+        file only when its repository's licence allows redistribution and is confirmed by a licence file (see{" "}
+        <a href="/policies/code/">the code policy</a>). Use of the API and
         the data is covered by <a href="/policies/terms/">the terms of use</a>. To cite {SITE_NAME} and its records, see{" "}
         <a href="/policies/citation/">Citation</a>.
       </p>
@@ -99,8 +100,8 @@ ${SITE}${API_BASE}/paper?doi=10.5555/oscr.fixture.1`}</pre>
       <h2 id="more">More</h2>
       <p>
         The full <a href="/help/api/">API guide</a> has every endpoint with its parameters and a real example in curl,
-        Python and R, pagination, errors, and the versioning policy. The code is open:{" "}
-        <a href={SOURCE_URL}>the project on GitHub</a>.
+        Python and R, pagination, errors, and the versioning policy. The site's source code is public on{" "}
+        <a href={SOURCE_URL}>GitHub</a>.
       </p>
     </article>
   </div>

@@ -85,7 +85,7 @@ const moderated = hiddenReposOf(a.doi);
 ---
 <Base
   title={a.title}
-  description={hasCode ? `The code published by the authors of “${a.title}”.` : `“${a.title}”: ${s.label}.`}
+  description={hasCode ? `The code published by the authors of "${a.title}".` : `"${a.title}": ${s.label}.`}
   breadcrumb={[{ text: "Catalogue", href: "/" }, { text: `doi:${a.doi}` }]}
 >
   <script is:inline type="application/json" id={FACTS_ID} set:html={facts}></script>

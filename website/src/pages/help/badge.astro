@@ -16,7 +16,7 @@ const unpct = (s: string) => s.replace(/%25/g, "%");
 // The GitHub Action's address: its folder in the registry's own repository.
 const ACTION = `${SOURCE_URL.replace(/^https:\/\/github\.com\//, "")}/github-action/oscr-badge`;
 const toc = [
-  { id: "quick", text: "In thirty seconds" },
+  { id: "quick", text: "Quick start" },
   { id: "what", text: "What the badge says" },
   { id: "addresses", text: "Its addresses" },
   { id: "platforms", text: "Platform by platform" },
@@ -26,7 +26,7 @@ const toc = [
   { id: "cli", text: "From the command line" },
   { id: "action", text: "With a GitHub Action" },
   { id: "why", text: "When a pull request is made for you" },
-  { id: "fresh", text: "How it stays true" },
+  { id: "fresh", text: "How it stays up to date" },
   { id: "privacy", text: "Privacy" },
   { id: "trouble", text: "When it does not show" },
 ];
@@ -40,21 +40,22 @@ const toc = [
   toc={toc}
 >
   <p class="lead" slot="lead">
-    The badge puts the paper beside its code. In the README of a paper's code, on its Hugging Face card or on a lab's
-    page, it says what {SITE_NAME} knows of the paper and takes the code's readers to it: the paper and the code side by
-    side, the tracing map, the citation. One line to paste, true by itself afterwards.
+    The badge links a paper's code to the paper. Placed in the README of the code, on its Hugging Face card or on a
+    lab's page, it shows what {SITE_NAME} knows of the paper and links the code's readers to the paper's page, which
+    shows the paper and the code side by side, the tracing map and the citation. You paste one line, and the badge then
+    updates itself.
   </p>
 
-  <h2 id="quick">In thirty seconds</h2>
+  <h2 id="quick">Quick start</h2>
   <ol>
     <li>Open <a href="/badge/">the badge page</a> and give your paper's DOI (or your repository's address).</li>
     <li>Copy the Markdown line. It looks like this:
       <pre>{md}</pre>
     </li>
-    <li>Paste it under the title of your README, and commit. That is all: the badge updates itself every night.</li>
+    <li>Paste it under the title of your README, and commit. The badge then updates itself every night.</li>
   </ol>
   <p>
-    No account, no key, no file to host. Signed in as a verified author, <a href="/account/#badges">your account page</a>{" "}
+    You need no account, no key and no file to host. Signed in as a verified author, <a href="/account/#badges">your account page</a>{" "}
     lists each of your papers with its badge, and the badge page says which of their repositories still lack it.
   </p>
 
@@ -75,8 +76,8 @@ const toc = [
     </tbody>
   </table>
   <p>
-    So a badge added before the paper is in the registry is not wasted: it invites its readers to submit it, and turns
-    into the paper's badge on the night the record is published.
+    A badge added before the paper is in the registry links its readers to the submission form, and becomes the paper's
+    badge on the night the record is published.
   </p>
 
   <h2 id="addresses">Its addresses</h2>
@@ -87,7 +88,7 @@ const toc = [
     <dt>A repository's image</dt><dd><code>{repo.image}</code></dd>
     <dt>A repository's link</dt><dd><code>{repo.link}</code></dd>
     <dt>shields.io's endpoint</dt><dd><code>{paper.json}</code></dd>
-    <dt>The static images</dt><dd><code>{origin}/badge.svg</code> and <code>{origin}/badge.png</code> (no server work at all)</dd>
+    <dt>The static images</dt><dd><code>{origin}/badge.svg</code> and <code>{origin}/badge.png</code> (plain files, with no work on the server)</dd>
   </dl>
   <p>
     A DOI's characters other than the slash are percent-encoded in the path (the badge page does it for you). A DOI that
@@ -113,7 +114,7 @@ const toc = [
     <dt>Hugging Face (a model, a dataset, a Space)</dt>
     <dd>
       <p>The card is the repository's <code>README.md</code>: paste the Markdown line in its body, after the YAML block
-        between the two <code>---</code> lines, never inside it. Through the website: the card's Edit button, then
+        between the two <code>---</code> lines, and not inside it. Through the website: the card's Edit button, then
         "Commit changes", or "Open as a pull request" on someone else's repository.</p>
     </dd>
     <dt>PyPI, Read the Docs, Sphinx</dt>
@@ -137,7 +138,7 @@ const toc = [
     </dd>
     <dt>LaTeX (a thesis, slides, a poster), Word, PowerPoint, an email signature</dt>
     <dd>
-      <p>They read no SVG: save <a href="/badge.png"><code>/badge.png</code></a> (the mark, sharp at any size) next to
+      <p>These cannot show SVG images: save <a href="/badge.png"><code>/badge.png</code></a> (the mark, sharp at any size) next to
         your file and link it to the paper's link. With hyperref:</p>
       <pre>{snippet("latex", paper.image, paper.link, SITE_NAME)}</pre>
     </dd>
@@ -172,27 +173,27 @@ const toc = [
   <h2 id="everywhere">Every repository at once</h2>
   <ul>
     <li>
-      <strong>A GitLab group</strong>: in the group's Settings, General, Badges, one badge with the link{" "}
+      For a GitLab group, add one badge in the group's Settings, General, Badges, with the link{" "}
       <code>{unpct(gitlabGroup.link)}</code> and the image <code>{unpct(gitlabGroup.image)}</code>. GitLab puts each
       project's path in place of <code>%&lbrace;project_path&rbrace;</code>; a project the registry does not know shows
       nothing, and a project it learns later shows its badge the next night. On your own GitLab, use its host instead of{" "}
       <code>gitlab.com</code>.
     </li>
     <li>
-      <strong>Your papers</strong>: <a href="/account/#badges">your account page</a> links each paper you are a
+      For your papers, <a href="/account/#badges">your account page</a> links each paper you are a
       verified author of to its badge, and the badge page reads each of its repositories' README, says which lack the
       badge, and opens each one in the forge's own editor (on GitHub, a repository without a README gets a new one,
       already filled with the badge).
     </li>
-    <li><strong>Your clones</strong>: <code>oscr badge --write</code>, below.</li>
-    <li><strong>Your GitHub repositories, kept up to date</strong>: <a href="#action">the GitHub Action</a>, below.</li>
+    <li>For your clones, use <code>oscr badge --write</code> (below).</li>
+    <li>To keep the badge up to date in your GitHub repositories, use <a href="#action">the GitHub Action</a> (below).</li>
   </ul>
 
   <h2 id="cli">From the command line</h2>
   <p>
     The researchers' <a href="/help/cli/">command line</a> writes the badge into a clone's README, between two marks,
-    under its title, and replaces it there next time instead of adding it twice. It finds the paper the registry links
-    to the repository; give the DOI otherwise. You then commit and push it yourself.
+    under its title. On the next run it replaces the badge at the same place, so the badge appears once. It finds the
+    paper the registry links to the repository; if there is none, give the DOI. You then commit and push it yourself.
   </p>
   <pre>{`oscr badge                      # the snippets, for this clone's paper
 oscr badge 10.1234/abcd --write # into README.md, between <!-- oscr-badge:start --> and <!-- oscr-badge:end -->
@@ -203,8 +204,8 @@ oscr badge --remove             # take it out again`}</pre>
   <h2 id="action">With a GitHub Action</h2>
   <p>
     Your repository's own workflow can keep the badge there: it writes the badge between the same two marks, under the
-    README's title, and commits the README when it changed, with the workflow's own token. It runs nothing of your code
-    and asks the registry only its public facts. You choose it by adding the file; you stop it by deleting the file.
+    README's title, and commits the README when it changed, with the workflow's own token. It does not run any of your
+    code, and it asks the registry for public facts only. Adding the file turns it on; deleting the file turns it off.
     Save this as <code>.github/workflows/oscr-badge.yml</code>:
   </p>
   <pre>{`name: ${SITE_NAME} badge
@@ -230,20 +231,20 @@ jobs:
 
   <h2 id="why">When a pull request is made for you</h2>
   <p>
-    {SITE_NAME} never opens a pull request on a repository whose owner did not ask, and sends no mass message (the{" "}
-    <a href="/policies/">policies</a>). There is one exception, and you make it yourself: when you install{" "}
+    {SITE_NAME} does not open a pull request on a repository unless its owner asked for it, and it sends no mass message
+    (the <a href="/policies/">policies</a>). It opens one in a single case, which you start yourself: when you install{" "}
     {SITE_NAME}'s GitHub App on a public repository that {SITE_NAME} links to a paper, and its README lacks the badge,
-    the App opens ONE pull request that adds it under the title, between its two marks. That is the only write the App
-    makes, with a token narrowed to that repository and kept for its hour; it is offered once, never again on that
-    repository, even if you close it. Close it to decline; uninstall the App to stop everything. Otherwise the badge is
-    added by you, in the forge's own editor, with the GitHub Action or with your own command line: your consent is in
-    the gesture itself.
+    the App opens one pull request that adds the badge under the title, between its two marks. That is the only write
+    the App makes, with a token limited to that repository and kept for its hour (one hour). The pull request is offered
+    once on that repository, even if you close it. To decline, close it. To stop the App completely, uninstall it. In
+    every other case you add the badge yourself, in the forge's own editor, with the GitHub Action or with your own
+    command line, and that action is your consent.
   </p>
 
   <h2 id="fresh">How it stays true</h2>
   <ul>
-    <li>The badge is drawn from the registry's public records, which change once a night: it says nothing that the
-      paper's page does not.</li>
+    <li>The badge is drawn from the registry's public records, which change once a night. It shows the same facts as the
+      paper's page.</li>
     <li>Browsers, GitHub's image proxy and the registry's own cache keep it {BADGE_MAX_AGE / 3600} hour, then ask again
       (and may show the old one for up to a day while they do). A change made tonight shows on every README by the next
       morning.</li>
@@ -253,21 +254,21 @@ jobs:
 
   <h2 id="privacy">Privacy</h2>
   <p>
-    A badge sets no cookie, runs no script, loads nothing from elsewhere (its logo is inside it), and counts nothing:{" "}
-    {SITE_NAME} keeps no record of who sees a badge, and has no view counter. On GitHub, the images go through
-    GitHub's proxy, so the registry does not even see the reader's address.
+    A badge sets no cookie, runs no script and loads nothing from another site (its logo is inside the image).{" "}
+    {SITE_NAME} keeps no record of who sees a badge and has no view counter. On GitHub, the images go through GitHub's
+    proxy, so the registry does not see the reader's address.
   </p>
 
   <h2 id="trouble">When it does not show</h2>
   <ul>
-    <li><strong>An old badge on GitHub</strong>: GitHub's proxy keeps it an hour; past a day, its cache can be purged
-      as GitHub explains (an anonymized image URL's <code>PURGE</code>).</li>
-    <li><strong>A grey "not registered"</strong>: check the DOI on <a href="/lookup/">the DOI lookup</a>; the badge's link
-      opens the submission form, already filled in.</li>
-    <li><strong>A broken image</strong>: the badges drawn on demand share the registry's free daily allowance; on a
-      day it runs out, they may not show until midnight UTC. The static <code>/badge.svg</code> and{" "}
-      <code>/badge.png</code> never run out.</li>
-    <li><strong>The rules of use</strong> (no changed image or colours; your own words are allowed) are on the{" "}
-      <a href="/brand/#badge">brand page</a>.</li>
+    <li>If GitHub shows an old badge: GitHub's proxy keeps it an hour. After a day, you can purge its cache as GitHub
+      explains (a <code>PURGE</code> request on the anonymized image URL).</li>
+    <li>If the badge says "not registered" in grey, check the DOI on <a href="/lookup/">the DOI lookup</a>. The badge's
+      link opens the submission form, already filled in.</li>
+    <li>If the image is broken: the badges drawn on demand share the registry's free daily allowance. On a day it runs
+      out, they may not show until midnight UTC. The static <code>/badge.svg</code> and <code>/badge.png</code> have no
+      such limit.</li>
+    <li>The rules of use are on the <a href="/brand/#badge">brand page</a>. They allow your own words in the text and
+      forbid changes to the image and its colours.</li>
   </ul>
 </Info>

@@ -20,7 +20,7 @@ const toc = [
   { id: "output", text: "Output, scripting and exit codes" },
   { id: "mcp", text: "The MCP server, for an assistant" },
   { id: "settings", text: "Settings, aliases and completion" },
-  { id: "safety", text: "What it never does" },
+  { id: "safety", text: "Safety" },
   { id: "coming", text: "What is coming" },
   { id: "more", text: "More" },
 ];
@@ -36,18 +36,18 @@ const toc = [
   <p class="lead" slot="lead">
     <code>oscr</code> is {SITE_NAME}'s command line for researchers. From your terminal it links your
     repository to its paper, checks it the way the registry checks it, traces its lines to the paper's
-    Methods, cites it, and works with its GitHub repository (the registry's view first). It is free and
-    open (Apache-2.0), needs only Python and git, and never asks for, shows or keeps an email address.
+    Methods, cites it, and works with its GitHub repository (it shows the registry's view first). It is free
+    and open source (Apache-2.0) and needs only Python and git. It does not ask for, show or keep an email
+    address.
   </p>
 
   <h2 id="what">What it is</h2>
   <p>
     The tool is for anyone who publishes research code: it brings {SITE_NAME}'s own checks, citations and
-    tracing maps to where you work. It talks to <strong>GitHub directly with your own GitHub token</strong>
-    (the registry never sees it) and to <strong>the registry with the registry's token</strong>, and for
-    every action it shows the registry's own page first, GitHub's address only when the registry cannot
-    show the thing. It uses the <strong>standard library only</strong>: once Python is there, nothing else
-    is installed. The package on PyPI is <code>{PYPI}</code>; the command you type is <code>oscr</code>.
+    tracing maps to where you work. It talks to GitHub directly with your own GitHub token (the registry
+    does not see that token) and to the registry with the registry's token. For every action it shows the
+    registry's own page first, and GitHub's address only when the registry has no page for it. It uses
+    Python's standard library only, so once Python is installed, nothing else is installed. The package on PyPI is <code>{PYPI}</code>; the command you type is <code>oscr</code>.
   </p>
 
   <h2 id="install">Install</h2>
@@ -59,7 +59,7 @@ oscr --version`}</pre>
 # or
 uv tool install ${PYPI}`}</pre>
   <p>
-    You need <strong>Python 3.10 or later</strong> and <strong>git</strong>. There is no other dependency.
+    You need Python 3.10 or later and git. There is no other dependency.
     The short name <code>oscr</code> is already taken on PyPI by an unrelated project, so the distribution
     is called <code>{PYPI}</code> (it matches this site's domain); the command stays <code>oscr</code>.
     Every command has <code>--help</code> with examples, and <code>oscr help &lt;topic&gt;</code> opens the
@@ -81,8 +81,8 @@ oscr auth login --oscr --scopes repos:read,research:write --days 90`}</pre>
     <dt>GitHub, through GitHub's own device flow</dt>
     <dd>
       The tool asks GitHub directly, with the registry's GitHub App's public client id. You type the code
-      on GitHub's page. Your GitHub token goes from GitHub to your keychain and <strong>never reaches the
-      registry</strong>. It lives 8 hours; <code>oscr auth refresh --github</code>, or any command once it
+      on GitHub's page. Your GitHub token goes from GitHub to your keychain and does not reach the
+      registry. It lives 8 hours; <code>oscr auth refresh --github</code>, or any command once it
       expired, renews it.
     </dd>
     <dt>The registry, through its own device-code flow</dt>
@@ -94,9 +94,9 @@ oscr auth login --oscr --scopes repos:read,research:write --days 90`}</pre>
     </dd>
   </dl>
   <p>
-    Both are kept <strong>only in your system's keychain</strong>: the macOS login keychain, or the Linux
-    Secret Service (GNOME Keyring, KWallet) through <code>secret-tool</code>; a plain file only when you
-    ask (<code>--insecure-storage</code>), with a warning each time. The rest of the auth commands:
+    Both are kept in your system's keychain: the macOS login keychain, or the Linux Secret Service (GNOME
+    Keyring, KWallet) through <code>secret-tool</code>. They go in a plain file only when you ask for it
+    (<code>--insecure-storage</code>), with a warning each time. The rest of the auth commands:
   </p>
   <div class="table-wrap">
     <table class="facts">
@@ -119,8 +119,7 @@ oscr auth login --oscr --scopes repos:read,research:write --days 90`}</pre>
 
   <h2 id="registry">Checking, citing and tracing your code</h2>
   <p>
-    These read your files <strong>as text</strong> and <strong>never run your code</strong>; git runs with
-    its hooks off. <code>oscr check</code> runs the same seven checks the registry runs on a pull request:
+    These commands read your files as text and do not run your code; git runs with its hooks off. <code>oscr check</code> runs the same seven checks the registry runs on a pull request:
     a licence, an environment file, the paper's DOI, <code>CITATION.cff</code>, the tracing maps' files,
     files over 50 MiB, and a README that says how to run the code.
   </p>
@@ -134,12 +133,12 @@ oscr check --offline             # ask the registry nothing`}</pre>
   </p>
   <pre>{`oscr cite                        # APA and BibTeX
 oscr cite --format bibtex >> refs.bib
-oscr cite --software             # the software itself, not the paper the file prefers
+oscr cite --software             # the software itself, even when the file prefers the paper
 oscr cite --release v1.2.0       # that version, with the DOI its release notes name
 oscr cite --swhid                # the commit's Software Heritage identifiers`}</pre>
   <p>
     <code>oscr badge</code> gives the <a href="/help/badge/">badge</a> of the repository's paper, and with{" "}
-    <code>--write</code> puts it under the README's title, between two marks, replacing it there next time:
+    <code>--write</code> puts it under the README's title, between two marks, and replaces it at the same place on the next run:
   </p>
   <pre>{`oscr badge                       # the snippet, in Markdown
 oscr badge --write               # into README.md (README.rst, .adoc, .org: their own markup)
@@ -174,7 +173,7 @@ oscr paper list                  # the papers the registry links to it`}</pre>
   <h2 id="repo">Making a repository and sending it to GitHub</h2>
   <p>
     A common path for a researcher: make a public repository, link it to its paper, and work on it. Create
-    it on GitHub (private ones are refused by design), then clone and push with ordinary git:
+    it on GitHub (the tool creates public repositories only), then clone and push with ordinary git:
   </p>
   <pre>{`oscr repo create eeg-analysis --license mit --gitignore Python --add-readme --paper 10.1234/abcd --clone
 cd eeg-analysis
@@ -230,8 +229,8 @@ oscr api --github /repos/lab/eeg/releases --jq ".[].tag_name"`}</pre>
   <p>
     <code>oscr api</code> calls the registry's API at <code>/api/forge/v1</code> (or GitHub's with{" "}
     <code>--github</code>) and prints the JSON answer; <code>-f k=v</code> adds a field, <code>-X POST</code>
-    changes the method, <code>--jq</code> filters the result. The free, keyless read API is documented on its
-    own: see <a href="/help/api/">the public API guide</a>.
+    changes the method, <code>--jq</code> filters the result. The free read API, which needs no key, has its own
+    guide: <a href="/help/api/">the public API guide</a>.
   </p>
 
   <h2 id="ci">Your CI runs</h2>
@@ -241,9 +240,9 @@ oscr workflow list               # the repository's workflows and their state`}<
 
   <h2 id="output">Output, scripting and exit codes</h2>
   <p>
-    In a terminal the tool prints aligned columns cut to the width, with colour; <strong>in a pipe</strong>
-    it prints one tab-separated line per item, nothing cut, no colour, so it is easy to read from a script.
-    Three flags reshape the output:
+    In a terminal the tool prints aligned columns cut to the width, with colour. When its output goes to a
+    pipe, it prints one tab-separated line per item, uncut and without colour, so a script can read it
+    easily. Three flags change the output:
   </p>
   <dl class="terms">
     <dt><code>--json FIELDS</code></dt>
@@ -255,7 +254,7 @@ oscr workflow list               # the repository's workflows and their state`}<
   </dl>
   <p>
     Colour obeys <code>NO_COLOR</code>, <code>--color never</code> and <code>CLICOLOR_FORCE=1</code>;{" "}
-    <code>oscr config set accessible_colors true</code> uses bold and underline and a word, never red against
+    <code>oscr config set accessible_colors true</code> uses bold, underline and a word in place of red and
     green. Every text from the network is cleaned before it is shown (control and bidirectional escape
     sequences made inert), and email addresses become <code>[email hidden]</code>, as on the site. The exit
     codes:
@@ -277,12 +276,12 @@ oscr workflow list               # the repository's workflows and their state`}<
   <h2 id="mcp">The MCP server, for an assistant</h2>
   <p>
     <code>oscr mcp serve</code> speaks JSON-RPC 2.0 over standard input and output (the Model Context
-    Protocol) and offers the <strong>read</strong> commands as tools for an assistant:{" "}
+    Protocol) and makes the read commands available as tools for an assistant:{" "}
     <code>repo_view</code>, <code>paper_list</code>, <code>check</code>, <code>cite</code>,{" "}
     <code>trace_list</code>, <code>trace_check</code>, <code>issue_list</code>, <code>issue_view</code>,{" "}
     <code>pr_list</code>, <code>pr_view</code>, <code>release_list</code>, <code>run_list</code> and{" "}
-    <code>search</code>. Each runs with your settings and credentials and answers its JSON. None writes,
-    opens a browser or asks a question. <code>oscr mcp tools</code> lists them.
+    <code>search</code>. Each tool runs with your settings and credentials and answers with JSON. These
+    tools do not write anything, open a browser or ask a question. <code>oscr mcp tools</code> lists them.
   </p>
   <pre>{`{"mcpServers": {"oscr": {"command": "oscr", "args": ["mcp", "serve"]}}}`}</pre>
 
@@ -290,19 +289,19 @@ oscr workflow list               # the repository's workflows and their state`}<
   <pre>{`oscr config list                 # every setting, its value and what it does
 oscr config set git_protocol ssh
 oscr config set host example.org # another deployment of the registry
-oscr alias set co "pr checkout"  # then: oscr co 12 (aliases never run a shell)
+oscr alias set co "pr checkout"  # then: oscr co 12 (an alias does not run a shell)
 eval "$(oscr completion bash)"   # also zsh and fish`}</pre>
 
-  <h2 id="safety">What it never does</h2>
+  <h2 id="safety">Safety</h2>
   <ul>
-    <li><strong>It never runs your code.</strong> <code>oscr check</code> and <code>oscr trace</code> read files as text from git's object store; git always runs with its hooks off. The only programs the tool starts are git, the keychain's own, and your browser and editor.</li>
-    <li><strong>It never keeps your token anywhere but the keychain</strong> (a plain file only when you ask, with a warning). A token is never printed, not even with <code>--debug</code>.</li>
-    <li><strong>It never asks for, shows or keeps an email address.</strong> Your commits' address is your own git configuration, never read or changed.</li>
-    <li><strong>It never sends your GitHub token to the registry.</strong> GitHub's side talks to GitHub; the registry's side talks to the registry.</li>
+    <li>The tool does not run your code. <code>oscr check</code> and <code>oscr trace</code> read files as text from git's object store, and git always runs with its hooks off. The only programs the tool starts are git, the keychain's own program, and your browser and editor.</li>
+    <li>It keeps your tokens in the keychain only, or in a plain file when you ask for it, with a warning. It does not print a token, even with <code>--debug</code>.</li>
+    <li>It does not ask for, show or keep an email address. The address on your commits comes from your own git configuration, which the tool does not read or change.</li>
+    <li>It does not send your GitHub token to the registry. The GitHub commands talk to GitHub, and the registry commands talk to the registry.</li>
   </ul>
 
   <h2 id="coming">What is coming</h2>
-  <p>These are planned and are <strong>not</strong> available yet; the tool does not pretend they are:</p>
+  <p>These are planned and are not available yet:</p>
   <ul>
     <li>Sending a proposed tracing map to the registry for an author's review (today <code>oscr trace propose</code> writes a file you keep).</li>
     <li>More repository and collaboration verbs: <code>repo fork</code>, <code>archive</code>, <code>rename</code>, <code>delete</code>; reviewing or merging a pull request; editing, commenting on or reopening an issue; uploading or downloading a release's assets; discussions and projects.</li>

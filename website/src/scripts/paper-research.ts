@@ -1,4 +1,4 @@
-// The paper's research issues on its page (night phase 05, E6): Discussion (code errors, code–paper
+// The paper's research issues on its page (night phase 05, E6): Discussion (code errors, code-paper
 // mismatches) and Reproductions (reproduction failures). Signed out, from the nightly layer shards of
 // the paper's GitHub repositories (/forge/layer/NN.json, "as of last night": 0 Worker requests);
 // signed in, live (GET /api/forge/research?paper=…, 1 request), code hosted elsewhere included.
@@ -83,7 +83,7 @@ async function main(): Promise<void> {
                 null,
                 h("a", { href: releasePath({ owner, name }, tie.tag) }, `${tie.tag} of ${repo}`),
                 `, ${tieInWords(tie)}`,
-                tie.map ? `; its tracing map versioned with it (${tie.map.pairs} paragraph–line ${tie.map.pairs === 1 ? "pair" : "pairs"})` : "",
+                tie.map ? `; its tracing map versioned with it (${tie.map.pairs} paragraph-line ${tie.map.pairs === 1 ? "pair" : "pairs"})` : "",
                 tie.deposit ? ["; the map's DOI: ", h("a", { href: `https://doi.org/${tie.deposit.doi}` }, tie.deposit.doi)] : "",
                 tie.status === "proposed" ? " (proposed to the paper's authors)" : "",
               );

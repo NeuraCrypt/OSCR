@@ -43,34 +43,34 @@ const toc = [
     <li>The site checks the DOI and the links at once and records your submission, or tells you in words what is wrong.</li>
     <li>{SITE_NAME}'s harvester reads the paper as it reads every paper, verifies each link at its source, its commit,
       its licence, its scripts, and matches the code with the paper's paragraphs.</li>
-    <li>A <strong>draft</strong> of the record comes back to your account page. Review it; correct the links if need be
+    <li>A draft of the record comes back to your account page. Review it; correct the links if need be
       (the harvester reads them again); then publish.</li>
     <li>When your ORCID iD is among the paper's authors, the record is published at once. Otherwise the registry's rules
-      publish it when each code link is proven the paper's by what you cannot write: the paper itself cites it (its
-      text, or the metadata its publisher deposited at Crossref), or its owner is proven one of the paper's authors (an
-      author's public ORCID record links to that GitHub account, or a verified author of the paper owns it). A README
-      citing the paper, or a display name, proves nothing. If nothing proves a link, the submission waits for the
+      publish it when something you cannot write yourself proves that each code link belongs to the paper: the paper
+      itself cites it (its text, or the metadata its publisher deposited at Crossref), or its owner is proven to be one
+      of the paper's authors (an author's public ORCID record links to that GitHub account, or a verified author of the
+      paper owns it). A README that cites the paper, or a display name, does not count as proof. If nothing proves a link, the submission waits for the
       operator, {REVIEW_DAYS} days at most, and you are told why (<a href="/policies/moderation/#submissions">how
-      submissions are decided</a>). Published, the next nightly publication brings it to the site.</li>
+      submissions are decided</a>). Once it is published, the next nightly publication brings it to the site.</li>
   </ol>
 
   <h2 id="checks">The checks made at once</h2>
   <ul>
-    <li><strong>The DOI is registered</strong>: asked of doi.org's own index.</li>
-    <li><strong>Each link points to a place the registry knows</strong>: a forge (GitHub, GitLab, Codeberg, Bitbucket,
+    <li>The DOI must be registered: the site asks doi.org's own index.</li>
+    <li>Each link must point to a place the registry knows: a forge (GitHub, GitLab, Codeberg, Bitbucket,
       GIN…), an archive (Zenodo, OSF, figshare, Software Heritage, Code Ocean, Hugging Face…) or a data repository, the
       same rule as the harvester's. Any other address is refused, and the site fetches nothing else.</li>
-    <li><strong>Each link answers</strong>: a link that answers "not found" or "gone" refuses the submission; a slow or
-      failing server is left to the harvester to judge.</li>
+    <li>Each link must answer: a link that answers "not found" or "gone" refuses the submission. The harvester judges
+      later a server that is slow or fails.</li>
   </ul>
-  <p>The licence is not checked at once: reading it needs the repository itself, which the harvester does.</p>
+  <p>The harvester checks the licence later, because reading it needs the repository itself.</p>
 
   <h2 id="draft">The draft, and publishing it</h2>
   <p>
     The draft is the record exactly as it would be published: the paper's metadata, each repository with its state,
-    licence and commit, and the number of matches. You may correct its links up to ten times. Published, your links
-    become corrections of the record, a new version, which the Versions section records as a correction, without your
-    name. A draft's matches need the paper's full text from Europe PMC; without it, they come after publication. A
+    licence and commit, and the number of matches. You may correct its links up to ten times. Once the draft is
+    published, your links become corrections of the record (a new version), which the Versions section records as a
+    correction, without your name. A draft's matches need the paper's full text from Europe PMC; without it, they come after publication. A
     draft not published within {REVIEW_DAYS} days is closed; correcting it from your account page (its links are kept)
     makes it a draft again.
   </p>

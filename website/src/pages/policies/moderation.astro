@@ -19,12 +19,13 @@ const ISSUES = "https://github.com/NeuraCrypt/OSCR/issues";
   parents={[{ text: "Policies", href: "/policies/" }]}
 >
   <p class="summary">
-    <strong>There is currently no human moderator on duty.</strong> What readers ask of {SITE_NAME}, to remove something,
-    to add a paper's code, to be recognized as a paper's author, is decided by the published rules below, applied by
-    {" "}{SITE_NAME}'s own machine. The rules lean the safe way: hiding is automatic when in doubt, and publishing needs a
-    verified identity or checks that pass. The operator, who runs {SITE_NAME}, reviews what the rules cannot decide when
-    available, and can reverse what they did; nothing waits more than {REVIEW_DAYS} days, except a request about
-    personal data, which the operator must answer within one month (the GDPR) and which is never closed unanswered.
+    <strong>There is currently no human moderator on duty.</strong> The published rules below decide what readers ask of
+    {" "}{SITE_NAME} (to remove something, to add a paper's code, to be recognized as a paper's author), and{" "}
+    {SITE_NAME}'s own machine applies them. When in doubt, the rules choose the safer outcome: hiding is automatic, and
+    publishing needs a verified identity or checks that pass. The operator, who runs {SITE_NAME}, reviews what the rules
+    cannot decide when available, and can reverse what they did. No request waits more than {REVIEW_DAYS} days, except a
+    request about personal data, which the operator must answer within one month (the GDPR) and does not close without
+    an answer.
   </p>
 
   <h2 id="when">When requests are decided</h2>
@@ -44,34 +45,35 @@ const ISSUES = "https://github.com/NeuraCrypt/OSCR/issues";
   <dl class="review">
     <dt>From a verified author of the paper</dt>
     <dd>
-      <strong>Applied at once</strong>, whatever it names. You are a verified author when you signed in with the ORCID iD
+      Applied at once, whatever it names. You are a verified author when you signed in with the ORCID iD
       the paper lists among its authors (or your claim of authorship was verified).
     </dd>
     <dt>From a maintainer of the code it names</dt>
     <dd>
-      <strong>Applied at once</strong> for the copies of the repositories you maintain as their owner or a public member of
-      their organization (checked on GitHub), or as the operator made you. A contributor is recognized as a maintainer on
-      GitHub, but one merged pull request makes one: a contributor's request follows the rules for anyone.
+      Applied at once for the copies of the repositories you maintain as their owner or a public member of their
+      organization (checked on GitHub), or as the operator made you. A contributor is also recognized as a maintainer on
+      GitHub, but a single merged pull request makes someone a contributor, so a contributor's request follows the rules
+      for anyone.
     </dd>
     <dt>Copies of the authors' code, for copyright or personal data, from anyone</dt>
     <dd>
-      <strong>Hidden at once</strong>, pending the operator's review: the operator may restore what the request did not
+      Hidden at once, until the operator reviews the request. The operator may restore what the request did not
       justify. To prevent abuse, at most {HIDE_PER_ACCOUNT} such requests from one account and {HIDE_PER_DAY} in all are
       hidden at once in a day; a justification sent with {CAMPAIGN} requests or more in {CAMPAIGN_DAYS} days, or a request the
-      operator already refused, waits for the operator instead.
+      operator already refused, waits for the operator.
     </dd>
     <dt>Anything else</dt>
     <dd>
-      A whole record, a tracing map, or copies for another reason, from someone the registry cannot verify:{" "}
-      <strong>nothing is hidden</strong>; the request <strong>waits for the operator</strong>, {REVIEW_DAYS} days at most.
-      Unreviewed after {REVIEW_DAYS} days, it is <strong>closed without removal</strong>, with how to ask again. A record is
-      built from the paper's own public metadata and links: removing it on anyone's word would let anyone erase anyone's
-      work, so it takes a verified identity or the operator's decision.
+      A whole record, a tracing map, or copies for another reason, from someone the registry cannot verify: nothing is
+      hidden, and the request waits for the operator, {REVIEW_DAYS} days at most. If no one has reviewed it after{" "}
+      {REVIEW_DAYS} days, it is closed without removal, with how to ask again. A record is built from the paper's own
+      public metadata and links. If anyone's word were enough to remove it, anyone could erase anyone's work, so removing
+      it needs a verified identity or the operator's decision.
     </dd>
     <dt>The same, asked for personal data</dt>
     <dd>
-      Nothing is hidden either, and the request waits for the operator, but it is a request under the GDPR: the operator
-      answers it within one month, and the rules <strong>never close it</strong> unanswered. It stays at the top of the
+      Nothing is hidden in this case either, and the request waits for the operator. It is a request under the GDPR, so
+      the operator answers it within one month, and the rules do not close it without an answer. It stays at the top of the
       operator's list, with its deadline.
     </dd>
   </dl>
@@ -80,26 +82,27 @@ const ISSUES = "https://github.com/NeuraCrypt/OSCR/issues";
   <p>
     Access to your data, the erasure of your contact details, an objection to their keeping, their rectification and the
     deletion of your account are asked on <a href="/data-rights/">your data and your rights</a>, signed in, and decided the
-    same way, within about {POLL_MINUTES} minutes: the registry answers by itself what it can prove, access, erasure and
-    objection for an account signed in with its ORCID iD (the iD is what ties an author's contact details to them), the
-    deletion of an account. The rest, a rectification, or contact details asked for by an account without an ORCID iD,
-    which a name, a GitHub login or a Google account cannot prove, waits for the operator, who answers within one month,
-    and is never closed unanswered.
+    same way, within about {POLL_MINUTES} minutes. The registry answers by itself what it can prove: access, erasure and
+    objection for an account signed in with its ORCID iD (the iD is what ties an author's contact details to them), and
+    the deletion of an account. The other requests (a rectification, or contact details asked for by an account without
+    an ORCID iD, which a name, a GitHub login or a Google account cannot prove) wait for the operator, who answers within
+    one month and does not close them without an answer.
   </p>
 
   <h2 id="submissions">Submissions of a paper and its code</h2>
   <dl class="review">
     <dt>From an author of the paper</dt>
-    <dd><strong>Published</strong> once you publish its draft (your ORCID iD among the paper's authors).</dd>
+    <dd>Published once you publish its draft (your ORCID iD among the paper's authors).</dd>
     <dt>From anyone else</dt>
     <dd>
-      <strong>Published</strong> when each code link is proven the paper's by what the submitter cannot write: the paper
-      itself cites it (its text, or the metadata its publisher deposited at Crossref; or it is the source an archive the
-      paper cites names), or its owner is proven one of the paper's authors, an author's public ORCID record links to the
-      owner's GitHub account, or a verified author of the paper owns the repository (its owner, or a public member of its
-      organization, on GitHub). <strong>A README citing the paper, or a GitHub display name bearing an author's name, proves
-      nothing</strong>: anyone can write them. Otherwise the submission <strong>waits for the operator</strong>,{" "}
-      {REVIEW_DAYS} days at most, and the submitter is told why; unreviewed, it is closed with how to ask again. A paper
+      Published when something the submitter cannot write proves that each code link belongs to the paper: the paper
+      itself cites it (its text, or the metadata its publisher deposited at Crossref; or an archive the paper cites names
+      it as its source), or its owner is proven to be one of the paper's authors (an author's public ORCID record links
+      to the owner's GitHub account, or a verified author of the paper owns the repository: its owner, or a public member
+      of its organization, on GitHub). A README that cites the paper, or a GitHub display name that bears an author's
+      name, does not count as proof, because anyone can write them. Otherwise the submission waits for the operator,{" "}
+      {REVIEW_DAYS} days at most, and the submitter is told why; if no one reviews it, it is closed with how to ask
+      again. A paper
       outside neuroscience is refused.
     </dd>
     <dt>A draft not published</dt>
@@ -110,26 +113,26 @@ const ISSUES = "https://github.com/NeuraCrypt/OSCR/issues";
   <dl class="review">
     <dt>That you are a paper's author</dt>
     <dd>
-      <strong>Verified at once</strong> when the paper lists your ORCID iD among its authors, or when Crossref's automatic
-      update put the paper in your ORCID record (its publisher deposited your iD with it), checked again every day. A work
-      you added to your ORCID record yourself, or through a search tool, proves nothing: anyone can add any paper. Otherwise,
-      closed after {REVIEW_DAYS} days with how to claim again.
+      Verified at once when the paper lists your ORCID iD among its authors, or when Crossref's automatic update put the
+      paper in your ORCID record (its publisher deposited your iD with it), checked again every day. A work you added to
+      your ORCID record yourself, or through a search tool, does not count, because anyone can add any paper. Otherwise,
+      the claim is closed after {REVIEW_DAYS} days with how to claim again.
     </dd>
     <dt>That you maintain a repository</dt>
     <dd>
       Verified at once when GitHub shows you as its owner, a public member of its organization or a contributor. Other
-      forges cannot be checked automatically: such a claim waits for the operator, {REVIEW_DAYS} days at most, then is closed
+      forges are not checked automatically: such a claim waits for the operator, {REVIEW_DAYS} days at most, then is closed
       with how to be checked again. Only an owner or an organization member (or a maintainer the operator made) can correct
-      a paper's record as its maintainer or have a removal applied at once: a contributor cannot.
+      a paper's record as its maintainer or have a removal applied at once. A contributor cannot.
     </dd>
   </dl>
 
   <h2 id="verified-only">What only verified people can do</h2>
   <ul>
-    <li><strong>Correct a record's links</strong>: a verified author of the paper, or a maintainer of its code (its owner, or a
+    <li>A verified author of the paper can correct a record's links, and so can a maintainer of its code (its owner, or a
       public member of its organization) for their own repository. Every correction becomes a new version of the record,
       which says a verified person made it.</li>
-    <li><strong>Validate a tracing map</strong> and have it deposited on Zenodo: a verified author, with their ORCID iD.</li>
+    <li>A verified author, with their ORCID iD, can validate a tracing map and have it deposited on Zenodo.</li>
   </ul>
 
   <h2 id="text">Free text</h2>
@@ -137,7 +140,7 @@ const ISSUES = "https://github.com/NeuraCrypt/OSCR/issues";
     No text a reader types appears on a public page: the notes, statements, justifications and evidence links of
     requests are read by the operator only, and lose any email address. The only name of an account that can become
     public (the creator of a tracing map, when the paper does not list the validator's ORCID iD) is kept only when it
-    looks like a name (no address, no link). So no automatic text filter is needed, and none is used.
+    looks like a name (no address, no link). For this reason the site uses no automatic text filter.
   </p>
 
   <h2 id="limits">Limits</h2>
@@ -151,18 +154,18 @@ const ISSUES = "https://github.com/NeuraCrypt/OSCR/issues";
   <h2 id="appeal">How to appeal</h2>
   <ul>
     <li>
-      <strong>A request refused or closed by the rules</strong>: ask again in a way the rules decide, sign in with the
-      ORCID iD the paper lists, verify your repository on GitHub from your account page, link your GitHub account from your
-      ORCID record, or ask for the copies only. The operator can also override the rules and accept it.
+      If the rules refused or closed a request, ask again in a way the rules decide: sign in with the ORCID iD the paper
+      lists, verify your repository on GitHub from your account page, link your GitHub account from your ORCID record, or
+      ask for the copies only. The operator can also override the rules and accept it.
     </li>
     <li>
-      <strong>Something the rules did wrongly</strong> (copies hidden without reason, a submission or a claim accepted by
-      mistake): the operator reviews the automatic decisions, and can reverse any of them.
+      If the rules did something wrong (copies hidden without reason, a submission or a claim accepted by mistake), the
+      operator reviews the automatic decisions and can reverse any of them.
     </li>
     <li>
-      <strong>Anything else</strong>: the project's <a href={ISSUES}>public issue tracker</a>, public, so put no personal
-      data there; for your own data, use <a href="/data-rights/">your data and your rights</a>, and for personal data in a
-      record, the removal request page of the record, whose justification only the operator reads.
+      For anything else, use the project's <a href={ISSUES}>public issue tracker</a>. It is public, so put no personal
+      data there. For your own data, use <a href="/data-rights/">your data and your rights</a>, and for personal data in
+      a record, use the removal request page of the record, whose justification only the operator reads.
     </li>
   </ul>
 </Info>

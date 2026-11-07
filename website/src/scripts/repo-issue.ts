@@ -447,7 +447,7 @@ function sideActions(f: Frame, into: HTMLElement, labels: readonly T.Label[], mi
   const reason = el("select", { "aria-label": "The lock's reason" }, el("option", { value: "" }, "No reason"), ...LOCK_REASONS.map((r) => el("option", { value: r }, r)));
   sections.push(
     issue.locked
-      ? el("p", {}, button("Unlock the conversation", () => act(f, said, "issue_lock", { number: n, locked: false })))
+      ? el("p", {}, button("Unlock the conversation", () => act(f, said, "issue_lock", { number: n, locked: false }))) // style-ok: GitHub's name for the action that undoes a lock
       : el("p", {}, reason, " ", button("Lock the conversation", () => act(f, said, "issue_lock", { number: n, locked: true, ...(reason.value ? { reason: reason.value } : {}) }))),
     el("p", {}, button("Pin it", () => act(f, said, "issue_pin", { number: n, pinned: true })), " ", button("Unpin it", () => act(f, said, "issue_pin", { number: n, pinned: false }))),
   );

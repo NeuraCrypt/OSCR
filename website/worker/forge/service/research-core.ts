@@ -5,7 +5,7 @@
 //
 // Three types a researcher files about a paper's code, which GitHub has no word for:
 //   code_error     "Code error": an error in the code that may change the paper's results;
-//   mismatch       "Code–paper mismatch": the code does not do what the paper says, on ONE
+//   mismatch       "Code-paper mismatch": the code does not do what the paper says, on ONE
 //                  tracing-map link (the paper's paragraph, and the lines at a commit);
 //   reproduction   "Reproduction failure": the reader ran the authors' code and did not get the
 //                  paper's result; the issue carries the reproduction report (the outcome, the
@@ -51,7 +51,7 @@ export type ResearchType = "code_error" | "mismatch" | "reproduction";
 export const RESEARCH_TYPES: readonly ResearchType[] = ["code_error", "mismatch", "reproduction"];
 export const TYPE_WORDS: Readonly<Record<ResearchType, string>> = {
   code_error: "Code error",
-  mismatch: "Code–paper mismatch",
+  mismatch: "Code-paper mismatch",
   reproduction: "Reproduction failure",
 };
 
@@ -275,7 +275,7 @@ export function validateOpen(payload: unknown): OpenParsed | ForgeProblem {
   const p = payload;
   const paper = paperId(p.paper);
   if (!paper) return bad("A research issue is about a paper: name it by its DOI (10.…).");
-  if (!RESEARCH_TYPES.includes(p.type as ResearchType)) return bad("A research issue is a code error, a code–paper mismatch or a reproduction failure.");
+  if (!RESEARCH_TYPES.includes(p.type as ResearchType)) return bad("A research issue is a code error, a code-paper mismatch or a reproduction failure.");
   const type = p.type as ResearchType;
   let repo: OpenParsed["repo"] = null;
   let codeUrl = "";
@@ -297,7 +297,7 @@ export function validateOpen(payload: unknown): OpenParsed | ForgeProblem {
   const anchor = readAnchor(p);
   if (anchor instanceof ForgeProblem) return anchor;
   if (type === "mismatch" && (!anchor.path || anchor.start === null || anchor.paragraph === null)) {
-    return bad("A code–paper mismatch names its tracing-map link: the paper's paragraph, and the file and lines of the code.");
+    return bad("A code-paper mismatch names its tracing-map link: the paper's paragraph, and the file and lines of the code.");
   }
   const report = type === "reproduction" ? readReport(p.report) : null;
   if (report instanceof ForgeProblem) return report;
@@ -660,12 +660,12 @@ export function validateEdit(payload: unknown): EditParsed | ForgeProblem {
     out.state = p.state;
   }
   if (p.resolution !== undefined) {
-    if (!RESOLUTIONS.includes(p.resolution as Resolution)) return bad("A resolution is fixed in the code, the paper corrected, not a mismatch, not reproduced, or the data now available.");
+    if (!RESOLUTIONS.includes(p.resolution as Resolution)) return bad("A resolution is one of these: fixed in the code; paper corrected; not a mismatch; not reproduced; data now available.");
     if (out.state !== "closed") return bad("A resolution goes with closing the issue.");
     out.resolution = p.resolution as Resolution;
   }
   if (p.reason !== undefined) {
-    if (!CLOSE_REASONS.includes(p.reason as CloseReason)) return bad("An issue is closed as completed, not planned, or a duplicate.");
+    if (!CLOSE_REASONS.includes(p.reason as CloseReason)) return bad("An issue is closed with one of these reasons: completed; not planned; duplicate.");
     if (out.state !== "closed") return bad("A reason goes with closing the issue.");
     out.reason = p.reason as CloseReason;
   }

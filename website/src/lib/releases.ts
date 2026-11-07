@@ -415,7 +415,7 @@ export interface NotesInput {
   newContributors?: readonly { login: string; number: number }[];
 }
 
-const RESEARCH_TYPE_WORDS: Readonly<Record<string, string>> = { code_error: "code error", mismatch: "code–paper mismatch", reproduction: "reproduction failure" };
+const RESEARCH_TYPE_WORDS: Readonly<Record<string, string>> = { code_error: "code error", mismatch: "code-paper mismatch", reproduction: "reproduction failure" };
 
 /** Whether a pull request is kept out by an exclusion. */
 const excluded = (p: NotesPull, ex: { labels: string[]; authors: string[] }) =>
@@ -461,7 +461,7 @@ export function generateNotes(input: NotesInput): string {
     if (links.length) {
       out.push("### Tracing-map links whose lines changed (to look at again)");
       for (const l of links.slice(0, 100)) {
-        const lines = l.start === l.end ? `line ${l.start}` : `lines ${l.start}–${l.end}`;
+        const lines = l.start === l.end ? `line ${l.start}` : `lines ${l.start} to ${l.end}`;
         out.push(`* ${maskEmails(l.paper)}: paragraph ${l.paragraph}${l.section ? ` (${maskEmails(l.section)})` : ""} ↔ \`${l.path}\` ${lines}`);
       }
     }

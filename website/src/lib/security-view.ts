@@ -163,7 +163,7 @@ export function sarifSection(alerts: readonly AlertView[], mayTriage: boolean): 
 export function secretSection(alerts: readonly AlertView[]): El {
   return h("section", { class: "security-secrets" },
     h("h3", null, "Secret alerts"),
-    h("p", { class: "muted" }, "Found in the files already read, after the push. The registry reports them and never blocks a push (pushes do not pass through it); a leaked token reaches its provider through GitHub's own partner programme, not through the registry. No value is kept: only a short hidden hint."),
+    h("p", { class: "muted" }, "Found in the files already read, after the push. The registry reports them and never blocks a push (pushes do not pass through it); a leaked token reaches its provider through GitHub's own partner programme (the registry plays no part in it). No value is kept: only a short hidden hint."),
     alerts.length
       ? h("ul", { class: "alerts" }, ...alerts.map(secretAlertEntry))
       : h("p", { class: "ok" }, "No secret was found in the files read."),

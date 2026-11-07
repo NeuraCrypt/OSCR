@@ -17,12 +17,13 @@ const counted = (n: number, withCodeCount: number) =>
 >
   <h1>Browse</h1>
   <p class="summary">
-    {plural(withPage.length, "paper")} with a page: {number(withCode)} with their authors' code, the others with code on
-    request or data only. By category, and by the people, journals, institutions, tools and datasets behind them.
+    {plural(withPage.length, "paper")} with a page. {number(withCode)} of them have their authors' code, and the others
+    have code on request or data only. Browse them by category, or by the people, journals, institutions, tools and
+    datasets behind them.
   </p>
 
   {facets.length === 0 ? (
-    <p>No paper is classified yet: the categories appear here once the classification has run.</p>
+    <p>No paper is classified yet. The categories appear here once the classification has run.</p>
   ) : (
     facets.map((f) => (
       <>
@@ -36,8 +37,8 @@ const counted = (n: number, withCodeCount: number) =>
     ))
   )}
   <p class="line">
-    A paper is in a category when its classification says so: the owner's label first, then a model's for the cases
-    the rules find ambiguous, then the rules when they are at least {threshold}% confident.
+    A paper is in a category when its classification puts it there. The owner's label comes first, then a model's label
+    for the cases the rules find ambiguous, then the rules when they are at least {threshold}% confident.
   </p>
 
   <h2>Other ways in</h2>

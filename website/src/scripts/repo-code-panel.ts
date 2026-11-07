@@ -80,7 +80,7 @@ export function codePanel(repo: RepoCoords, options: PanelOptions = {}): El {
       h("li", null, link(desktopUrl(repo), "Open with GitHub Desktop"), ", GitHub's application for your computer."),
       h("li", null, link(codespacesUrl(repo), "Open in a codespace"), ": GitHub's, on your own Codespaces quota."),
     ),
-    h("h3", null, "Pushing: GitHub's credentials, not your account here"),
+    h("h3", null, "Pushing: with your GitHub credentials"),
     h(
       "p",
       null,

@@ -437,7 +437,7 @@ export function htmlTokens(html: string): HtmlTok[] {
 
 const NAMED: Record<string, string> = {
   amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: String.fromCharCode(160), copy: "©", reg: "®", trade: "™", hellip: "…", mdash: "-",
-  ndash: "–", laquo: "«", raquo: "»", lsquo: "‘", rsquo: "’", ldquo: "“", rdquo: "”", times: "×", divide: "÷", plusmn: "±",
+  ndash: "–", laquo: "«", raquo: "»", lsquo: "‘", rsquo: "’", ldquo: "“", rdquo: "”", times: "×", divide: "÷", plusmn: "±", // style-ok: HTML entity table
   deg: "°", micro: "µ", middot: "·", bull: "•", larr: "←", rarr: "→", uarr: "↑", darr: "↓", harr: "↔", le: "≤", ge: "≥",
   ne: "≠", asymp: "≈", infin: "∞", sum: "∑", prod: "∏", minus: "−", sect: "§", para: "¶", dagger: "†", euro: "€", pound: "£",
   yen: "¥", cent: "¢", alpha: "α", beta: "β", gamma: "γ", delta: "δ", epsilon: "ε", lambda: "λ", mu: "μ", pi: "π", sigma: "σ",

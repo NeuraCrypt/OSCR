@@ -60,8 +60,8 @@ const toc = [
   <h2 id="name">The name</h2>
   <dl class="terms">
     <dt>{SITE_NAME}</dt>
-    <dd>The short name, written exactly so, letter for letter: the masthead, the badge, a sentence after the first
-      mention.</dd>
+    <dd>The short name, written with exactly these letters. It is used on the masthead and the badge, and in a sentence
+      after the first mention.</dd>
     {SITE_TAGLINE !== SITE_NAME && (
       <>
         <dt>{SITE_TAGLINE}</dt>
@@ -72,8 +72,8 @@ const toc = [
     )}
   </dl>
   <p>
-    It is a proper name: no article before it ("{SITE_NAME} records…", not "the {SITE_NAME}"), not translated, not
-    abbreviated otherwise. Refer to it as "the registry" in running text.
+    It is a proper name. Write it without an article before it ("{SITE_NAME} records…"), and do not translate it or
+    abbreviate it in another way. In running text, you can call it "the registry".
   </p>
 
   <h2 id="logo">The logo</h2>
@@ -107,11 +107,11 @@ const toc = [
 
   <h2 id="space">Clear space and minimum size</h2>
   <ul>
-    <li><strong>Clear space</strong>: keep around the wordmark, on every side, an empty margin at least half its height,
-      no text, edge or other logo inside it.</li>
-    <li><strong>Minimum size</strong>: 80 pixels wide on a screen, 20 millimetres wide in print. Smaller, use the square
-      icon, or the name in text.</li>
-    <li><strong>The square icons</strong> carry their own margin: use them whole.</li>
+    <li>Keep an empty margin around the wordmark on every side, at least half its height wide. Put no text, edge or other
+      logo inside this margin.</li>
+    <li>The wordmark is at least 80 pixels wide on a screen and 20 millimetres wide in print. Where it would be smaller,
+      use the square icon or write the name in text.</li>
+    <li>The square icons include their own margin, so use them whole.</li>
   </ul>
 
   <h2 id="dont">What not to do</h2>
@@ -140,17 +140,17 @@ const toc = [
 
   <h2 id="type">Typography</h2>
   <p>
-    The wordmark is drawn in a serif face; it is an image, not a font to reproduce. The site's text uses the reader's
-    system sans-serif (Lucida Grande, Helvetica Neue, Helvetica, Arial), and its code a monospaced face (Menlo, Consolas,
-    DejaVu Sans Mono): no web font is downloaded.
+    The wordmark is an image of letters drawn in a serif face; use the image files above. The site's text uses the
+    reader's system sans-serif (Lucida Grande, Helvetica Neue, Helvetica, Arial), and its code uses a monospaced face
+    (Menlo, Consolas, DejaVu Sans Mono). The site downloads no web font.
   </p>
 
   <h2 id="badge">The badge</h2>
   <p><img src="/badge.svg" alt={`${SITE_NAME}: paper ↔ code`} /></p>
   <p>
     The badge is the wordmark, white on the logo's blue, then a short fact on the masthead's colour (green once an author
-    has validated the paper's tracing map, grey when the registry does not know the paper): a flat rectangle, never a
-    rounded pill, 20 pixels high. Each paper and each repository has its own, drawn from the registry's records
+    has validated the paper's tracing map, grey when the registry does not know the paper). It is a flat rectangle with
+    square corners, 20 pixels high. Each paper and each repository has its own, drawn from the registry's records
     (<code>/badge/doi/&lt;DOI&gt;.svg</code>, <code>/badge/repo/&lt;host/owner/name&gt;.svg</code>), and its link goes to
     the paper's page. <a href="/badge/">The badge page</a> makes it, with every snippet; the static{" "}
     <a href="/badge.svg"><code>/badge.svg</code></a> and <a href="/badge.png"><code>/badge.png</code></a> are for where
