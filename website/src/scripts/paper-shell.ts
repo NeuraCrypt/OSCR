@@ -9,6 +9,7 @@
 //   this script reads the paper's record in /records/paper/NN.json, renders it with the markup of
 //   lib/render.ts, the Worker's, then runs its Contribute section the same way.
 import { missingPaper, paperView, type PaperRecord, type View } from "../lib/render";
+import { canonicalHref, setCanonical, setNoindex, siteOrigin } from "../lib/seo";
 import { keyOf, shardOf, SHARDS } from "../lib/shards";
 
 const root = document.getElementById("paper");
@@ -29,10 +30,7 @@ function show(view: View, found: boolean) {
   if (crumb) crumb.textContent = view.crumb;
   if (view.description) document.querySelector<HTMLMetaElement>('meta[name="description"]')?.setAttribute("content", view.description);
   if (!found) {
-    const robots = document.createElement("meta");
-    robots.name = "robots";
-    robots.content = "noindex";
-    document.head.append(robots);
+    setNoindex(document);
     return;
   }
   if (location.hash) document.getElementById(decodeURIComponent(location.hash.slice(1)))?.scrollIntoView();
@@ -70,6 +68,8 @@ async function render() {
   }
   const record = Object.hasOwn(shard, slug) ? shard[slug] : undefined;
   if (!record) return show(missingPaper(slug), false);
+  // The paper's own address for search engines (the Worker writes it in the pages it renders).
+  setCanonical(document, canonicalHref(siteOrigin(document), `/paper/${slug}/`));
   show(paperView(record), true);
 }
 
