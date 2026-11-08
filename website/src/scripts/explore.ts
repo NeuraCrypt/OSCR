@@ -35,6 +35,7 @@ async function main(): Promise<void> {
     const t = data?.topics.find((x) => x.name === topic || x.aliases.includes(topic));
     const name = t?.name ?? topic;
     const star = el("div", {});
+    document.getElementById("explore-static")?.setAttribute("hidden", "");
     root.replaceChildren(
       el("p", {}, el("a", { href: "/explore/" }, "Explore"), " › Topics"),
       el("h1", {}, name),
@@ -46,43 +47,30 @@ async function main(): Promise<void> {
     void mountSocial(star, { subject: `topic:${name}`, label: name });
     return;
   }
+  // Below the page built from last night's catalogue: what the readers starred and followed, when
+  // /social/explore.json exists and has entries. A section without entries is left out.
   const when = data?.generated_at ? new Date(data.generated_at * 1000).toISOString().slice(0, 10) : null;
-  const section = (title: string, id: string, nodes: (Node | string)[], empty: string) => [el("h2", { id }, title), nodes.length ? el("ol", { class: "results" }, ...nodes) : el("p", { class: "explain" }, empty)];
-  root.replaceChildren(
-    el("h1", {}, "Explore"),
-    el("p", { class: "summary" }, `What the registry's readers star and follow${data ? `, in the ${data.days} days before ${when}` : ""}. Stars and follows are the registry's own, never GitHub's.`),
-    ...section(
-      "Trending repositories",
-      "repositories",
-      (data?.repositories ?? []).map((r) => el("li", {}, el("a", { href: `/r/${r.name}/` }, r.name), ` · ${r.week} new ${r.week === 1 ? "star" : "stars"} this week, ${r.stars} in all`)),
-      "No repository was starred this week.",
-    ),
-    ...section(
-      "Trending papers",
-      "papers",
-      (data?.papers ?? []).map((p) => el("li", {}, el("a", { href: subjectHref(p.subject) ?? "/" }, p.title || `doi:${p.doi}`), ` · ${p.week} new ${p.week === 1 ? "star" : "stars"} this week`)),
-      "No paper was starred this week.",
-    ),
-    ...section(
-      "People followed this week",
-      "people",
-      (data?.people ?? []).map((p) => el("li", {}, el("a", { href: personUrl(p.handle) }, p.handle), ` · ${p.week} new ${p.week === 1 ? "follower" : "followers"}`)),
-      "Nobody was followed this week.",
-    ),
-    el("h2", { id: "topics" }, "Topics"),
-    (data?.topics ?? []).length
-      ? el("ul", { class: "topics" }, ...(data?.topics ?? []).map((t) => el("li", {}, el("a", { href: `/explore/?topic=${t.name}` }, t.name), t.featured ? " · curated" : "", t.stars ? ` · ${t.stars} ${t.stars === 1 ? "star" : "stars"}` : "", t.description ? el("p", { class: "line" }, t.description) : "")))
-      : el("p", { class: "explain" }, "The topics are published with the registry's nightly files."),
-    el("h2", { id: "collections" }, "Collections"),
-    (data?.collections ?? []).length
-      ? el("div", {}, ...(data?.collections ?? []).map((c) => el("section", { class: "star-list" }, el("h3", {}, c.name), el("p", { class: "explain" }, "Gathered by ", el("a", { href: personUrl(c.by) }, c.by), c.description ? `: ${c.description}` : ""), el("ul", {}, ...c.items.map((i) => {
-          const href = subjectHref(i.subject, i.name);
-          return el("li", {}, href ? el("a", { href }, i.name || subjectWords(i.subject)) : i.name || subjectWords(i.subject));
-        })))))
-      : el("p", { class: "explain" }, "No collection yet: a public star list can be proposed as one from your Stars page; the registry's owner decides."),
-    el("h2", { id: "more" }, "Elsewhere in the registry"),
-    el("p", {}, el("a", { href: "/research/" }, "Research issues"), " to help with · ", el("a", { href: "/browse/" }, "Browse the catalogue"), " · ", el("a", { href: "/feed/" }, "Your feed")),
-  );
+  const list = (title: string, id: string, nodes: Node[]) => (nodes.length ? [el("h2", { id }, title), el("ol", { class: "results" }, ...nodes)] : []);
+  const parts: (Node | string)[] = [
+    ...list("Repositories starred this week", "starred-repositories",
+      (data?.repositories ?? []).map((r) => el("li", {}, el("a", { href: `/r/${r.name}/` }, r.name), ` · ${r.week} new ${r.week === 1 ? "star" : "stars"} this week, ${r.stars} in all`))),
+    ...list("Papers starred this week", "starred-papers",
+      (data?.papers ?? []).map((p) => el("li", {}, el("a", { href: subjectHref(p.subject) ?? "/" }, p.title || `doi:${p.doi}`), ` · ${p.week} new ${p.week === 1 ? "star" : "stars"} this week`))),
+    ...list("People followed this week", "people",
+      (data?.people ?? []).map((p) => el("li", {}, el("a", { href: personUrl(p.handle) }, p.handle), ` · ${p.week} new ${p.week === 1 ? "follower" : "followers"}`))),
+  ];
+  if ((data?.topics ?? []).length) {
+    parts.push(el("h2", { id: "topics" }, "Topics"), el("ul", { class: "topics" }, ...(data?.topics ?? []).map((t) => el("li", {}, el("a", { href: `/explore/?topic=${t.name}` }, t.name), t.featured ? " · curated" : "", t.stars ? ` · ${t.stars} ${t.stars === 1 ? "star" : "stars"}` : "", t.description ? el("p", { class: "line" }, t.description) : ""))));
+  }
+  if ((data?.collections ?? []).length) {
+    parts.push(el("h2", { id: "collections" }, "Collections"), el("div", {}, ...(data?.collections ?? []).map((c) => el("section", { class: "star-list" }, el("h3", {}, c.name), el("p", { class: "explain" }, "Gathered by ", el("a", { href: personUrl(c.by) }, c.by), c.description ? `: ${c.description}` : ""), el("ul", {}, ...c.items.map((i) => {
+      const href = subjectHref(i.subject, i.name);
+      return el("li", {}, href ? el("a", { href }, i.name || subjectWords(i.subject)) : i.name || subjectWords(i.subject));
+    }))))));
+  }
+  if (parts.length) {
+    root.replaceChildren(el("p", { class: "summary" }, `What the registry's readers starred and followed${data ? `, in the ${data.days} days before ${when}` : ""}. Stars and follows are the registry's own.`), ...parts);
+  }
 }
 
 void main();

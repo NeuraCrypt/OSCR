@@ -1,20 +1,130 @@
 ---
-// /explore/: discovery (night phase 08, E5; docs/SOCIAL.md): trending repositories, papers and people,
-// topics (?topic=<name>), collections. Its script (src/scripts/explore.ts) reads last night's static
-// /social/explore.json: 0 Worker requests.
+// /explore/: what is new and most used in the registry, built from last night's catalogue (2026-11-08):
+// the latest papers whose code was verified, the code repositories most papers cite, the tools most
+// found in the authors' code, the journals and authors with the most papers with code, the scientific
+// tools, and the figures. One static file, no Worker request. A block with no data is left out.
+// The readers' own stars and follows (night phase 08, /social/explore.json, written by oscr/social.py
+// on the GitHub side) are added below by src/scripts/explore.ts when that file exists and has entries.
 import Base from "../layouts/Base.astro";
 import { SITE_NAME } from "../config";
+import { catalog, generatedInWords, number, plural, recordUrl, withCode } from "../lib/catalog";
+import { authors, journals, journalUrl, authorUrl, tools, toolUrl } from "../lib/entities";
+import { dateInWords } from "../lib/format";
+import { sciTools } from "../lib/scitools-data";
+import { SCITOOLS_PATH } from "../lib/scitools";
+
+const SHOWN = 10;
+const f = catalog.figures;
+const day = (d: string) => (/^\d{4}-\d{2}-\d{2}$/.test(d) ? dateInWords(d) : d);
+
+const verified = withCode
+  .filter((a) => a.status === "code_verified" && /^\d{4}-\d{2}-\d{2}/.test(a.published))
+  .sort((a, b) => b.published.localeCompare(a.published) || a.slug.localeCompare(b.slug))
+  .slice(0, SHOWN);
+
+// The code repositories cited by the most papers, counted once per paper, answering at their last check.
+const cited = new Map<string, { repo: string; url: string; papers: number }>();
+for (const a of withCode) {
+  for (const r of new Map(a.code.map((c) => [c.repo, c])).values()) {
+    if (r.state !== "alive") continue;
+    const seen = cited.get(r.repo) ?? { repo: r.repo, url: r.url, papers: 0 };
+    seen.papers += 1;
+    cited.set(r.repo, seen);
+  }
+}
+const repos = [...cited.values()].filter((r) => r.papers > 1)
+  .sort((a, b) => b.papers - a.papers || a.repo.localeCompare(b.repo)).slice(0, SHOWN);
+
+const usedTools = tools.filter((t) => t.counts.repositories > 0)
+  .sort((a, b) => b.counts.repositories - a.counts.repositories || a.name.localeCompare(b.name)).slice(0, SHOWN);
+const topJournals = journals.filter((j) => j.counts.with_code > 0)
+  .sort((a, b) => b.counts.with_code - a.counts.with_code || a.title.localeCompare(b.title)).slice(0, SHOWN);
+const topAuthors = authors.filter((a) => a.counts.with_code > 1)
+  .sort((a, b) => b.counts.with_code - a.counts.with_code || a.name.localeCompare(b.name)).slice(0, SHOWN);
+const scientific = sciTools.slice(0, SHOWN);
 ---
 <Base
   title="Explore"
-  description="What the registry's readers star and follow this week: repositories, papers, people, topics and curated collections."
+  description={`The latest papers whose code ${SITE_NAME} verified, the code repositories and tools most papers use, the journals and authors with the most papers with code, from last night's catalogue.`}
   breadcrumb={[{ text: "Explore" }]}
 >
-  <div id="explore-shell" data-site={SITE_NAME}>
+  <div id="explore-static">
     <h1>Explore</h1>
-    <p class="summary" aria-live="polite">Reading what {SITE_NAME}'s readers star and follow…</p>
-    <noscript><p class="warning">This page reads last night's file in your browser, which needs JavaScript.</p></noscript>
+    <p class="summary">
+      What is new and most used in {SITE_NAME}, from the catalogue of {generatedInWords(catalog.generated_at)}. This
+      page is rebuilt every night.
+    </p>
+
+    {f.articles > 0 && (
+      <>
+        <h2 id="figures">The catalogue tonight</h2>
+        <ul>
+          <li>{plural(f.articles, "open-access neuroscience paper")} read, {number(withCode.length)} of them with their authors' code.</li>
+          {f.repos_code > 0 && <li>{plural(f.repos_code, "code repository", "code repositories")}, {number(f.repos_code_alive)} answering at their last check.</li>}
+          {f.scripts_read > 0 && <li>{plural(f.scripts_read, "script")} read at their source.</li>}
+        </ul>
+      </>
+    )}
+
+    {verified.length > 0 && (
+      <>
+        <h2 id="verified">Latest papers with verified code</h2>
+        <ol class="results">
+          {verified.map((a) => (
+            <li><a href={recordUrl(a)}>{a.title || a.doi}</a>{a.journal && <> · {a.journal}</>} · {day(a.published)}</li>
+          ))}
+        </ol>
+        <p class="line"><a href="/list/">Every paper, by date</a></p>
+      </>
+    )}
+
+    {repos.length > 0 && (
+      <>
+        <h2 id="repositories">Code repositories cited by the most papers</h2>
+        <ol class="results">
+          {repos.map((r) => <li><a href={r.url}>{r.repo}</a> · {plural(r.papers, "paper")}</li>)}
+        </ol>
+      </>
+    )}
+
+    {usedTools.length > 0 && (
+      <>
+        <h2 id="tools">Tools most found in the authors' code</h2>
+        <ol class="results">
+          {usedTools.map((t) => <li><a href={toolUrl(t.id) || t.homepage || "/tools/"}>{t.name}</a> · {plural(t.counts.repositories, "repository", "repositories")}</li>)}
+        </ol>
+        <p class="line"><a href="/tools/">Every tool</a></p>
+      </>
+    )}
+
+    {topJournals.length > 0 && (
+      <>
+        <h2 id="journals">Journals with the most papers with code</h2>
+        <ol class="results">
+          {topJournals.map((j) => <li>{journalUrl(j.id) ? <a href={journalUrl(j.id)}>{j.title}</a> : j.title} · {plural(j.counts.with_code, "paper")} with code</li>)}
+        </ol>
+      </>
+    )}
+
+    {topAuthors.length > 0 && (
+      <>
+        <h2 id="authors">Authors with the most papers with code</h2>
+        <ol class="results">
+          {topAuthors.map((a) => <li>{authorUrl(a.orcid) ? <a href={authorUrl(a.orcid)}>{a.name}</a> : a.name} · {plural(a.counts.with_code, "paper")} with code</li>)}
+        </ol>
+      </>
+    )}
+
+    {scientific.length > 0 && (
+      <>
+        <h2 id="scientific-tools">Scientific tools</h2>
+        <ul>
+          {scientific.map((t) => <li><a href={`${SCITOOLS_PATH}${t.slug}/`}>{t.name}</a>{t.description && <>: {t.description}</>}</li>)}
+        </ul>
+      </>
+    )}
   </div>
+  <div id="explore-shell" data-site={SITE_NAME}></div>
   <script>
     import "../scripts/explore";
   </script>
