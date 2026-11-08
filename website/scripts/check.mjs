@@ -29,6 +29,7 @@ import { join } from "node:path";
 import { checkedText, EMAIL_ON_PAGE } from "../src/lib/emails.ts";
 import { allowsHash, headersFor, parseHeaders } from "../src/lib/headers.ts";
 import { buildOpenapi, ENDPOINTS, REPO_SHARDS } from "../src/lib/apispec.ts";
+import { canonicalHref, canonicalsOf, hasNoindex, isNoindexPath, isShellPath, pagePath, robotsBlocks } from "../src/lib/seo.ts";
 import {
   ENTITY_TYPES, FILE_LIMIT, FILE_MARGIN, FIXED_FILES_MAX, keyOf, LIST_PAGES_MAX, LOOKUP_HEX, SHARDS, shardOf, SITEMAP_SHARDS,
   SITEMAP_URLS, STATIC_PAPERS,
@@ -354,6 +355,25 @@ function leads(path) {
   return p !== null && records.paper.has(p[1]);
 }
 
+/** Where the site sends a path it answers with a redirect (html_handling's missing slash or
+ *  "index.html", the Worker's paper slug in capitals, an entity's key in another case), else "". */
+function redirected(path) {
+  if (path.endsWith("/index.html")) return path.slice(0, -"index.html".length);
+  if (!path.endsWith("/") && !/\.[a-z0-9]+$/i.test(path) && !all.has(path) && all.has(`${path}/index.html`)) return `${path}/`;
+  const m = path.match(/^\/([a-z]+)\/([^/]+)\/$/);
+  if (m && (m[1] === "paper" || rewrites.has(`/${m[1]}/:key/`))) {
+    let k = m[2];
+    try {
+      k = decodeURIComponent(m[2]);
+    } catch {
+      return "";
+    }
+    const key = keyOf(m[1], m[2]);
+    if (key && key !== k) return `/${m[1]}/${encodeURIComponent(key)}/`;
+  }
+  return "";
+}
+
 // 4. Every internal link and resource of every page leads somewhere, and every link within a
 // page ("#code") to an element of that page. A paper's page has its sections, the Contribute
 // section and its removal request included (Phase 6), and no inline script: its
@@ -372,6 +392,10 @@ const follow = (from, url) => {
   const path = decodeURI(url.split(/[?#]/)[0].replace(/&amp;/g, "&"));
   if (from.endsWith(".html")) linked.add(path);
   if (!leads(path)) problems.push(`${from}: broken link ${url}`);
+  else {
+    const final = redirected(path);
+    if (final) problems.push(`${from}: the link ${url} is not its page's own address (a redirect or a variant of ${final}); link to that one`);
+  }
 };
 for (const page of pages) {
   const html = readFileSync(join(DIST, page), "utf8");
@@ -446,6 +470,79 @@ if (all.has("/sitemap.xml")) {
     }
   }
   for (const a of [...staticPapers, ...onDemand]) if (!listed.has(`/paper/${a.slug}/`)) problems.push(`${a.doi}: not in the sitemap`);
+}
+
+// 4b. What search engines are told (src/lib/seo.ts; Google Search Console, 2026-11-08). Every page
+// names one canonical address, its own, absolute (https, the site's host without "www.", a trailing
+// slash, no query), but the shells, whose script or the Worker names it (they carry the site's
+// address instead); the pages of NOINDEX_PATHS say noindex, and no other static page does. The
+// sitemap lists only canonical addresses that answer 200 at once: a file at that very address
+// (never one the assets reach by a redirect, such as a missing slash), an entity or a paper rendered
+// on demand under its exact key; never a page kept out by noindex or by robots.txt, never a shell.
+const robotsTxt = all.has("/robots.txt") ? readFileSync(join(DIST, "robots.txt"), "utf8") : "";
+const sitemapLine = robotsTxt.match(/^Sitemap:\s*(\S+)/m)?.[1];
+const SITE = sitemapLine ? new URL(sitemapLine).origin : "";
+if (!SITE) problems.push("robots.txt names no sitemap: the site's address is unknown");
+else if (SITE !== canonicalHref(SITE, "/").replace(/\/$/, "")) problems.push(`robots.txt names the sitemap at ${SITE}, not an https address without "www."`);
+/** The head of a built page: what search engines read first. */
+const headOf = (page) => {
+  const html = readFileSync(join(DIST, page), "utf8");
+  const end = html.indexOf("</head>");
+  return end < 0 ? html : html.slice(0, end);
+};
+let canonicalPages = 0;
+if (SITE) {
+  for (const page of pages) {
+    const path = pagePath(page);
+    const head = headOf(page);
+    const canonicals = canonicalsOf(head);
+    if (isShellPath(path)) {
+      if (canonicals.length) problems.push(`${page}: a shell with a canonical (${canonicals[0]}); its script or the Worker names the address it answers`);
+      if (!head.includes('<meta name="site-origin" content="')) problems.push(`${page}: a shell without <meta name="site-origin">`);
+    } else if (canonicals.length !== 1) {
+      problems.push(`${page}: ${canonicals.length} canonical links, one expected`);
+    } else if (canonicals[0] !== canonicalHref(SITE, path)) {
+      problems.push(`${page}: canonical ${canonicals[0]}, expected ${canonicalHref(SITE, path)}`);
+    } else canonicalPages += 1;
+    if (isNoindexPath(path) !== hasNoindex(head)) problems.push(`${page}: ${hasNoindex(head) ? "a noindex it should not have" : "no noindex, though src/lib/seo.ts keeps it out"}`);
+  }
+}
+/** A path of the sitemap answers 200 at once: a page built at that exact address, or an entity or a
+ *  paper rendered on demand under its exact key (an author's iD in lower case is only a variant). */
+function answersDirectly(path) {
+  if (all.has(`${path}index.html`)) return !isShellPath(path);
+  const m = path.match(/^\/([a-z]+)\/([^/]+)\/$/);
+  if (!m) return false;
+  const k = decodeURIComponent(m[2]);
+  if (m[1] === "paper") return records.paper.has(k) && keyOf("paper", m[2]) === k;
+  return rewrites.get(`/${m[1]}/:key/`) === `/${m[1]}/` && records[m[1]] !== undefined && records[m[1]].has(k) && keyOf(m[1], m[2]) === k;
+}
+if (SITE && all.has("/sitemap.xml")) {
+  for (const shard of [...readFileSync(join(DIST, "sitemap.xml"), "utf8").matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1])) {
+    if (!shard.startsWith(`${SITE}/`)) problems.push(`/sitemap.xml names ${shard}, outside ${SITE}`);
+    const file = new URL(shard).pathname;
+    if (!all.has(file)) continue;
+    for (const [, raw] of readFileSync(join(DIST, file), "utf8").matchAll(/<loc>([^<]+)<\/loc>/g)) {
+      const loc = raw.replace(/&amp;/g, "&");
+      let url;
+      try {
+        url = new URL(loc);
+      } catch {
+        problems.push(`${file}: ${loc} is no address`);
+        continue;
+      }
+      const path = url.pathname;
+      if (loc !== canonicalHref(SITE, path)) problems.push(`${file}: ${loc} is not a canonical address (${canonicalHref(SITE, path)})`);
+      else if (robotsBlocks(robotsTxt, path)) problems.push(`${file}: ${loc} is blocked by robots.txt`);
+      else if (isNoindexPath(path)) problems.push(`${file}: ${loc} says noindex (src/lib/seo.ts)`);
+      else if (!answersDirectly(decodeURI(path))) problems.push(`${file}: ${loc} does not answer 200 at that address`);
+      else if (all.has(`${decodeURI(path)}index.html`)) {
+        const head = headOf(`${decodeURI(path)}index.html`);
+        if (hasNoindex(head)) problems.push(`${file}: ${loc} says noindex`);
+        if (canonicalsOf(head)[0] !== loc) problems.push(`${file}: ${loc} names another canonical (${canonicalsOf(head)[0] ?? "none"})`);
+      }
+    }
+  }
 }
 // The links the records hold, which the browser or the Worker will render.
 const hrefs = (value, out = []) => {
@@ -528,7 +625,7 @@ for (const f of files) {
 }
 const paperFiles = files.filter((f) => /^\/paper\/[^/]+\//.test(f) && f !== "/paper/404.html").length;
 const others = files.length - paperFiles;
-console.log(`${n(files.length)} files in dist/ (${n(pages.length)} pages), ${n(links)} internal links checked; ` +
+console.log(`${n(files.length)} files in dist/ (${n(pages.length)} pages, ${n(canonicalPages)} with their own canonical), ${n(links)} internal links checked; ` +
   `the limit is ${n(FILE_LIMIT)}, the margin ${n(FILE_MARGIN)}.`);
 console.log("Files by folder:");
 for (const [folder, count] of [...folders].sort((x, y) => y[1] - x[1] || x[0].localeCompare(y[0]))) {

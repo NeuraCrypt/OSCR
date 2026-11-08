@@ -15,6 +15,7 @@
 // no D1 row. CPU: one JSON shard parsed and one page rendered, well under a millisecond on
 // today's shards (measured in V8: docs/PLATFORM_PLAN.md §6).
 import { esc, paperView, type PaperRecord, type View } from "../src/lib/render.ts";
+import { canonicalHref, canonicalTag } from "../src/lib/seo.ts";
 import { keyOf, shardOf, SHARDS } from "../src/lib/shards.ts";
 
 /** The Worker's own static assets (wrangler.toml, `[assets] binding = "ASSETS"`). */
@@ -79,9 +80,10 @@ const SCRIPT = /<script type="module" src="\/(?!\/)[^"<>]*"><\/script>/g;
 /** A shell page (the build's HTML) with a view in place of <main>'s content, and its title,
  *  description and breadcrumb. The shell's scripts stay, after the view: the shell's own script
  *  (src/scripts/paper-shell.ts) then finds the view already there and runs the Contribute
- *  section's. The platform's name is the shell's own (<meta name="application-name">). null when
- *  the shell lacks what is replaced. */
-export function fillShell(shell: string, view: View): string | null {
+ *  section's. The platform's name is the shell's own (<meta name="application-name">). `canonical`:
+ *  the page's own address, written as its <link rel="canonical"> and og:url (the shell has none:
+ *  src/lib/seo.ts). null when the shell lacks what is replaced. */
+export function fillShell(shell: string, view: View, canonical?: string): string | null {
   // The <main> tag may carry attributes (night phase 15 gave it id="main" for the skip link), so
   // match the opening tag rather than a literal "<main>".
   const open = shell.match(/<main[^>]*>/);
@@ -98,8 +100,19 @@ export function fillShell(shell: string, view: View): string | null {
   out = out.replace(/<title>[^<]*<\/title>/, () => `<title>${title}</title>`);
   out = out.replace(/(<span id="crumb">)[^<]*(<\/span>)/, (_, a: string, b: string) => `${a}${esc(view.crumb)}${b}`);
   if (view.description) out = attr("og:description", view.description)(attr("description", view.description)(out));
-  return attr("og:title", view.title)(out);
+  out = attr("og:title", view.title)(out);
+  if (canonical) {
+    const og = `<meta property="og:url" content="${esc(canonical)}">`;
+    out = out.replace(/<link rel="canonical"[^>]*>|<meta property="og:url"[^>]*>/g, "");
+    out = out.replace(/(<meta name="application-name" content="[^"]*">)/, (m: string) => `${m}${canonicalTag(canonical)}`);
+    out = out.replace(/(<meta property="og:type" content="[^"]*">)/, (m: string) => `${m}${og}`);
+    if (!out.includes('rel="canonical"')) out = out.replace("</head>", () => `${canonicalTag(canonical)}</head>`);
+  }
+  return out;
 }
+
+/** The site's own address, as the shell names it (<meta name="site-origin">), else the request's. */
+const originOf = (shell: string, url: URL) => shell.match(/<meta name="site-origin" content="([^"]*)"/)?.[1] || url.origin;
 
 /** The site's 404 page, with its status. */
 async function notFound(assets: Assets, url: URL, head: boolean): Promise<Response> {
@@ -121,6 +134,13 @@ export async function handlePage(request: Request, assets: Assets | undefined): 
   // says whether the registry has it). No file answers it any more.
   if (m && slug && m[2]) return Response.redirect(new URL(`/paper/${slug}/${url.search}`, url).toString(), 301);
   const record = slug ? await paperRecord(assets, url, slug) : undefined;
+  // /paper/<SLUG IN CAPITALS>/ of a static paper: no file answers it, its record is not in the
+  // shards (a static paper has its page instead), so look for the page itself and send the reader
+  // there (search engines then index the one address). A page that does not exist is a 404.
+  if (m && slug && !record && (m[1] !== slug || !m[3])) {
+    const page = await asset(assets, url, `/paper/${slug}/`);
+    if (page.ok) return Response.redirect(new URL(`/paper/${slug}/`, url).toString(), 301);
+  }
   if (!m || !record) return notFound(assets, url, head);
   // /paper/<slug>: to the page itself.
   if (!m[3] || m[1] !== slug) return Response.redirect(new URL(`/paper/${slug}/`, url).toString(), 301);
@@ -128,7 +148,7 @@ export async function handlePage(request: Request, assets: Assets | undefined): 
   const text = shell.ok ? await shell.text() : "";
   // The badge box names the platform as the shell does (<meta name="application-name">).
   const name = text.match(/<meta name="application-name" content="([^"]*)"/)?.[1] ?? "";
-  const page = shell.ok ? fillShell(text, paperView(record, url.origin, name)) : null;
+  const page = shell.ok ? fillShell(text, paperView(record, url.origin, name), canonicalHref(originOf(text, url), `/paper/${slug}/`)) : null;
   if (page === null) return new Response("This page could not be rendered.", { status: 500 });
   return html(head ? null : page, 200, PAPER_HEADERS);
 }

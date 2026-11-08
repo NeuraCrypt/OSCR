@@ -6,6 +6,7 @@ import "../styles/science.css";
 import { SITE_FULL_NAME, SITE_NAME, SITE_TAGLINE, SOURCE_URL, TURNSTILE_SITE_KEY } from "../config";
 import { FOOTER, pageExists } from "../lib/info";
 import { STRINGS } from "../lib/strings";
+import { canonicalHref, isNoindexPath, isShellPath } from "../lib/seo";
 
 interface Props {
   /** The title of the page, without the platform's name (added here). None on the home page. */
@@ -14,12 +15,22 @@ interface Props {
   /** The breadcrumb after the platform's name; the last item has no link. `id`: a page whose
    *  script renders it names its last item (the pages rendered on demand). */
   breadcrumb?: { text: string; href?: string; id?: string }[];
+  /** The path search engines should index for this page, when it is not the page's own (src/lib/seo.ts). */
+  canonical?: string;
 }
 const {
   title,
   description = "The code published by the authors of open-access neuroscience papers: found in the paper, verified at the source.",
   breadcrumb = [],
+  canonical,
 } = Astro.props;
+// What search engines are told (src/lib/seo.ts): one canonical address, absolute, with its trailing
+// slash, on every page but the shells, whose script or the Worker names the address they answer;
+// a noindex on the pages kept out on purpose.
+const site = Astro.site ?? new URL("https://openscicode.org/");
+const shell = isShellPath(Astro.url.pathname);
+const noindex = isNoindexPath(Astro.url.pathname);
+const canonicalUrl = shell ? undefined : canonicalHref(site, canonical ?? Astro.url.pathname);
 const fullTitle = title ? `${title}: ${SITE_NAME}` : SITE_TAGLINE === SITE_NAME ? SITE_NAME : `${SITE_NAME}: ${SITE_TAGLINE}`;
 // The ways in besides the catalogue, in the masthead (science.css `.masthead nav`). Repositories:
 // the GitHub side (night phase 01), the reader's own repositories and how to create or link one.
@@ -47,12 +58,16 @@ const sections = [
     <title>{fullTitle}</title>
     <meta name="description" content={description} />
     <meta name="application-name" content={SITE_NAME} />
+    {canonicalUrl && <link rel="canonical" href={canonicalUrl} />}
+    {shell && <meta name="site-origin" content={canonicalHref(site, "/").replace(/\/$/, "")} />}
+    {noindex && <meta name="robots" content="noindex" />}
     {/* Night phase 16: Turnstile's public site key, for the forms' human check (src/scripts/human-check.ts). */}
     {TURNSTILE_SITE_KEY && <meta name="turnstile-site-key" content={TURNSTILE_SITE_KEY} />}
     <meta property="og:site_name" content={SITE_NAME} />
     <meta property="og:title" content={title ?? fullTitle} />
     <meta property="og:description" content={description} />
     <meta property="og:type" content="website" />
+    {canonicalUrl && <meta property="og:url" content={canonicalUrl} />}
     <meta property="og:image" content={new URL("/og-image.png", Astro.site).href} />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />

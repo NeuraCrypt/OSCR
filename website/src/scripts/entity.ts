@@ -4,13 +4,15 @@
 // and renders the entity with the markup of lib/render.ts. Like every browser script, it never
 // names the platform: the page's own <meta name="application-name"> does.
 import { entityView, missingEntity, type EntityShard, type View } from "../lib/render";
+import { canonicalHref, setCanonical, setNoindex, siteOrigin } from "../lib/seo";
 import { ENTITY_TYPES, keyOf, shardOf, SHARDS, type EntityType } from "../lib/shards";
 
 const root = document.getElementById("entity");
 const status = document.getElementById("entity-status");
 const type = root?.dataset.type as EntityType | undefined;
 
-function show(view: View, found: boolean) {
+/** `canonical`: the entity's own address, for search engines (src/lib/seo.ts); none when it is unknown. */
+function show(view: View, found: boolean, canonical = "") {
   const main = root?.closest("main");
   if (!main) return;
   main.innerHTML = view.html;
@@ -19,12 +21,11 @@ function show(view: View, found: boolean) {
   const crumb = document.getElementById("crumb");
   if (crumb) crumb.textContent = view.crumb;
   if (view.description) document.querySelector<HTMLMetaElement>('meta[name="description"]')?.setAttribute("content", view.description);
-  if (!found) {
-    const robots = document.createElement("meta");
-    robots.name = "robots";
-    robots.content = "noindex";
-    document.head.append(robots);
-  }
+  // An unknown entity is a "not found" answered with the status 200 (the shell): search engines are
+  // told to leave it out. A known one gets its canonical address: the key as the build writes it
+  // (an ORCID iD's "x" in upper case), on the site's own host.
+  if (!found || !canonical) setNoindex(document);
+  else setCanonical(document, canonical);
 }
 
 function fail(why: string) {
@@ -55,7 +56,7 @@ async function render(t: EntityType) {
     return fail(e instanceof SyntaxError ? "the registry sent an answer that could not be read" : "the registry could not be reached; check the connection");
   }
   const e = shard.entities?.[key];
-  show(e ? entityView(t, e, shard.rows ?? {}) : missingEntity(t, key), e !== undefined);
+  show(e ? entityView(t, e, shard.rows ?? {}) : missingEntity(t, key), e !== undefined, canonicalHref(siteOrigin(document), `/${t}/${encodeURIComponent(key)}/`));
   // Night phase 08: an author's Follow button (their ORCID iD), loaded only on an author's page.
   const main = root?.closest("main") ?? document.querySelector("main");
   if (e && t === "author" && main?.querySelector("[data-social]")) void import("./social-buttons").then((m) => m.mountAll(main));
