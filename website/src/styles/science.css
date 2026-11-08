@@ -74,7 +74,9 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
 }
 .masthead .site { font-size: 1.35em; font-weight: bold; color: var(--masthead-text); }
 .masthead .site:visited { color: var(--masthead-text); }
-.masthead form { display: flex; gap: .3em; align-items: center; font-size: .9em; }
+/* The search sits at the right of the masthead, on the menu's line when it fits, else on its own
+   line with its right edge under the menu's (2026-11-08, the owner's choice; arXiv's way) */
+.masthead form { display: flex; gap: .3em; align-items: center; font-size: .9em; margin-left: auto; }
 .masthead input[type="search"] {
   font: inherit; width: 16em; padding: .15em .35em;
   border: 1px solid var(--border-strong); border-radius: 0;
@@ -1359,7 +1361,8 @@ footer a { margin-right: 1em; }
   section.release-form input[type="text"], section.release-form #rel-name { width: 100%; box-sizing: border-box; }
   section.release-notes, .tie { padding-left: .6em; padding-right: .6em; }
   /* Phase 08: the masthead's search wraps under the site's name (the type and the field) */
-  .masthead form { flex-wrap: wrap; }
+  .masthead form { flex-wrap: wrap; margin-left: 0; width: 100%; }
+  .masthead input[type="search"] { flex: 1 1 10em; }
   /* Phase 08: the profile's head and the forms take the column; the calendar scrolls within it */
   .profile-head { align-items: flex-start; }
   form.profile-form p.line label { display: block; min-width: 0; }
