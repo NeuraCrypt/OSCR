@@ -503,6 +503,19 @@ def mask_emails(text: str) -> str:
     return _EMAIL_IN_TEXT.sub(EMAIL_MASK, text) if "@" in text else text
 
 
+def content_swhid(text: str | None, sha256: str) -> str:
+    """The Software Heritage identifier (SWHID) of a file's content, `swh:1:cnt:<sha1_git>`: the
+    SHA-1 of "blob <size>\\0" followed by its bytes, the same hash as `git hash-object`. Computed from
+    the text OSCR keeps (before any masking), only when that text is the file whose SHA-256 the
+    registry verified; otherwise "" (a truncated or re-encoded text would name another content)."""
+    if not text:
+        return ""
+    data = text.encode("utf-8")
+    if hashlib.sha256(data).hexdigest() != sha256:
+        return ""
+    return "swh:1:cnt:" + hashlib.sha1(b"blob %d\0" % len(data) + data).hexdigest()
+
+
 def script_lots(con: sqlite3.Connection, public: bool) -> dict[int, dict[str, Any]]:
     """The scripts, repository by repository, split into lots by `lot_of(repo)`.
 
@@ -540,6 +553,7 @@ def script_lots(con: sqlite3.Connection, public: bool) -> dict[int, dict[str, An
             file_withheld = public and (repo, f["path"]) in held.files
             is_note = f["kind"] == "note"
             text = None if (repo_withheld or file_withheld or is_note) else f["text"]
+            original = text
             note = NOTE_WITHHELD if (repo_withheld or file_withheld) else (f["note"] or "")
             if text and "�" in text:
                 # The replacement character is already in the ORIGINAL ("S�ren" in
@@ -556,6 +570,9 @@ def script_lots(con: sqlite3.Connection, public: bool) -> dict[int, dict[str, An
             # reader fetch it. A withheld, binary, note or digest-less file has none.
             if text is not None and re.fullmatch(r"[0-9a-f]{64}", f["digest"] or ""):
                 facts = {"sha256": f["digest"], "size": f["size"], "text_lot": f"{text_lot_of(f['digest']):02d}"}
+                swhid = content_swhid(original, f["digest"])
+                if swhid:
+                    facts["swhid"] = swhid
                 via = file_via(source, f["path"], listed) if source and source.get("via") else ""
                 if via:
                     facts["via"] = via

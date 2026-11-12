@@ -16,6 +16,7 @@ const toc = [
   { id: "moving", text: "Moving between matches" },
   { id: "hide", text: "Hiding the paper" },
   { id: "files", text: "The files, and the tools of a file" },
+  { id: "cite", text: "Citing a piece of code" },
   { id: "source", text: "A copy, or the source" },
   { id: "phone", text: "On a phone" },
   { id: "keyboard", text: "Keyboard and screen readers" },
@@ -106,12 +107,31 @@ const toc = [
     <li>"Copy" copies the whole file; the copy does not include line numbers.</li>
     <li>"Link" copies a link to the file, or to the lines you selected: click a line number, and Shift-click another for
       a range.</li>
+    <li>"Cite" copies a citation of the file, or of the lines you selected: its path, its repository, the commit, its
+      Software Heritage identifier and its link here (<a href="#cite">citing a piece of code</a>).</li>
     <li>"Raw" downloads the file as it is shown: {SITE_NAME}'s copy, or what your browser fetched from its source.</li>
     <li>"⋯" links to the file and to its repository at the source, at the verified commit, and says why.</li>
   </ul>
   <p>
     Notebooks show their cells, their Markdown as text; the syntax is coloured by language. Email addresses written in
     the code are hidden, with a note.
+  </p>
+
+  <h2 id="cite">Citing a piece of code</h2>
+  <p>
+    {SITE_NAME} gives no identifier of its own to a file or to a few lines of it, and no DOI. It gives the file's
+    <a href="https://www.swhid.org/">SWHID</a>, the identifier of Software Heritage: <code>swh:1:cnt:</code> followed by
+    the same 40-character fingerprint as <code>git hash-object</code>, computed from the text whose SHA-256{" "}
+    {SITE_NAME} verified. It names these exact bytes, wherever they are. The citation adds where they were found
+    (<code>origin</code>), at which commit (<code>anchor</code>), the file's <code>path</code> and the <code>lines</code>
+    you selected, then the link to these lines on this page. For example:
+  </p>
+  <pre><code>swh:1:cnt:3b18e512dba79e4c8300dd08aeb37f8e728b8dad;origin=https://github.com/owner/name;anchor=swh:1:rev:…;path=/src/model.py;lines=10-25</code></pre>
+  <p>
+    The SWHID opens in <a href="https://archive.softwareheritage.org/">Software Heritage's archive</a> only once
+    Software Heritage has archived the repository. Every night {SITE_NAME} asks it to save a few of the public
+    repositories linked from a paper, so some are not archived yet; the identifier stays the same either way. A file whose
+    text here is not exactly the one verified (cut short, or re-encoded) gets no SWHID, and its "Cite" button is off.
   </p>
 
   <h2 id="source">A copy, or the source</h2>

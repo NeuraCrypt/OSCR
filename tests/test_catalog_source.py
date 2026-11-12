@@ -4,6 +4,7 @@ dataset, but the export publishes its facts (digest, size, lines, the pinned ver
 reader's browser fetches it itself (catalog.source_of). What a removal request withheld gets none. And
 the email addresses of a text are masked the same way here and in the reader's browser: one fixture
 (tests/fixtures/mask_emails.json), read by this file and by website/tests/source.test.ts."""
+import hashlib
 import json
 import re
 import sqlite3
@@ -266,3 +267,25 @@ def test_the_public_db_reports_each_sub_step_and_masks_by_batches(tmp_path, monk
     pub = sqlite3.connect(tmp_path / "public.db")
     texts = [t for (t,) in pub.execute("SELECT text FROM file WHERE text IS NOT NULL")]
     assert texts and all("@lab.org" not in t for t in texts)
+
+
+def test_a_files_swhid_is_git_s_blob_hash_of_the_verified_text(tmp_path):
+    """The SWHID of a content is `swh:1:cnt:` + the SHA-1 of "blob <size>\\0" and its bytes, the same
+    hash as `git hash-object` ("hello world\\n" is git's 3b18e512…). It is computed from the text
+    OSCR keeps before any masking, and only when that text is the file whose SHA-256 was verified."""
+    text = "hello world\n"
+    sha = hashlib.sha256(text.encode()).hexdigest()
+    assert catalog.content_swhid(text, sha) == "swh:1:cnt:3b18e512dba79e4c8300dd08aeb37f8e728b8dad"
+    assert catalog.content_swhid(text, "a" * 64) == "" and catalog.content_swhid(None, sha) == ""
+    con = _world(tmp_path)
+    masked = "print('hi')  # me@lab.org\n"
+    real = hashlib.sha256(masked.encode()).hexdigest()
+    con.execute("UPDATE file SET digest = ? WHERE path = 'run.py'", (real,))
+    con.commit()
+    files = {f["path"]: f for f in _entry(catalog.script_lots(con, public=True), "github.com/lab/code")["files"]}
+    blob = masked.encode()
+    want = "swh:1:cnt:" + hashlib.sha1(b"blob %d\0" % len(blob) + blob).hexdigest()
+    # The text shown is masked; the SWHID still names the authors' original bytes.
+    assert files["run.py"]["text"] != masked and files["run.py"]["swhid"] == want
+    # A digest that is not the text's (here a made-up one): no SWHID.
+    assert "swhid" not in files["big.py"]

@@ -14,6 +14,7 @@
 // lib/source.ts): it is then shown from its source, never from a copy.
 import { sourceLines, splitLines, wholeFile } from "./lines.ts";
 import { cannotWords, sourceFacts, type SourceFacts } from "./source.ts";
+import { CONTENT_SWHID } from "./swhid.ts";
 
 /** What the build knows of a repository's files (a lot's entry, oscr/catalog.py). */
 export type LotFileIn = {
@@ -32,6 +33,9 @@ export type LotFileIn = {
   size?: number | null;
   text_lot?: string;
   via?: string;
+  /** Its Software Heritage identifier, `swh:1:cnt:…` (oscr/catalog.py `content_swhid`), when the
+   *  text kept is the file whose SHA-256 was verified. */
+  swhid?: string;
 };
 export type RepoIn = {
   repo: string;
@@ -97,6 +101,8 @@ export type ReaderFile = {
   sha256: string;
   textLot: string;
   via: string;
+  /** Its content's Software Heritage identifier (`swh:1:cnt:…`, lib/swhid.ts), "" when unknown. */
+  swhid: string;
   pairs: number[];
 };
 export type ReaderPair = {
@@ -216,6 +222,7 @@ export function readerFiles(repos: RepoIn[]): { repos: ReaderRepo[]; files: Read
         sha256: copy || held ? digest : "",
         textLot: copy ? f.text_lot! : "",
         via: (copy || held) && f.via === "swh" ? "swh" : "",
+        swhid: copy && typeof f.swhid === "string" && CONTENT_SWHID.test(f.swhid) ? f.swhid : "",
         pairs: [],
       });
       if (text !== null) texts.set(index, text);

@@ -17,6 +17,7 @@ import { alignmentOf, europePmcUrl, lot2, lotEntry, plural, shortName, type Arti
 import { languageOf, sizeInWords } from "../../lib/code";
 import { decorate, lineClass, pairClass, splitLines } from "../../lib/lines";
 import { initialFile, mapPairs, readerFiles, sourceOf, sourceWhy, whyNotShown, type ReaderData } from "../../lib/reader";
+import { archiveUrl, ARCHIVE_WHY, qualifiedSwhid } from "../../lib/swhid";
 
 interface Props {
   a: Article;
@@ -53,6 +54,8 @@ const facts = f && r
   : "";
 const parts = f ? f.path.split("/") : [];
 const at = f && r ? sourceOf(r, f) : "";
+// The file's Software Heritage identifier with its context (lib/swhid.ts), when it is known.
+const swh = f && r && f.text ? qualifiedSwhid({ swhid: f.swhid, origin: r.url, commit: r.commit, path: f.path, range: null }) : "";
 
 // Night phase 05: "Report a mismatch" on a match: the registry's research form, prefilled with the
 // paragraph and the lines at the commit the map read (a GitHub repository's form is on its page).
@@ -165,6 +168,7 @@ const json = JSON.stringify(data).replace(/</g, "\\u003c");
             <button type="button" id="wrap-lines" aria-pressed="false" title="Wrap the long lines">Wrap</button>
             <button type="button" id="copy-file" title="Copy the whole file">Copy</button>
             <button type="button" id="link-lines" title="Copy a link to this file, or to the lines selected (click a line number; Shift-click for a range)">Link</button>
+            <button type="button" id="cite-lines" title="Copy a citation of this file, or of the lines selected: its Software Heritage identifier (SWHID) and its link here" disabled={!swh}>Cite</button>
             <button type="button" id="raw-file" title="Download the file as it is kept here">Raw</button>
             <details class="menu" id="file-menu">
               <summary title="More">⋯</summary>
@@ -172,6 +176,8 @@ const json = JSON.stringify(data).replace(/</g, "\\u003c");
                 {at && <li><a href={at}>{at === r!.url ? "The repository at the source" : "This file at the source"}</a></li>}
                 {at && at !== r!.url && <li><a href={r!.url}>The repository at the source ({r!.name})</a></li>}
                 {f && r && <li class="why">{sourceWhy(r.commit, f.text)}</li>}
+                {swh && <li><a href={archiveUrl(swh)}>This file in Software Heritage</a></li>}
+                {swh && <li class="why">{ARCHIVE_WHY}</li>}
               </ul>
             </details>
           </div>

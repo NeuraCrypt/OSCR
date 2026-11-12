@@ -16,6 +16,7 @@ import { decorate, lineClass, pairClass, splitLines } from "../lib/lines";
 import { sourceOf, sourceWhy, whyNotShown, type ReaderData, type ReaderPair } from "../lib/reader";
 import { removalUrl } from "../lib/removal";
 import { noCopy, shownFrom, type Plan as SourcePlan } from "../lib/source";
+import { archiveUrl, ARCHIVE_WHY, citation, qualifiedSwhid } from "../lib/swhid";
 import { highlight } from "./highlighter";
 import { link, pairLink } from "./reader-paper";
 
@@ -74,6 +75,7 @@ export function codeView(data: ReaderData, hooks: { url(file: number, range: Ran
   const wrapBtn = byId<HTMLButtonElement>("wrap-lines");
   const copyBtn = byId<HTMLButtonElement>("copy-file");
   const linkBtn = byId<HTMLButtonElement>("link-lines");
+  const citeBtn = byId<HTMLButtonElement>("cite-lines");
   const rawBtn = byId<HTMLButtonElement>("raw-file");
   const sources = byId("source-links");
   const sourceLine = byId("file-source");
@@ -128,11 +130,25 @@ export function codeView(data: ReaderData, hooks: { url(file: number, range: Ran
         return li;
       }),
       el("li", "why", sourceWhy(r.commit, f.text ? true : from && current === i ? "source" : false)),
+      ...swhItems(i),
     );
     linkBtn.textContent = "Link";
+    citeBtn.textContent = "Cite";
+    citeBtn.disabled = !(f.swhid && f.text);
     // Where a file shown from its source comes from: always in view, above its lines.
     if (from && current === i) sourceLine.replaceChildren(...sourceNotice(i, from));
     sourceLine.hidden = !(from && current === i);
+  }
+
+  /** The file's identifier in Software Heritage's archive, and when it opens there. */
+  function swhItems(i: number): HTMLElement[] {
+    const f = data.files[i];
+    const r = data.repos[f.repo];
+    const id = f.text ? qualifiedSwhid({ swhid: f.swhid, origin: r.url, commit: r.commit, path: f.path, range: null }) : "";
+    if (!id) return [];
+    const li = el("li");
+    li.append(link(archiveUrl(id), "This file in Software Heritage"));
+    return [li, el("li", "why", ARCHIVE_WHY)];
   }
 
   /** The line after the last one: the file, its license, and the source, discreetly. */
@@ -298,7 +314,7 @@ export function codeView(data: ReaderData, hooks: { url(file: number, range: Ran
     const f = data.files[i];
     const r = data.repos[f.repo];
     head(i);
-    for (const b of [copyBtn, rawBtn, wrapBtn]) b.disabled = true;
+    for (const b of [copyBtn, rawBtn, wrapBtn, citeBtn]) b.disabled = true;
     ol.replaceChildren();
     ol.hidden = true;
     fileNotes = [];
@@ -345,8 +361,12 @@ export function codeView(data: ReaderData, hooks: { url(file: number, range: Ran
     if (selection) {
       for (let n = selection.start; n <= selection.end; n++) ol.children[n - 1].classList.add("is-selected");
       linkBtn.textContent = selection.end > selection.start ? `Link to lines ${selection.start} to ${selection.end}` : `Link to line ${selection.start}`;
+      citeBtn.textContent = selection.end > selection.start ? `Cite lines ${selection.start} to ${selection.end}` : `Cite line ${selection.start}`;
       if (scroll) scrollInto(viewer, ol.children[selection.start - 1] as HTMLElement, "center");
-    } else linkBtn.textContent = "Link";
+    } else {
+      linkBtn.textContent = "Link";
+      citeBtn.textContent = "Cite";
+    }
     return selection;
   }
 
@@ -379,6 +399,19 @@ export function codeView(data: ReaderData, hooks: { url(file: number, range: Ran
     const url = hooks.url(current, selection);
     history.replaceState(null, "", url);
     flash(linkBtn, (await copyText(new URL(url, location.href).href)) ? "Link copied" : "The link is in the address bar");
+  });
+  citeBtn.addEventListener("click", async () => {
+    const f = data.files[current];
+    if (!f) return;
+    const r = data.repos[f.repo];
+    const url = hooks.url(current, selection);
+    history.replaceState(null, "", url);
+    const text = citation({
+      swhid: f.swhid, origin: r.url, commit: r.commit, path: f.path, range: selection, repoName: r.name,
+      link: new URL(url, location.href).href,
+    });
+    if (!text) return;
+    flash(citeBtn, (await copyText(text)) ? "Citation copied" : "Copy failed");
   });
   rawBtn.addEventListener("click", () => {
     const f = data.files[current];
