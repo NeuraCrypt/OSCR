@@ -327,6 +327,47 @@ def apply_changes(runner: Runner, article_id: str, changes: list[dict[str, Any]]
     return version, applied, skipped
 
 
+def answers(url: str) -> bool:
+    """Whether a link answers (any status below 400, redirects followed): the operator's check
+    before adding it, the same the Worker makes for a reader's link."""
+    import httpx
+    try:
+        r = httpx.get(url, follow_redirects=True, timeout=20, headers={"User-Agent": "OSCR link check"})
+    except httpx.HTTPError:
+        return False
+    return r.status_code < 400
+
+
+def add_links(con: sqlite3.Connection, harvester: Harvester, doi: str, urls: list[str], *, role: str = "code",
+              who: str = "operator", ref: str = "operator", check: Callable[[str], bool] = answers,
+              now: Callable[[], float] = time.time) -> str:
+    """The operator's correction of a record's links, asked outside the site (an author's email):
+    `oscr links add`. The same path as a reader's correction (`apply_changes`): kept as a `link_edit`
+    (so every rescan keeps it), applied, the repository verified, the paper concluded again, a new
+    version whose role is the operator's (the page says "editor", never who). Refuses a DOI the
+    registry does not hold, an address that is not a link the registry reads, and a link that does
+    not answer: nothing is written then."""
+    if role not in ROLES:
+        raise ValueError(f"role {role!r}: one of {', '.join(ROLES)}")
+    row = con.execute("SELECT id FROM article WHERE lower(doi) = lower(?)", (doi.strip(),)).fetchone()
+    if row is None:
+        raise ValueError(f"{doi} is not in the database")
+    changes = []
+    for url in urls:
+        link = links.normalize(url)
+        if link is None:
+            raise ValueError(f"{url}: not a link the registry reads")
+        if not check(link.url):
+            raise ValueError(f"{url}: the link does not answer")
+        changes.append({"op": "add", "url": link.url, "role": role})
+    runner = Runner(con, None, None, harvester, now=now)  # type: ignore[arg-type]  # no D1: nothing is told to the site
+    version, applied, skipped = apply_changes(runner, row["id"], changes, source="operator", who=who, ref=ref)
+    if version is None:
+        return f"{row['id']}: nothing to change ({'; '.join(skipped)})"
+    return (f"{row['id']}: version {version}. Applied: {'; '.join(applied)}"
+            + (f". Left aside: {'; '.join(skipped)}" if skipped else "") + ". The site shows it after the next nightly.")
+
+
 # ---------------------------------------------------------------------------------------
 # Submissions.
 
