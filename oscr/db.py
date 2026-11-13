@@ -310,12 +310,13 @@ def replace_links(con: sqlite3.Connection, article_id: str, candidates: Iterable
 
 
 #: What a person's correction says, in the link's reasons.
-_EDITED_BY = {"author": "a verified author", "maintainer": "a maintainer of the code", "submitter": "its submitter"}
+_EDITED_BY = {"author": "a verified author", "maintainer": "a maintainer of the code", "submitter": "its submitter",
+              "operator": "the registry's editor"}
 
 
 def apply_link_edits(con: sqlite3.Connection, article_id: str) -> int:
     """The people's corrections of a paper's links, over what the harvester found: a link added
-    (`found_by` = author, maintainer or submitter), removed, or given another role. Returns how
+    (`found_by` = author, maintainer, submitter or operator), removed, or given another role. Returns how
     many applied."""
     n = 0
     for e in con.execute("SELECT * FROM link_edit WHERE article_id = ? ORDER BY created_at, repo", (article_id,)).fetchall():

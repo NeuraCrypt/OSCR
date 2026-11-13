@@ -22,6 +22,9 @@
     oscr jobs poll --local|--remote      Phase 6: the site's requests (submissions, corrections, validations…)
     oscr claims|reports|submissions list|accept|refuse|reverse   what the moderator's rules leave to the owner,
                                          and what they did (--auto-log) (oscr/moderation.py)
+    oscr links add 10.xxx/yyy https://github.com/…  [--role code|data|tool]   the operator's correction of a
+                                         record's links, asked outside the site (an author's email); kept
+                                         across rescans (link_edit), on the site after the next nightly
     oscr rights list|done|refuse|erase   the data-rights requests the Mac could not answer (oscr/rights.py)
     oscr forge poll|mirrors|layer|status --local|--remote   the GitHub side (night phase 01, docs/FORGE.md):
                                          the forge jobs, the public mirrors' heads, OSCR's static layer.
@@ -455,6 +458,13 @@ def main(argv: list[str] | None = None) -> int:
         dp.add_argument("--auto-log", action="store_true", help="with list: the automatic decisions, each with its rule")
         dp.add_argument("--days", type=int, default=0, help="with --auto-log: only the last N days (default: all)")
         community_target(dp)
+    lk = sp.add_parser("links", help="the operator's correction of a record's links, asked outside the site (an "
+                                     "author's email): kept across rescans (link_edit), shown after the next nightly")
+    lk.add_argument("action", choices=["add"])
+    lk.add_argument("doi", help="the paper's DOI, as the registry holds it")
+    lk.add_argument("urls", nargs="+", help="the links to add (each must answer)")
+    lk.add_argument("--role", default="code", choices=["code", "data", "tool"], help="what the links are (default: code)")
+    lk.add_argument("--ref", default="operator", help="what asked for it, kept on the Mac (never an email address)")
     rp = sp.add_parser("rights", help="the data-rights requests (the page /data-rights/) the Mac could not answer by "
                                       "itself: each with its legal deadline (GDPR: one month), never closed unanswered")
     rp.add_argument("action", choices=["list", "done", "refuse", "erase"],
@@ -682,6 +692,14 @@ def main(argv: list[str] | None = None) -> int:
                 forge_d1 = community.open_d1(target, settings=cfg, persist_to=Path(a.persist_to) if a.persist_to else None,
                                              database="oscr_forge") if target and digests else None
                 print(malware.scan(con, forge_d1, digests=digests))
+        elif a.command == "links":
+            from . import jobs
+            if "@" in a.ref:
+                raise SystemExit("links add: --ref must not hold an email address")
+            try:
+                print(jobs.add_links(con, jobs.MacHarvester(client, opts), a.doi, a.urls, role=a.role, ref=a.ref))
+            except ValueError as e:
+                raise SystemExit(f"links add: {e}") from None
         elif a.command in ("jobs", "claims", "reports", "submissions", "rights"):
             print(_jobs(con, a, cfg, client, opts))
         elif a.command == "public-export":

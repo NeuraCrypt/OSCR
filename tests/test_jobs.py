@@ -562,3 +562,39 @@ def test_the_command_line_polls_lists_and_decides(tmp_path, monkeypatch, capsys)
     assert "accepted" in capsys.readouterr().out
     assert cli.main([*base, "jobs", "status", *folder]) == 0
     assert "local: claim done: 1" in capsys.readouterr().out
+
+
+# ---------------------------------------------------------------------------------------
+# The operator's correction (`oscr links add`), asked outside the site.
+
+def test_the_operator_adds_a_link_kept_across_rescans_and_refuses_what_it_cannot_check(w):
+    before = len(_versions(w.mac, P1))
+    out = jobs.add_links(w.mac, w.harvester, "10.5555/OSCR.fixture.1", ["https://github.com/oscr-fixture/added-by-email/"],
+                         ref="email", check=lambda url: True, now=lambda: T)
+    assert out.startswith(f"{P1}: version {before + 2}. Applied: github.com/oscr-fixture/added-by-email added (code)")
+    assert ("verify", "github.com/oscr-fixture/added-by-email") in w.harvester.calls
+    row = w.mac.execute("SELECT role, found_by, reasons FROM link WHERE article_id = ? AND repo = ?",
+                        (P1, "github.com/oscr-fixture/added-by-email")).fetchone()
+    assert (row["role"], row["found_by"]) == ("code", "operator")
+    assert json.loads(row["reasons"]) == ["add by the registry's editor (email)"]
+    # The Versions section says the role, never who.
+    assert _versions(w.mac, P1)[-1]["actor"] == "operator:operator"
+    assert paperpage.history(_versions(w.mac, P1))[0]["by"] == "editor"
+    # The next scan keeps it.
+    found = links.normalize("https://github.com/oscr-fixture/eeg-analysis")
+    db.replace_links(w.mac, P1, [find.Candidate(found, "code", "high", 3.0, "text:availability", "", "Code")])
+    assert "github.com/oscr-fixture/added-by-email" in dict(w.mac.execute("SELECT repo, role FROM link WHERE article_id = ?",
+                                                                         (P1,)).fetchall())
+    # Twice: nothing to change, no new version.
+    again = jobs.add_links(w.mac, w.harvester, "10.5555/oscr.fixture.1", ["https://github.com/oscr-fixture/added-by-email"],
+                           check=lambda url: True, now=lambda: T)
+    assert "nothing to change" in again and len(_versions(w.mac, P1)) == before + 2
+    # Refused, nothing written: an unknown DOI, an address that is no link, a link that does not answer.
+    edits = w.mac.execute("SELECT COUNT(*) FROM link_edit").fetchone()[0]
+    for doi, url, check, why in (("10.5555/unknown", "https://github.com/a/b", lambda u: True, "not in the database"),
+                                 ("10.5555/oscr.fixture.1", "someone@lab.org", lambda u: True, "not a link"),
+                                 ("10.5555/oscr.fixture.1", "https://github.com/oscr-fixture/gone", lambda u: False,
+                                  "does not answer")):
+        with pytest.raises(ValueError, match=why):
+            jobs.add_links(w.mac, w.harvester, doi, [url], check=check, now=lambda: T)
+    assert w.mac.execute("SELECT COUNT(*) FROM link_edit").fetchone()[0] == edits
