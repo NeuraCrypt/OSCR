@@ -14,6 +14,7 @@
 // lib/source.ts): it is then shown from its source, never from a copy.
 import { sourceLines, splitLines, wholeFile } from "./lines.ts";
 import { cannotWords, sourceFacts, type SourceFacts } from "./source.ts";
+import { BLOCK_ID } from "./blockid.ts";
 import { CONTENT_SWHID } from "./swhid.ts";
 
 /** What the build knows of a repository's files (a lot's entry, oscr/catalog.py). */
@@ -57,6 +58,7 @@ export type PairIn = {
   end_line: number;
   score: number | null;
   evidence: string[];
+  block?: string;
 };
 
 export type Why = "" | "license" | "binary" | "missing" | "withheld";
@@ -122,6 +124,8 @@ export type ReaderPair = {
   score: number | null;
   /** The range is the whole file, or nearly: a weak match (its lines are not tinted). */
   whole: boolean;
+  /** Its block identifier (oscr:b:…, src/lib/block.ts), "" when it has none. */
+  block: string;
 };
 export type ReaderData = {
   fulltextId: string;
@@ -255,6 +259,7 @@ export function mapPairs(pairs: PairIn[], repos: ReaderRepo[], files: ReaderFile
         evidence: p.evidence ?? [],
         score: typeof p.score === "number" ? p.score : null,
         whole: !!f && wholeFile(p.start_line, p.end_line, f.lines),
+        block: typeof p.block === "string" && BLOCK_ID.test(p.block) ? p.block : "",
       };
     });
 }

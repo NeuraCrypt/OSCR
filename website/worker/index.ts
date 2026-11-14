@@ -26,6 +26,8 @@
 //   /badge/doi/*, /badge/repo/*  a paper's or a repository's badge, its shields.io endpoint, its
 //                        link (badge.ts; docs/BADGE.md). No static file lives there, so they come
 //                        here through not_found_handling, like the pages below.
+//   /b/<id>, /b/<id>.json  a block identifier's page and facts (block.ts; docs/PLAN_BLOCK_IDS.md), read
+//                        in the DOI lookup's shards: no static file lives there either.
 //   anything else        pages.ts: a paper rendered on demand, else the site's 404 page
 //
 // The search's answers are public and cached (Cache-Control: public, api.ts); the accounts', the
@@ -35,6 +37,7 @@
 // Only the default export: the runtime takes every export of the main module for an entry point.
 import { handleAccount } from "./account/index.ts";
 import { handleBadge } from "./badge.ts";
+import { handleBlock } from "./block.ts";
 import { error, handleSearch } from "./api.ts";
 import { handleContributions } from "./contributions/index.ts";
 import type { Context, Env, Handler } from "./env.ts";
@@ -116,6 +119,10 @@ export default {
     if (path.startsWith("/badge/")) {
       const badge = await handleBadge(request, env, ctx);
       if (badge) return badge;
+    }
+    if (path.startsWith("/b/")) {
+      const block = await handleBlock(request, env.ASSETS);
+      if (block) return block;
     }
     return handlePage(request, env.ASSETS);
   },
