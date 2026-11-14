@@ -60,8 +60,10 @@ def _reference_public_db(con: sqlite3.Connection, path: Path, report=lambda m: N
     target.executemany("UPDATE file SET text = NULL, note = ? WHERE repo = ?", [(catalog.NOTE_WITHHELD, r) for r in held.repos])
     target.executemany("UPDATE file SET text = NULL, note = ? WHERE repo = ? AND path = ?",
                        [(catalog.NOTE_WITHHELD, r, p) for r, p in held.files])
-    for table in ("alignment", "validation", "card_doi"):
+    for table in ("alignment", "validation", "card_doi", "code_block"):
         target.executemany(f"DELETE FROM {table} WHERE article_id = ?", [(a,) for a in held.maps])
+    # A withdrawn block keeps its row on the Mac only (oscr/blocks.py).
+    target.execute("DELETE FROM code_block WHERE status = 'withdrawn'")
     target.execute("DROP TABLE IF EXISTS withheld")
     # What only off-topic papers (or nothing) pointed at goes too: repositories, their files
     # and facts, datasets, people and funders no paper in scope names.

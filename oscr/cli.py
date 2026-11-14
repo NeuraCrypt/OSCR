@@ -22,6 +22,8 @@
     oscr jobs poll --local|--remote      Phase 6: the site's requests (submissions, corrections, validations…)
     oscr claims|reports|submissions list|accept|refuse|reverse   what the moderator's rules leave to the owner,
                                          and what they did (--auto-log) (oscr/moderation.py)
+    oscr blocks sync|show [oscr:b:…]     the block identifiers of the matches (oscr/blocks.py): recorded
+                                         (the nightly export does it too), or one block shown
     oscr links add 10.xxx/yyy https://github.com/…  [--role code|data|tool]   the operator's correction of a
                                          record's links, asked outside the site (an author's email); kept
                                          across rescans (link_edit), on the site after the next nightly
@@ -458,6 +460,10 @@ def main(argv: list[str] | None = None) -> int:
         dp.add_argument("--auto-log", action="store_true", help="with list: the automatic decisions, each with its rule")
         dp.add_argument("--days", type=int, default=0, help="with --auto-log: only the last N days (default: all)")
         community_target(dp)
+    bk = sp.add_parser("blocks", help="the block identifiers (oscr:b:…) of the matches: record them (the nightly "
+                                      "export does it too), or show one (docs/PLAN_BLOCK_IDS.md)")
+    bk.add_argument("action", choices=["sync", "show"])
+    bk.add_argument("id", nargs="?", help="show: the block identifier")
     lk = sp.add_parser("links", help="the operator's correction of a record's links, asked outside the site (an "
                                      "author's email): kept across rescans (link_edit), shown after the next nightly")
     lk.add_argument("action", choices=["add"])
@@ -692,6 +698,17 @@ def main(argv: list[str] | None = None) -> int:
                 forge_d1 = community.open_d1(target, settings=cfg, persist_to=Path(a.persist_to) if a.persist_to else None,
                                              database="oscr_forge") if target and digests else None
                 print(malware.scan(con, forge_d1, digests=digests))
+        elif a.command == "blocks":
+            from . import blocks
+            if a.action == "show":
+                if not a.id:
+                    raise SystemExit("blocks show: which one? (oscr:b:…)")
+                print(blocks.describe(con, a.id))
+            else:
+                n = len(set(blocks.sync(con).values()))
+                counts = dict(con.execute("SELECT status, COUNT(*) FROM code_block GROUP BY status").fetchall())
+                print(f"{n} blocks named by the matches now; recorded: " +
+                      ", ".join(f"{v} {k}" for k, v in sorted(counts.items())))
         elif a.command == "links":
             from . import jobs
             if "@" in a.ref:

@@ -632,7 +632,9 @@ def cite_map(paper_title: str, validations: list[sqlite3.Row], deposit: sqlite3.
     parts = _date_parts(day)
     year = str(parts[0]) if parts else ""
     title = f"Code tracing map: {_clean(paper_title)}"[:250]
-    version = f"{zenodo.MAP_FORMAT.split('/')[1]}-{day}" if day else ""
+    # The version of the format the deposited map was written in (the last validation's map).
+    seen = validations[-1]["card"] if validations and "card" in validations[-1].keys() else None
+    version = f"{zenodo.format_version(seen)}-{day}" if day else ""
     doi = (deposit["doi"] or "").strip()
     url = f"https://doi.org/{doi}" if doi else ""
     csl: dict[str, Any] = {"id": doi, "type": "dataset", "title": title,

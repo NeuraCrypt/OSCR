@@ -38,7 +38,7 @@ def test_the_orcid_check_digit():
 
 def test_the_map_links_the_paper_to_its_code_without_text_or_code(con):
     card = zenodo.map_of(con, "doi:10.1/art")
-    assert card["paper"]["doi"] == "10.1/art" and card["format"] == "tracing-map/0.1"
+    assert card["paper"]["doi"] == "10.1/art" and card["format"] == "tracing-map/0.2"
     (c,) = card["code"]
     assert (c["repo"], c["commit"], c["license"]) == ("github.com/lab/code", "abc123def4567890", "MIT")
     assert c["files"] == [{"path": "analysis.py", "language": "Python", "digest": "e1"}]
