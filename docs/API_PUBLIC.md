@@ -50,6 +50,14 @@ All under `/api/v1`. The routes and the OpenAPI document share one source,
 | `GET /{type}/{id}` | one entity by key | `/records/<type>/NN.json` (the site's own shard) |
 | `GET /repository/{host}/{owner}/{name}` | one repository | `/data/repos/NN.json` |
 
+**Block identifiers** (2026-11-13, `oscr/blocks.py`, `worker/block.ts`, docs/PLAN_BLOCK_IDS.md), outside
+`/api/v1` because they are the identifiers' own addresses: `GET /b/{id}` (a page) and `GET /b/{id}.json`
+(the block's facts: paper DOI, repository, commit, path, lines, SWHID and its qualified form, status
+`current` / `superseded` / `withdrawn`, the block that replaced it). CORS open, cached 10 minutes, read in
+the DOI lookup's shard of the identifier's SHA-1 (`/lookup/NN.json`): no file of its own. Another
+writing of an identifier (lower case, an O for a zero) is a 301 to its one form; a wrong check character
+or an identifier never given is a 404 (`{"error": "not_found"}`).
+
 - **DOI**: contains slashes. Give it URL-encoded in the path (`/paper/10.5555%2Fabcd`) or as
   `?doi=10.5555/abcd`. Matched case-insensitively, with or without a `https://doi.org/` prefix. A
   DOI that is read but has no page returns `{ page: false, status, day_read }` (no record).
