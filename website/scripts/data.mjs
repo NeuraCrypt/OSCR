@@ -26,6 +26,7 @@
 //                                                     page; oscr/social.py; absent: none)
 import { createHash } from "node:crypto";
 import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { cleanEntry, normalize as blockId } from "../src/lib/block.ts";
 import { codeLink, maskAll } from "../src/lib/emails.ts";
 import { maskEmails } from "../worker/forge/mask.ts";
 
@@ -90,6 +91,7 @@ writeFileSync("src/data/catalog.json", JSON.stringify(masked));
 // enough to be a sentence is dropped.
 const MAX_TERM = 60;
 const PAIR_FIELDS = ["pair", "paragraph", "section", "repo", "path", "start_line", "end_line", "symbol", "score", "evidence"];
+let blockedPairs = 0;
 rmSync("src/data/alignments", { recursive: true, force: true });
 mkdirSync("src/data/alignments", { recursive: true });
 let pairs = 0;
@@ -109,6 +111,12 @@ if (existsSync(`${source}/alignments`)) {
           dropped += terms.length - kept.evidence.length;
           kept.section = String(p.section ?? "").slice(0, 200);
           kept.symbol = String(p.symbol ?? "").slice(0, 200);
+          // Its block identifier (oscr/blocks.py), only in its one form with a right check character.
+          const block = typeof p.block === "string" ? blockId(p.block) : "";
+          if (block && block === p.block) {
+            kept.block = block;
+            blockedPairs += 1;
+          }
           return kept;
         }),
       };
@@ -161,13 +169,17 @@ if (scrubbed) console.warn(`${scrubbed} strings looked like an email address: th
 
 // The DOI lookup: one shard per first 2 hex characters of sha1(DOI), 256 at most (the same
 // LOOKUP_HEX as src/lib/shards.ts and oscr/entities.py), fetched by the lookup page. Only the
-// known fields are kept: DOI → [status, day read], and the page as a third item, if any. A
+// known fields are kept: DOI → [status, day read], and the page as a third item, if any; and the
+// block identifiers' entries (oscr/blocks.py), "oscr:b:…" → its facts (src/lib/block.ts cleanEntry),
+// from which the Worker answers /b/<id> (worker/block.ts), their texts masked as the rest. A
 // shard of another length (an export older than 2026-09-28 wrote 3 characters, 4,096 files)
 // is refused: the page would not find it.
 rmSync("public/lookup", { recursive: true, force: true });
 mkdirSync("public/lookup", { recursive: true });
 let shards = 0;
 let looked = 0;
+let blockEntries = 0;
+const blockEntriesIn = (o) => Object.keys(o).filter((k) => k.startsWith("oscr:b:")).length;
 let largest = 0;
 if (existsSync(`${source}/lookup`)) {
   const names = readdirSync(`${source}/lookup`).filter((n) => n.endsWith(".json"));
@@ -179,6 +191,14 @@ if (existsSync(`${source}/lookup`)) {
   for (const name of names) {
     const clean = {};
     for (const [doi, e] of Object.entries(JSON.parse(readFileSync(`${source}/lookup/${name}`, "utf8")))) {
+      if (doi.startsWith("oscr:b:")) {
+        const entry = blockId(doi) === doi ? cleanEntry(e) : null;
+        if (entry) {
+          clean[doi] = maskAll(entry);
+          blockEntries += 1;
+        }
+        continue;
+      }
       if (!/^10\.\S+$/.test(doi) || !Array.isArray(e)) continue;
       clean[doi] = [String(e[0] ?? ""), String(e[1] ?? "")];
       if (typeof e[2] === "string" && /^[a-z0-9._-]+$/.test(e[2])) clean[doi].push(e[2]);
@@ -186,7 +206,7 @@ if (existsSync(`${source}/lookup`)) {
     const text = JSON.stringify(clean);
     writeFileSync(`public/lookup/${name}`, text);
     shards += 1;
-    looked += Object.keys(clean).length;
+    looked += Object.keys(clean).length - (blockEntriesIn(clean));
     largest = Math.max(largest, Buffer.byteLength(text));
   }
 }
@@ -405,7 +425,7 @@ console.log(
 );
 console.log(
   `entities: ${Object.entries(entities).map(([k, n]) => `${n} ${k}`).join(", ")}; ` +
-    `DOI lookup: ${looked} papers in ${shards} shards (the largest ${Math.ceil(largest / 1024)} KB); ${detailed} full paper pages; ` +
+    `DOI lookup: ${looked} papers and ${blockEntries} block identifiers (${blockedPairs} matches named) in ${shards} shards (the largest ${Math.ceil(largest / 1024)} KB); ${detailed} full paper pages; ` +
     `forge layer: ${layered} repositories in ${layerShards} shards; research issues: ${researched} in ${researchShards} shards; ` +
     `social layer: ${socialKeys} entries in ${socialShards} shards`,
 );

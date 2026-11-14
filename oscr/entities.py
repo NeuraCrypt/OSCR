@@ -512,10 +512,11 @@ def _categories(con: sqlite3.Connection, p: _Papers) -> dict[str, Any]:
     return {"min_confidence": MIN_CONFIDENCE, "facets": facets}
 
 
-def lookup(con: sqlite3.Connection, slugs: dict[str, str]) -> dict[str, dict[str, list[str]]]:
+def lookup(con: sqlite3.Connection, slugs: dict[str, str]) -> dict[str, dict[str, Any]]:
     """Every in-scope paper read, by DOI, split into shards: DOI → [status, the day it was
-    read], and its page as a third item when it has one. Off-topic papers are not there (D7)."""
-    shards: dict[str, dict[str, list[str]]] = defaultdict(dict)
+    read], and its page as a third item when it has one. Off-topic papers are not there (D7).
+    The block identifiers too, each in its own shard: "oscr:b:…" → its entry (blocks.entry)."""
+    shards: dict[str, dict[str, Any]] = defaultdict(dict)
     for r in con.execute(f"SELECT id, doi, status, scanned_at FROM article WHERE {catalog.IN_SCOPE} AND doi != '' "
                          f"ORDER BY scanned_at, id"):
         doi = normalize_doi(r["doi"])
@@ -528,6 +529,12 @@ def lookup(con: sqlite3.Connection, slugs: dict[str, str]) -> dict[str, dict[str
         if len(shard.get(doi, [])) > 2 and len(entry) == 2:
             continue    # two records of one DOI: the one with a page answers
         shard[doi] = entry
+    # The block identifiers (oscr/blocks.py) live in the same shards, under their own key
+    # ("oscr:b:…", in the shard of its SHA-1): the site answers /b/<id> from them, with no file of
+    # their own (worker/block.ts).
+    from . import blocks
+    for bid, e in blocks.lookup_entries(con, slugs).items():
+        shards[lookup_shard(bid)][bid] = e
     return {k: dict(sorted(v.items())) for k, v in sorted(shards.items())}
 
 

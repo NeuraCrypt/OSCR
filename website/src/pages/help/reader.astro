@@ -119,7 +119,7 @@ const toc = [
 
   <h2 id="cite">Citing a piece of code</h2>
   <p>
-    {SITE_NAME} gives no identifier of its own to a file or to a few lines of it, and no DOI. It gives the file's
+    For a file, or for lines you select, {SITE_NAME} gives the file's
     <a href="https://www.swhid.org/">SWHID</a>, the identifier of Software Heritage: <code>swh:1:cnt:</code> followed by
     the same 40-character fingerprint as <code>git hash-object</code>, computed from the text whose SHA-256{" "}
     {SITE_NAME} verified. It names these exact bytes, wherever they are. The citation adds where they were found
@@ -133,6 +133,35 @@ const toc = [
     repositories linked from a paper, so some are not archived yet; the identifier stays the same either way. A file whose
     text here is not exactly the one verified (cut short, or re-encoded) gets no SWHID, and its "Cite" button is off.
   </p>
+
+  <h2 id="block-ids">Block identifiers</h2>
+  <p>
+    Each match between a paragraph of the paper and lines of its code has a <strong>block identifier</strong>, shown in
+    the list of matches: <code>oscr:b:</code>, 13 letters and digits, a dash and one check character, for example{" "}
+    <code>oscr:b:7K3M9QX2PD4TA-K</code>. It names these lines of this file, linked to this paper, and opens a page of
+    their own at <code>{"/b/<identifier>"}</code> (and their facts in JSON at <code>{"/b/<identifier>.json"}</code>).
+  </p>
+  <ul>
+    <li>
+      It is computed from three facts that anyone can check: the paper's DOI, the file's SWHID (computed from the file as
+      its authors published it, before any email address is hidden for display) and the lines. The same block always gets
+      the same identifier.
+    </li>
+    <li>
+      It is never reused and never deleted. When the code or the match changes, the identifier stays and its page says
+      that it was superseded, with a link to the block that replaced it. When a paper leaves the registry, or a removal
+      request withholds its code or its map, the page says it was withdrawn and shows no code.
+    </li>
+    <li>
+      The last character catches a typing mistake: a mistyped identifier is reported as such, never sent to another block.
+      Lower case, and an O written for a zero, are read correctly.
+    </li>
+    <li>
+      Most matches are found by the registry's matching program, which can be wrong: the page says who linked the block.
+      It is not a DOI. A tracing map validated by an author gets a DOI on Zenodo, and its file lists the identifiers of its
+      blocks.
+    </li>
+  </ul>
 
   <h2 id="source">A copy, or the source</h2>
   <p>

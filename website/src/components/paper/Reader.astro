@@ -17,6 +17,7 @@ import { alignmentOf, europePmcUrl, lot2, lotEntry, plural, shortName, type Arti
 import { languageOf, sizeInWords } from "../../lib/code";
 import { decorate, lineClass, pairClass, splitLines } from "../../lib/lines";
 import { initialFile, mapPairs, readerFiles, sourceOf, sourceWhy, whyNotShown, type ReaderData } from "../../lib/reader";
+import { blockPath } from "../../lib/blockid";
 import { archiveUrl, ARCHIVE_WHY, qualifiedSwhid } from "../../lib/swhid";
 
 interface Props {
@@ -125,6 +126,7 @@ const json = JSON.stringify(data).replace(/</g, "\\u003c");
             {typeof p.score === "number" && <span class="muted"> · score {p.score.toFixed(2)}</span>}
             {p.evidence.length > 0 && <span class="muted"> · {p.evidence.join(", ")}</span>}
             {p.file < 0 && <> · <span class="warning">this file is not among the harvested files</span></>}
+            {p.block && <> · <a href={blockPath(p.block)} title="This block's identifier, citable for good: its page">{p.block}</a></>}
             {" · "}<a class="report-link" href={reportOf(p)}>Report a mismatch</a>
           </li>
         ))}

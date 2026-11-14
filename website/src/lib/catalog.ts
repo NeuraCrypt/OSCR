@@ -110,6 +110,8 @@ export type Pair = {
   symbol: string;
   score: number;
   evidence: string[];
+  /** Its block identifier (oscr:b:…, oscr/blocks.py), when its file has a verified SWHID. */
+  block?: string;
 };
 export type Alignment = { method: string; fulltext_id: string; pairs: Pair[] };
 

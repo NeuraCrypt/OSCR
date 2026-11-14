@@ -51,7 +51,7 @@ INSTANCES: dict[str, str] = {
 NATIVE = {"Accept": "application/vnd.inveniordm.v1+json"}
 #: Zenodo accepts 60 requests/minute from a guest, more with a token.
 INTERVAL_S = 1.1
-MAP_FORMAT = "tracing-map/0.1"
+MAP_FORMAT = "tracing-map/0.2"
 MAP_FILE = "tracing-map.json"
 #: Validation proofs: `orcid` (the author signed in with their ORCID on the website);
 #: `test` (development, sandbox only).
@@ -252,6 +252,18 @@ def map_of(con: sqlite3.Connection, article_id: str) -> dict[str, Any]:
                    "start_line": p["start_line"], "end_line": p["end_line"], "symbol": p["symbol"],
                    "score": p["score"], "evidence": json.loads(p["evidence"] or "[]"), "method": p["method"]}
                   for p in con.execute("SELECT * FROM alignment WHERE article_id = ? ORDER BY pair", (article_id,))]
+    # Format 0.2 (2026-11-13): each match names its block identifier (oscr/blocks.py), when its file
+    # has a verified SWHID. A map validated before keeps the format its author saw (`validation.card`
+    # is what is deposited), so its digest stays the one they validated.
+    from . import blocks
+    try:
+        _, ids = blocks.current_blocks(con, article_id)
+    except sqlite3.Error:
+        ids = {}
+    numbers = [p["pair"] for p in con.execute("SELECT pair FROM alignment WHERE article_id = ? ORDER BY pair", (article_id,))]
+    for item, n in zip(alignments, numbers, strict=True):
+        if (article_id, n) in ids:
+            item["block"] = ids[(article_id, n)]
     return {
         "format": MAP_FORMAT,
         "paper": {"doi": a["doi"], "title": a["title"], "journal": a["journal"], "published": a["published"],
@@ -261,6 +273,20 @@ def map_of(con: sqlite3.Connection, article_id: str) -> dict[str, Any]:
         "alignments": alignments,
         "proposed": {"by": "oscr", "on": time.strftime("%Y-%m-%d")},
     }
+
+
+def format_version(card: dict[str, Any] | str | None) -> str:
+    """The format's version a map was written in ("0.1", "0.2"): the one its author saw, read from
+    the map itself (a map validated before 2026-11-13 says 0.1), the current one otherwise."""
+    if isinstance(card, str):
+        try:
+            card = json.loads(card)
+        except ValueError:
+            card = None
+    if not isinstance(card, dict):
+        return MAP_FORMAT.split("/")[-1]
+    # A map without a "format" is older than the formats' numbers: the first one.
+    return str(card.get("format") or "tracing-map/0.1").split("/")[-1]
 
 
 def map_digest(card: dict[str, Any]) -> str:
@@ -372,7 +398,7 @@ def deposit_payload(card: dict[str, Any], validations: list[sqlite3.Row], *, pla
                       + (f" (release {release.get('tag')})" if release and release.get("tag") else ""))[:250],
             "publication_date": today,
             "version": (str(release["tag"])[:100] if release and release.get("tag")
-                        else f"{MAP_FORMAT.split('/')[1]}-{today}"),
+                        else f"{format_version(card)}-{today}"),
             "creators": [_creator(v["name"], v["orcid"]) for v in validations]
                         + [{"person_or_org": {"type": "organizational", "name": platform}}],
             "description": description,

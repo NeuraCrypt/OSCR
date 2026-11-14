@@ -619,8 +619,9 @@ def _repo_facts(scripts: dict[int, dict[str, Any]]) -> dict[int, dict[str, Any]]
     return out
 
 
-def alignment_lots(con: sqlite3.Connection) -> dict[int, dict[str, Any]]:
-    """Each paper's matches, keyed by paper id and split into lots by paper id."""
+def alignment_lots(con: sqlite3.Connection, blocks: dict[tuple[str, int], str] | None = None) -> dict[int, dict[str, Any]]:
+    """Each paper's matches, keyed by paper id and split into lots by paper id. `blocks`: the block
+    identifier of each match (oscr/blocks.py `sync`), written as its `block` when it has one."""
     lots: dict[int, dict[str, Any]] = defaultdict(dict)
     fulltext = {r["id"]: (r["fulltext_id"] or r["pmcid"]) for r in con.execute(
         "SELECT id, fulltext_id, pmcid FROM article WHERE id IN (SELECT article_id FROM alignment)")}
@@ -633,7 +634,8 @@ def alignment_lots(con: sqlite3.Connection) -> dict[int, dict[str, Any]]:
         entry["pairs"].append({
             "pair": r["pair"], "paragraph": r["paragraph"], "section": r["section"], "repo": r["repo"],
             "path": r["path"], "start_line": r["start_line"], "end_line": r["end_line"],
-            "symbol": r["symbol"], "score": r["score"], "evidence": json.loads(r["evidence"] or "[]")})
+            "symbol": r["symbol"], "score": r["score"], "evidence": json.loads(r["evidence"] or "[]"),
+            **({"block": blocks[(r["article_id"], r["pair"])]} if blocks and (r["article_id"], r["pair"]) in blocks else {})})
     return lots
 
 
@@ -647,7 +649,16 @@ def generate(con: sqlite3.Connection, folder: Path, *, public: bool = False, mir
     d = catalog_data(con)
     d["public"] = public
     scripts = script_lots(con, public)
-    alignments = alignment_lots(con)
+    # The block identifiers (oscr/blocks.py): recorded, then written on each match. A failure leaves
+    # the matches without them, never the night without its publication.
+    from . import blocks
+    try:
+        block_ids = blocks.sync(con)
+    except (sqlite3.Error, blocks.CollisionError) as e:
+        con.rollback()
+        print(f"block identifiers: not recorded tonight ({e})", flush=True)
+        block_ids = {}
+    alignments = alignment_lots(con, block_ids)
     # The digest lots (the scripts' text, keyed by sha256, deduplicated), the per-repository facts
     # the site is built from, and the paper ↔ code matches: each in its own folder of lots.
     for name, lots in (("scripts", _digest_lots(scripts)), ("scriptmeta", _repo_facts(scripts)),
@@ -947,6 +958,9 @@ def _fill_public_db(target: sqlite3.Connection, con: sqlite3.Connection, source:
     held_map = "article_id IN (SELECT article_id FROM temp._pub_held_map)"
     # Development tests (test validations, sandbox DOIs) never leave.
     copy_once("alignment", [held_map])
+    # The block identifiers (oscr/blocks.py): those of papers in scope whose map was not withheld; a
+    # withdrawn block keeps its row on the Mac only (its page on the site says it was withdrawn).
+    copy_once("code_block", [held_map, "article_id IN (SELECT id FROM temp._pub_off)", "status = 'withdrawn'"])
     copy_once("validation", [held_map, "proof != 'orcid'"])
     copy_once("card_doi", [held_map, "instance != 'zenodo'"])
     # Availability statements only under an open license (D1).

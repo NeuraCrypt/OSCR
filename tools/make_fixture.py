@@ -37,7 +37,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from oscr import catalog, db, enrich, find, links  # noqa: E402
+from oscr import blocks, catalog, db, enrich, find, links  # noqa: E402
 from oscr.align import METHOD  # noqa: E402
 
 OUT = ROOT / "tests" / "fixtures" / "public-catalog"
@@ -273,6 +273,8 @@ def build(out: Path = OUT) -> Path:
     tmp = out.parent / (out.name + ".building")
     shutil.rmtree(tmp, ignore_errors=True)
     con = database(tmp / "fixture.db")
+    # The block identifiers given at the fixed time (their "since" day stays the same at every build).
+    blocks.sync(con, now=READ_AT)
     catalog.generate(con, tmp / "export", public=True)
     con.close()
     shutil.rmtree(out, ignore_errors=True)
