@@ -255,15 +255,18 @@ def map_of(con: sqlite3.Connection, article_id: str) -> dict[str, Any]:
     # Format 0.2 (2026-11-13): each match names its block identifier (oscr/blocks.py), when its file
     # has a verified SWHID. A map validated before keeps the format its author saw (`validation.card`
     # is what is deposited), so its digest stays the one they validated.
-    from . import blocks
+    # Read in `code_block`, which the export's `blocks.sync` filled once for every paper (computing the
+    # blocks again here, paper by paper, cost a full night on 2026-11-14).
     try:
-        _, ids = blocks.current_blocks(con, article_id)
-    except sqlite3.Error:
+        ids = {(r["repo"], r["path"], r["start_line"], r["end_line"]): r["id"] for r in con.execute(
+            "SELECT id, repo, path, start_line, end_line FROM code_block WHERE article_id = ? AND status = 'current'",
+            (article_id,))}
+    except sqlite3.OperationalError:
         ids = {}
-    numbers = [p["pair"] for p in con.execute("SELECT pair FROM alignment WHERE article_id = ? ORDER BY pair", (article_id,))]
-    for item, n in zip(alignments, numbers, strict=True):
-        if (article_id, n) in ids:
-            item["block"] = ids[(article_id, n)]
+    for item in alignments:
+        bid = ids.get((item["repo"], item["path"], item["start_line"], item["end_line"]))
+        if bid:
+            item["block"] = bid
     return {
         "format": MAP_FORMAT,
         "paper": {"doi": a["doi"], "title": a["title"], "journal": a["journal"], "published": a["published"],
