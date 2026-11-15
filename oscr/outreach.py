@@ -6,7 +6,9 @@ function per partner, and the Software Heritage step, off unless the owner turns
   `id`, `provider`, `anns`). Each annotation is anchored on the code link itself, as the paper writes
   it, never on the sentence around it (CLAUDE.md: the sentences that decided a link's verdict stay
   private), and only for a paper whose licence lets its statement be shown (catalog.
-  statement_is_publishable: CC BY, CC0, CC BY-SA, CC BY-NC).
+  statement_is_publishable: CC BY, CC0, CC BY-SA, CC BY-NC). Since 2026-11-15, an annotation also
+  tags the code blocks of that repository the registry links to the paper, by their identifier and
+  page (oscr/blocks.py, /b/<id>), BLOCK_TAGS at most per link.
 - `scholix`: the paper-to-software links as Scholix records (JSON), for OpenAIRE's ScholeXplorer.
 - `mixnmatch`: the papers with a page as a Mix'n'match catalogue (id, name, description), for the
   Wikidata identifier the owner proposes. Nothing is written to Wikidata.
@@ -99,9 +101,28 @@ def exact_in(excerpt: str, url: str) -> str:
     return ""
 
 
+#: How many block identifiers an annotation tags at most (the first ones by file and line).
+BLOCK_TAGS = 5
+
+
+def _blocks(con: sqlite3.Connection) -> dict[tuple[str, str], list[sqlite3.Row]]:
+    """The current code blocks (oscr/blocks.py), by paper and repository."""
+    out: dict[tuple[str, str], list[sqlite3.Row]] = {}
+    try:
+        rows = con.execute("SELECT id, article_id, repo, path, start_line, end_line FROM code_block "
+                           "WHERE status = 'current' ORDER BY article_id, repo, path, start_line").fetchall()
+    except sqlite3.OperationalError:
+        return out
+    for r in rows:
+        out.setdefault((r["article_id"], r["repo"]), []).append(r)
+    return out
+
+
 def scilite(con: sqlite3.Connection, origin: str, name: str) -> list[dict]:
-    """Europe PMC Annotations: per article with a PMCID and an open licence, its verified code links."""
+    """Europe PMC Annotations: per article with a PMCID and an open licence, its verified code links,
+    each tagged with the page of the paper and those of its code blocks."""
     links = _code_links(con, verified=True)
+    blocks = _blocks(con)
     out = []
     for a in _pages(con):
         _, _, pmcid = clean_ids(a["doi"], a["pmid"], a["pmcid"])
@@ -111,9 +132,11 @@ def scilite(con: sqlite3.Connection, origin: str, name: str) -> list[dict]:
         for l in links.get(a["id"], []):
             exact = exact_in(l["excerpt"] or "", l["url"])
             if exact and "@" not in exact:
-                anns.append({"exact": exact, "section": _text(l["section"])[:80],
-                             "tags": [{"name": f"Code verified on {name}", "uri": _page(origin, a["id"])}],
-                             "type": "Code"})
+                tags = [{"name": f"Code verified on {name}", "uri": _page(origin, a["id"])}]
+                tags += [{"name": f"Code block {b['id']}: {_text(b['path'])[:120]}, lines {b['start_line']} to {b['end_line']}",
+                          "uri": f"{origin}/b/{b['id']}"}
+                         for b in blocks.get((a["id"], l["repo"]), [])[:BLOCK_TAGS] if "@" not in b["path"]]
+                anns.append({"exact": exact, "section": _text(l["section"])[:80], "tags": tags, "type": "Code"})
         if anns:
             out.append({"src": "PMC", "id": pmcid, "provider": name, "anns": anns})
     return out

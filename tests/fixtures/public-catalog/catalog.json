@@ -1,5 +1,5 @@
 {
- "generated_at": "2026-11-14T00:11:23Z",
+ "generated_at": "2026-11-15T22:06:49Z",
  "scope": {
   "sources": "local corpus, DataCite",
   "from": "2026-09-21",
@@ -29,6 +29,7 @@
   "scripts_read": 3,
   "alignments": 2,
   "aligned_papers": 1,
+  "blocks": 2,
   "statuses": {
    "code_verified": 2,
    "data_only": 1,

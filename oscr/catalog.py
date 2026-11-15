@@ -294,6 +294,14 @@ def statement_is_publishable(article_license: str) -> bool:
     return any(lic.startswith(o) for o in OPEN_ARTICLE_LICENSES)
 
 
+def _blocks_count(con: sqlite3.Connection) -> int:
+    try:
+        return int(con.execute(f"SELECT COUNT(*) FROM code_block WHERE status = 'current' AND article_id IN "
+                               f"({IN_SCOPE_IDS})").fetchone()[0])
+    except sqlite3.OperationalError:
+        return 0
+
+
 def figures(con: sqlite3.Connection) -> dict[str, Any]:
     q = lambda sql, *p: con.execute(sql, p).fetchone()[0]  # noqa: E731
     statuses = {r["status"]: r["n"] for r in con.execute(
@@ -325,6 +333,8 @@ def figures(con: sqlite3.Connection) -> dict[str, Any]:
                           f"AND repo IN ({PUBLIC_REPOS})"),
         "alignments": q(f"SELECT COUNT(*) FROM alignment WHERE article_id IN ({IN_SCOPE_IDS})"),
         "aligned_papers": q(f"SELECT COUNT(DISTINCT article_id) FROM alignment WHERE article_id IN ({IN_SCOPE_IDS})"),
+        # The block identifiers in use (oscr/blocks.py), those of papers in scope.
+        "blocks": _blocks_count(con),
         "statuses": statuses,
     }
 
@@ -506,14 +516,28 @@ def mask_emails(text: str) -> str:
 def content_swhid(text: str | None, sha256: str) -> str:
     """The Software Heritage identifier (SWHID) of a file's content, `swh:1:cnt:<sha1_git>`: the
     SHA-1 of "blob <size>\\0" followed by its bytes, the same hash as `git hash-object`. Computed from
-    the text OSCR keeps (before any masking), only when that text is the file whose SHA-256 the
-    registry verified; otherwise "" (a truncated or re-encoded text would name another content)."""
+    the text OSCR keeps (before any masking), only when the bytes it gives back are the file whose
+    SHA-256 the registry verified; otherwise "" (a truncated text, or a notebook kept as its cells,
+    would name another content). The text was decoded as UTF-8 with or without its byte order mark,
+    else Windows-1252, else Latin-1 (oscr/contents.py `decode`): each is tried back, and only the
+    bytes whose SHA-256 is the verified one are named."""
     if not text:
         return ""
-    data = text.encode("utf-8")
-    if hashlib.sha256(data).hexdigest() != sha256:
-        return ""
-    return "swh:1:cnt:" + hashlib.sha1(b"blob %d\0" % len(data) + data).hexdigest()
+    for data in _original_bytes(text):
+        if hashlib.sha256(data).hexdigest() == sha256:
+            return "swh:1:cnt:" + hashlib.sha1(b"blob %d\0" % len(data) + data).hexdigest()
+    return ""
+
+
+def _original_bytes(text: str):
+    """The bytes `contents.decode` may have read `text` from, most likely first."""
+    yield text.encode("utf-8")
+    yield b"\xef\xbb\xbf" + text.encode("utf-8")
+    for encoding in ("cp1252", "latin-1"):
+        try:
+            yield text.encode(encoding)
+        except UnicodeEncodeError:
+            continue
 
 
 def script_lots(con: sqlite3.Connection, public: bool) -> dict[int, dict[str, Any]]:
