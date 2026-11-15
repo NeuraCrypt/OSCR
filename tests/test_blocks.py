@@ -155,3 +155,15 @@ def test_describe(con):
     out = blocks.describe(con, pairs[(P1, 1)].lower())
     assert out.startswith(pairs[(P1, 1)] + " (current") and "SWHID: swh:1:cnt:" in out
     assert "not a block identifier" in blocks.describe(con, "oscr:b:nope")
+
+
+def test_the_swhid_is_the_original_bytes_when_the_text_was_decoded_from_another_encoding():
+    for data, text in ((b"% r\xe9sum\xe9\n", "% résumé\n"),                      # Windows-1252 / Latin-1
+                       ("% résumé\n".encode(), "% résumé\n"),  # UTF-8
+                       (b"\xef\xbb\xbfx = 1\n", "x = 1\n"),                       # UTF-8 with its BOM
+                       (b"\x81 x\n", "\x81 x\n")):                                # Latin-1 only
+        digest = hashlib.sha256(data).hexdigest()
+        want = "swh:1:cnt:" + hashlib.sha1(b"blob %d\0" % len(data) + data).hexdigest()
+        assert catalog.content_swhid(text, digest) == want
+    # A text that no encoding gives back (a notebook kept as its cells, a cut text): none.
+    assert catalog.content_swhid("# %%\nx = 1\n", hashlib.sha256(b'{"cells": []}').hexdigest()) == ""

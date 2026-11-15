@@ -143,3 +143,20 @@ def test_software_heritage_gets_each_repository_s_git_origin():
     assert outreach.swh_origin("github.com/lab/tool", "https://github.com/lab/tool.git") == "https://github.com/lab/tool"
     assert outreach.swh_origin("huggingface.co/x/y", "https://huggingface.co/x/y") == ""
     assert outreach.swh_origin("github.com/lab", "https://github.com/lab") == ""
+
+
+def test_an_annotation_tags_the_code_blocks_of_its_repository(con, tmp_path):
+    a1 = paper(con, 1, pmcid="PMC1")
+    code(con, a1, "github.com/lab/tool", "https://github.com/Lab/Tool", "code at https://github.com/Lab/Tool")
+    for i, (bid, status, path) in enumerate([("oscr:b:0000000000001-X", "current", "a.py"),
+                                              ("oscr:b:0000000000002-X", "superseded", "b.py"),
+                                              ("oscr:b:0000000000003-X", "current", "mail@lab.org.py")]):
+        con.execute("INSERT INTO code_block (id, article_id, doi, repo, path, swhid, start_line, end_line, method, status, "
+                    "first_seen, last_seen) VALUES (?, ?, '10.5555/test.1', 'github.com/lab/tool', ?, 'swh:1:cnt:x', ?, ?, "
+                    "'lexical-v1', ?, 1, 1)", (bid, a1, path, i + 1, i + 5, status))
+    outreach.write(con, tmp_path, CFG)
+    one = json.loads(gzip.decompress((tmp_path / "scilite-annotations.jsonl.gz").read_bytes()).decode().splitlines()[0])
+    tags = one["anns"][0]["tags"]
+    assert tags[1] == {"name": "Code block oscr:b:0000000000001-X: a.py, lines 1 to 5",
+                       "uri": "https://openscicode.org/b/oscr:b:0000000000001-X"}
+    assert len(tags) == 2           # not the superseded block, not a path holding an address

@@ -275,6 +275,7 @@ const toc = [
         <tr><th scope="row">Scripts read at the source</th><td class="n">{number(f.scripts_read)}</td></tr>
         <tr><th scope="row">Papers with Code ↔ Paper matches</th><td class="n">{number(matched)}</td></tr>
         <tr><th scope="row">Matches between a paragraph and lines of code</th><td class="n">{number(f.alignments)}</td></tr>
+        {typeof f.blocks === "number" && f.blocks > 0 && <tr><th scope="row"><a href="/help/reader/#block-ids">Code blocks with an identifier</a></th><td class="n">{number(f.blocks)}</td></tr>}
         <tr><th scope="row">Authors with an ORCID iD, journals, institutions</th><td class="n">{number(authors.length)}, {number(journals.length)}, {number(institutions.length)}</td></tr>
         <tr><th scope="row">Tools found in the code, datasets cited</th><td class="n">{number(tools.length)}, {number(datasets.length)}</td></tr>
         {days.length > 0 && <tr><th scope="row">Publication dates covered</th><td class="n">{dateInWords(days[0])} to {dateInWords(days.at(-1)!)}</td></tr>}
