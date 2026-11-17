@@ -52,11 +52,20 @@ export const archiveUrl = (qualified: string) => (qualified ? SWH_ARCHIVE + qual
 /** The lines in words: "lines 10 to 25", "line 7", "" for the whole file. */
 const linesWords = (r: Range | null) => (!r ? "" : r.end > r.start ? `lines ${r.start} to ${r.end}` : `line ${r.start}`);
 
-/** A citation to copy: what, where, at which version, its SWHID and the registry's link to it. */
-export function citation(c: SwhidContext & { repoName: string; link: string }): string {
+/** A citation to copy: the block identifier first when the lines are a block of the paper's (its page
+ *  on the registry, src/lib/block.ts), then what, where, at which version, the paper, its SWHID and the
+ *  registry's link to these lines. `block`: `oscr:b:…`, `blockUrl`: its page, `paper`: the paper's DOI
+ *  address. */
+export function citation(c: SwhidContext & { repoName: string; link: string; block?: string; blockUrl?: string; paper?: string }): string {
   const id = qualifiedSwhid(c);
   if (!id) return "";
   const what = [c.path, linesWords(c.range)].filter(Boolean).join(", ");
   const version = COMMIT.test(c.commit) ? `, commit ${c.commit}` : "";
-  return [`${what}, in ${c.repoName} (${c.origin})${version}.`, `SWHID: ${id}`, c.link].join("\n");
+  return [
+    ...(c.block ? [`Code block ${c.block}${c.blockUrl ? ` (${c.blockUrl})` : ""}`] : []),
+    `${what}, in ${c.repoName} (${c.origin})${version}.`,
+    ...(c.paper ? [`Paper: ${c.paper}`] : []),
+    `SWHID: ${id}`,
+    c.link,
+  ].join("\n");
 }

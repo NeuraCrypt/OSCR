@@ -1,0 +1,123 @@
+---
+// Help: block identifiers (oscr/blocks.py, src/lib/block.ts, worker/block.ts, docs/PLAN_BLOCK_IDS.md). Every
+// statement here is what the code does: how an identifier is made, where it shows, how it is cited and read.
+import Info from "../../components/Info.astro";
+import { SITE_NAME } from "../../config";
+import { API_BASE } from "../../lib/apispec";
+
+const EXAMPLE = "oscr:b:ZJPAX6KPXPETB-7";
+const toc = [
+  { id: "what", text: "What a block identifier is" },
+  { id: "made", text: "How it is made" },
+  { id: "where", text: "Where you find it" },
+  { id: "cite", text: "Citing a block" },
+  { id: "page", text: "A block's page" },
+  { id: "life", text: "Current, superseded, withdrawn" },
+  { id: "api", text: "For programs" },
+  { id: "limits", text: "What it is not" },
+];
+---
+<Info
+  title="Block identifiers"
+  description={`The permanent identifier ${SITE_NAME} gives to each block of code linked to a paper: what it names, how it is made, and how to cite and read it.`}
+  group="help"
+  path="/help/blocks/"
+  parents={[{ text: "Help", href: "/help/" }]}
+  toc={toc}
+>
+  <p class="lead" slot="lead">
+    Each match between a paragraph of a paper and lines of its authors' code has a block identifier, such as{" "}
+    <code>{EXAMPLE}</code>. It names those lines, in that file, linked to that paper, and it is never reused nor deleted:
+    you can cite it, and its address keeps answering.
+  </p>
+
+  <h2 id="what">What a block identifier is</h2>
+  <p>
+    A <strong>block</strong> is a run of lines of one file of the authors' code that the registry links to a paper: the
+    lines that do what a paragraph of the paper describes. Its <strong>identifier</strong> is <code>oscr:b:</code>, then 13
+    letters and digits, a dash and one check character. Its page is <a href={`/b/${EXAMPLE}`}><code>{`/b/${EXAMPLE}`}</code></a>.
+  </p>
+
+  <h2 id="made">How it is made</h2>
+  <ul>
+    <li>
+      It is computed from three facts: the paper's DOI, the file's <a href="https://www.swhid.org/">SWHID</a> (the Software
+      Heritage identifier of the file as its authors published it, the same fingerprint as <code>git hash-object</code>),
+      and the lines. The same block always gets the same identifier, and anyone can compute it again.
+    </li>
+    <li>
+      The SWHID is computed from the exact bytes whose SHA-256 {SITE_NAME} verified, before any email address is hidden for
+      display. A file whose text here is not exactly those bytes (cut short, or a notebook kept as its cells) gets no
+      SWHID, and its matches get no block identifier: only what was verified is named.
+    </li>
+    <li>
+      The 13 characters use Crockford's base32, without I, L, O or U, so it reads aloud and copies without confusion. The
+      last character is a check (ISO 7064 MOD 37,36, the scheme ORCID uses): a mistyped identifier is reported as such,
+      never sent to another block. Lower case, and an O written for a zero, are read correctly.
+    </li>
+  </ul>
+
+  <h2 id="where">Where you find it</h2>
+  <ul>
+    <li>On a paper's page, in the list of matches of the Code ↔ Paper reader: each match shows its block identifier.</li>
+    <li>On a paper's page built on request, in the Code section, under "Code blocks with an identifier".</li>
+    <li>In the citation the reader's Cite button copies, when the lines you selected are a block (see below).</li>
+    <li>In the API and the bulk files: each match of <code>alignments.jsonl</code>, and each paper's record.</li>
+  </ul>
+
+  <h2 id="cite">Citing a block</h2>
+  <p>
+    In the reader, select a match (or lines inside it) and press <strong>Cite</strong>: the button reads "Cite block
+    oscr:b:…", and it copies the block's identifier and page first, then the file and lines, the paper's DOI, the SWHID with
+    its context and the link to these lines on the paper's page. For example:
+  </p>
+  <pre><code>{`Code block ${EXAMPLE} (https://openscicode.org/b/${EXAMPLE})
+fig_mtnn/mtnn.py, lines 316 to 451, in int-brain-lab/paper-reproducible-ephys (https://github.com/int-brain-lab/paper-reproducible-ephys), commit 2397f2c….
+Paper: https://doi.org/10.7554/elife.100840
+SWHID: swh:1:cnt:e5e096d4…;origin=…;anchor=swh:1:rev:…;path=/fig_mtnn/mtnn.py;lines=316-451
+https://openscicode.org/paper/doi_10.7554_elife.100840/?path=fig_mtnn/mtnn.py#L316-L451`}</code></pre>
+  <p>Lines that are no block are cited by their SWHID alone (<a href="/help/reader/#cite">citing a piece of code</a>).</p>
+
+  <h2 id="page">A block's page</h2>
+  <p>
+    <code>/b/&lt;identifier&gt;</code> says what the block names: the paper and its page, the repository, the file, the
+    lines and the function, the commit read, the SWHID, the paragraphs of the paper it was matched to, who linked it, and
+    the day it was given. It links to these lines beside the paper. The same facts, for a program, are at{" "}
+    <code>/b/&lt;identifier&gt;.json</code>.
+  </p>
+
+  <h2 id="life">Current, superseded, withdrawn</h2>
+  <ul>
+    <li><strong>Current</strong>: the registry links these lines to the paper today.</li>
+    <li>
+      <strong>Superseded</strong>: the code or the match changed, and these exact lines are no longer linked. The identifier
+      stays and names what it named; its page links to the block of the same file that replaced it, if any.
+    </li>
+    <li>
+      <strong>Withdrawn</strong>: the paper left the registry, or a removal request withheld its code or its map. The page
+      stays, and says so; it no longer shows the file, the lines or the code.
+    </li>
+  </ul>
+
+  <h2 id="api">For programs</h2>
+  <ul>
+    <li><code>GET /b/&lt;identifier&gt;.json</code> and <code>{`GET ${API_BASE}/blocks/<identifier>`}</code>: one block (CORS open).</li>
+    <li><code>{`GET ${API_BASE}/paper/<doi>`}</code>: a paper's record, its blocks in <code>blocks</code>.</li>
+    <li>The bulk <code>alignments.jsonl</code>: each match with its <code>block</code>. See <a href="/help/api/#e-block">the API guide</a>.</li>
+  </ul>
+
+  <h2 id="limits">What it is not</h2>
+  <ul>
+    <li>
+      It is not a DOI. A tracing map validated by an author gets a DOI on Zenodo, and its file lists the identifiers of its
+      blocks (<a href="/help/maps/">tracing maps</a>).
+    </li>
+    <li>
+      Most blocks are linked by the registry's matching program, which can be wrong: the page says who linked each one. You
+      can report a wrong match from the reader ("Report a mismatch").
+    </li>
+    <li>
+      The code stays its authors', under its own licence, at its source: the identifier names it and holds no copy.
+    </li>
+  </ul>
+</Info>

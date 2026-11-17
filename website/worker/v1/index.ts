@@ -17,6 +17,7 @@ import type { Context, Env } from "../env.ts";
 import { asset, type Assets } from "../pages.ts";
 import { BadRequest, classify, readQuery, runSearch, toJson } from "../search.ts";
 import { keyOf, lookupShard, shardOf, SHARDS } from "../../src/lib/shards.ts";
+import { blockJson, cleanEntry, normalize as normalizeBlock, PREFIX as BLOCK_PREFIX } from "../../src/lib/block.ts";
 
 /** How long a browser, and the Cache on a custom domain, keep an answer (the records change once a
  *  night). The same window as the search and the pages. */
@@ -129,6 +130,10 @@ export async function handleV1(request: Request, env: Env, _ctx: Context): Promi
     return entity(assets, url, entityMatch[1] as ApiEntityType, entityMatch[2], self, origin, head);
   }
 
+  // A code block: /blocks/<id> (oscr/blocks.py), read in the DOI lookup's shard of its SHA-1.
+  const blockMatch = rest.match(/^\/blocks\/(.+)$/);
+  if (blockMatch) return block(assets, url, decodeURIComponentSafe(blockMatch[1]), self, origin, head);
+
   // A repository: /repository/<host>/<owner>/<name>.
   const repoMatch = rest.match(/^\/repository\/(.+)$/);
   if (repoMatch) return repository(assets, url, decodeURIComponentSafe(repoMatch[1]), self, origin, head);
@@ -204,6 +209,16 @@ async function paper(assets: Assets, url: URL, raw: string, self: string, origin
   const record = papers?.[slug];
   if (!record) return fail(404, "not_found", "The registry has no record of this DOI.", origin, head);
   return jsonResponse(envelope(self, { paper: record }), 200, true, head);
+}
+
+/** GET /api/v1/blocks/{id} : one code block (the facts of /b/{id}.json). */
+async function block(assets: Assets, url: URL, raw: string, self: string, origin: string, head: boolean): Promise<Response> {
+  const id = normalizeBlock(raw.toLowerCase().startsWith(BLOCK_PREFIX) ? raw : `${BLOCK_PREFIX}${raw}`);
+  if (!id) return fail(400, "bad_block_id", "Not a block identifier: its form or its check character is wrong. Example: oscr:b:ZHK95W68S9M1K-N.", origin, head);
+  const shard = await readJson<Record<string, unknown>>(assets, url, `/lookup/${await lookupShard(id)}.json`);
+  const entry = shard && Object.hasOwn(shard, id) ? cleanEntry(shard[id]) : null;
+  if (!entry) return fail(404, "not_found", "The registry has given no block this identifier.", origin, head);
+  return jsonResponse(envelope(self, { block: blockJson(id, entry, origin) }), 200, true, head);
 }
 
 /** GET /api/v1/{type}/{id} : one entity, read from its site record shard. */

@@ -49,10 +49,11 @@ All under `/api/v1`. The routes and the OpenAPI document share one source,
 | `GET /{authors\|journals\|institutions\|tools\|datasets}` | a list, paginated + the bulk file | `/data/entities/<type>.json` |
 | `GET /{type}/{id}` | one entity by key | `/records/<type>/NN.json` (the site's own shard) |
 | `GET /repository/{host}/{owner}/{name}` | one repository | `/data/repos/NN.json` |
+| `GET /blocks/{id}` | one code block by its permanent identifier (`oscr:b:…`), with its citation | `/lookup/NN.json` (the shard of the identifier's SHA-1) |
 
 **Block identifiers** (2026-11-13, `oscr/blocks.py`, `worker/block.ts`, docs/PLAN_BLOCK_IDS.md), outside
 `/api/v1` because they are the identifiers' own addresses: `GET /b/{id}` (a page) and `GET /b/{id}.json`
-(the block's facts: paper DOI, repository, commit, path, lines, SWHID and its qualified form, status
+(the block's facts, the same as `/api/v1/blocks/{id}`: paper DOI, repository, commit, path, lines, SWHID and its qualified form, status
 `current` / `superseded` / `withdrawn`, the block that replaced it). CORS open, cached 10 minutes, read in
 the DOI lookup's shard of the identifier's SHA-1 (`/lookup/NN.json`): no file of its own. Another
 writing of an identifier (lower case, an O for a zero) is a 301 to its one form; a wrong check character
