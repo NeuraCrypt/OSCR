@@ -87,6 +87,9 @@ export type Row = {
   /** Files readable in the reader; matches computed; the map's DOI once an author validated it. */
   files: number;
   pairs: number;
+  /** Its code blocks with an identifier (oscr:b:…, /b/<id>), some of them, and how many more. */
+  blocks?: { id: string; path: string; start: number; end: number; paragraphs: number[] }[];
+  blocks_more?: number;
   map: string;
   /** Datasets cited (or data links, for an export older than Phase 2). */
   data: number;
@@ -555,6 +558,28 @@ function contribute(p: PaperRecord, origin = "", name = ""): string {
 }
 
 /** The page of a paper past STATIC_PAPERS, from its record. It says what it leaves out. */
+/** The paper's code blocks with an identifier: each one's identifier, linked to its page, and what it
+ *  names. A block identifier (oscr/blocks.py) is citable for good; /help/blocks/ says what it is. */
+export function blocksHtml(p: Pick<PaperRecord, "blocks" | "blocks_more">): string {
+  const list = (p.blocks ?? []).filter((b) => /^oscr:b:[0-9A-HJKMNP-TV-Z]{13}-[0-9A-Z]$/.test(b.id));
+  if (!list.length) return "";
+  const more = p.blocks_more ?? 0;
+  return (
+    `<h3 id="blocks">Code blocks with an identifier</h3>` +
+    `<p>Each block below is lines of the authors' code linked to a paragraph of this paper, with an identifier ` +
+    `given for good: it is never reused nor deleted, and its page says what it names and how to cite it. ` +
+    `<a href="/help/blocks/">What a block identifier is</a>.</p>` +
+    `<ul>${list
+      .map(
+        (b) =>
+          `<li><a href="/b/${esc(b.id)}"><code>${esc(b.id)}</code></a>: <span class="code">${wrap(b.path)}</span>, ` +
+          `lines ${b.start} to ${b.end}${b.paragraphs.length ? ` (${b.paragraphs.length === 1 ? "paragraph" : "paragraphs"} ${b.paragraphs.join(", ")})` : ""}</li>`,
+      )
+      .join("")}</ul>` +
+    (more > 0 ? `<p class="muted">And ${esc(number(more))} more: every block of this paper is in the API (/api/v1/paper/).</p>` : "")
+  );
+}
+
 export function paperView(p: PaperRecord, origin = "", name = ""): View {
   const hasCode = p.code.length > 0;
   const notices = p.notices
@@ -619,6 +644,7 @@ export function paperView(p: PaperRecord, origin = "", name = ""): View {
     code,
     p.tools.length ? line("Tools found in the code", links(p.tools)) : "",
     p.map ? line("Tracing map", `validated by an author, ${a("its DOI", doiUrl(p.map))}`) : "",
+    blocksHtml(p),
     `</section>`,
   ].join("");
   // A paper with code opens on its code, as the static pages do (their reader); the others on

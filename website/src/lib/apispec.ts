@@ -209,6 +209,22 @@ export const ENDPOINTS: readonly ApiEndpoint[] = [
     ],
     example: "/repository/github.com/oscr-fixture/eeg-analysis",
   },
+  {
+    id: "block",
+    method: "GET",
+    path: "/blocks/{id}",
+    summary: "One code block, by its identifier",
+    description:
+      "A block of the authors' code linked to a paper, by its permanent identifier (oscr:b: then 13 characters, a dash " +
+      "and a check character): the paper's DOI, the repository, the commit read, the file, the lines, the paragraphs " +
+      "of the paper it was matched to, its Software Heritage identifier (SWHID, of the file as its authors published " +
+      "it) with its context, who linked it, and its status (current, superseded with the block that replaced it, or " +
+      "withdrawn). The same facts as /b/{id}.json. A mistyped identifier (its check character is wrong) is a 400.",
+    params: [
+      { name: "id", in: "path", required: true, type: "string", description: "The block identifier, oscr:b:… (lower case is read too).", example: "oscr:b:ZHK95W68S9M1K-N" },
+    ],
+    example: "/blocks/oscr:b:ZHK95W68S9M1K-N",
+  },
 ] as const;
 
 /** The entity types the list and entity endpoints cover (singular keys). */

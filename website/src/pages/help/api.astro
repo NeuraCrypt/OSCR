@@ -134,6 +134,15 @@ curl ${B}/tool/matplotlib`}</pre>
   </p>
   <pre>{`curl ${B}/repository/github.com/oscr-fixture/eeg-analysis`}</pre>
 
+  <h3 id="e-block"><code>GET {API_BASE}/blocks/&#123;id&#125;</code></h3>
+  <p>
+    A block of code linked to a paper, by its permanent identifier (<a href="/help/blocks/">block identifiers</a>): the
+    paper's DOI, the repository, the commit read, the file, the lines, the paragraphs it was matched to, its Software
+    Heritage identifier with its context, who linked it and its status. A paper's record (<code>/paper/&#123;doi&#125;</code>)
+    lists its blocks in <code>blocks</code>, and the same facts are at <code>/b/&#123;id&#125;.json</code>.
+  </p>
+  <pre>{`curl ${B}/blocks/oscr:b:ZHK95W68S9M1K-N`}</pre>
+
   <h2 id="doi">Giving a DOI</h2>
   <p>
     A DOI contains a slash (<code>10.5555/abcd</code>), so in the path it must be URL-encoded (the slash becomes{" "}

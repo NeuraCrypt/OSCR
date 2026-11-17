@@ -24,7 +24,7 @@ function notFound(json: boolean, head: boolean, why: string, shell: string | nul
       headers: { "Content-Type": "application/json; charset=utf-8", "Access-Control-Allow-Origin": "*", "Cache-Control": CACHE },
     });
   }
-  const view = { title: "Block not found", description: why, crumb: "Block", html: `<h1>Block not found</h1><p>${why} <a href="/help/reader/#block-ids">What a block identifier is</a>.</p>` };
+  const view = { title: "Block not found", description: why, crumb: "Block", html: `<h1>Block not found</h1><p>${why} <a href="/help/blocks/">What a block identifier is</a>.</p>` };
   const page = shell ? fillShell(shell, view) : null;
   return new Response(head ? null : page ?? why, {
     status: 404,
@@ -65,7 +65,7 @@ export async function handleBlock(request: Request, assets: Assets | undefined):
   }
   const name = shell?.match(/<meta name="application-name" content="([^"]*)"/)?.[1] ?? "";
   // The 404 page is kept out of search engines; a block's page is not.
-  const filled = shell ? fillShell(shell, blockView(id, entry, name), canonicalHref(site, blockPath(id)).replace(/\/$/, "")) : null;
+  const filled = shell ? fillShell(shell, blockView(id, entry, name, site.replace(/\/$/, "")), canonicalHref(site, blockPath(id)).replace(/\/$/, "")) : null;
   const page = filled?.replace(/<meta name="robots" content="noindex"\s*\/?>/g, "") ?? null;
   if (page === null) return new Response("This page could not be rendered.", { status: 500 });
   return new Response(head ? null : page, {

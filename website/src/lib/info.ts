@@ -35,6 +35,7 @@ export const HELP: InfoLink[] = [
   { href: "/help/paper/", text: "Reading a paper's page", summary: "Its sections, the statuses and verdicts in words, the levels of evidence, and what an older paper's page leaves out." },
   { href: "/help/reader/", text: "The Code ↔ Paper reader", summary: "The paper and its authors' code side by side: matches, colours, weak matches, hiding the paper, the file tools." },
   { href: "/help/maps/", text: "Tracing maps", summary: "What a map holds, how it is proposed, and what changes once an author validates it." },
+  { href: "/help/blocks/", text: "Block identifiers", summary: "The permanent identifier of each block of code linked to a paper: what it names, how it is made, how to cite and read it." },
   { href: "/help/accounts/", text: "Signing in and your account", summary: "ORCID, GitHub or Google, no email address; roles; sessions; the account page and its notifications." },
   { href: "/help/submit/", text: "Submitting a paper", summary: "A DOI and its code links: the checks, the draft, and publication." },
   { href: "/help/correct/", text: "Correcting a record's links", summary: "Adding, removing or re-labelling a paper's code and data links, as a verified author or a maintainer." },

@@ -34,6 +34,8 @@ const { repos, files, texts } = readerFiles(
   a.code.map((r) => ({ repo: r.repo, url: r.url, name: shortName(r), license: r.license, state: r.state, lot: lot2(r.lot), entry: lotEntry(r) })),
 );
 const pairs = mapPairs(alignment?.pairs ?? [], repos, files);
+// The distinct block identifiers of its matches (src/lib/blockid.ts).
+const blocks = new Set(pairs.map((p) => p.block).filter(Boolean)).size;
 const initial = initialFile(files, repos);
 const f = initial >= 0 ? files[initial] : undefined;
 const r = f ? repos[f.repo] : undefined;
@@ -106,6 +108,13 @@ const json = JSON.stringify(data).replace(/</g, "\\u003c");
       <button type="button" id="toggle-paper" aria-controls="paper-pane" aria-expanded="true">Hide the paper</button>
     </div>
   </div>
+  {blocks > 0 && (
+    <p class="muted" id="block-ids-note">
+      {blocks === 1 ? "One block of code here has" : `${blocks} blocks of code here have`} a permanent identifier
+      (<code>oscr:b:…</code>), listed with the matches below: citable for good, with a page of its own. Select a match
+      and press Cite to copy it. <a href="/help/blocks/">What a block identifier is</a>.
+    </p>
+  )}
   {pairs.length > 0 && (
     <details id="legend" class="legend">
       <summary>
@@ -126,7 +135,7 @@ const json = JSON.stringify(data).replace(/</g, "\\u003c");
             {typeof p.score === "number" && <span class="muted"> · score {p.score.toFixed(2)}</span>}
             {p.evidence.length > 0 && <span class="muted"> · {p.evidence.join(", ")}</span>}
             {p.file < 0 && <> · <span class="warning">this file is not among the harvested files</span></>}
-            {p.block && <> · <a href={blockPath(p.block)} title="This block's identifier, citable for good: its page">{p.block}</a></>}
+            {p.block && <> · block <a href={blockPath(p.block)} title="This block's identifier, citable for good: its page"><code>{p.block}</code></a></>}
             {" · "}<a class="report-link" href={reportOf(p)}>Report a mismatch</a>
           </li>
         ))}

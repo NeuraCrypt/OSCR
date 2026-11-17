@@ -16,6 +16,7 @@ import { decorate, lineClass, pairClass, splitLines } from "../lib/lines";
 import { sourceOf, sourceWhy, whyNotShown, type ReaderData, type ReaderPair } from "../lib/reader";
 import { removalUrl } from "../lib/removal";
 import { noCopy, shownFrom, type Plan as SourcePlan } from "../lib/source";
+import { blockPath } from "../lib/blockid";
 import { archiveUrl, ARCHIVE_WHY, citation, qualifiedSwhid } from "../lib/swhid";
 import { highlight } from "./highlighter";
 import { link, pairLink } from "./reader-paper";
@@ -361,7 +362,9 @@ export function codeView(data: ReaderData, hooks: { url(file: number, range: Ran
     if (selection) {
       for (let n = selection.start; n <= selection.end; n++) ol.children[n - 1].classList.add("is-selected");
       linkBtn.textContent = selection.end > selection.start ? `Link to lines ${selection.start} to ${selection.end}` : `Link to line ${selection.start}`;
-      citeBtn.textContent = selection.end > selection.start ? `Cite lines ${selection.start} to ${selection.end}` : `Cite line ${selection.start}`;
+      citeBtn.textContent = blockOf(current, selection)
+        ? `Cite block ${blockOf(current, selection)!.block}`
+        : selection.end > selection.start ? `Cite lines ${selection.start} to ${selection.end}` : `Cite line ${selection.start}`;
       if (scroll) scrollInto(viewer, ol.children[selection.start - 1] as HTMLElement, "center");
     } else {
       linkBtn.textContent = "Link";
@@ -400,15 +403,24 @@ export function codeView(data: ReaderData, hooks: { url(file: number, range: Ran
     history.replaceState(null, "", url);
     flash(linkBtn, (await copyText(new URL(url, location.href).href)) ? "Link copied" : "The link is in the address bar");
   });
+  /** The match of file `i` whose block holds the lines selected (the same lines first), if any. */
+  function blockOf(i: number, r: Range | null): ReaderPair | undefined {
+    if (!r) return undefined;
+    const mine = data.pairs.filter((p) => p.file === i && p.block && p.start <= r.start && r.end <= p.end);
+    return mine.find((p) => p.start === r.start && p.end === r.end) ?? mine.sort((x, y) => x.end - x.start - (y.end - y.start))[0];
+  }
   citeBtn.addEventListener("click", async () => {
     const f = data.files[current];
     if (!f) return;
     const r = data.repos[f.repo];
     const url = hooks.url(current, selection);
     history.replaceState(null, "", url);
+    // The block these lines are (or lie in), when the registry gave it an identifier: cited first.
+    const block = blockOf(current, selection);
     const text = citation({
       swhid: f.swhid, origin: r.url, commit: r.commit, path: f.path, range: selection, repoName: r.name,
-      link: new URL(url, location.href).href,
+      link: new URL(url, location.href).href, paper: data.doiUrl,
+      ...(block ? { block: block.block, blockUrl: new URL(blockPath(block.block), location.href).href } : {}),
     });
     if (!text) return;
     flash(citeBtn, (await copyText(text)) ? "Citation copied" : "Copy failed");

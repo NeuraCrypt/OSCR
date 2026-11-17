@@ -125,3 +125,50 @@ describe("the Worker's /b/ (worker/block.ts)", () => {
     assert.equal(await handleBlock(new Request("https://openscicode.org/badge/x"), site()), undefined);
   });
 });
+
+describe("block identifiers made explicit (cite, pages, API)", () => {
+  const raw = JSON.parse(readFileSync(`${FIXTURE}/1c.json`, "utf8"))[ID];
+
+  it("cite the block first, then the code, the paper and the SWHID", async () => {
+    const { citation } = await import("../src/lib/swhid.ts");
+    const text = citation({
+      swhid: raw.swhid, origin: "https://github.com/oscr-fixture/eeg-analysis", commit: raw.commit, path: "analysis.py",
+      range: { start: 6, end: 10 }, repoName: "oscr-fixture/eeg-analysis", link: "https://openscicode.org/paper/x/#L6-L10",
+      block: ID, blockUrl: `https://openscicode.org/b/${ID}`, paper: "https://doi.org/10.5555/oscr.fixture.1",
+    });
+    const lines = text.split("\n");
+    assert.equal(lines[0], `Code block ${ID} (https://openscicode.org/b/${ID})`);
+    assert.equal(lines[2], "Paper: https://doi.org/10.5555/oscr.fixture.1");
+    assert.ok(lines[3].startsWith("SWHID: swh:1:cnt:"));
+    const e = cleanEntry(raw)!;
+    const { blockCitation } = await import("../src/lib/block.ts");
+    assert.ok(blockCitation(ID, e, "https://openscicode.org").startsWith(`Code block ${ID} (https://openscicode.org/b/${ID})\nanalysis.py, lines 6 to 10`));
+    assert.equal(blockCitation(ID, cleanEntry({ status: "withdrawn", doi: "10.5555/x", since: "" })!, ""), "");
+    assert.ok(blockView(ID, e, "OSCR", "https://openscicode.org").html.includes('<h2 id="cite">Cite this block</h2>'));
+    assert.equal(blockJson(ID, e, "https://openscicode.org").citation, blockCitation(ID, e, "https://openscicode.org"));
+  });
+
+  it("list a paper's blocks on a page built on request, escaped, with what they are", async () => {
+    const { blocksHtml } = await import("../src/lib/render.ts");
+    const html = blocksHtml({ blocks: [{ id: ID, path: "<a>.py", start: 6, end: 10, paragraphs: [3] }, { id: "not-an-id", path: "x", start: 1, end: 2, paragraphs: [] }], blocks_more: 2 });
+    assert.ok(html.includes(`<a href="/b/${ID}"><code>${ID}</code></a>`) && html.includes("lines 6 to 10 (paragraph 3)"));
+    assert.ok(html.includes('href="/help/blocks/"') && html.includes("And 2 more"));
+    assert.ok(!html.includes("<a>.py") && !html.includes("not-an-id") && !html.includes("—"));
+    assert.equal(blocksHtml({}), "");
+  });
+
+  it("answer /api/v1/blocks/<id>, and say a mistyped one is wrong", async () => {
+    const { handleV1 } = await import("../worker/v1/index.ts");
+    const env = { ASSETS: assets({ "/lookup/1c.json": readFileSync(`${FIXTURE}/1c.json`, "utf8") }) } as never;
+    const ok = await handleV1(new Request(`https://openscicode.org/api/v1/blocks/${ID.toLowerCase()}`), env, {} as never);
+    assert.equal(ok.status, 200);
+    const body = (await ok.json()) as { block: { id: string; doi: string; citation: string } };
+    assert.equal(body.block.id, ID);
+    assert.equal(body.block.doi, "10.5555/oscr.fixture.1");
+    assert.ok(body.block.citation.startsWith(`Code block ${ID}`));
+    const typo = await handleV1(new Request("https://openscicode.org/api/v1/blocks/oscr:b:ZHK95W68S9M1K-M"), env, {} as never);
+    assert.equal(typo.status, 400);
+    const none = await handleV1(new Request(`https://openscicode.org/api/v1/blocks/oscr:b:0000000000000-${checkChar("0000000000000")}`), env, {} as never);
+    assert.equal(none.status, 404);
+  });
+});

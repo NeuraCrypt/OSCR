@@ -2,7 +2,7 @@
 // is built, from the same export as the static pages: an entity's record for its page in the
 // browser, a paper's record for its page rendered by the Worker. Written into
 // /records/<type>/NN.json by src/pages/records/[type]/[shard].json.ts.
-import { europePmcUrl, lotEntry, onDemand, rowOf, shortName, withPage, type Article } from "./catalog";
+import { blocksOf, europePmcUrl, lotEntry, onDemand, rowOf, shortName, withPage, type Article } from "./catalog";
 import {
   authorOf, authors, authorUrl, categoriesOf, datasetName, datasetOf, datasets, datasetUrl, institutionOf, institutions,
   institutionUrl, journals, journalUrl, rridUrl, toolOf, tools, toolUrl,
@@ -137,6 +137,18 @@ export async function entityShards<T extends EntityType>(type: T, built: Built<T
   );
 }
 
+/** How many block identifiers a paper's record lists (its page links to them; the API lists all). */
+export const BLOCKS_LISTED = 40;
+
+function blocksRecord(a: Article): { blocks?: { id: string; path: string; start: number; end: number; paragraphs: number[] }[]; blocks_more?: number } {
+  const all = blocksOf(a);
+  if (!all.length) return {};
+  return {
+    blocks: all.slice(0, BLOCKS_LISTED).map((b) => ({ id: b.id, path: b.path, start: b.start, end: b.end, paragraphs: b.paragraphs.slice(0, 5) })),
+    ...(all.length > BLOCKS_LISTED ? { blocks_more: all.length - BLOCKS_LISTED } : {}),
+  };
+}
+
 /** The record of a paper whose page is rendered on demand: what catalog.json and its lot of
  *  src/data/papers/ say, with the addresses of the pages it links to. */
 export function paperRecord(a: Article): PaperRecord {
@@ -178,6 +190,8 @@ export function paperRecord(a: Article): PaperRecord {
     }),
     files: a.code.reduce((n, d) => n + (d.files_read || 0), 0),
     pairs: a.alignment?.pairs ?? 0,
+    // Its code blocks with an identifier (/b/<id>), BLOCKS_LISTED at most, and how many more.
+    ...blocksRecord(a),
     map: a.card?.doi ?? "",
     datasets: (a.datasets ?? []).map((id) => {
       const d = datasetOf(id);

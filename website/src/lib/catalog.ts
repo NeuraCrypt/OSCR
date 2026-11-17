@@ -2,6 +2,7 @@
 // See scripts/data.mjs: it comes from CATALOG_DIR, always exported in public mode.
 import { existsSync, readFileSync } from "node:fs";
 import raw from "../data/catalog.json";
+import { BLOCK_ID } from "./blockid.ts";
 import { dayInWords } from "./format";
 import { shortName, webUrl } from "./names";
 import type { Row } from "./render.ts";
@@ -252,6 +253,20 @@ export function lotText(textLot: string, sha256: string): string | undefined {
     textLots.set(textLot, existsSync(path) ? JSON.parse(readFileSync(path, "utf8")) : {});
   }
   return textLots.get(textLot)![sha256]?.text;
+}
+
+/** A paper's code blocks with an identifier (oscr/blocks.py, src/lib/block.ts): one per block, in
+ *  the order of the matches, with the paragraphs it was matched to. */
+export type PaperBlock = { id: string; repo: string; path: string; start: number; end: number; paragraphs: number[] };
+export function blocksOf(a: Article): PaperBlock[] {
+  const out = new Map<string, PaperBlock>();
+  for (const p of alignmentOf(a)?.pairs ?? []) {
+    if (typeof p.block !== "string" || !BLOCK_ID.test(p.block)) continue;
+    const b = out.get(p.block) ?? { id: p.block, repo: p.repo, path: p.path, start: p.start_line, end: p.end_line, paragraphs: [] };
+    if (!b.paragraphs.includes(p.paragraph)) b.paragraphs.push(p.paragraph);
+    out.set(p.block, b);
+  }
+  return [...out.values()];
 }
 
 /** The pairs of a paper (src/data/alignments/NN.json), sorted by pair number. */

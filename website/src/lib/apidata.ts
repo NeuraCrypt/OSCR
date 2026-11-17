@@ -6,7 +6,8 @@
 // Every rule of CLAUDE.md holds: the records come from the public export, already stripped of
 // email addresses (scripts/data.mjs); no paper full text; a withdrawn paper is absent from the
 // catalogue already, a withheld map carries no card. Only facts leave.
-import { alignmentOf, catalog, europePmcUrl, recordUrl, type Article, type Repo } from "./catalog.ts";
+import { blockPath } from "./blockid.ts";
+import { alignmentOf, blocksOf, catalog, europePmcUrl, recordUrl, type Article, type Repo } from "./catalog.ts";
 import {
   authors, categoriesOf, datasetName, datasetOf, datasets, datasetUrl, institutions, journalOf, journals,
   journalUrl, toolOf, tools, toolUrl,
@@ -81,6 +82,12 @@ export function apiPaper(a: Article, shard = "") {
     code: a.code.map(codeOut),
     data_links: a.data_links,
     matches: { aligned: !!a.alignment, pairs: a.alignment?.pairs ?? 0, method: a.alignment?.method ?? "" },
+    // Its code blocks with an identifier (oscr/blocks.py): each one's page is /b/<id>, its facts
+    // /b/<id>.json and /api/v1/blocks/<id>.
+    blocks: blocksOf(a).map((b) => ({
+      id: b.id, repo: b.repo, path: b.path, lines: [b.start, b.end], paragraphs: b.paragraphs,
+      url: blockPath(b.id), api: `/api/v1/blocks/${b.id}`,
+    })),
     map_doi: a.card?.doi ?? "",
     links: {
       record: recordUrl(a),

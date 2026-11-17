@@ -88,6 +88,8 @@ export function blockJson(id: string, e: BlockEntry, origin: string): Record<str
     out.reader = `${origin}${readerHref(e)}`;
   }
   if (e.next) out.next_url = `${origin}${blockPath(e.next)}`;
+  const cite = blockCitation(id, e, origin);
+  if (cite) out.citation = cite;
   return out;
 }
 
@@ -98,7 +100,21 @@ const STATUS_WORDS: Record<BlockEntry["status"], string> = {
 };
 
 /** A block's page: what it names, where, and how to cite it. Every text is escaped. */
-export function blockView(id: string, e: BlockEntry, siteName: string): View {
+/** The text to cite a block with: its identifier and page first, then what, where, the paper and the
+ *  SWHID with its context. "" for a withdrawn block (it names no code any more). */
+export function blockCitation(id: string, e: BlockEntry, origin: string): string {
+  if (e.status === "withdrawn" || !e.path || !e.lines || !e.swhid) return "";
+  const url = repoUrl(e.repo ?? "");
+  const qualified = qualifiedSwhid({ swhid: e.swhid, origin: url, commit: e.commit ?? "", path: e.path, range: { start: e.lines[0], end: e.lines[1] } });
+  return [
+    `Code block ${id} (${origin}${blockPath(id)})`,
+    `${e.path}, lines ${e.lines[0]} to ${e.lines[1]}, in ${e.repo}${url ? ` (${url})` : ""}${e.commit ? `, commit ${e.commit}` : ""}.`,
+    `Paper: https://doi.org/${e.doi}`,
+    `SWHID: ${qualified || e.swhid}`,
+  ].join("\n");
+}
+
+export function blockView(id: string, e: BlockEntry, siteName: string, origin = ""): View {
   const rows: string[] = [];
   const row = (term: string, value: string) => rows.push(`<dt>${esc(term)}</dt><dd>${value}</dd>`);
   row("Identifier", `<code>${esc(id)}</code>`);
@@ -119,8 +135,12 @@ export function blockView(id: string, e: BlockEntry, siteName: string): View {
   const open = e.status !== "withdrawn" && e.page ? `<p><a href="${esc(readerHref(e))}">Open these lines beside the paper</a></p>` : "";
   const html =
     `<h1>Block <code>${esc(id)}</code></h1>` +
-    `<p class="summary">A block of code linked to a paper, with an identifier ${esc(siteName)} gives it for good: it is never reused nor deleted. <a href="/help/reader/#block-ids">What a block identifier is</a> · <a href="${esc(blockPath(id))}.json">this block in JSON</a></p>` +
-    `<dl class="facts">${rows.join("")}</dl>` + open;
+    `<p class="summary">A block of code linked to a paper, with an identifier ${esc(siteName)} gives it for good: it is never reused nor deleted. <a href="/help/blocks/">What a block identifier is</a> · <a href="${esc(blockPath(id))}.json">this block in JSON</a></p>` +
+    `<dl class="facts">${rows.join("")}</dl>` + open +
+    (blockCitation(id, e, origin)
+      ? `<h2 id="cite">Cite this block</h2><p>Copy this text: the identifier and its page first, then the code, the paper and the SWHID.</p>` +
+        `<pre><code>${esc(blockCitation(id, e, origin))}</code></pre>`
+      : "");
   return {
     title: `Block ${id}`,
     description: e.status === "withdrawn" ? `A withdrawn block of code of the paper doi:${e.doi}.` : `Lines ${e.lines?.[0]} to ${e.lines?.[1]} of ${e.path}, linked to the paper doi:${e.doi}.`,
