@@ -396,7 +396,7 @@ export function missingEntity(type: EntityType, key: string): View {
 export type Notice = { kind: string; id: string; date: string; source: string; url: string };
 /** A data link found in the paper; `cited`: it names one of the datasets the paper cites, which
  *  the page lists by their own pages. */
-export type DataLinkRecord = { repo: string; url: string; repository: string; cited: boolean };
+export type DataLinkRecord = { repo: string; url: string; repository: string; cited: boolean; also_code?: boolean };
 export type PaperRecord = {
   /** The registry's id of the paper ("doi:10.…"), which the Contribute section's requests name. */
   id: string;
@@ -670,7 +670,8 @@ export function paperView(p: PaperRecord, origin = "", name = ""): View {
           .map(
             (l) =>
               `<li>${href(l.url) ? `<a class="code" href="${esc(href(l.url))}">${wrap(l.repo)}</a>` : `<span class="code">${wrap(l.repo)}</span>`}` +
-              `${l.repository ? `, ${esc(l.repository)}` : ""}</li>`,
+              `${l.repository ? `, ${esc(l.repository)}` : ""}` +
+              `${l.also_code ? `; this record also holds the authors' code (<a href="#code">see Code</a>)` : ""}</li>`,
           )
           .join("") +
         `</ul>`

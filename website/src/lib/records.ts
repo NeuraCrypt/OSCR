@@ -197,7 +197,7 @@ export function paperRecord(a: Article): PaperRecord {
       const d = datasetOf(id);
       return { text: d ? datasetName(d) : id, href: datasetUrl(id) };
     }),
-    data: (p?.data ?? []).map((d) => ({ repo: d.repo, url: d.url, repository: d.repository, cited: !!d.dataset && cited.has(d.dataset) })),
+    data: (p?.data ?? []).map((d) => ({ repo: d.repo, url: d.url, repository: d.repository, cited: !!d.dataset && cited.has(d.dataset), ...(d.also_code ? { also_code: true } : {}) })),
     tools: (a.tools ?? []).map((id) => ({ text: toolOf(id)?.name ?? id, href: toolUrl(id) })),
     europepmc: europePmcUrl(a),
   };

@@ -330,14 +330,15 @@ def _title(title: str) -> str:
     return t[:1] + t[1:].lower() if t.isupper() else t
 
 
-def _availability(r: sqlite3.Row, statements: list[sqlite3.Row], links: list[sqlite3.Row]) -> dict[str, Any]:
+def _availability(r: sqlite3.Row, statements: list[sqlite3.Row], links: list[sqlite3.Row],
+                  datasets: set[str] | frozenset[str] = frozenset()) -> dict[str, Any]:
     """D1: the statements' text only under an open license; otherwise the facts about them."""
     open_ = catalog.statement_is_publishable(r["license"] or "")
     kept = _statements(statements)
     said = [link for link in links if link["found_by"] == _AVAILABILITY]
     data: list[dict[str, str]] = []
     for link in said:
-        if link["role"] != "data":
+        if link["role"] != "data" and not also_data(link, datasets):
             continue
         ident = enrich.dataset_id(link["repo"], link["url"] or "")
         key = ident[0] if ident else link["repo"]
@@ -363,16 +364,31 @@ def _heading(section: str, most: int = 48) -> str:
     return section[:most - 1].rsplit(" ", 1)[0].rstrip(" ,;:.-–—") + "…"  # emdash-ok: strips em dashes off truncated section titles
 
 
-def _data_links(links: list[sqlite3.Row]) -> list[dict[str, str]]:
+#: The record types a code link may also be a dataset in: an archive whose own metadata (DataCite's
+#: resource type, read at the verification) says "dataset" holds the data AND the code (a Zenodo record
+#: with Code.zip beside the data, 2026-11-21: 10.1016/j.isci.2026.117074).
+DATASET_TYPES = frozenset({"dataset"})
+
+
+def also_data(link: sqlite3.Row | dict, datasets: set[str] | frozenset[str]) -> bool:
+    """Whether a code link is also the paper's data: its record is a dataset."""
+    return link["role"] == "code" and link["repo"] in datasets
+
+
+def _data_links(links: list[sqlite3.Row], datasets: set[str] | frozenset[str] = frozenset()) -> list[dict[str, str]]:
+    """The paper's data links: those judged data, and the code links whose record is a dataset (they hold
+    both: listed under Code and under Data, the latter saying so)."""
     out = []
     for link in sorted(links, key=lambda x: x["repo"]):
-        if link["role"] != "data":
+        both = also_data(link, datasets)
+        if link["role"] != "data" and not both:
             continue
         ident = enrich.dataset_id(link["repo"], link["url"] or "")
         url = _url(link["url"]) or (f"https://doi.org/{link['repo'][4:]}" if link["repo"].startswith("doi:") else "")
         out.append({"repo": link["repo"], "url": url, "dataset": ident[0] if ident else "",
                     "repository": enrich.data_repository(ident[0] if ident else link["repo"]),
-                    "where": catalog._where(link["found_by"], _heading(link["section"]))})
+                    "where": catalog._where(link["found_by"], _heading(link["section"])),
+                    **({"also_code": True} if both else {})})
     return out
 
 
@@ -766,6 +782,10 @@ def generate(con: sqlite3.Connection, folder: Path, articles: list[dict[str, Any
         count_sources[r["entity_id"]][r["field"]] = r["source"]
     statements = _grouped(con, f"SELECT * FROM statement WHERE article_id IN ({pages_sql})")
     links = _grouped(con, f"SELECT * FROM link WHERE article_id IN ({pages_sql}) ORDER BY article_id, repo")
+    # The records that are datasets (DataCite's resource type): a code link there is the data too.
+    marks = ",".join("?" * len(DATASET_TYPES))
+    datasets = {r[0] for r in con.execute(f"SELECT repo FROM repository WHERE resource_type IN ({marks})",
+                                          tuple(DATASET_TYPES))}
     versions = _grouped(con, f"SELECT * FROM version WHERE entity = 'article' AND entity_id IN ({pages_sql})",
                         "entity_id")
     journals = {r["id"]: r for r in con.execute("SELECT * FROM journal")}
@@ -840,8 +860,8 @@ def generate(con: sqlite3.Connection, folder: Path, articles: list[dict[str, Any
             "code": {link["repo"]: _repository(repos.get(link["repo"]), features.get(link["repo"]),
                                                tools.get(link["repo"], []), checks.get(link["repo"], []),
                                                scripts.get(link["repo"], 0)) for link in code_links},
-            "availability": _availability(r, statements.get(aid, []), links.get(aid, [])),
-            "data": _data_links(links.get(aid, [])),
+            "availability": _availability(r, statements.get(aid, []), links.get(aid, []), datasets),
+            "data": _data_links(links.get(aid, []), datasets),
             "map": _map(a, validated, deposit,
                         sum(scripts.get(link["repo"], 0) for link in code_links), n_pairs, method,
                         zenodo.map_digest(zenodo.map_of(con, aid)) if code_links and not held else "", withheld=held),
