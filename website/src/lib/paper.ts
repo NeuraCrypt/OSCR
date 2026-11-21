@@ -80,7 +80,8 @@ export type Availability = {
   on_request: { code: boolean; data: boolean };
   points_to: { code: string[]; data: { dataset: string; repository: string }[] };
 };
-export type DataLink = { repo: string; url: string; dataset: string; repository: string; where: string };
+/** `also_code`: the record is a dataset that also holds the paper's code (it is listed under Code too). */
+export type DataLink = { repo: string; url: string; dataset: string; repository: string; where: string; also_code?: boolean };
 export type MapFacts = {
   /** "withheld": at a removal request (oscr reports accept), with neither digest, nor
    *  validations, nor DOI, nor matches. */

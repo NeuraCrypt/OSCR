@@ -40,6 +40,7 @@ const kinds = new Set(p?.availability.statements.map((s) => s.kind) ?? []);
             {d.url ? <>, <a href={d.url}>{d.repository && d.repository !== "DOI" ? `at ${d.repository}` : "at the source"}</a></> : d.repository && `, ${d.repository}`}
             {d.license && `, ${d.license}`}
             {d.where && `; found in ${d.where}`}
+            {linkOf(d.id)?.also_code && <>; this record also holds the authors' code (<a href="#code">see Code</a>)</>}
           </li>
         ))}
       </ul>
@@ -54,6 +55,7 @@ const kinds = new Set(p?.availability.statements.map((s) => s.kind) ?? []);
             {l.url ? <a class="code" href={l.url}><Wrap text={l.repo} /></a> : <span class="code"><Wrap text={l.repo} /></span>}
             {l.repository && `, ${l.repository}`}
             {l.where && `; found in ${l.where}`}
+            {l.also_code && <>; this record also holds the authors' code (<a href="#code">see Code</a>)</>}
           </li>
         ))}
       </ul>

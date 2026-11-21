@@ -370,7 +370,9 @@ def catalog_data(con: sqlite3.Connection) -> dict[str, Any]:
         code = []
         n_data = 0
         for l in links_by_article.get(a["id"], []):
-            if l["role"] == "data":
+            # A code link whose record is a dataset holds the data too (paperpage.also_data).
+            rec = repos.get(l["repo"])
+            if l["role"] == "data" or (l["role"] == "code" and rec is not None and rec["resource_type"] == "dataset"):
                 n_data += 1
             if l["role"] != "code":
                 continue

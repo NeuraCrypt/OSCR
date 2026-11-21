@@ -362,3 +362,18 @@ def test_similar_papers_rank_by_what_they_share():
     assert out["p0"][1]["reasons"] == "shares author Ada Fixture"
     # Sharing only what most papers have is not being similar.
     assert out["p39"] == []
+
+
+def test_a_code_link_whose_record_is_a_dataset_is_listed_under_data_too():
+    """A Zenodo record typed "dataset" that also holds Code.zip (10.1016/j.isci.2026.117074): listed as code,
+    and under Data, saying it holds the code too; a code link elsewhere is not."""
+    from oscr import paperpage
+
+    def link(repo, role):
+        return {"repo": repo, "role": role, "url": f"https://doi.org/10.5281/{repo.replace(':', '.')}", "found_by": "text:availability",
+                "section": "Data and code availability"}
+    links = [link("zenodo:20507627", "code"), link("github.com/lab/tool", "code"), link("zenodo:1", "data")]
+    out = paperpage._data_links(links, {"zenodo:20507627"})
+    assert [d["repo"] for d in out] == ["zenodo:1", "zenodo:20507627"]
+    assert out[1]["also_code"] is True and "also_code" not in out[0]
+    assert paperpage._data_links(links) == [out[0]]
